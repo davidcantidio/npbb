@@ -1,132 +1,278 @@
-# PRD – Sistema de Gestão de Eventos / Ativações / Leads
+# PRD – Sistema de Gestão de Eventos / Ativações / Leads / Ativos / Convites
 
 ## 0. Metadados do Projeto
 
-- **Projeto**: Sistema de Gestão de Eventos / Ativações / Leads – versão interna Banco do Brasil  
-- **Versão do PRD**: 1.0  
-- **Status**: Rascunho  
+- **Projeto**: Sistema de Gestão de Eventos / Ativações / Leads / Ingressos  
+- **Versão do PRD**: 1.1  
+- **Status**: Rascunho evolutivo  
 - **Product Owner**: (preencher)  
-- **Stakeholders principais**: Marketing, Equipe de Promoção/Eventos, BI, Engenharia, Dados  
-- **Data do documento**: (preencher)  
-- **Objetivo**: definir escopo, requisitos e estrutura para o MVP do sistema  
+- **Stakeholders**: Marketing, Promoção/Eventos, BI, TI, Dados  
+- **Data**: (preencher)  
+- **Objetivo**: Definir requisitos funcionais e técnicos do MVP para gestão completa de eventos, ativações, leads, cotas de ingressos, convites e convidados.
 
-## 1. Visão Geral & Objetivo
+---
 
-**Problema / Oportunidade**  
-Atualmente existe um sistema web de cadastro de eventos e ativações, mas há necessidade de consolidar dados para BI, adotar um sistema próprio com melhorias, integrar leads via API externa, e armazenar histórico de dados.
+# 1. Visão Geral & Objetivo
 
-**Objetivo do produto**  
-Construir um sistema interno que permita: CRUD completo de eventos, ativações, investimentos, leads, convidados e convites; integração com API externa (Salesforce) para captura de leads + armazenamento local; dashboard/listagens para gestão; exportação de dados.
+## Problema / Oportunidade
+O Banco do Brasil necessita de uma plataforma interna única que:
 
-**Escopo do MVP**  
+- Centralize dados de eventos, ativações, investimentos e leads.
+- Permita gerar e monitorar cotas de ingressos para Diretorias.
+- Controle convidadores (funcionários) e convidados vinculados às cotas.
+- Integre-se com Salesforce para entrada de leads.
+- Atenda requisitos de BI e monitoramento.
 
-- CRUD de Eventos, Ativações, Investimentos, Leads, Convidados, Convites  
-- Envio de lead via integração com API externa + gravação local com ID externo  
-- Listagens / filtros básicos para entidades  
-- Dashboard/listagem de eventos com resumo e filtros  
-- Exportação de dados via CSV  
+## Objetivo
+Criar uma plataforma que ofereça:
 
-**Fora do escopo (inicial)**  
+- CRUD completo:
+  - Eventos  
+  - Ativações  
+  - Investimentos  
+  - Leads  
+  - Convidados  
+  - Convites  
+  - Cotas de Ingressos (Ativos)  
+- Página de **Ativos (Ingressos Cortesia)** com cards por Evento + Diretoria  
+- Fluxo completo: convidadores → convidados → convites → consumo de ingressos  
+- Página externa restrita (RUL) para funcionários convidarem pessoas  
+- Dashboard operacional  
+- Exportação CSV  
+- Integração Salesforce  
+- Backend + Frontend full stack (Node + React)  
+- Banco PostgreSQL  
 
-- Gamificação  
-- Sistema de permissões/papéis refinado  
-- Dashboards complexos com gráficos, BI embutido  
-- Automação de marketing ou notificações complexas  
-- Check-in com QR code (por ora, apenas lista de presença simples)
+---
 
-## 2. Usuários / Perfis
+# 2. Usuários / Perfis
 
-- Usuários internos (~ 15): equipe de marketing/promoção/eventos, BI, operações  
-- Acesso amplo e igualitário (sem níveis de permissão diferenciados no MVP)
+## Usuários Internos (~15)
+- Marketing  
+- Gerentes de eventos  
+- Operações  
+- BI  
+- Administradores  
 
-## 3. Funcionalidades & Regras de Negócio
+Acesso amplo no MVP.
 
-### 3.1 CRUD de Eventos  
-- Campos: nome, descrição, tipo/subtipo, cidade, estado, agência, diretoria, gestor, data prevista de início/fim, data realizada de início/fim (opcional), público projetado, público realizado (opcional), status (previsto, realizado, cancelado, em andamento).  
-- Validação de consistência: subtipo só válido se pertencer ao tipo.  
-- Data real / público real e outros campos de resultado opcionais até pós-evento.
+## Usuários Convidadores (externo via RUL)
+- Funcionários do BB usando **email @bb.com.br**
+- Podem:
+  - Criar conta
+  - Cadastrar convidados
+  - Emitir convites
+  - Consumir ingressos da cota da sua Diretoria
 
-### 3.2 CRUD de Ativações  
-- Cada ativação vinculada a um evento.  
-- Campos básicos: nome, descrição, valor de investimento (se aplicável).  
-- Possibilidade de associar leads (N:N via tabela de pivô).  
+---
 
-### 3.3 Investimentos  
-- Sempre vinculados a evento + ativação.  
-- Campos: tipo de investimento (patrocínio / promoção), descrição, valor.  
-- O sistema deve calcular automaticamente:  
-  - Total investido por evento  
-  - Totais separados por tipo de investimento  
+# 3. Funcionalidades & Regras de Negócio
 
-### 3.4 Leads (Integração externa + armazenamento local)  
-- Formulário de lead: front envia dados ao backend → backend envia para API externa (Salesforce).  
-- Ao receber sucesso, extrair `salesforce_id` e demais dados → gravar localmente na tabela `lead`.  
-- Permitir listar leads e associar a ativações por meio de tabela de pivô.  
+---
 
-### 3.5 Exportação CSV  
-- Permitir exportar, com filtros, os dados de eventos, ativações, investimentos, leads.  
+## 3.1 CRUD de Eventos
+- Campos: nome, descrição, tipo/subtipo, cidade, estado, agência, diretoria, gestor  
+- Datas previstas/realizadas  
+- Público projetado/realizado  
+- Status: previsto / em andamento / realizado / cancelado  
+- Validação: subtipo pertence ao tipo (trigger existente)
 
-### 3.6 Dashboard / Listagens  
-- Página tabular de eventos com filtros por data, status, tipo, agência, diretoria, cidade, estado, gestor etc.  
-- Colunas de resumo: número de ativações, total investido, total leads (quando aplicável), status do evento, datas previstas/realizadas.  
+---
 
-## 4. Modelo de Dados / Esquema de Banco
+## 3.2 CRUD de Ativações
+- Cada ativação pertence a um evento  
+- Campos: nome, descrição, valor  
+- Relacionamento N:N com leads (`ativacao_lead`)
 
-Baseado no schema existente, com adição mínima:
+---
 
-- Adicionar campo `salesforce_id` (string) na tabela `lead` para armazenar o ID retornado pela API externa.  
-- Manter tabelas: evento, ativacao, investimento, lead, ativacao_lead, convidado, convite, cota_cortesia (se for relevante), etc.  
-- Preservar campos de datas previstas/realizadas, público projetado/realizado, status do evento conforme definido.  
+## 3.3 Investimentos
+- Sempre vinculados a evento + ativação  
+- Campos: tipo de investimento, descrição, valor  
+- Sistema deve calcular:
+  - Total geral por evento  
+  - Total por tipo de investimento  
 
-## 5. Integração com API Externa (Salesforce)
+---
 
-- Backend (Node) terá endpoint para receber dados de lead vindos do front.  
-- Backend consome API externa conforme documentação, cria lead, recebe ID externo.  
-- Armazena lead local com `salesforce_id` + demais campos relevantes.  
-- Tratamento de erros: se criação no Salesforce falhar → retorna erro para front, não salva no banco local.  
-- Considerar autenticação e renovação de token se API usar OAuth ou mecanismo similar.
+## 3.4 Leads (Integração Salesforce + armazenamento local)
+- Formulário local → backend → Salesforce  
+- Salesforce retorna ID externo (`salesforce_id`)  
+- Lead gravado localmente com todos dados necessários  
+- Permite listagem, filtros e exportação CSV  
+- Associação com ativação via `ativacao_lead`
 
-## 6. Critérios de Aceitação / Qualidade para MVP
+---
 
-- CRUDs funcionando corretamente (criação, leitura, edição, exclusão) para todas entidades do escopo.  
-- Integração com API externa: lead enviado com sucesso → lead visível no sistema + ID externo salvo corretamente.  
-- Listagens e filtros funcionando.  
-- Exportação CSV funcionando e exporta os dados filtrados corretamente.  
-- Dashboard tabular exibindo eventos com colunas de resumo corretas.  
-- Cálculo de total de investimentos por evento e por tipo está correto.  
-- Banco consistente, sem dados órfãos ou inconsistentes, integridade preservada.
+# 3.5 Ativos (Ingressos Cortesia) — *Nova Funcionalidade Principal*
 
-## 7. Suposições & Dependências
+### Interface
+Substitui totalmente a página antiga de leads.
 
-- A API externa de leads (Salesforce) estará disponível e funcionando conforme documentação.  
-- Não haverá necessidade imediata de controle fino de permissões ou hierarquia de acesso.  
-- Volume previsto (~ 1000 eventos/ano, ~ 1800 ativações) cabe sem problemas em uma instância PostgreSQL + backend padrão.  
-- Os ~15 usuários internos têm perfil homogêneo, sem necessidade de roles distintas.  
+- Cards por **Evento + Diretoria**
+- Cada card mostra:
+  - **Título**: Nome do evento + diretoria
+  - **Consumo**: `ingressos usados / ingressos disponíveis`
+  - Barra de progresso
+  - Botão **“Atribuir ingressos”**
+  - Ação **“Ver convidados”**
 
-## 8. Roadmap / Backlog do MVP
+### Regras
+- **Ingressos usados = convites emitidos**
+- Remover convidado devolve ingresso ao saldo
+- Não pode definir cota menor que ingressos já usados
+- Exportação CSV disponível  
+- Filtros:
+  - Evento  
+  - Diretoria  
 
-| Nº | Tarefa / Feature | Prioridade |
-|----|------------------|------------|
-| 1  | Configuração do projeto backend + banco (schema / migrations) | Alta |
-| 2  | CRUD para Evento (backend + modelos) | Alta |
-| 3  | CRUD para Ativação | Alta |
-| 4  | CRUD para Investimento | Alta |
-| 5  | CRUD para Lead (local) + campo `salesforce_id` | Alta |
-| 6  | Endpoint + integração com API externa para criação de lead | Alta |
-| 7  | Implementar associação Lead ↔ Ativação (pivô) | Média-Alta |
-| 8  | Frontend React – telas CRUD (Evento, Ativação, Investimento, Lead) | Alta |
-| 9  | Frontend React – listagens + filtros | Alta |
-| 10 | Exportação CSV (backend + front) | Média |
-| 11 | Dashboard de eventos (tabela + filtros + resumos) | Média |
-| 12 | Testes (unitários backend, integração API, testes front-end básicos) | Média |
-| 13 | Preparar infraestrutura / deploy / configuração inicial | Alta |
+---
 
-## 9. Possíveis Evoluções / Versões Futuras (após MVP)
+# 3.6 Convidadores (Funcionários — Página RUL)
 
-- Dashboards com gráficos / KPIs visuais  
-- Controle de permissões / papéis / níveis de acesso  
-- Check-in / Lista de presença com relatórios  
-- Relatórios customizados / filtros avançados / exportações detalhadas  
-- Logs de auditoria / histórico de alterações  
-- UI/UX refinada, melhorias visuais e de usabilidade  
+### Cadastro
+Acessam URL externa restrita.  
+Campos obrigatórios:
+
+- Nome  
+- CPF  
+- Email **@bb.com.br**  
+- Diretoria  
+
+Após cadastro, podem convidar pessoas para eventos em que sua Diretoria possua cotas.
+
+---
+
+# 3.7 Convidados
+Cadastros feitos por convidadores.
+
+Campos:
+- Nome  
+- CPF  
+- Email  
+- Telefone  
+- Flag “É funcionário do banco?”  
+
+Regras:
+- Cada convidado consome **1 ingresso**  
+- Remover convidado devolve ingresso  
+- Salvar dados completos no banco  
+
+---
+
+# 3.8 Convites
+Cada convidado = 1 convite.
+
+Atributos:
+- Evento  
+- Diretoria  
+- Funcionário convidador  
+- Convidado  
+- Status:
+  - enviado  
+  - pendente  
+  - cancelado  
+
+Regras:
+- Convite só pode ser emitido se houver ingresso disponível  
+- Remoção do convite:
+  - Libera ingresso  
+  - Remove convidado associado  
+
+---
+
+# 4. Modelo de Dados / Esquema
+
+Manter tabelas:
+
+- evento  
+- ativacao  
+- investimento  
+- lead  
+- ativacao_lead  
+- convidado  
+- convite  
+- cota_cortesia  
+
+### Inclusões
+- `lead.salesforce_id`  
+- Garantir relação:
+  - cota_cortesia → convites emitidos (ingressos usados)  
+  - convidado → convite  
+
+---
+
+# 5. Integração com Salesforce
+
+- Backend envia lead para API Salesforce  
+- Guarda `salesforce_id` retornado  
+- Sem gravação local em caso de erro  
+- Tratar token, expiração e erros da API  
+
+---
+
+# 6. Critérios de Aceitação / Qualidade
+
+- CRUDs completos funcionando  
+- Integração Salesforce funcionando  
+- Dashboard funcionando com filtros  
+- Página Ativos exibindo:
+  - Cards corretos  
+  - Consumo correto (usados/disponíveis)  
+- Fluxo RUL funcionando para convidadores  
+- Página de Convidados funcionando com remoção e devolução de ingressos  
+- CSV funcionando para:
+  - Eventos  
+  - Leads  
+  - Ativos  
+  - Convidados  
+- Banco consistente e sem registros órfãos  
+
+---
+
+# 7. Suposições & Dependências
+
+- API Salesforce disponível  
+- Funcionários usam email @bb.com.br  
+- Volume do sistema compatível com stack proposta  
+- MVP sem perfis avançados de permissão  
+- Cotas dependem do preenchimento correto de `cota_cortesia`  
+
+---
+
+# 8. Roadmap / Backlog do MVP
+
+| Nº | Feature | Prioridade |
+|----|---------|-----------|
+| 1 | Setup backend + banco | Alta |
+| 2 | CRUD Evento | Alta |
+| 3 | CRUD Ativação | Alta |
+| 4 | CRUD Investimento | Alta |
+| 5 | Integração Salesforce | Alta |
+| 6 | CRUD Lead + associação Ativação | Média |
+| 7 | **Página Ativos + lógica de cotas** | **Alta** |
+| 8 | **Tela filha de Convidados + convites** | **Alta** |
+| 9 | **Fluxo RUL: convidadores + cadastro de convidados** | **Alta** |
+| 10 | Dashboard de eventos | Média |
+| 11 | Exportações CSV | Alta |
+| 12 | Testes automatizados | Média |
+| 13 | Deploy | Alta |
+
+---
+
+# 9. Possíveis Evoluções Futuras
+
+- Painel de check-in  
+- QR Code para convidados  
+- Permissões avançadas  
+- Notificações automáticas  
+- Relatórios customizados  
+
+---
+
+# 10. Layout
+
+- **Material Design 3**  
+- Tema claro/escuro  
+- Componentes reativos e responsivos  
 

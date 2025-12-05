@@ -148,7 +148,7 @@ Gráfico combinado contendo:
 - Criar endpoint `/dashboard` aceitando filtros:
   - data_inicio / data_fim  
   - evento_id  
-  - estado  
+  - Estado  
   - cidade/local  
 - Endpoint deve retornar:
   - Indicadores consolidados  

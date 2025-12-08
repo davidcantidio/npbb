@@ -1,175 +1,149 @@
 # Página Inicial (Dashboard)
 
 ## 1. Nome da Tela
-**Página Inicial (Dashboard geral do sistema)**  
-Primeira interface exibida após o login.
+**Página Inicial (Dashboard Geral)**  
+Primeira tela exibida após o login.  
+Fornece visão consolidada de eventos, ativações, investimentos e ingressos.
 
 ---
 
 ## 2. Referência Visual
-*(print: `C:\Users\NPBB\OneDrive - Banco do Brasil S.A\Documentos\code\npbb\docs\tela-inicial\tela_inicial.png`)*
+Print do sistema original:  
+`docs/tela-inicial/tela_inicial.png`
 
 ---
 
-## 3. Estrutura da Tela (componentes visíveis)
+## 3. Estrutura da Tela
 
 ### 3.1 Menu Lateral Esquerdo
-- Dashboard  
-- Leads  
-- Eventos  
-- Ativos  
+- Dashboard (página atual)
+- Eventos
+- Ativos (cotas de ingressos)
+- Convidadores / Convidados (opcional)  
+*(Módulo Leads removido no novo sistema)*
 
-### 3.2 Barra Superior (header)
-- Botão: **tela cheia**
-- Botão: **atualizar**
-- Botão: **modo escuro**
+### 3.2 Barra Superior
+- Botão tela cheia
+- Botão atualizar
+- Botão modo escuro
 - Perfil do usuário (nome + permissão)
 
 ### 3.3 Filtros Superiores
-- Filtro de **Data** (ícone calendário)
-- Filtro **Evento** (dropdown)
-- Filtro **Estado** (dropdown)
-- Filtro **Local** (dropdown)
-- Botão **Limpar filtros**
+| Filtro          | Tipo                  | Comportamento                  |
+|-----------------|-----------------------|--------------------------------|
+| Data            | Intervalo de datas    | Aplicável a todos os indicadores |
+| Evento          | Seleção única         | Filtra por um evento específico |
+| Estado          | Seleção única         |                                |
+| Cidade (Local)  | Seleção única         |                                |
+| Limpar filtros  | Botão                 | Reseta todos os filtros        |
 
-### 3.4 Indicadores Principais
-- **147.259 Eventos**
-- **182.258 Check-ins**
-- **1.333 Questionários**
+### 3.4 Intervalos de Período
+Botões rápidos: **Todos** | **1M** | **6M** | **1A**  
+Aplicam filtro automático de data.
 
-### 3.5 Intervalos de Período
-- Todos  
-- 1M  
-- 6M  
-- 1A  
+### 3.5 Indicadores Principais (KPIs)
+
+| KPI                          | Descrição                                             |
+|------------------------------|-------------------------------------------------------|
+| Total de eventos no período  | Quantidade de eventos filtrados                       |
+| Total de ativações realizadas| Quantidade de ativações concluídas                    |
+| Total investido              | Soma de investimentos (patrocínio + promoção)         |
+| Ingressos usados             | Total de convites emitidos (consumo de cotas)         |
 
 ### 3.6 Gráfico Principal
-Gráfico combinado contendo:
-- Barras de **Check-ins**
-- Barras de **Leads**
-- Linha pontilhada de **Questionários**
-- Eixo X: meses (Jan → Dez)
-- Eixo Y: escala até ~40.000
+Tipo: Combinado (barras + linha)  
+Eixo X: Meses (Jan → Dez)  
+Eixo Y esquerdo: Quantidade  
+Eixo Y direito: Valor (R$)  
 
-### 3.7 Blocos Secundários (não detalhados no print)
-- Mapas  
-- Listas  
-- Cards adicionais  
-*(o original usa blocos extras para distribuição geográfica e breakdown por categorias)*
+Séries:
+- Eventos por mês (barras azuis)
+- Ativações por mês (barras verdes)
+- Total investido por mês (linha laranja)
 
----
+### 3.7 Blocos Secundários
+Layout em grid responsivo (scroll vertical)
 
-## 4. Comportamento
-
-- Todos os elementos do dashboard são **reativos aos filtros superiores**.  
-- Alterar qualquer filtro atualiza:
-  - Indicadores
-  - Gráfico principal
-  - Blocos secundários
-- O botão **Limpar filtros** retorna a visão para o estado padrão.
-- Os botões de período (Todos / 1M / 6M / 1A) **limitam o range temporal dos dados**.
-- O botão de **atualizar** força recarregamento dos gráficos/contadores.
-- **Modo escuro** altera o tema do dashboard, mas mantém estrutura.
+| Bloco                          | Tipo de Visualização          |
+|--------------------------------|-------------------------------|
+| Eventos por Estado             | Mapa ou barras horizontais    |
+| Ativações por Tipo             | Gráfico de pizza ou barras    |
+| Investimento por Diretoria     | Barras horizontais            |
+| Ingressos usados por Diretoria | Barras verticais + %          |
+| Eventos mais ativos            | Lista com top 5               |
 
 ---
 
-## 5. Regras de Negócio Identificadas (a partir da tela original)
+## 4. Comportamento da Tela
 
-- Métricas exibidas dependem do período selecionado.
-- Gráfico principal agrega dados por mês.
-- Filtros provavelmente impactam:
-  - Lista de eventos
-  - Check-ins associados
-  - Leads associados
-  - Questionários preenchidos
-- Evento → Estado → Local podem ser filtros encadeados (cascata).
-- Indicadores usam:
-  - Contagem total de eventos  
-  - Total de check-ins registrados  
-  - Total de questionários respondidos
-
-*(Algumas regras ainda precisam ser confirmadas no app original.)*
+| Ação                          | Resultado                                                                 |
+|-------------------------------|---------------------------------------------------------------------------|
+| Alterar qualquer filtro       | Atualiza KPIs, gráfico principal e blocos secundários automaticamente     |
+| Clicar em período (1M/6M/1A)  | Preenche filtro de data e atualiza toda a tela                            |
+| Limpar filtros                | Volta ao estado “Todos” (histórico completo)                              |
+| Botão Atualizar               | Força recarregamento dos dados                                            |
+| Modo escuro                   | Altera tema visual (não afeta dados)                                      |
+| Estado carregando             | Spinner central enquanto dados são buscados                               |
 
 ---
 
-## 6. Diferenças Entre o Original e a Nossa Versão
+## 5. Regras de Negócio Principais
 
-### No Original:
-- Indicadores:  
-  - Eventos  
-  - Check-ins  
-  - Questionários  
-- Gráfico principal baseado em:
-  - Check-ins  
-  - Leads  
-  - Questionários
-
-### Na Nossa Versão:
-- Indicadores relacionados **apenas aos eventos**, tais como:
-  - Total de eventos
-  - Total de ativações realizadas
-  - Total de investimento (soma)
-  - Total de leads (se relevante)
-
-- Gráfico principal será ligado à **evolução de eventos**, por exemplo:
-  - Nº de eventos por mês  
-  - Nº de ativações por mês  
-  - Total de investimento por mês  
-
-- A aba “Gamificação” não existe.  
-
+- Todos os dados são **filtrados** antes de qualquer agregação
+- Agregações mensais para o gráfico principal
+- “Local” = Cidade (mesmo campo no banco)
+- Filtros são sempre **seleção única**
+- Período “Todos” exibe histórico completo
+- Sem paginação nos blocos inferiores (scroll único)
+- Lead existe apenas como backend (Salesforce) — não aparece no Dashboard
 
 ---
 
-## 7. Pendências / Dúvidas / Informações Faltantes
+## 6. Diferenças – Sistema Original × Nova Versão
 
-## 7. Comportamentos Confirmados
-
-- **Filtro “Local” significa Cidade**  
-  O campo "Local" exibido no dashboard original corresponde diretamente à "Cidade" na nossa modelagem. Não existe distinção entre “cidade” e “local físico”.
-
-- **Filtros utilizam seleção única**  
-  Todos os dropdowns do dashboard funcionam com seleção única (não há múltipla seleção).
-
-- **Gráficos secundários serão mantidos**  
-  Os gráficos adicionais exibidos abaixo do gráfico principal no dashboard original serão replicados, apenas ajustados para refletir dados de eventos/ativações.
-
-- **Período “Todos” exibe o histórico completo**  
-  A opção “Todos” retorna todos os registros disponíveis no banco, sem limites de data.
-
-- **Sem paginação ou scroll nos blocos inferiores**  
-  A área inferior do dashboard exibe todos os blocos simultaneamente, sem paginação ou carregamento incremental.
+| Item                     | Sistema Original                          | Nova Versão                                      |
+|--------------------------|-------------------------------------------|--------------------------------------------------|
+| Foco                     | Leads, Check-ins, Questionários           | Eventos, Ativações, Investimentos, Ingressos     |
+| KPIs                     | Eventos, Check-ins, Questionários         | Eventos, Ativações, Investido, Ingressos usados  |
+| Gráfico principal        | Leads × Check-ins × Questionários         | Eventos / mês, Ativações / mês, Investido / mês  |
+| Módulos visíveis         | Leads proeminente                         | Leads removido; Ativos e Convidados adicionados  |
+| Métricas                 | Captura de leads                          | Operação interna e gestão de cotas               |
 
 ---
 
-## 8. Desdobramento em Requisitos (Backlog da Tela Inicial)
+## 7. Pendências / Dúvidas
+
+- Definir cores exatas e biblioteca de gráficos (Chart.js, Recharts ou ApexCharts)?
+- Blocos secundários: quais entram no MVP? (sugerido todos)
+- Exportação de dados do Dashboard (CSV/PDF) será necessária no MVP?
+- Incluir indicador de “Ingressos disponíveis” nos KPIs?
+
+---
+
+## 8. Backlog da Tela (Requisitos)
 
 ### Backend
-- Criar endpoint `/dashboard` aceitando filtros:
-  - data_inicio / data_fim  
-  - evento_id  
-  - Estado  
-  - cidade/local  
-- Endpoint deve retornar:
-  - Indicadores consolidados  
-  - Dados agregados para gráfico principal  
-  - Dados para blocos secundários (versão simplificada inicialmente)
-- Implementar lógica de agregação mensal:
-  - Eventos por mês  
-  - Ativações por mês  
-  - Investimento por mês (somado)
+- Endpoint principal: `GET /dashboard`
+  Parâmetros: `data_inicio`, `data_fim`, `evento_id`, `estado`, `cidade`
+- Retorno JSON com:
+  - kpis { eventos, ativacoes, investido, ingressos_usados }
+  - series_mensais { meses, eventos, ativacoes, investido }
+  - blocos { eventos_por_estado, ativacoes_por_tipo, investimento_por_diretoria, ingressos_por_diretoria, eventos_mais_ativos }
+- Funções de agregação mensais otimizadas (usar queries SQL eficientes)
 
 ### Frontend
-- Componente `<SidebarMenu />`
-- Componente `<DashboardHeader />`
-- Componente `<DashboardFilters />`
-- Componente `<DashboardCards />`
-- Gráfico principal `<EventosChart />`
-- Blocos secundários (versão simplificada)
-- Implementar reatividade dos filtros (contexto ou Zustand/Recoil)
-- Implementar botão “Limpar filtros”
-- Implementar range de período (Todos / 1M / 6M / 1A)
-- Implementar modo escuro (opcional, mas presente no original)
+- Página `<Dashboard />`
+- Componentes reutilizáveis:
+  - `<DashboardHeader />`
+  - `<DashboardFilters />`
+  - `<PeriodButtons />`
+  - `<KPI Cards />`
+  - `<MainChart />`
+  - `<SecondaryBlocks />` (grid responsivo)
+- Estado global de filtros (React Context ou Zustand)
+- Reatividade total com debouncing nos filtros
+- Skeleton loading durante carregamento
+- Suporte completo a tema escuro
+- Tooltips explicativos nos KPIs e gráficos
 
----
-
+Pronto para colar no Notion, Confluence, GitHub ou documento de especificação!

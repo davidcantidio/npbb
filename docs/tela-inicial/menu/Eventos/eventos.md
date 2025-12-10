@@ -112,4 +112,3 @@ Print do sistema original:
   - Indicador visual de evento realizado
   - Feedback de bloqueio de exclusão com motivo
 
-Pronto para colar no Notion, GitHub ou documento de especificação!

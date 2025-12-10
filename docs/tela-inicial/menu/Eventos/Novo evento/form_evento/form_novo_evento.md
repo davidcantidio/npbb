@@ -39,9 +39,10 @@ Estado exibido: formulário preenchido, aba **Evento** selecionada.
 |------|--------------------------|-------------------------------------------------------------|
 | 1    | **Evento**               | Aba atual / principal                                       |
 | 2    | Formulário de Lead       | Mantida                                                     |
-| 3    | Gamificação              | **Substituída** por “Ingressos / Cotas” (cotas por diretoria) |
-| 4    | Ativações                | Mantida                                                     |
-| 5    | Questionário             | Em avaliação                                                |
+| 3    | Gamificação              | Mantida                                                     |
+| 4    | Ingressos / Cotas        | **Nova** (cotas por diretoria)                              |
+| 5    | Ativações                | Mantida                                                     |
+| 6    | Questionário             | Em avaliação                                                |
 
 ### 3.4 Conteúdo da Aba “Evento”
 
@@ -158,7 +159,8 @@ CREATE TABLE evento_tag (
 | Diretoria                | Não existe                          | **Novo campo obrigatório**                       |
 | Subtipo de Evento        | Não explícito                       | Campo explícito e obrigatório                    |
 | Tags livres              | Não existe                          | **Novo** multi-select com criação dinâmica       |
-| Aba Gamificação          | Existe                              | **Substituída** por “Ingressos / Cotas”          |
+| Aba Gamificação          | Existe                              | Mantida                                          |
+| Aba Ingressos / Cotas    | Não existe                          | **Nova** para gestão de ingressos                |
 | Territórios              | Multi-select simples                | Mesma UI, mas com modelagem explícita no banco   |
 
 ## 7. Pendências / Dúvidas

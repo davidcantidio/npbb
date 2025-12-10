@@ -29,17 +29,18 @@ Base conceitual: tela “Visualizar Evento” do sistema original, porém totalm
 
 ### 3.3 Abas (Tabs)
 
-| Ordem | Nome da Aba                 | Status no Sistema                     |
-|-------|-----------------------------|----------------------------------------|
-| 1     | Informações do Evento       | Principal – sempre visível             |
-| 2     | Formulário de Lead          | Mantida (integração Salesforce)        |
-| 3     | **Ingressos / Cotas**       | **Nova** – substitui Gamificação       |
-| 4     | Ativações                   | Mantida e aprimorada                   |
-| 5     | Investimentos               | Mantida                                |
-| 6     | Convidadores                | Nova                                   |
-| 7     | Convidados                  | Nova – lista completa                  |
-| 8     | Questionário                | Em avaliação                           |
-| 9     | Logs / Histórico            | Futuro (fase 2)                        |
+| Ordem | Nome da Aba                 | Status no Sistema                              |
+|-------|-----------------------------|-----------------------------------------------|
+| 1     | Informações do Evento       | Principal – sempre visível                    |
+| 2     | Formulário de Lead          | Mantida (integração Salesforce)               |
+| 3     | Gamificação                 | Mantida                                       |
+| 4     | **Ingressos / Cotas**       | **Nova** – gestão de ingressos por diretoria |
+| 5     | Ativações                   | Mantida e aprimorada                          |
+| 6     | Investimentos               | Mantida                                       |
+| 7     | Convidadores                | Nova                                          |
+| 8     | Convidados                  | Nova – lista completa                         |
+| 9     | Questionário                | Em avaliação                                  |
+| 10    | Logs / Histórico            | Futuro (fase 2)                               |
 
 ---
 

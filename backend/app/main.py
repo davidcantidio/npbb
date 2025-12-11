@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,9 +8,8 @@ from app.routers.usuarios import router as usuarios_router
 
 app = FastAPI(title="NPBB API")
 
-origins = [
-    "http://localhost:5173",
-]
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+origins = [origin.strip() for origin in frontend_origin.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,

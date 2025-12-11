@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
+from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.models import Usuario
 from app.schemas.auth import LoginRequest, LoginResponse
@@ -42,3 +43,9 @@ def login(
         token_type="bearer",
         user=UsuarioRead.model_validate(usuario, from_attributes=True),
     )
+
+
+@router.get("/me", response_model=UsuarioRead)
+def me(current_user: Usuario = Depends(get_current_user)):
+    """Retorna dados públicos do usuário autenticado."""
+    return UsuarioRead.model_validate(current_user, from_attributes=True)

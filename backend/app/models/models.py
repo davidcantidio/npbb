@@ -78,6 +78,7 @@ class Agencia(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     eventos: List["Evento"] = Relationship(back_populates="agencia")
+    usuarios: List["Usuario"] = Relationship(back_populates="agencia")
 
 
 class Diretoria(SQLModel, table=True):
@@ -90,7 +91,6 @@ class Diretoria(SQLModel, table=True):
     funcionarios: List["Funcionario"] = Relationship(back_populates="diretoria")
     eventos: List["Evento"] = Relationship(back_populates="diretoria")
     cotas: List["CotaCortesia"] = Relationship(back_populates="diretoria")
-    usuarios: List["Usuario"] = Relationship(back_populates="agencia")
 
 
 class Funcionario(SQLModel, table=True):

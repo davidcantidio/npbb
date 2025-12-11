@@ -1,5 +1,4 @@
 import os
-
 import pytest
 from fastapi import HTTPException
 from sqlmodel import Session, SQLModel, create_engine
@@ -8,7 +7,7 @@ from app.core.auth import get_current_user
 from app.models.models import Usuario
 from app.utils.jwt import create_access_token
 
-
+#test
 def make_engine():
     return create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
 

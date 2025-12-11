@@ -81,3 +81,23 @@ def test_login_inactive_user(client, engine):
         json={"email": user.email, "password": "senha123"},
     )
     assert response.status_code == 401
+
+
+def test_me_with_valid_token(client, engine):
+    user = seed_user(engine)
+    login_resp = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    token = login_resp.json()["access_token"]
+
+    me_resp = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_resp.status_code == 200
+    data = me_resp.json()
+    assert data["id"] == user.id
+    assert data["email"] == user.email
+
+
+def test_me_without_token(client):
+    me_resp = client.get("/auth/me")
+    assert me_resp.status_code == 401

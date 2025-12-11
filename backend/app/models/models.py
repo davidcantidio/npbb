@@ -14,6 +14,34 @@ from sqlmodel import SQLModel, Field, Relationship
 # ENUMS DE DOMÍNIO (estáveis)
 # =========================
 
+
+class UsuarioTipo(str, Enum):
+    BB = "bb"
+    NPBB = "npbb"
+    AGENCIA = "agencia"
+
+
+class Usuario(SQLModel, table=True):
+    __tablename__ = "usuario"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(max_length=100, unique=True)
+    password_hash: str = Field(max_length=255)
+
+    tipo_usuario: UsuarioTipo
+
+    funcionario_id: Optional[int] = Field(default=None, foreign_key="funcionario.id")
+    agencia_id: Optional[int] = Field(default=None, foreign_key="agencia.id")
+
+    ativo: bool = Field(default=True)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    funcionario: Optional["Funcionario"] = Relationship(back_populates="usuario")
+    agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
+
+
 class StatusEvento(str, Enum):
     PREVISTO = "Previsto"
     REALIZADO = "Realizado"
@@ -62,6 +90,7 @@ class Diretoria(SQLModel, table=True):
     funcionarios: List["Funcionario"] = Relationship(back_populates="diretoria")
     eventos: List["Evento"] = Relationship(back_populates="diretoria")
     cotas: List["CotaCortesia"] = Relationship(back_populates="diretoria")
+    usuarios: List["Usuario"] = Relationship(back_populates="agencia")
 
 
 class Funcionario(SQLModel, table=True):
@@ -79,6 +108,9 @@ class Funcionario(SQLModel, table=True):
     eventos_gestor: List["Evento"] = Relationship(back_populates="gestor")
     convites_feitos: List["Convite"] = Relationship(back_populates="funcionario_convidador")
     convidados_associados: List["Convidado"] = Relationship(back_populates="funcionario_associado")
+
+    usuario: Optional["Usuario"] = Relationship(back_populates="funcionario")
+
 
 
 # =========================

@@ -1,35 +1,35 @@
-# Aba de Ativações (Cadastro / Edição)
+﻿# Aba de AtivaÃ§Ãµes (Cadastro / EdiÃ§Ã£o)
 
 ## 1. Nome da Tela
-**Ativações do Evento**  
-Tela usada para criar, editar e visualizar ativações pertencentes a um evento.  
-Também permite configurar regras de gamificação e a mensagem do QR Code.
+**AtivaÃ§Ãµes do Evento**  
+Tela usada para criar, editar e visualizar ativaÃ§Ãµes pertencentes a um evento.  
+TambÃ©m permite configurar regras de gamificaÃ§Ã£o e a mensagem do QR Code.
 
 ---
 
-## 2. Referência Visual
+## 2. ReferÃªncia Visual
 Print da tela (sistema original):  
 `docs/tela-inicial/menu/Eventos/Editar/ativacoes.png`
 
-Estado exibido: formulário de cadastro de ativação e listagem de ativações já adicionadas.
+Estado exibido: formulÃ¡rio de cadastro de ativaÃ§Ã£o e listagem de ativaÃ§Ãµes jÃ¡ adicionadas.
 
 ---
 
-## 3. Estrutura da Tela (Componentes Visíveis)
+## 3. Estrutura da Tela (Componentes VisÃ­veis)
 
-### 3.1 Navegação
+### 3.1 NavegaÃ§Ã£o
 - Menu lateral:
   - Dashboard  
-  - Leads *(será removido no nosso sistema)*  
+  - Leads *(serÃ¡ removido no nosso sistema)*  
   - Eventos  
   - Cupons  
 - Logo Banco do Brasil
 
 ### 3.2 Header Superior
-- Ícone menu sanduíche  
-- Ícone fullscreen  
-- Ícone modo escuro  
-- Perfil do usuário (Admin)  
+- Ãcone menu sanduÃ­che  
+- Ãcone fullscreen  
+- Ãcone modo escuro  
+- Perfil do usuÃ¡rio (Admin)  
 - Breadcrumb: `Dashboard > Eventos > Editar`
 
 ---
@@ -39,96 +39,96 @@ Estado exibido: formulário de cadastro de ativação e listagem de ativações 
 | Ordem | Aba                    | Status no Novo Sistema |
 |-------|-------------------------|-------------------------|
 | 1     | Evento                 | Mantida                |
-| 2     | Formulário de Lead     | Mantida                |
-| 3     | Gamificação            | **Será substituída por Ingressos / Cotas** |
-| 4     | **Ativações**          | Aba atual              |
-| 5     | Questionário           | Em avaliação           |
+| 2     | FormulÃ¡rio de Lead     | Mantida                |
+| 3     | GamificaÃ§Ã£o            | **SerÃ¡ substituÃ­da por Ingressos / Cotas** |
+| 4     | **AtivaÃ§Ãµes**          | Aba atual              |
+| 5     | QuestionÃ¡rio           | Em avaliaÃ§Ã£o           |
 
 ---
 
-### 3.4 Conteúdo da Aba “Ativações”
+### 3.4 ConteÃºdo da Aba â€œAtivaÃ§Ãµesâ€
 
 #### Ordem dos campos (lado esquerdo)
 
-| #  | Campo                                 | Tipo                          | Mapeamento no Banco                         | Observação |
+| #  | Campo                                 | Tipo                          | Mapeamento no Banco                         | ObservaÃ§Ã£o |
 |----|---------------------------------------|-------------------------------|----------------------------------------------|------------|
-| 1  | Nome da ativação \*                   | Texto                         | `ativacao.nome`                              | Obrigatório |
-| 2  | Mensagem do QR Code                   | Textarea (máx. 240 chars)     | `ativacao.mensagem_qrcode`                   | Exibida na tela do QR |
-| 3  | Tipo de gamificação                   | Dropdown                      | **Não persiste diretamente**                 | Categoria visual |
+| 1  | Nome da ativaÃ§Ã£o \*                   | Texto                         | `ativacao.nome`                              | ObrigatÃ³rio |
+| 2  | Mensagem do QR Code                   | Textarea (mÃ¡x. 240 chars)     | `ativacao.mensagem_qrcode`                   | Exibida na tela do QR |
+| 3  | Tipo de gamificaÃ§Ã£o                   | Dropdown                      | **NÃ£o persiste diretamente**                 | Categoria visual |
 | 4  | Redirecionamento para tela de pesquisa| Switch booleano               | `ativacao.redireciona_pesquisa`              |            |
-| 5  | Check-in único por ativação           | Switch booleano               | `ativacao.checkin_unico`                     | Define “Único = Sim” |
+| 5  | Check-in Ãºnico por ativaÃ§Ã£o           | Switch booleano               | `ativacao.checkin_unico`                     | Define â€œÃšnico = Simâ€ |
 | 6  | Termo de uso                          | Switch booleano               | `ativacao.termo_uso`                         |            |
-| 7  | Gerar Cupom                           | Switch booleano               | `ativacao.gera_cupom`                        | Liga módulo de cupons |
-| 8  | Botão “Adicionar ativação”            | Ação                          | —                                            | Cria ativação |
+| 7  | Gerar Cupom                           | Switch booleano               | `ativacao.gera_cupom`                        | Liga mÃ³dulo de cupons |
+| 8  | BotÃ£o â€œAdicionar ativaÃ§Ã£oâ€            | AÃ§Ã£o                          | â€”                                            | Cria ativaÃ§Ã£o |
 
 ---
 
-### 3.5 Lista de Ativações (lado direito)
+### 3.5 Lista de AtivaÃ§Ãµes (lado direito)
 
 Colunas exibidas:
 
-| Coluna         | Descrição |
+| Coluna         | DescriÃ§Ã£o |
 |----------------|-----------|
-| **Nome**       | Nome da ativação cadastrada |
-| **Único**      | “Sim” se `checkin_unico = TRUE` |
-| **Gamificação**| “Sim” se qualquer switch de gamificação estiver habilitado |
-| **Ações**      | Ver (azul), Editar (verde), Excluir (vermelho) |
+| **Nome**       | Nome da ativaÃ§Ã£o cadastrada |
+| **Ãšnico**      | â€œSimâ€ se `checkin_unico = TRUE` |
+| **GamificaÃ§Ã£o**| â€œSimâ€ se qualquer switch de gamificaÃ§Ã£o estiver habilitado |
+| **AÃ§Ãµes**      | Ver (azul), Editar (verde), Excluir (vermelho) |
 
 ---
 
 ## 4. Comportamento da Tela
 
-### 4.1 Adicionar ativação
-- Valida campos obrigatórios  
+### 4.1 Adicionar ativaÃ§Ã£o
+- Valida campos obrigatÃ³rios  
 - Cria registro em `ativacao`  
 - Salva switches como booleans diretos  
-- Caso sejam necessários textos de gamificação (nome, descrição, prêmios), cria registro em `gamificacao` (1:1)  
+- Caso sejam necessÃ¡rios textos de gamificaÃ§Ã£o (nome, descriÃ§Ã£o, prÃªmios), cria registro em `gamificacao` (1:1)  
 - Atualiza tabela da direita
 
-### 4.2 Editar ativação
-- Botão verde preenche novamente o formulário  
-- Alterações refletem direto no banco  
-- Se switches forem desmarcados → gamificação pode ser removida
+### 4.2 Editar ativaÃ§Ã£o
+- BotÃ£o verde preenche novamente o formulÃ¡rio  
+- AlteraÃ§Ãµes refletem direto no banco  
+- Se switches forem desmarcados â†’ gamificaÃ§Ã£o pode ser removida
 
-### 4.3 Excluir ativação
-- Remove ativação  
-- Remove gamificação associada (ON DELETE CASCADE)  
+### 4.3 Excluir ativaÃ§Ã£o
+- Remove ativaÃ§Ã£o  
+- Remove gamificaÃ§Ã£o associada (ON DELETE CASCADE)  
 - Pode exigir bloqueio caso existam leads conectados (regra futura)
 
-### 4.4 Lógica do campo “Único”
+### 4.4 LÃ³gica do campo â€œÃšnicoâ€
 - Derivado exclusivamente de `checkin_unico`  
-- Controla se um lead pode registrar apenas 1 interação naquela ativação
+- Controla se um lead pode registrar apenas 1 interaÃ§Ã£o naquela ativaÃ§Ã£o
 
 ---
 
-## 5. Regras de Negócio Principais
+## 5. Regras de NegÃ³cio Principais
 
 | Regra | Detalhe |
 |-------|---------|
-| Uma ativação pertence a um único evento | FK `evento_id` |
-| Ativação pode ter 0 ou mais mecânicas de gamificação | Representadas como switches |
-| Gamificação detalhada existe em tabela separada | `gamificacao` (1:1 com ativacao) |
-| Check-in único | Impede múltiplos registros por lead |
-| Gerar Cupom | Integra com módulo de cupons |
-| Mensagem QR | Exibida na renderização do QR code da ativação |
+| Uma ativaÃ§Ã£o pertence a um Ãºnico evento | FK `evento_id` |
+| AtivaÃ§Ã£o pode ter 0 ou mais mecÃ¢nicas de gamificaÃ§Ã£o | Representadas como switches |
+| GamificaÃ§Ã£o detalhada existe em tabela separada | `gamificacao` (1:1 com ativacao) |
+| Check-in Ãºnico | Impede mÃºltiplos registros por lead |
+| Gerar Cupom | Integra com mÃ³dulo de cupons |
+| Mensagem QR | Exibida na renderizaÃ§Ã£o do QR code da ativaÃ§Ã£o |
 
 ---
 
-## 6. Diferenças – Sistema Original × Nova Versão
+## 6. DiferenÃ§as â€“ Sistema Original Ã— Nova VersÃ£o
 
-| Item                     | Sistema Original                 | Nova Versão                      |
+| Item                     | Sistema Original                 | Nova VersÃ£o                      |
 |--------------------------|----------------------------------|----------------------------------|
-| Switches de gamificação | Independentes                    | Modelados como booleanos         |
-| Tipo de gamificação      | Dropdown pouco funcional         | Mantido apenas como referência   |
-| Banco de dados           | Indefinido                       | Estrutura clara: ativação + gamificação 1:1 |
+| Switches de gamificaÃ§Ã£o | Independentes                    | Modelados como booleanos         |
+| Tipo de gamificaÃ§Ã£o      | Dropdown pouco funcional         | Mantido apenas como referÃªncia   |
+| Banco de dados           | Indefinido                       | Estrutura clara: ativaÃ§Ã£o + gamificaÃ§Ã£o 1:1 |
 | QR Code                  | Parcialmente documentado         | Mapeado em `mensagem_qrcode`     |
-| Cupons                   | Usado apenas em gamificações     | Estrutura compatível para expansão |
+| Cupons                   | Usado apenas em gamificaÃ§Ãµes     | Estrutura compatÃ­vel para expansÃ£o |
 
 ---
 
 ## 7. Modelo de Banco de Dados
 
-### 7.1 Tabela `ativacao` (versão final)
+### 7.1 Tabela `ativacao` (versÃ£o final)
 
 ```sql
 CREATE TABLE ativacao (

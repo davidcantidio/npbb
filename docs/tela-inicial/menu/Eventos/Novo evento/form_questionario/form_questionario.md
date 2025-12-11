@@ -1,38 +1,38 @@
-# Aba de Questionário (Cadastro / Edição)
+﻿# Aba de QuestionÃ¡rio (Cadastro / EdiÃ§Ã£o)
 
 ## 1. Nome da Tela
-**Questionário de Satisfação**  
-Tela usada para configurar o **questionário de feedback** respondido pelo lead após a participação na ação/ativação.  
-Permite criar **páginas** de questionário e, dentro delas, múltiplas **perguntas** de tipos variados.
+**QuestionÃ¡rio de SatisfaÃ§Ã£o**  
+Tela usada para configurar o **questionÃ¡rio de feedback** respondido pelo lead apÃ³s a participaÃ§Ã£o na aÃ§Ã£o/ativaÃ§Ã£o.  
+Permite criar **pÃ¡ginas** de questionÃ¡rio e, dentro delas, mÃºltiplas **perguntas** de tipos variados.
 
 ---
 
-## 2. Referência Visual
+## 2. ReferÃªncia Visual
 Prints da tela (sistema original):  
 - `docs/tela-inicial/menu/Eventos/Editar/questionario_1.png`  
 - `docs/tela-inicial/menu/Eventos/Editar/questionario_2.png`  
 
 Estados exibidos:
-- Criação da Página 1, com título, descrição e menu “Incluir pergunta”.  
-- Questionário com múltiplas páginas (Página 1, Página 2) e estrutura listada à direita.
+- CriaÃ§Ã£o da PÃ¡gina 1, com tÃ­tulo, descriÃ§Ã£o e menu â€œIncluir perguntaâ€.  
+- QuestionÃ¡rio com mÃºltiplas pÃ¡ginas (PÃ¡gina 1, PÃ¡gina 2) e estrutura listada Ã  direita.
 
 ---
 
-## 3. Estrutura da Tela (Componentes Visíveis)
+## 3. Estrutura da Tela (Componentes VisÃ­veis)
 
-### 3.1 Navegação
+### 3.1 NavegaÃ§Ã£o
 - Menu lateral:
   - Dashboard  
-  - Leads *(será removido no nosso sistema)*  
+  - Leads *(serÃ¡ removido no nosso sistema)*  
   - Eventos  
   - Cupons  
 - Logo Banco do Brasil
 
 ### 3.2 Header Superior
-- Ícone menu sanduíche  
-- Ícone fullscreen  
-- Ícone modo escuro  
-- Perfil do usuário (Admin)  
+- Ãcone menu sanduÃ­che  
+- Ãcone fullscreen  
+- Ãcone modo escuro  
+- Perfil do usuÃ¡rio (Admin)  
 - Breadcrumb: `Dashboard > Eventos > Editar`
 
 ### 3.3 Guias Superiores (Abas do Evento)
@@ -40,133 +40,133 @@ Estados exibidos:
 | Ordem | Aba               | Status no Novo Sistema |
 |-------|-------------------|-------------------------|
 | 1     | Evento            | Mantida                |
-| 2     | Formulário de Lead| Mantida                |
-| 3     | Ingressos / Cotas | **Nova** (substitui Gamificação) |
-| 4     | Ativações         | Mantida                |
-| 5     | **Questionário**  | Aba atual              |
+| 2     | FormulÃ¡rio de Lead| Mantida                |
+| 3     | Ingressos / Cotas | **Nova** (substitui GamificaÃ§Ã£o) |
+| 4     | AtivaÃ§Ãµes         | Mantida                |
+| 5     | **QuestionÃ¡rio**  | Aba atual              |
 
 ---
 
-### 3.4 Conteúdo da Aba “Questionário”
+### 3.4 ConteÃºdo da Aba â€œQuestionÃ¡rioâ€
 
-A aba é organizada em **páginas** de questionário, cada uma com título, descrição e perguntas.
+A aba Ã© organizada em **pÃ¡ginas** de questionÃ¡rio, cada uma com tÃ­tulo, descriÃ§Ã£o e perguntas.
 
-#### 3.4.1 Bloco de Página (ex.: Página 1, Página 2, ...)
+#### 3.4.1 Bloco de PÃ¡gina (ex.: PÃ¡gina 1, PÃ¡gina 2, ...)
 
-Para cada página, são exibidos:
+Para cada pÃ¡gina, sÃ£o exibidos:
 
-| #  | Campo / Elemento        | Tipo / Componente             | Observação |
+| #  | Campo / Elemento        | Tipo / Componente             | ObservaÃ§Ã£o |
 |----|-------------------------|-------------------------------|-----------|
-| 1  | Rótulo “Página X”       | Texto (header da seção)      | X = número da página |
-| 2  | Título da página \*     | Campo texto                  | Obrigatório |
-| 3  | Descrição da página     | Textarea                     | Opcional |
-| 4  | Botão “Incluir pergunta”| Dropdown de tipos de pergunta| Abre lista de tipos |
-| 5  | Botão “Excluir página”  | Ícone lixeira (topo da página)| Remove página |
-| 6  | Setas de ordenação      | Ícone “mover para cima/baixo”| Reordenar páginas (print 2) |
-| 7  | Botão “Adicionar página”| Botão ao final da última página| Cria nova página |
+| 1  | RÃ³tulo â€œPÃ¡gina Xâ€       | Texto (header da seÃ§Ã£o)      | X = nÃºmero da pÃ¡gina |
+| 2  | TÃ­tulo da pÃ¡gina \*     | Campo texto                  | ObrigatÃ³rio |
+| 3  | DescriÃ§Ã£o da pÃ¡gina     | Textarea                     | Opcional |
+| 4  | BotÃ£o â€œIncluir perguntaâ€| Dropdown de tipos de pergunta| Abre lista de tipos |
+| 5  | BotÃ£o â€œExcluir pÃ¡ginaâ€  | Ãcone lixeira (topo da pÃ¡gina)| Remove pÃ¡gina |
+| 6  | Setas de ordenaÃ§Ã£o      | Ãcone â€œmover para cima/baixoâ€| Reordenar pÃ¡ginas (print 2) |
+| 7  | BotÃ£o â€œAdicionar pÃ¡ginaâ€| BotÃ£o ao final da Ãºltima pÃ¡gina| Cria nova pÃ¡gina |
 
 #### 3.4.2 Tipos de Pergunta
 
-Ao clicar em **“Incluir pergunta”**, aparece um dropdown com os tipos:
+Ao clicar em **â€œIncluir perguntaâ€**, aparece um dropdown com os tipos:
 
 - Aberta texto simples  
-- Aberta área de texto  
-- Objetiva única escolha  
-- Objetiva múltipla escolha  
+- Aberta Ã¡rea de texto  
+- Objetiva Ãºnica escolha  
+- Objetiva mÃºltipla escolha  
 - Data  
-- Avaliação  
-- Numérica  
+- AvaliaÃ§Ã£o  
+- NumÃ©rica  
 
-Cada seleção cria um bloco de pergunta (não aparece detalhado nos prints, mas o comportamento é típico: enunciado + opções quando aplicável).
+Cada seleÃ§Ã£o cria um bloco de pergunta (nÃ£o aparece detalhado nos prints, mas o comportamento Ã© tÃ­pico: enunciado + opÃ§Ãµes quando aplicÃ¡vel).
 
-#### 3.4.3 Estrutura (Painel à direita)
+#### 3.4.3 Estrutura (Painel Ã  direita)
 
-- Caixa “Estrutura” lista as páginas do questionário:
+- Caixa â€œEstruturaâ€ lista as pÃ¡ginas do questionÃ¡rio:
   - Ex.:  
-    - `1 - nova página de questionário de satisfação`  
+    - `1 - nova pÃ¡gina de questionÃ¡rio de satisfaÃ§Ã£o`  
     - `2 - ...`  
-- Serve como **mapa do questionário**, exibindo título da página e ordem.
+- Serve como **mapa do questionÃ¡rio**, exibindo tÃ­tulo da pÃ¡gina e ordem.
 
-#### 3.4.4 Rodapé
+#### 3.4.4 RodapÃ©
 
-- Botão **Salvar** (inferior direito) para persistir toda a estrutura do questionário.
-- Abaixo (já na mesma tela) aparecem as seções de URLs (landing, promotor, questionário), mapeadas em outro documento.
+- BotÃ£o **Salvar** (inferior direito) para persistir toda a estrutura do questionÃ¡rio.
+- Abaixo (jÃ¡ na mesma tela) aparecem as seÃ§Ãµes de URLs (landing, promotor, questionÃ¡rio), mapeadas em outro documento.
 
 ---
 
 ## 4. Comportamento da Tela
 
-- **Criar página**:  
-  - Clicar em “Adicionar página” cria nova página vazia (Página 2, 3, ...).
-  - O painel de Estrutura é atualizado.
+- **Criar pÃ¡gina**:  
+  - Clicar em â€œAdicionar pÃ¡ginaâ€ cria nova pÃ¡gina vazia (PÃ¡gina 2, 3, ...).
+  - O painel de Estrutura Ã© atualizado.
 
-- **Editar página**:  
-  - Alterar título / descrição atualiza os dados da página.
-  - O título exibido no painel Estrutura também é atualizado.
+- **Editar pÃ¡gina**:  
+  - Alterar tÃ­tulo / descriÃ§Ã£o atualiza os dados da pÃ¡gina.
+  - O tÃ­tulo exibido no painel Estrutura tambÃ©m Ã© atualizado.
 
-- **Reordenar páginas**:  
-  - Setas de mover (cima/baixo) alteram a ordem das páginas.
+- **Reordenar pÃ¡ginas**:  
+  - Setas de mover (cima/baixo) alteram a ordem das pÃ¡ginas.
   - A ordem refletida na Estrutura muda (1, 2, 3, ...).
 
-- **Excluir página**:  
-  - Ícone de lixeira remove a página e todas suas perguntas.
-  - Reordena numeração das páginas restantes.
+- **Excluir pÃ¡gina**:  
+  - Ãcone de lixeira remove a pÃ¡gina e todas suas perguntas.
+  - Reordena numeraÃ§Ã£o das pÃ¡ginas restantes.
 
 - **Adicionar pergunta**:  
-  - Ao selecionar um tipo no dropdown, é incluída uma pergunta na página atual.
-  - Pergunta provavelmente contém: enunciado, obrigatoriedade, opções (para objetivas/avaliação).
+  - Ao selecionar um tipo no dropdown, Ã© incluÃ­da uma pergunta na pÃ¡gina atual.
+  - Pergunta provavelmente contÃ©m: enunciado, obrigatoriedade, opÃ§Ãµes (para objetivas/avaliaÃ§Ã£o).
 
 - **Salvar**:  
-  - Botão “Salvar” persiste todas as páginas, perguntas e opções.
-  - Exibe toast “Dados atualizados.” (como na imagem).
+  - BotÃ£o â€œSalvarâ€ persiste todas as pÃ¡ginas, perguntas e opÃ§Ãµes.
+  - Exibe toast â€œDados atualizados.â€ (como na imagem).
 
 ---
 
-## 5. Regras de Negócio Principais
+## 5. Regras de NegÃ³cio Principais
 
 | Regra | Detalhe |
 |-------|---------|
-| Questionário associado ao evento | A configuração pertence ao evento (e é usada para avaliar satisfação das ações/ativações deste evento). |
-| Página necessita de título | Campo obrigatório. |
-| Ordem das páginas importa | Navegação do questionário segue a ordem configurada. |
-| Tipos de pergunta pré-definidos | Somente os tipos listados podem ser usados. |
-| Perguntas objetivas | Devem ter opções associadas (checkbox/radio). |
-| Questionário de satisfação | Respostas não estão modeladas ainda (fora do escopo inicial). |
+| QuestionÃ¡rio associado ao evento | A configuraÃ§Ã£o pertence ao evento (e Ã© usada para avaliar satisfaÃ§Ã£o das aÃ§Ãµes/ativaÃ§Ãµes deste evento). |
+| PÃ¡gina necessita de tÃ­tulo | Campo obrigatÃ³rio. |
+| Ordem das pÃ¡ginas importa | NavegaÃ§Ã£o do questionÃ¡rio segue a ordem configurada. |
+| Tipos de pergunta prÃ©-definidos | Somente os tipos listados podem ser usados. |
+| Perguntas objetivas | Devem ter opÃ§Ãµes associadas (checkbox/radio). |
+| QuestionÃ¡rio de satisfaÃ§Ã£o | Respostas nÃ£o estÃ£o modeladas ainda (fora do escopo inicial). |
 
-> Observação: apesar da satisfação estar ligada à **ação/ativação**, no sistema original a UI está no nível do **evento**. No nosso modelo, questionário é configurado por evento e poderá ser utilizado como questionário padrão de satisfação das ativações daquele evento.
+> ObservaÃ§Ã£o: apesar da satisfaÃ§Ã£o estar ligada Ã  **aÃ§Ã£o/ativaÃ§Ã£o**, no sistema original a UI estÃ¡ no nÃ­vel do **evento**. No nosso modelo, questionÃ¡rio Ã© configurado por evento e poderÃ¡ ser utilizado como questionÃ¡rio padrÃ£o de satisfaÃ§Ã£o das ativaÃ§Ãµes daquele evento.
 
 ---
 
-## 6. Diferenças – Sistema Original × Nova Versão
+## 6. DiferenÃ§as â€“ Sistema Original Ã— Nova VersÃ£o
 
-| Item                          | Sistema Original                           | Nova Versão |
+| Item                          | Sistema Original                           | Nova VersÃ£o |
 |-------------------------------|--------------------------------------------|------------|
-| Associação                    | Questionário cadastrado por evento         | Mantemos este modelo (1 questionário configurável por evento, podendo avaliar ativações) |
-| Edição de perguntas           | Interface visual com páginas e tipos       | Mantida com Material Design 3 |
-| Armazenamento                 | Não modelado (caixa preta)                 | Modelagem explícita em tabelas de página, pergunta e opção |
-| Respostas de questionário     | Não visível                                | MVP: foco só em configuração; respostas podem ser fase futura |
+| AssociaÃ§Ã£o                    | QuestionÃ¡rio cadastrado por evento         | Mantemos este modelo (1 questionÃ¡rio configurÃ¡vel por evento, podendo avaliar ativaÃ§Ãµes) |
+| EdiÃ§Ã£o de perguntas           | Interface visual com pÃ¡ginas e tipos       | Mantida com Material Design 3 |
+| Armazenamento                 | NÃ£o modelado (caixa preta)                 | Modelagem explÃ­cita em tabelas de pÃ¡gina, pergunta e opÃ§Ã£o |
+| Respostas de questionÃ¡rio     | NÃ£o visÃ­vel                                | MVP: foco sÃ³ em configuraÃ§Ã£o; respostas podem ser fase futura |
 
 ---
 
-## 7. Modelo de Banco de Dados (Configuração do Questionário)
+## 7. Modelo de Banco de Dados (ConfiguraÃ§Ã£o do QuestionÃ¡rio)
 
-> **Objetivo aqui:** armazenar a **estrutura do questionário** (páginas, perguntas, opções).  
-> Respostas de usuários podem ser modeladas numa etapa futura.
+> **Objetivo aqui:** armazenar a **estrutura do questionÃ¡rio** (pÃ¡ginas, perguntas, opÃ§Ãµes).  
+> Respostas de usuÃ¡rios podem ser modeladas numa etapa futura.
 
 ### 7.1 Tabela `questionario_pagina`
 
-> Inserir **após a tabela `ativacao` / `gamificacao`**, pois depende de `evento`.
+> Inserir **apÃ³s a tabela `ativacao` / `gamificacao`**, pois depende de `evento`.
 
 ```sql
 CREATE TABLE questionario_pagina (
     id SERIAL PRIMARY KEY,
     evento_id INT NOT NULL,
-    ordem INT NOT NULL,                 -- posição da página (1, 2, 3...)
+    ordem INT NOT NULL,                 -- posiÃ§Ã£o da pÃ¡gina (1, 2, 3...)
     titulo VARCHAR(200) NOT NULL,
     descricao TEXT,
 
     FOREIGN KEY (evento_id) REFERENCES evento(id),
-    UNIQUE (evento_id, ordem)          -- cada ordem única por evento
+    UNIQUE (evento_id, ordem)          -- cada ordem Ãºnica por evento
 );
 
 Backlog da Tela (Requisitos)
@@ -176,36 +176,36 @@ Endpoints:
 
 GET /eventos/{id}/questionario (carregar estrutura completa)
 
-PUT /eventos/{id}/questionario (salvar páginas + perguntas + opções)
+PUT /eventos/{id}/questionario (salvar pÃ¡ginas + perguntas + opÃ§Ãµes)
 
-Operações:
+OperaÃ§Ãµes:
 
-Criar/editar/excluir páginas
+Criar/editar/excluir pÃ¡ginas
 
 Criar/editar/excluir perguntas
 
-Criar/editar/excluir opções
+Criar/editar/excluir opÃ§Ãµes
 
-Manter ordens (páginas / perguntas / opções)
+Manter ordens (pÃ¡ginas / perguntas / opÃ§Ãµes)
 
 Frontend
 
 Componente <QuestionarioEditor /> com:
 
-Blocos de página (reordenáveis)
+Blocos de pÃ¡gina (reordenÃ¡veis)
 
-Botão “Adicionar página”
+BotÃ£o â€œAdicionar pÃ¡ginaâ€
 
-Botão “Incluir pergunta”
+BotÃ£o â€œIncluir perguntaâ€
 
-Modal ou inline editor para perguntas e opções
+Modal ou inline editor para perguntas e opÃ§Ãµes
 
-Painel “Estrutura” à direita
+Painel â€œEstruturaâ€ Ã  direita
 
-Validação de:
+ValidaÃ§Ã£o de:
 
-Título da página obrigatório
+TÃ­tulo da pÃ¡gina obrigatÃ³rio
 
-Pelo menos uma pergunta para questionário ser considerado “ativo” (regra opcional)
+Pelo menos uma pergunta para questionÃ¡rio ser considerado â€œativoâ€ (regra opcional)
 
-Integração com botão “Salvar” e feedback visual (“Dados atualizados”).
+IntegraÃ§Ã£o com botÃ£o â€œSalvarâ€ e feedback visual (â€œDados atualizadosâ€).

@@ -19,7 +19,8 @@ Print do sistema original:
 - Menu lateral:
   - Dashboard
   - Eventos (página atual)
-  - Ativos (substitui o antigo módulo Leads)
+  - Ativos 
+  - Leads
   - Cupons
 - Logo Banco do Brasil
 
@@ -32,14 +33,14 @@ Print do sistema original:
 ### 3.3 Tabela de Eventos
 
 | # | Coluna               | Conteúdo                                                                 | Observação no Novo Sistema                                      |
-|---|---------------------------|------------------------------------------------------------------|
-| 1 | **ID**                    | Numérico sequencial                                              |
-| 2 | **Identificador Visual**  | Original: QR Code<br>**MVP:** opcional – pode ser:<br>• Thumbnail<br>• Código interno<br>• Removido completamente |
-| 3 | **Nome do Evento**        | Clique abre tela de Detalhes                                     |
-| 4 | **Período**               | Formato: `DD/MM/AAAA – DD/MM/AAAA`<br>Se houver datas realizadas → ícone de evento concluído |
-| 5 | **Cidade / UF**           | Ex.: São Paulo / SP                                              |
-| 6 | **Diretoria**             | **Novo** – campo obrigatório no cadastro                        |
-| 7 | **Ações**                 | Ícones: Visualizar | Editar | Excluir                              |
+|---|---------------------|--------------------------------------------------------------------------|-----------------------------------------------------------------|
+| 1 | **ID**              | Numérico sequencial                                                      |                                                                  |
+| 2 | **QRCode**          | QRCode do evento (atual)                                                 |                                                                  |
+| 3 | **Nome do Evento**  | Clique abre tela de Detalhes                                             |                                                                  |
+| 4 | **Período**         | Formato: `DD/MM/AAAA – DD/MM/AAAA`                                       |                                                                  |
+| 5 | **Cidade / UF**     | Ex.: São Paulo / SP                                                      |                                                                  |
+| 6 | **Diretoria**       | *Não exibida no front atual* (campo existe no modelo)                    |                                                                  |
+| 7 | **Ações**           | Ícones: Visualizar | Editar | Excluir                                     |                                                                  |
 
 ---
 
@@ -48,55 +49,66 @@ Print do sistema original:
 | Ação                 | Comportamento                                                                                   |
 |----------------------|-------------------------------------------------------------------------------------------------|
 | **+ Novo**           | Abre Formulário de Evento (aba “Evento”)                                                        |
-| **Visualizar**       | Abre tela de Detalhes do Evento (somente leitura) com todas as abas                            |
+| **Visualizar**       | Abre tela de Detalhes do Evento (somente leitura) com todas as abas                             |
 | **Editar**           | Abre Formulário de Evento com todas as abas preenchidas                                         |
-| **Excluir**          | Modal de confirmação<br>Bloqueia exclusão se houver:<br>• Ativações<br>• Investimentos<br>• Cotas de ingressos<br>• Convites emitidos |
+| **Excluir**          | Modal de confirmação<br>Bloqueia exclusão se houver vínculos (ativação, investimento, cotas, convites) |
 | **Atualizar** (ícone)| Recarrega a lista                                                                               |
-| Busca textual        | Filtra por Nome, Cidade ou Diretoria (a definir escopo no MVP)                                  |
-| Rolagem              | Infinita ou longa (sem paginação no MVP – padrão do sistema original)                           |
+| Filtros (barra topo) | Filtros por Evento, Estado, Local, Data; botão “Limpar filtros”                                  |
+| Paginação            | Paginação numérica na base da tabela (1..N)                                                     |
 
 ---
 
 ## 5. Regras de Negócio
 
-- Exibição do período:
-  - Prioridade: datas **previstas**
-  - Se existirem datas **realizadas** → exibir ícone** de evento concluído
-- Exclusão bloqueada enquanto existirem vínculos ativos
-- Diretoria sempre visível na listagem (campo obrigatório no novo sistema)
-- Ordenação padrão: mais recente primeiro (por `data_inicio_prevista` DESC)
+- Exibição do período: datas previstas no intervalo; (realizadas não aparecem na UI atual).
+- Exclusão bloqueada enquanto existirem vínculos (ativação, investimento, cotas, convites).
+- Ordenação padrão: mais recente primeiro (aparente pelo ID/período).
 
 ---
 
-## 6. Diferenças – Sistema Original × Nova Versão
+## 6. Chamadas de API observadas (Playwright)
 
-| Item                        | Sistema Original                          | Nova Versão (MVP e futuras)                              |
-|-----------------------------|-------------------------------------------|-----------------------------------------------------------|
-| QR Code                     | Usado para check-in de leads              | Não funcional – opcional ou removido                      |
-| Coluna Diretoria            | Não existe                                | **Obrigatória e exibida**                                 |
-| Territórios / Tags          | Não exibidos                              | Podem ser exibidos como chips pequenos (fase 2)           |
-| Filtros                     | Nenhum                                    | MVP: busca textual<br>Fase 2: Estado, Diretoria, Tipo, Período |
-| Exclusão                    | Permite excluir livremente                | Bloqueada com dependências                                |
-| Módulos vinculados          | Apenas Leads                              | Ativações, Investimentos, Cotas, Convites, Convidados     |
+- `POST /auth/login` (autenticação)
+- `GET /auth/me` (perfil)
+- `GET /evento` (listagem principal, paginada)
+- `GET /evento/all/cidades` (dicionário de cidades)
+- `GET /evento/all/estados` (dicionário de estados)
+- Ações esperadas (não clicadas nesta captura): `GET /evento/{id}`, `PUT /evento/{id}`, `DELETE /evento/{id}`; criação via `POST /evento` (botão “Novo”).
 
 ---
 
-## 7. Pendências / Dúvidas
+## 7. Diferenças — Sistema Original × Nova Versão
 
-- Visual final do identificador (QR Code / thumbnail / ID / nenhum)?
-- Filtros avançados entram no MVP ou só na fase 2?
-- Exportação CSV da listagem será necessária no MVP?
-- Exibir territórios/tags como chips na própria linha da tabela?
+| Item               | Sistema Original                 | Nova Versão (atual/front observado) |
+|--------------------|----------------------------------|-------------------------------------|
+| QR Code            | Usado para check-in de leads     | Exibido na grid                     |
+| Coluna Diretoria   | Não existe                       | Campo no modelo; não exibido na grid atual |
+| Territórios / Tags | Não exibidos                     | Não aparecem na grid atual          |
+| Filtros            | Nenhum                           | Filtros por Evento, Estado, Local, Data + limpar |
+| Paginação          | Não mapeada                      | Paginação numérica inferior         |
+| Módulos vinculados | Apenas Leads                     | Eventos + Leads + Cupons (menu lateral) |
 
 ---
 
-## 8. Backlog da Tela (Requisitos)
+## 8. Pendências / Dúvidas (resolvidas: resposta = “sim”)
+
+- Diretoria deve aparecer na grid ou apenas em filtros? **Sim** (grid e filtros).
+- Exibir datas realizadas / indicador de evento concluído? **Sim**.
+- Exportação CSV da listagem será necessária? **Sim**.
+- Territórios/Tags na linha (chips) entram em fase 2? **Sim** (planejar para fase 2).
+
+---
+
+## 9. Backlog da Tela (Requisitos)
 
 ### Backend
-- `GET /eventos` (com busca e filtros opcionais)
-- `GET /eventos/:id`
-- `DELETE /eventos/:id` → validar dependências antes de excluir
-- Endpoint auxiliar para verificar se evento tem vínculos (usado no modal de exclusão)
+- `GET /evento` (com filtros opcionais)
+- `GET /evento/{id}`
+- `POST /evento`
+- `PUT /evento/{id}`
+- `DELETE /evento/{id}` → validar dependências antes de excluir
+- Dicionários: `GET /evento/all/cidades`, `GET /evento/all/estados`
+- Exportação: endpoint CSV (a definir) para contemplar decisão “sim”.
 
 ### Frontend
 - Página `<EventosList />`
@@ -104,11 +116,11 @@ Print do sistema original:
   - `<EventosTable />`
   - `<EventoRow />`
   - `<ButtonNovoEvento />`
-  - `<SearchBar />` (busca textual)
+  - Filtros (Evento, Estado, Local, Data) + limpar
 - Funcionalidades:
   - Botão Novo → navega para formulário
   - Ações Visualizar / Editar / Excluir com modal
-  - Exibição condicional de thumbnail ou QR Code
-  - Indicador visual de evento realizado
-  - Feedback de bloqueio de exclusão com motivo
-
+  - Exibição de QRCode e Diretoria; exibir datas realizadas/indicador de concluído
+  - Territórios/Tags em chips na linha (fase 2)
+  - Exportação CSV da listagem
+  - Paginação numérica inferior

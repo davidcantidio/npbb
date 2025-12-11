@@ -468,3 +468,54 @@ class QuestionarioRespostaOpcao(SQLModel, table=True):
 
     resposta_pergunta: Optional[QuestionarioRespostaPergunta] = Relationship(back_populates="opcoes_marcadas")
     opcao: Optional[QuestionarioOpcao] = Relationship(back_populates="respostas_opcao")
+
+
+# =========================
+# FORMULÁRIO DE LEAD / LANDING
+# =========================
+
+
+class FormularioLandingTemplate(SQLModel, table=True):
+    __tablename__ = "formulario_landing_template"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nome: str = Field(max_length=100, unique=True)
+    html_conteudo: str
+    css_conteudo: Optional[str] = Field(default=None)
+    criado_em: datetime = Field(default_factory=datetime.utcnow)
+
+    configuracoes: List["FormularioLeadConfig"] = Relationship(back_populates="template")
+
+
+class FormularioLeadConfig(SQLModel, table=True):
+    __tablename__ = "formulario_lead_config"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    evento_id: int = Field(foreign_key="evento.id")
+    nome: str = Field(max_length=100)
+    descricao: Optional[str] = Field(default=None, max_length=240)
+    template_id: Optional[int] = Field(default=None, foreign_key="formulario_landing_template.id")
+
+    url_landing: Optional[str] = Field(default=None, max_length=500)
+    url_promotor: Optional[str] = Field(default=None, max_length=500)
+    url_questionario: Optional[str] = Field(default=None, max_length=500)
+    url_api: Optional[str] = Field(default=None, max_length=500)
+
+    criado_em: datetime = Field(default_factory=datetime.utcnow)
+    atualizado_em: datetime = Field(default_factory=datetime.utcnow)
+
+    evento: Optional[Evento] = Relationship()
+    template: Optional[FormularioLandingTemplate] = Relationship(back_populates="configuracoes")
+    campos: List["FormularioLeadCampo"] = Relationship(back_populates="config")
+
+
+class FormularioLeadCampo(SQLModel, table=True):
+    __tablename__ = "formulario_lead_campo"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    config_id: int = Field(foreign_key="formulario_lead_config.id")
+    nome_campo: str = Field(max_length=80)
+    obrigatorio: bool = Field(default=True)
+    ordem: int
+
+    config: Optional[FormularioLeadConfig] = Relationship(back_populates="campos")

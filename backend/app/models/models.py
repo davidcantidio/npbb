@@ -1,12 +1,11 @@
 # app/models/models.py
 
-from __future__ import annotations
-
 from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
+from sqlalchemy import Column, Numeric
 from sqlmodel import SQLModel, Field, Relationship
 
 
@@ -272,7 +271,7 @@ class Ativacao(SQLModel, table=True):
     descricao: str = Field(max_length=200)
     evento_id: int = Field(foreign_key="evento.id")
 
-    valor: Decimal = Field(sa_column_kwargs={"precision": 12, "scale": 2})
+    valor: Decimal = Field(sa_column=Column(Numeric(12, 2)))
 
     mensagem_qrcode: Optional[str] = Field(default=None, max_length=240)
 
@@ -329,7 +328,7 @@ class Investimento(SQLModel, table=True):
 
     tipo: TipoInvestimento
     descricao: str = Field(max_length=200)
-    valor: Decimal = Field(sa_column_kwargs={"precision": 12, "scale": 2})
+    valor: Decimal = Field(sa_column=Column(Numeric(12, 2)))
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="investimentos")
 

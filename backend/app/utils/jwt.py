@@ -26,6 +26,8 @@ def create_access_token(data: Dict[str, Any], expires_minutes: int | None = None
         expires_minutes: tempo de expiração; se None, usa ACCESS_TOKEN_EXPIRE_MINUTES do ambiente.
     """
     to_encode = data.copy()
+    if "sub" in to_encode and not isinstance(to_encode["sub"], str):
+        to_encode["sub"] = str(to_encode["sub"])
     exp_minutes = expires_minutes or _get_default_exp_minutes()
     expire = datetime.now(timezone.utc) + timedelta(minutes=exp_minutes)
     to_encode.update({"exp": expire})

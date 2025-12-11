@@ -1,8 +1,15 @@
 from fastapi import FastAPI
 
-app = FastAPI(title='NPBB API')
+from app.routers.auth import router as auth_router
+from app.routers.usuarios import router as usuarios_router
 
-@app.get('/health')
+app = FastAPI(title="NPBB API")
+
+
+@app.get("/health")
 def health_check():
-    return {'status': 'ok'}
+    return {"status": "ok"}
 
+
+app.include_router(auth_router)
+app.include_router(usuarios_router)

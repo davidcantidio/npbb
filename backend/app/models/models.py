@@ -1,12 +1,16 @@
 # app/models/models.py
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
 from sqlalchemy import Column, Numeric
 from sqlmodel import SQLModel, Field, Relationship
+
+
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 # =========================
@@ -34,8 +38,8 @@ class Usuario(SQLModel, table=True):
 
     ativo: bool = Field(default=True)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
 
     funcionario: Optional["Funcionario"] = Relationship(back_populates="usuario")
     agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
@@ -74,7 +78,7 @@ class Agencia(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nome: str = Field(max_length=100)
     lote: int
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
 
     eventos: List["Evento"] = Relationship(back_populates="agencia")
     usuarios: List["Usuario"] = Relationship(back_populates="agencia")
@@ -85,7 +89,7 @@ class Diretoria(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     nome: str = Field(max_length=100, unique=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
 
     funcionarios: List["Funcionario"] = Relationship(back_populates="diretoria")
     eventos: List["Evento"] = Relationship(back_populates="diretoria")
@@ -101,7 +105,7 @@ class Funcionario(SQLModel, table=True):
     diretoria_id: int = Field(foreign_key="diretoria.id")
     email: str = Field(max_length=60, unique=True)
     telefone: Optional[str] = Field(default=None, max_length=25)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
 
     diretoria: Optional[Diretoria] = Relationship(back_populates="funcionarios")
     eventos_gestor: List["Evento"] = Relationship(back_populates="gestor")
@@ -171,8 +175,8 @@ class Evento(SQLModel, table=True):
 
     status: StatusEvento
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
 
     agencia: Optional[Agencia] = Relationship(back_populates="eventos")
     diretoria: Optional[Diretoria] = Relationship(back_populates="eventos")
@@ -251,7 +255,7 @@ class Lead(SQLModel, table=True):
 
     cpf: str = Field(max_length=11, unique=True)
     data_nascimento: date
-    data_criacao: datetime = Field(default_factory=datetime.utcnow)
+    data_criacao: datetime = Field(default_factory=now_utc)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
     cupons: List["Cupom"] = Relationship(back_populates="lead")
@@ -280,8 +284,8 @@ class Ativacao(SQLModel, table=True):
     termo_uso: bool = Field(default=False)
     gera_cupom: bool = Field(default=False)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
 
     evento: Optional[Evento] = Relationship(back_populates="ativacoes")
     gamificacao: Optional["Gamificacao"] = Relationship(back_populates="ativacao")
@@ -352,7 +356,7 @@ class Cupom(SQLModel, table=True):
     codigo: str = Field(max_length=50, unique=True)
     descricao: Optional[str] = Field(default=None, max_length=200)
 
-    data_criacao: datetime = Field(default_factory=datetime.utcnow)
+    data_criacao: datetime = Field(default_factory=now_utc)
     data_validade: Optional[date] = None
     usado: bool = Field(default=False)
     usado_em: Optional[datetime] = None
@@ -465,7 +469,7 @@ class QuestionarioResposta(SQLModel, table=True):
     ativacao_id: Optional[int] = Field(default=None, foreign_key="ativacao.id")
     lead_id: Optional[int] = Field(default=None, foreign_key="lead.id")
 
-    data_resposta: datetime = Field(default_factory=datetime.utcnow)
+    data_resposta: datetime = Field(default_factory=now_utc)
 
     evento: Optional[Evento] = Relationship(back_populates="respostas_questionario")
     ativacao: Optional[Ativacao] = Relationship(back_populates="respostas_questionario")
@@ -513,7 +517,7 @@ class FormularioLandingTemplate(SQLModel, table=True):
     nome: str = Field(max_length=100, unique=True)
     html_conteudo: str
     css_conteudo: Optional[str] = Field(default=None)
-    criado_em: datetime = Field(default_factory=datetime.utcnow)
+    criado_em: datetime = Field(default_factory=now_utc)
 
     configuracoes: List["FormularioLeadConfig"] = Relationship(back_populates="template")
 
@@ -532,8 +536,8 @@ class FormularioLeadConfig(SQLModel, table=True):
     url_questionario: Optional[str] = Field(default=None, max_length=500)
     url_api: Optional[str] = Field(default=None, max_length=500)
 
-    criado_em: datetime = Field(default_factory=datetime.utcnow)
-    atualizado_em: datetime = Field(default_factory=datetime.utcnow)
+    criado_em: datetime = Field(default_factory=now_utc)
+    atualizado_em: datetime = Field(default_factory=now_utc)
 
     evento: Optional[Evento] = Relationship()
     template: Optional[FormularioLandingTemplate] = Relationship(back_populates="configuracoes")

@@ -2,7 +2,7 @@
 
 from typing import Optional
 from enum import Enum
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, ConfigDict, model_validator
 
 
 class UsuarioTipo(str, Enum):
@@ -47,5 +47,4 @@ class UsuarioRead(BaseModel):
     funcionario_id: Optional[int]
     agencia_id: Optional[int]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,13 +1,14 @@
 """${message}"""
 
-revision = ${repr(revision_id)}
-down_revision = ${repr(revision_context.down_revision_id)}
-branch_labels = ${repr(revision_context.branch_labels)}
-depends_on = ${repr(revision_context.depends_on)}
+revision = ${repr(up_revision)}
+down_revision = ${repr(down_revision)}
+branch_labels = ${repr(branch_labels)}
+depends_on = ${repr(depends_on)}
 
 from alembic import op
 import sqlalchemy as sa
 import sqlmodel
+
 
 def upgrade() -> None:
     ${upgrades if upgrades else "pass"}

@@ -8,9 +8,21 @@ from dotenv import load_dotenv
 
 
 def _load_env():
-    env_path = Path(__file__).resolve().parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
+    """Carrega variáveis de ambiente do .env mais alto disponível.
+
+    Priorizamos o .env na raiz de backend/ (onde o .env.example está),
+    mas mantemos o fallback para app/.env para compatibilidade.
+    """
+    candidate_paths = [
+        Path(__file__).resolve().parents[2] / ".env",  # backend/.env
+        Path(__file__).resolve().parent.parent / ".env",  # app/.env (legado)
+    ]
+    for env_path in candidate_paths:
+        if env_path.exists():
+            load_dotenv(env_path)
+            return
+    # Fallback: respeita variáveis já carregadas pelo ambiente
+    load_dotenv()
 
 
 def _get_database_url() -> str:

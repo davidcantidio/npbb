@@ -1,45 +1,46 @@
-"""Esquemas Pydantic para entrada/saída de usuários."""
+"""Esquemas Pydantic para entrada/saida de usuarios."""
 
-from typing import Optional
 from enum import Enum
-from pydantic import BaseModel, EmailStr, ConfigDict, model_validator
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
 
 
 class UsuarioTipo(str, Enum):
-    """Tipos de usuário suportados."""
-
     BB = "bb"
     NPBB = "npbb"
     AGENCIA = "agencia"
 
 
 class UsuarioCreate(BaseModel):
-    """Payload de criação de usuário com validação de vínculo."""
+    """Payload de criacao de usuario (cadastro)."""
 
     email: EmailStr
     password: str
     tipo_usuario: UsuarioTipo
-    funcionario_id: Optional[int] = None
+    matricula: Optional[str] = None
     agencia_id: Optional[int] = None
 
     @model_validator(mode="after")
-    def check_vinculo_por_tipo(self):
-        """Garante que cada tipo informe apenas o vínculo permitido."""
+    def validate_por_tipo(self):
         if self.tipo_usuario == UsuarioTipo.AGENCIA:
             if self.agencia_id is None:
-                raise ValueError("Usuário do tipo 'agencia' deve ter agencia_id preenchido")
-            if self.funcionario_id is not None:
-                raise ValueError("Usuário do tipo 'agencia' não deve ter funcionario_id")
-        else:
-            if self.funcionario_id is None:
-                raise ValueError("Usuário tipo 'bb' ou 'npbb' deve ter funcionario_id")
+                raise ValueError("Usuario do tipo 'agencia' deve ter agencia_id preenchido")
+            if self.matricula:
+                raise ValueError("Usuario do tipo 'agencia' nao deve ter matricula")
+        elif self.tipo_usuario == UsuarioTipo.BB:
+            if not self.matricula:
+                raise ValueError("Usuario do tipo 'bb' deve ter matricula preenchida")
             if self.agencia_id is not None:
-                raise ValueError("Usuário tipo 'bb' ou 'npbb' não deve ter agencia_id")
+                raise ValueError("Usuario do tipo 'bb' nao deve ter agencia_id")
+        else:  # NPBB
+            if self.agencia_id is not None:
+                raise ValueError("Usuario do tipo 'npbb' nao deve ter agencia_id")
         return self
 
 
 class UsuarioRead(BaseModel):
-    """Resposta pública de usuário (sem hash de senha)."""
+    """Resposta publica de usuario (sem hash de senha)."""
 
     id: int
     email: EmailStr

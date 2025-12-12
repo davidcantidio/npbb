@@ -1,5 +1,6 @@
-"""Rotas de autenticação (login)."""
+"""Rotas de autenticacao (login)."""
 
+from sqlalchemy import func
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
@@ -15,7 +16,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _authenticate(session: Session, email: str, password: str) -> Usuario | None:
-    usuario = session.exec(select(Usuario).where(Usuario.email == email)).first()
+    email_norm = (email or "").strip().lower()
+    usuario = session.exec(select(Usuario).where(func.lower(Usuario.email) == email_norm)).first()
     if not usuario or not usuario.ativo:
         return None
     if not verify_password(password, usuario.password_hash):
@@ -28,12 +30,12 @@ def login(
     credentials: LoginRequest,
     session: Session = Depends(get_session),
 ):
-    """Autentica usuário e retorna token de acesso."""
+    """Autentica usuario e retorna token de acesso."""
     usuario = _authenticate(session, credentials.email, credentials.password)
     if not usuario:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas",
+            detail="Credenciais invalidas",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -47,5 +49,6 @@ def login(
 
 @router.get("/me", response_model=UsuarioRead)
 def me(current_user: Usuario = Depends(get_current_user)):
-    """Retorna dados públicos do usuário autenticado."""
+    """Retorna dados publicos do usuario autenticado."""
     return UsuarioRead.model_validate(current_user, from_attributes=True)
+

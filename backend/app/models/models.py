@@ -77,8 +77,10 @@ class Agencia(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     nome: str = Field(max_length=100)
+    dominio: str = Field(max_length=100, unique=True)
     lote: int
     created_at: datetime = Field(default_factory=now_utc)
+    logo_url: Optional[str] = Field(default=None, max_length=500)
 
     eventos: List["Evento"] = Relationship(back_populates="agencia")
     usuarios: List["Usuario"] = Relationship(back_populates="agencia")

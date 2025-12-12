@@ -40,8 +40,15 @@ def ensure_agencias(session: Session) -> dict[str, Agencia]:
     result: dict[str, Agencia] = {}
     for nome, lote in entries:
         agencia = session.exec(select(Agencia).where(Agencia.nome == nome)).first()
+        dominio_slug = "".join(nome.lower().split())
+        dominio = f"{dominio_slug}.com.br"
         if not agencia:
-            agencia = Agencia(nome=nome, lote=lote)
+            agencia = Agencia(nome=nome, dominio=dominio, lote=lote)
+            session.add(agencia)
+            session.commit()
+            session.refresh(agencia)
+        elif not agencia.dominio or "." not in agencia.dominio:
+            agencia.dominio = dominio
             session.add(agencia)
             session.commit()
             session.refresh(agencia)

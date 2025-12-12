@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
+from app.routers.agencias import router as agencias_router
 from app.routers.auth import router as auth_router
 from app.routers.usuarios import router as usuarios_router
 
@@ -96,3 +97,4 @@ def novo_usuario_page():
 
 app.include_router(auth_router)
 app.include_router(usuarios_router)
+app.include_router(agencias_router)

@@ -1,4 +1,4 @@
-"""Configuração de conexão e utilitários de sessão do SQLModel."""
+"""Configuracao de conexao e utilitarios de sessao do SQLModel."""
 
 import os
 from pathlib import Path
@@ -7,12 +7,8 @@ from sqlmodel import create_engine, SQLModel, Session
 from dotenv import load_dotenv
 
 
-def _load_env():
-    """Carrega variáveis de ambiente do .env mais alto disponível.
-
-    Priorizamos o .env na raiz de backend/ (onde o .env.example está),
-    mas mantemos o fallback para app/.env para compatibilidade.
-    """
+def _load_env() -> None:
+    """Carrega variaveis de ambiente do .env mais alto disponivel."""
     candidate_paths = [
         Path(__file__).resolve().parents[2] / ".env",  # backend/.env
         Path(__file__).resolve().parent.parent / ".env",  # app/.env (legado)
@@ -21,7 +17,6 @@ def _load_env():
         if env_path.exists():
             load_dotenv(env_path)
             return
-    # Fallback: respeita variáveis já carregadas pelo ambiente
     load_dotenv()
 
 
@@ -29,8 +24,12 @@ def _get_database_url() -> str:
     url = os.getenv("DATABASE_URL")
     if url:
         return url
-    # fallback apenas para testes locais ou execução sem env
-    return "sqlite:///./app.db"
+    # Permite SQLite apenas em execucoes de teste (ex.: pytest) ou se explicitamente marcado
+    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
+        return "sqlite:///./app.db"
+    raise RuntimeError(
+        "DATABASE_URL nao configurada e fallback SQLite desabilitado para producao/homologacao."
+    )
 
 
 def _build_engine():
@@ -45,7 +44,7 @@ engine = _build_engine()
 
 
 def get_session():
-    """Fornece uma sessão de banco para injeção de dependência."""
+    """Fornece uma sessao de banco para injecao de dependencia."""
     with Session(engine) as session:
         yield session
 

@@ -110,6 +110,16 @@ export default function Login() {
             >
               {loading || authLoading ? <CircularProgress size={22} color="inherit" /> : "Entrar"}
             </Button>
+            <Button
+              type="button"
+              variant="text"
+              onClick={() => {
+                window.location.href = "/register";
+              }}
+              sx={{ textTransform: "none", fontWeight: 700 }}
+            >
+              Criar Conta
+            </Button>
           </Stack>
         </Box>
       </Paper>

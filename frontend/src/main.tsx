@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import "@fontsource-variable/roboto-flex";
 import Login from "./pages/Login";
 import Success from "./pages/Success";
+import Register from "./pages/Register";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -31,14 +32,18 @@ const theme = createTheme({
 });
 
 const path = window.location.pathname;
-const Screen =
-  path === "/success" || path === "/dashboard" ? (
+let Screen: React.ReactNode;
+if (path === "/success" || path === "/dashboard") {
+  Screen = (
     <ProtectedRoute>
       <Success />
     </ProtectedRoute>
-  ) : (
-    <Login />
   );
+} else if (path === "/register") {
+  Screen = <Register />;
+} else {
+  Screen = <Login />;
+}
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

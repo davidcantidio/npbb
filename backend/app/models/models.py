@@ -29,6 +29,7 @@ class Usuario(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(max_length=100, unique=True)
+    matricula: Optional[str] = Field(default=None, max_length=20, unique=True)
     password_hash: str = Field(max_length=255)
 
     tipo_usuario: UsuarioTipo

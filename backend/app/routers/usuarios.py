@@ -3,7 +3,8 @@
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlmodel import Session, select
 
 from app.db.database import get_session
@@ -61,6 +62,7 @@ def criar_usuario(
 
     funcionario_id: int | None = None
     agencia_id: int | None = None
+    matricula_value: str | None = None
 
     if usuario_in.tipo_usuario == UsuarioTipo.BB:
         if not email.endswith("@bb.com.br"):
@@ -78,15 +80,12 @@ def criar_usuario(
                 message="Matricula invalida (ex.: A123)",
                 field="matricula",
             )
-        funcionario = session.exec(select(Funcionario).where(Funcionario.chave_c == matricula)).first()
-        if not funcionario:
-            _raise_http(
-                status.HTTP_400_BAD_REQUEST,
-                code="MATRICULA_NOT_FOUND",
-                message="Matricula nao encontrada",
-                field="matricula",
-            )
-        funcionario_id = funcionario.id
+        matricula_value = matricula.lower()
+        funcionario = session.exec(
+            select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_value)
+        ).first()
+        if funcionario:
+            funcionario_id = funcionario.id
 
     elif usuario_in.tipo_usuario == UsuarioTipo.NPBB:
         if not email.endswith("@npbb.com.br"):
@@ -105,15 +104,12 @@ def criar_usuario(
                     message="Matricula invalida (ex.: A123)",
                     field="matricula",
                 )
-            funcionario = session.exec(select(Funcionario).where(Funcionario.chave_c == matricula)).first()
-            if not funcionario:
-                _raise_http(
-                    status.HTTP_400_BAD_REQUEST,
-                    code="MATRICULA_NOT_FOUND",
-                    message="Matricula nao encontrada",
-                    field="matricula",
-                )
-            funcionario_id = funcionario.id
+            matricula_value = matricula.lower()
+            funcionario = session.exec(
+                select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_value)
+            ).first()
+            if funcionario:
+                funcionario_id = funcionario.id
         else:
             funcionario = session.exec(select(Funcionario).where(Funcionario.email == email)).first()
             if funcionario:
@@ -142,6 +138,7 @@ def criar_usuario(
 
     usuario = Usuario(
         email=email,
+        matricula=matricula_value,
         password_hash=hash_password(usuario_in.password),
         tipo_usuario=usuario_in.tipo_usuario.value,
         funcionario_id=funcionario_id,
@@ -154,17 +151,56 @@ def criar_usuario(
         session.refresh(usuario)
     except IntegrityError as e:
         session.rollback()
-        if "duplicate key value" in str(e.orig):
-            _raise_http(
-                status.HTTP_409_CONFLICT,
-                code="EMAIL_ALREADY_REGISTERED",
-                message="Email ja cadastrado",
-                field="email",
-            )
+        constraint_name = None
+        try:
+            constraint_name = getattr(getattr(e.orig, "diag", None), "constraint_name", None)
+        except Exception:
+            constraint_name = None
+
+        error_message = str(getattr(e, "orig", e))
+        is_unique = "duplicate key value" in error_message or "UNIQUE constraint failed" in error_message
+        if is_unique:
+            if (
+                constraint_name in {"usuario_email_key"}
+                or "usuario_email_key" in error_message
+                or "usuario.email" in error_message
+            ):
+                _raise_http(
+                    status.HTTP_409_CONFLICT,
+                    code="EMAIL_ALREADY_REGISTERED",
+                    message="Email ja cadastrado",
+                    field="email",
+                )
+            if (
+                constraint_name in {"uq_usuario_matricula", "usuario_matricula_key"}
+                or "uq_usuario_matricula" in error_message
+                or "usuario_matricula_key" in error_message
+                or "usuario.matricula" in error_message
+            ):
+                _raise_http(
+                    status.HTTP_409_CONFLICT,
+                    code="MATRICULA_ALREADY_REGISTERED",
+                    message="Matricula ja cadastrada",
+                    field="matricula",
+                )
         _raise_http(
             status.HTTP_400_BAD_REQUEST,
             code="USER_CREATE_FAILED",
             message="Erro ao criar usuario",
+        )
+    except ProgrammingError as e:
+        session.rollback()
+        error_message = str(getattr(e, "orig", e))
+        if 'column "matricula"' in error_message and "does not exist" in error_message:
+            _raise_http(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                code="DB_SCHEMA_OUT_OF_DATE",
+                message="Banco de dados desatualizado (coluna usuario.matricula). Rode: alembic upgrade head",
+            )
+        _raise_http(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="DB_ERROR",
+            message="Erro no banco de dados",
         )
 
     return usuario

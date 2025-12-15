@@ -1,15 +1,15 @@
 """Utilitários de segurança para hashing e verificação de senha."""
 
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
 
 def hash_password(password: str) -> str:
-    """Gera o hash seguro para uma senha em texto plano."""
-    return pwd_context.hash(password)
+    """Hash a plaintext password using bcrypt."""
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Valida uma senha em texto plano contra um hash existente."""
-    return pwd_context.verify(plain, hashed)
+    """Verify a plaintext password against a bcrypt hash."""
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))

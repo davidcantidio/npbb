@@ -6,6 +6,7 @@ from pathlib import Path
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.exc import OperationalError
 from sqlmodel import SQLModel
 from dotenv import load_dotenv
 
@@ -38,7 +39,33 @@ target_metadata = SQLModel.metadata
 
 
 def get_url() -> str:
-    return os.getenv("DATABASE_URL", "sqlite:///./app.db")
+    # Em Supabase, migrations/DDL devem usar conexao direta (DIRECT_URL),
+    # pois o pooler pode bloquear/timeoutar em alguns ambientes.
+    direct_url = os.getenv("DIRECT_URL")
+    database_url = os.getenv("DATABASE_URL")
+    if direct_url:
+        return direct_url
+    if database_url:
+        return database_url
+    # Permite SQLite apenas em testes/override explicito
+    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
+        return "sqlite:///./app.db"
+    raise RuntimeError("DIRECT_URL ou DATABASE_URL precisam estar configuradas para rodar migrations.")
+
+
+def get_urls() -> list[str]:
+    urls: list[str] = []
+    direct_url = os.getenv("DIRECT_URL")
+    database_url = os.getenv("DATABASE_URL")
+    if direct_url:
+        urls.append(direct_url)
+    if database_url and database_url not in urls:
+        urls.append(database_url)
+    if urls:
+        return urls
+    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
+        return ["sqlite:///./app.db"]
+    raise RuntimeError("DIRECT_URL ou DATABASE_URL precisam estar configuradas para rodar migrations.")
 
 
 def run_migrations_offline() -> None:
@@ -58,22 +85,31 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = get_url()
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
+    last_error: Exception | None = None
+    for url in get_urls():
+        configuration["sqlalchemy.url"] = url
+        connectable = engine_from_config(
+            configuration,
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
         )
+        try:
+            with connectable.connect() as connection:
+                context.configure(
+                    connection=connection,
+                    target_metadata=target_metadata,
+                    compare_type=True,
+                )
 
-        with context.begin_transaction():
-            context.run_migrations()
+                with context.begin_transaction():
+                    context.run_migrations()
+            return
+        except OperationalError as e:
+            last_error = e
+            continue
+
+    if last_error:
+        raise last_error
 
 
 if context.is_offline_mode():

@@ -44,6 +44,7 @@ class UsuarioRead(BaseModel):
 
     id: int
     email: EmailStr
+    matricula: Optional[str] = None
     tipo_usuario: UsuarioTipo
     funcionario_id: Optional[int]
     agencia_id: Optional[int]

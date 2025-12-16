@@ -72,6 +72,7 @@ def listar_eventos(
     estado: str | None = Query(None, min_length=1, max_length=10),
     cidade: str | None = Query(None, min_length=1, max_length=100),
     data: date | None = Query(None),
+    diretoria_id: int | None = Query(None, ge=1),
 ):
     """Lista eventos com paginação e filtros opcionais.
 
@@ -103,6 +104,10 @@ def listar_eventos(
         city = cidade.strip().lower()
         query = query.where(func.lower(Evento.cidade) == city)
         count_query = count_query.where(func.lower(Evento.cidade) == city)
+
+    if diretoria_id is not None:
+        query = query.where(Evento.diretoria_id == diretoria_id)
+        count_query = count_query.where(Evento.diretoria_id == diretoria_id)
 
     if data:
         inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)

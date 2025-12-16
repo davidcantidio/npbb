@@ -120,6 +120,7 @@ def seed_evento(
     estado: str,
     inicio: date,
     fim: date,
+    diretoria_id: int | None = None,
 ) -> Evento:
     evento = Evento(
         nome=nome,
@@ -129,6 +130,7 @@ def seed_evento(
         estado=estado,
         agencia_id=agencia_id,
         tipo_id=tipo_id,
+        diretoria_id=diretoria_id,
         status="Previsto",
         data_inicio_prevista=inicio,
         data_fim_prevista=fim,
@@ -151,12 +153,17 @@ def test_evento_list_paginado_e_filtros(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
+        dir_a = seed_diretoria(session, "dimac")
+        dir_b = seed_diretoria(session, "audit")
+        dir_a_id = dir_a.id
+        dir_b_id = dir_b.id
         user = seed_user(session, "user@example.com", "Senha123!", "npbb")
 
         seed_evento(
             session,
             agencia_id=ag1.id,
             tipo_id=tipo.id,
+            diretoria_id=dir_a_id,
             nome="Evento Alpha",
             cidade="Sao Paulo",
             estado="SP",
@@ -167,6 +174,7 @@ def test_evento_list_paginado_e_filtros(client, engine):
             session,
             agencia_id=ag1.id,
             tipo_id=tipo.id,
+            diretoria_id=dir_b_id,
             nome="Evento Beta",
             cidade="Rio de Janeiro",
             estado="RJ",
@@ -208,6 +216,11 @@ def test_evento_list_paginado_e_filtros(client, engine):
     assert resp_date.status_code == 200
     assert resp_date.headers.get("X-Total-Count") == "1"
     assert resp_date.json()[0]["nome"] == "Evento Beta"
+
+    resp_dir = client.get(f"/evento?diretoria_id={dir_a_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp_dir.status_code == 200
+    assert resp_dir.headers.get("X-Total-Count") == "1"
+    assert resp_dir.json()[0]["nome"] == "Evento Alpha"
 
 
 def test_evento_dicionarios_cidades_estados(client, engine):

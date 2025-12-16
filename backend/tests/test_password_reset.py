@@ -1,11 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 from sqlalchemy.pool import StaticPool
+from datetime import datetime, timedelta, timezone
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Usuario
+from app.models.models import PasswordResetToken, Usuario
 from app.utils.security import hash_password
 
 
@@ -93,3 +94,58 @@ def test_forgot_password_returns_404_when_email_not_found(client):
     assert resp.status_code == 404
     detail = resp.json()["detail"]
     assert detail["code"] == "USER_NOT_FOUND"
+
+
+def test_reset_password_rejects_expired_token(client, engine):
+    user = seed_user(engine, password="Senha123!")
+
+    forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
+    assert forgot_resp.status_code == 200
+    token = forgot_resp.json()["token"]
+
+    with Session(engine) as session:
+        record = session.exec(
+            select(PasswordResetToken).where(PasswordResetToken.usuario_id == user.id)
+        ).first()
+        assert record is not None
+        record.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+        session.add(record)
+        session.commit()
+
+    resp = client.post("/usuarios/reset-password", json={"token": token, "password": "Nova123"})
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "TOKEN_EXPIRED"
+
+
+def test_reset_password_rejects_used_token(client, engine):
+    user = seed_user(engine, password="Senha123!")
+
+    forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
+    assert forgot_resp.status_code == 200
+    token = forgot_resp.json()["token"]
+
+    with Session(engine) as session:
+        record = session.exec(
+            select(PasswordResetToken).where(PasswordResetToken.usuario_id == user.id)
+        ).first()
+        assert record is not None
+        record.used_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        session.add(record)
+        session.commit()
+
+    resp = client.post("/usuarios/reset-password", json={"token": token, "password": "Nova123"})
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "TOKEN_USED"
+
+def test_reset_password_rejects_weak_password(client, engine):
+    user = seed_user(engine, password="Senha123!")
+
+    forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
+    token = forgot_resp.json()["token"]
+
+    resp = client.post("/usuarios/reset-password", json={"token": token, "password": "abc"})
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "PASSWORD_POLICY"

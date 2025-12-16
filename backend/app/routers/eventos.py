@@ -24,9 +24,18 @@ from app.models.models import (
     QuestionarioResposta,
     StatusEvento,
     SubtipoEvento,
+    Tag,
+    Territorio,
     TipoEvento,
     Usuario,
     UsuarioTipo,
+)
+from app.schemas.dominios import (
+    DiretoriaRead,
+    SubtipoEventoRead,
+    TagRead,
+    TerritorioRead,
+    TipoEventoRead,
 )
 from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate
 
@@ -371,6 +380,74 @@ def listar_estados(
     rows = session.exec(query.order_by(func.lower(Evento.estado))).all()
     values = [uf for uf in rows if uf and str(uf).strip()]
     return values
+
+
+@router.get("/all/diretorias", response_model=list[DiretoriaRead])
+def listar_diretorias(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(Diretoria)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(Diretoria.nome.ilike(like))
+    return session.exec(query.order_by(Diretoria.nome)).all()
+
+
+@router.get("/all/tipos-evento", response_model=list[TipoEventoRead])
+def listar_tipos_evento(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(TipoEvento)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(TipoEvento.nome.ilike(like))
+    return session.exec(query.order_by(TipoEvento.nome)).all()
+
+
+@router.get("/all/subtipos-evento", response_model=list[SubtipoEventoRead])
+def listar_subtipos_evento(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    tipo_id: int | None = Query(None, ge=1),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(SubtipoEvento)
+    if tipo_id is not None:
+        query = query.where(SubtipoEvento.tipo_id == tipo_id)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(SubtipoEvento.nome.ilike(like))
+    return session.exec(query.order_by(SubtipoEvento.nome)).all()
+
+
+@router.get("/all/territorios", response_model=list[TerritorioRead])
+def listar_territorios(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(Territorio)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(Territorio.nome.ilike(like))
+    return session.exec(query.order_by(Territorio.nome)).all()
+
+
+@router.get("/all/tags", response_model=list[TagRead])
+def listar_tags(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(Tag)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(Tag.nome.ilike(like))
+    return session.exec(query.order_by(Tag.nome)).all()
 
 
 @router.get("/{evento_id}", response_model=EventoRead)

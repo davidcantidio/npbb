@@ -7,7 +7,18 @@ from decimal import Decimal
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Ativacao, CotaCortesia, Diretoria, Evento, TipoEvento, Usuario
+from app.models.models import (
+    Agencia,
+    Ativacao,
+    CotaCortesia,
+    Diretoria,
+    Evento,
+    SubtipoEvento,
+    Tag,
+    Territorio,
+    TipoEvento,
+    Usuario,
+)
 from app.utils.security import hash_password
 
 
@@ -53,6 +64,30 @@ def seed_tipo(session: Session, nome: str = "Congresso") -> TipoEvento:
     session.commit()
     session.refresh(tipo)
     return tipo
+
+
+def seed_subtipo(session: Session, tipo: TipoEvento, nome: str = "Subtipo A") -> SubtipoEvento:
+    subtipo = SubtipoEvento(tipo_id=tipo.id, nome=nome)
+    session.add(subtipo)
+    session.commit()
+    session.refresh(subtipo)
+    return subtipo
+
+
+def seed_tag(session: Session, nome: str = "tag-a") -> Tag:
+    tag = Tag(nome=nome)
+    session.add(tag)
+    session.commit()
+    session.refresh(tag)
+    return tag
+
+
+def seed_territorio(session: Session, nome: str = "territorio-a") -> Territorio:
+    territorio = Territorio(nome=nome)
+    session.add(territorio)
+    session.commit()
+    session.refresh(territorio)
+    return territorio
 
 
 def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
@@ -334,3 +369,57 @@ def test_evento_delete_bloqueado_por_dependencias(client, engine):
     detail = resp.json()["detail"]
     assert detail["code"] == "EVENTO_DELETE_BLOCKED"
     assert "ativacoes" in detail["dependencies"]
+
+
+def test_evento_all_dominios(client, engine):
+    with Session(engine) as session:
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        diretoria_a = seed_diretoria(session, "dimac")
+        diretoria_b = seed_diretoria(session, "audit")
+        diretoria_a_id = diretoria_a.id
+        diretoria_b_id = diretoria_b.id
+
+        tipo_a = seed_tipo(session, "Congresso")
+        tipo_b = seed_tipo(session, "Feira")
+        subtipo_a1 = seed_subtipo(session, tipo_a, "Sub A1")
+        subtipo_b1 = seed_subtipo(session, tipo_b, "Sub B1")
+        tipo_a_id = tipo_a.id
+        tipo_b_id = tipo_b.id
+        subtipo_a1_id = subtipo_a1.id
+        subtipo_b1_id = subtipo_b1.id
+
+        tag_a = seed_tag(session, "tag-a")
+        tag_b = seed_tag(session, "tag-b")
+        terr_a = seed_territorio(session, "Territorio A")
+        terr_b = seed_territorio(session, "Territorio B")
+        tag_a_id = tag_a.id
+        tag_b_id = tag_b.id
+        terr_a_id = terr_a.id
+        terr_b_id = terr_b.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    diretorias = client.get("/evento/all/diretorias", headers=headers).json()
+    assert any(d["id"] == diretoria_a_id for d in diretorias)
+    assert any(d["id"] == diretoria_b_id for d in diretorias)
+
+    tipos = client.get("/evento/all/tipos-evento", headers=headers).json()
+    assert any(t["id"] == tipo_a_id for t in tipos)
+    assert any(t["id"] == tipo_b_id for t in tipos)
+
+    subtipos = client.get(f"/evento/all/subtipos-evento?tipo_id={tipo_a_id}", headers=headers).json()
+    assert any(s["id"] == subtipo_a1_id for s in subtipos)
+    assert all(s["tipo_id"] == tipo_a_id for s in subtipos)
+    assert not any(s["id"] == subtipo_b1_id for s in subtipos)
+
+    territorios = client.get("/evento/all/territorios", headers=headers).json()
+    assert any(t["id"] == terr_a_id for t in territorios)
+    assert any(t["id"] == terr_b_id for t in territorios)
+
+    tags = client.get("/evento/all/tags", headers=headers).json()
+    assert any(t["id"] == tag_a_id for t in tags)
+    assert any(t["id"] == tag_b_id for t in tags)
+
+    diretorias_search = client.get("/evento/all/diretorias?search=aud", headers=headers).json()
+    assert any(d["id"] == diretoria_b_id for d in diretorias_search)

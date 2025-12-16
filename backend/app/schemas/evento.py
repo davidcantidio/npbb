@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic import model_validator
 
 
@@ -59,6 +59,9 @@ class EventoRead(BaseModel):
     tipo_id: int
     subtipo_id: Optional[int] = None
 
+    tag_ids: list[int] = Field(default_factory=list)
+    territorio_ids: list[int] = Field(default_factory=list)
+
     status: str
 
     created_at: datetime
@@ -80,6 +83,9 @@ class EventoCreate(BaseModel):
 
     tipo_id: int
     subtipo_id: int | None = None
+
+    tag_ids: list[int] = Field(default_factory=list)
+    territorio_ids: list[int] = Field(default_factory=list)
 
     status: str = "Previsto"
 
@@ -119,6 +125,9 @@ class EventoUpdate(BaseModel):
 
     tipo_id: int | None = None
     subtipo_id: int | None = None
+
+    tag_ids: list[int] | None = None
+    territorio_ids: list[int] | None = None
 
     status: str | None = None
 

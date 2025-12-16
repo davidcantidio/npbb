@@ -158,6 +158,24 @@ def _parse_status(value: str | None) -> StatusEvento | None:
             message=f"Status invalido. Use um de: {allowed}",
         )
 
+def _normalize_unique_ids(values: list[int] | None, *, code: str, message: str) -> list[int]:
+    if not values:
+        return []
+    unique: list[int] = []
+    seen: set[int] = set()
+    for raw in values:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            _raise_http(status.HTTP_400_BAD_REQUEST, code=code, message=message)
+        if value < 1:
+            _raise_http(status.HTTP_400_BAD_REQUEST, code=code, message=message)
+        if value in seen:
+            continue
+        seen.add(value)
+        unique.append(value)
+    return unique
+
 
 @router.post("", response_model=EventoRead, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=EventoRead, status_code=status.HTTP_201_CREATED)
@@ -194,6 +212,17 @@ def criar_evento(
     _validate_fk(session, Diretoria, payload.diretoria_id, "DIRETORIA_NOT_FOUND", "Diretoria nao encontrada")
     _validate_fk(session, Funcionario, payload.gestor_id, "GESTOR_NOT_FOUND", "Gestor nao encontrado")
 
+    tag_ids = _normalize_unique_ids(
+        payload.tag_ids, code="TAG_ID_INVALID", message="tag_ids invalidos"
+    )
+    territorio_ids = _normalize_unique_ids(
+        payload.territorio_ids, code="TERRITORIO_ID_INVALID", message="territorio_ids invalidos"
+    )
+    for tag_id in tag_ids:
+        _validate_fk(session, Tag, tag_id, "TAG_NOT_FOUND", "Tag nao encontrada")
+    for territorio_id in territorio_ids:
+        _validate_fk(session, Territorio, territorio_id, "TERRITORIO_NOT_FOUND", "Territorio nao encontrado")
+
     status_enum = _parse_status(payload.status) or StatusEvento.PREVISTO
 
     evento = Evento(
@@ -219,9 +248,20 @@ def criar_evento(
         status=status_enum,
     )
     session.add(evento)
+    session.flush()
+
+    if evento.id is None:
+        _raise_http(status.HTTP_500_INTERNAL_SERVER_ERROR, code="EVENTO_CREATE_FAILED", message="Falha ao criar evento")
+
+    for territorio_id in territorio_ids:
+        session.add(EventoTerritorio(evento_id=evento.id, territorio_id=territorio_id))
+    for tag_id in tag_ids:
+        session.add(EventoTag(evento_id=evento.id, tag_id=tag_id))
+
     session.commit()
     session.refresh(evento)
-    return EventoRead.model_validate(evento, from_attributes=True)
+    read = EventoRead.model_validate(evento, from_attributes=True)
+    return read.model_copy(update={"tag_ids": tag_ids, "territorio_ids": territorio_ids})
 
 
 @router.put("/{evento_id}", response_model=EventoRead)
@@ -244,6 +284,9 @@ def atualizar_evento(
     data = payload.model_dump(exclude_unset=True)
     if not data:
         _raise_http(status.HTTP_400_BAD_REQUEST, code="NO_FIELDS", message="Nenhum campo para atualizar")
+
+    tag_ids_update = data.pop("tag_ids", None)
+    territorio_ids_update = data.pop("territorio_ids", None)
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
         if "agencia_id" in data and data["agencia_id"] != evento.agencia_id:
@@ -303,9 +346,39 @@ def atualizar_evento(
         setattr(evento, key, value)
 
     session.add(evento)
+
+    if tag_ids_update is not None:
+        tag_ids = _normalize_unique_ids(tag_ids_update, code="TAG_ID_INVALID", message="tag_ids invalidos")
+        for tag_id in tag_ids:
+            _validate_fk(session, Tag, tag_id, "TAG_NOT_FOUND", "Tag nao encontrada")
+        session.exec(sa_delete(EventoTag).where(EventoTag.evento_id == evento_id))
+        for tag_id in tag_ids:
+            session.add(EventoTag(evento_id=evento_id, tag_id=tag_id))
+
+    if territorio_ids_update is not None:
+        territorio_ids = _normalize_unique_ids(
+            territorio_ids_update, code="TERRITORIO_ID_INVALID", message="territorio_ids invalidos"
+        )
+        for territorio_id in territorio_ids:
+            _validate_fk(session, Territorio, territorio_id, "TERRITORIO_NOT_FOUND", "Territorio nao encontrado")
+        session.exec(sa_delete(EventoTerritorio).where(EventoTerritorio.evento_id == evento_id))
+        for territorio_id in territorio_ids:
+            session.add(EventoTerritorio(evento_id=evento_id, territorio_id=territorio_id))
+
     session.commit()
     session.refresh(evento)
-    return EventoRead.model_validate(evento, from_attributes=True)
+
+    tag_ids_final = session.exec(
+        select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)
+    ).all()
+    territorio_ids_final = session.exec(
+        select(EventoTerritorio.territorio_id)
+        .where(EventoTerritorio.evento_id == evento_id)
+        .order_by(EventoTerritorio.territorio_id)
+    ).all()
+
+    read = EventoRead.model_validate(evento, from_attributes=True)
+    return read.model_copy(update={"tag_ids": list(tag_ids_final), "territorio_ids": list(territorio_ids_final)})
 
 
 @router.delete("/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -470,4 +543,14 @@ def obter_evento(
         if evento.agencia_id != current_user.agencia_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
 
-    return EventoRead.model_validate(evento, from_attributes=True)
+    tag_ids = session.exec(
+        select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)
+    ).all()
+    territorio_ids = session.exec(
+        select(EventoTerritorio.territorio_id)
+        .where(EventoTerritorio.evento_id == evento_id)
+        .order_by(EventoTerritorio.territorio_id)
+    ).all()
+
+    read = EventoRead.model_validate(evento, from_attributes=True)
+    return read.model_copy(update={"tag_ids": list(tag_ids), "territorio_ids": list(territorio_ids)})

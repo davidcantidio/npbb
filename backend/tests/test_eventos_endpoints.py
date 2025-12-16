@@ -304,9 +304,17 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
+        tag_a = seed_tag(session, "tag-a")
+        tag_b = seed_tag(session, "tag-b")
+        terr_a = seed_territorio(session, "Territorio A")
+        terr_b = seed_territorio(session, "Territorio B")
         seed_user(session, "user@example.com", "Senha123!", "npbb")
         ag1_id = ag1.id
         tipo_id = tipo.id
+        tag_a_id = tag_a.id
+        tag_b_id = tag_b.id
+        terr_a_id = terr_a.id
+        terr_b_id = terr_b.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
@@ -320,6 +328,8 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
             "estado": "sp",
             "agencia_id": ag1_id,
             "tipo_id": tipo_id,
+            "tag_ids": [tag_a_id],
+            "territorio_ids": [terr_a_id],
         },
     )
     assert create_resp.status_code == 201
@@ -327,18 +337,27 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     assert created["id"]
     assert created["nome"] == "Evento Novo"
     assert created["estado"] == "SP"
+    assert created["tag_ids"] == [tag_a_id]
+    assert created["territorio_ids"] == [terr_a_id]
 
     evento_id = created["id"]
 
     update_resp = client.put(
         f"/evento/{evento_id}",
         headers={"Authorization": f"Bearer {token}"},
-        json={"cidade": "Rio de Janeiro", "estado": "rj"},
+        json={
+            "cidade": "Rio de Janeiro",
+            "estado": "rj",
+            "tag_ids": [tag_b_id],
+            "territorio_ids": [terr_a_id, terr_b_id],
+        },
     )
     assert update_resp.status_code == 200
     updated = update_resp.json()
     assert updated["cidade"] == "Rio de Janeiro"
     assert updated["estado"] == "RJ"
+    assert updated["tag_ids"] == [tag_b_id]
+    assert updated["territorio_ids"] == sorted([terr_a_id, terr_b_id])
 
     delete_resp = client.delete(
         f"/evento/{evento_id}",

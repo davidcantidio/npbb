@@ -3,10 +3,11 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlalchemy.pool import StaticPool
 from datetime import date
+from decimal import Decimal
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Evento, TipoEvento, Usuario
+from app.models.models import Agencia, Ativacao, CotaCortesia, Diretoria, Evento, TipoEvento, Usuario
 from app.utils.security import hash_password
 
 
@@ -101,6 +102,14 @@ def seed_evento(
     session.commit()
     session.refresh(evento)
     return evento
+
+
+def seed_diretoria(session: Session, nome: str = "dimac") -> Diretoria:
+    diretoria = Diretoria(nome=nome)
+    session.add(diretoria)
+    session.commit()
+    session.refresh(diretoria)
+    return diretoria
 
 
 def test_evento_list_paginado_e_filtros(client, engine):
@@ -241,3 +250,87 @@ def test_evento_get_por_id_e_visibilidade_agencia(client, engine):
 
     forbidden = client.get(f"/evento/{evento_ag2_id}", headers={"Authorization": f"Bearer {token}"})
     assert forbidden.status_code == 404
+
+
+def test_evento_criar_atualizar_e_excluir(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        ag1_id = ag1.id
+        tipo_id = tipo.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    create_resp = client.post(
+        "/evento",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "nome": "Evento Novo",
+            "descricao": "descricao",
+            "cidade": "Sao Paulo",
+            "estado": "sp",
+            "agencia_id": ag1_id,
+            "tipo_id": tipo_id,
+        },
+    )
+    assert create_resp.status_code == 201
+    created = create_resp.json()
+    assert created["id"]
+    assert created["nome"] == "Evento Novo"
+    assert created["estado"] == "SP"
+
+    evento_id = created["id"]
+
+    update_resp = client.put(
+        f"/evento/{evento_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"cidade": "Rio de Janeiro", "estado": "rj"},
+    )
+    assert update_resp.status_code == 200
+    updated = update_resp.json()
+    assert updated["cidade"] == "Rio de Janeiro"
+    assert updated["estado"] == "RJ"
+
+    delete_resp = client.delete(
+        f"/evento/{evento_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert delete_resp.status_code == 204
+
+    get_resp = client.get(f"/evento/{evento_id}", headers={"Authorization": f"Bearer {token}"})
+    assert get_resp.status_code == 404
+
+
+def test_evento_delete_bloqueado_por_dependencias(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Bloqueado",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+        ativacao = Ativacao(
+            nome="Ativacao",
+            descricao="desc",
+            evento_id=evento_id,
+            valor=Decimal("10.00"),
+        )
+        session.add(ativacao)
+        session.commit()
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.delete(f"/evento/{evento_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 409
+    detail = resp.json()["detail"]
+    assert detail["code"] == "EVENTO_DELETE_BLOCKED"
+    assert "ativacoes" in detail["dependencies"]

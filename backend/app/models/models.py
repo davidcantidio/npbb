@@ -46,6 +46,19 @@ class Usuario(SQLModel, table=True):
     agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
 
 
+class PasswordResetToken(SQLModel, table=True):
+    __tablename__ = "password_reset_token"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    usuario_id: int = Field(foreign_key="usuario.id", index=True)
+    token_hash: str = Field(max_length=64, unique=True, index=True)
+
+    created_at: datetime = Field(default_factory=now_utc)
+    sent_at: datetime = Field(default_factory=now_utc)
+    expires_at: datetime
+    used_at: Optional[datetime] = None
+
+
 class StatusEvento(str, Enum):
     PREVISTO = "Previsto"
     REALIZADO = "Realizado"

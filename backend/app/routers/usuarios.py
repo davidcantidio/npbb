@@ -9,7 +9,14 @@ from sqlmodel import Session, select
 
 from app.db.database import get_session
 from app.models.models import Agencia, Funcionario, Usuario
+from app.schemas.password_reset import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+)
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioTipo
+from app.services.password_reset import PasswordResetError, request_password_reset, reset_password
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -204,3 +211,65 @@ def criar_usuario(
         )
 
     return usuario
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    session: Session = Depends(get_session),
+):
+    """Solicita recuperacao de senha via email.
+
+    Retorna 404 se o email nao for encontrado (requisito do fluxo de UI).
+    """
+    try:
+        result = request_password_reset(session, str(payload.email))
+    except Exception:
+        _raise_http(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="EMAIL_SEND_FAILED",
+            message="Erro ao enviar email de recuperacao",
+        )
+
+    if not result.user_found:
+        _raise_http(
+            status.HTTP_404_NOT_FOUND,
+            code="USER_NOT_FOUND",
+            message="Email nao encontrado",
+            field="email",
+        )
+
+    response = ForgotPasswordResponse(
+        message="Email de recuperacao enviado",
+    )
+    if result.debug_token:
+        response.token = result.debug_token
+        response.expires_at = result.debug_expires_at
+        response.reset_url = result.debug_reset_url
+    return response
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password_endpoint(
+    payload: ResetPasswordRequest,
+    session: Session = Depends(get_session),
+):
+    """Redefine a senha usando um token valido."""
+    if not PASSWORD_RE.match(payload.password or ""):
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="PASSWORD_POLICY",
+            message="Minimo 6 caracteres, com pelo menos 1 letra e 1 numero",
+            field="password",
+        )
+
+    try:
+        reset_password(session, payload.token, hash_password(payload.password))
+    except PasswordResetError as e:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code=e.code,
+            message=e.message,
+        )
+
+    return ResetPasswordResponse(message="Senha atualizada com sucesso")

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   Alert,
   Box,
@@ -13,17 +12,7 @@ import {
 import { useAuth } from "../store/auth";
 
 export default function Success() {
-  const { user, loading, error, logout, refresh, token } = useAuth();
-
-  useEffect(() => {
-    if (!token && !loading) {
-      window.location.href = "/";
-      return;
-    }
-    if (token && !user && !loading) {
-      refresh();
-    }
-  }, [token, user, loading, refresh]);
+  const { user, loading, error, logout } = useAuth();
 
   return (
     <Container maxWidth="md" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>

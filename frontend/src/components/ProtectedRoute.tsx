@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Box, CircularProgress, Typography } from "@mui/material";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../store/auth";
 
 type Props = {
@@ -8,13 +9,11 @@ type Props = {
 
 export function ProtectedRoute({ children }: Props) {
   const { token, user, loading, refresh } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     if (token && !user && !loading) {
       refresh();
-    }
-    if (!token && !loading) {
-      window.location.href = "/login";
     }
   }, [token, user, loading, refresh]);
 
@@ -39,7 +38,7 @@ export function ProtectedRoute({ children }: Props) {
   }
 
   if (!token) {
-    return null;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

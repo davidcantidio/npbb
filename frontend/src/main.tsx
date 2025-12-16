@@ -2,9 +2,14 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import "@fontsource-variable/roboto-flex";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Success from "./pages/Success";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
+import EventsList from "./pages/EventsList";
+import EventDetail from "./pages/EventDetail";
+import NewEvent from "./pages/NewEvent";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -31,18 +36,53 @@ const theme = createTheme({
   },
 });
 
-const path = window.location.pathname;
-let Screen: React.ReactNode;
-if (path === "/success" || path === "/dashboard") {
-  Screen = (
-    <ProtectedRoute>
-      <Success />
-    </ProtectedRoute>
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/novo-usuario" element={<Register />} />
+      <Route path="/register" element={<Navigate to="/novo-usuario" replace />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+
+      <Route
+        path="/success"
+        element={
+          <ProtectedRoute>
+            <Success />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/dashboard" element={<Navigate to="/success" replace />} />
+
+      <Route
+        path="/eventos"
+        element={
+          <ProtectedRoute>
+            <EventsList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/eventos/novo"
+        element={
+          <ProtectedRoute>
+            <NewEvent />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/eventos/:id"
+        element={
+          <ProtectedRoute>
+            <EventDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
-} else if (path === "/register") {
-  Screen = <Register />;
-} else {
-  Screen = <Login />;
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -50,7 +90,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <AuthProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {Screen}
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
       </ThemeProvider>
     </AuthProvider>
   </React.StrictMode>,

@@ -1,7 +1,3 @@
-Aqui está a **versão final do documento Markdown**, consolidando o seu conteúdo original com as atualizações que adicionamos (política de senha mínima, recuperação de senha, fluxo de cadastro por tipo, validações, chamadas de API, etc.). Ele segue o padrão de **engenharia reversa** e está pronto para ser usado como especificação funcional/UX/UI no Notion, GitHub ou similar:
-
----
-
 # Tela: Novo Usuário / Cadastro de Conta
 
 Tela onde um usuário se registra no sistema, escolhendo seu tipo e preenchendo os campos obrigatórios conforme regras de negócio.
@@ -48,7 +44,7 @@ Tela onde um usuário se registra no sistema, escolhendo seu tipo e preenchendo 
 | ------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
 | Funcionário BB      | Email, Senha, Confirmar Senha, Matrícula BB | Email deve terminar com `@bb.com.br`<br>Matrícula: regex `^[A-Za-z][0-9]{1,16}$` |
 | Funcionário NPBB    | Email, Senha, Confirmar Senha               | Email deve terminar com `@npbb.com.br`                                           |
-| Funcionário Agência | Email, Senha, Confirmar Senha, Agência      | Sem restrição de domínio no email<br>Agência deve ser selecionada                |
+| Funcionário Agência | Email, Senha, Confirmar Senha, Agência      | Email deve ser do domínio da agência selecionada (`agencia.dominio`)<br>Agência deve ser selecionada                |
 
 ### 4.2 Validações Dinâmicas
 
@@ -78,10 +74,10 @@ Feedback visual de erro em tempo real para:
 | -------------------------------------- | ------------------------------------------------------------------------------- |
 | Domínio de email – Funcionário BB      | Deve terminar com `@bb.com.br`                                                  |
 | Domínio de email – Funcionário NPBB    | Deve terminar com `@npbb.com.br`                                                |
-| Domínio de email – Funcionário Agência | Sem restrição de domínio                                                        |
-| Matrícula BB                           | 1 letra + até 16 números → regex `^[A-Za-z][0-9]{1,16}$`                        |
+| Domínio de email – Funcionário Agência | Deve corresponder ao domínio da agência selecionada (`agencia.dominio`, ex.: `v3a.com.br`) |
+| Matrícula BB                           | 1 letra + até 16 números (regex `^[A-Za-z][0-9]{1,16}$`)                        |
 | Política de Senha                      | Mínimo 6 caracteres, ao menos 1 letra e 1 número (regex mínima abaixo)          |
-| Seleção de agência                     | Obrigatória apenas para tipo “Funcionário Agência”<br>Lista via GET `/agencias` |
+| Seleção de agência                     | Obrigatória apenas para tipo “Funcionário Agência”<br>Lista via GET `/agencias/` (dropdown mostra apenas o nome; domínio usado para validação) |
 | Submissão                              | Bloqueada até que todas as validações client-side estejam OK                    |
 
 ---
@@ -91,10 +87,15 @@ Feedback visual de erro em tempo real para:
 ```ts
 // Email
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const hasCorrectDomain = (email: string, type: UserType) => {
+const hasCorrectDomain = (email: string, type: UserType, agenciaDominio?: string) => {
   if (type === 'BB') return email.endsWith('@bb.com.br');
   if (type === 'NPBB') return email.endsWith('@npbb.com.br');
-  return true; // Agência sem restrição
+  if (type === 'AGENCIA') {
+    const emailDomain = email.split('@').pop()?.toLowerCase();
+    const domain = (agenciaDominio || '').toLowerCase().replace(/^@/, '');
+    return Boolean(emailDomain && domain && (emailDomain === domain || emailDomain.endsWith(`.${domain}`)));
+  }
+  return true;
 };
 
 // Matrícula BB
@@ -111,9 +112,16 @@ const isValidPassword = (password: string) =>
 
 | Ação                       | Endpoint                          | Método | Notas                                        |
 | -------------------------- | --------------------------------- | ------ | -------------------------------------------- |
-| Buscar agências            | `/agencias`                       | GET    | Retorna lista `{ id, nome }` para o dropdown |
-| Verificar email (opcional) | `/usuarios/check-email?email=...` | GET    | Checa disponibilidade de email               |
-| Criar usuário              | `/usuarios`                       | POST   | Body conforme schema `UsuarioCreate`         |
+| Buscar agências            | `/agencias/`                      | GET    | Suporta `skip`, `limit`, `search` e retorna `X-Total-Count`; resposta inclui `{ id, nome, dominio }` (dominio não aparece no dropdown) |
+| Verificar email (opcional) | `/usuarios/check-email?email=...` | GET    | Não implementado (futuro)                    |
+| Criar usuário              | `/usuarios/`                      | POST   | Body `UsuarioCreate` (`email`, `password`, `tipo_usuario`=`bb|npbb|agencia`, `matricula`/`agencia_id`); senha enviada em texto e hasheada no servidor |
+
+### 7.1 Formato de erros (backend)
+- Login (`/auth/login`) retorna erro simples: `{"detail":"Credenciais invalidas"}` (401).
+- Cadastro (`/usuarios/`) retorna erros estruturados (400/409) em `detail`:
+  ```json
+  {"detail":{"code":"EMAIL_ALREADY_REGISTERED","message":"Email ja cadastrado","field":"email"}}
+  ```
 
 ---
 
@@ -140,21 +148,19 @@ const isValidPassword = (password: string) =>
 
 ### Backend
 
-* [ ] `GET /agencias` → retorna lista de agências (`id`, `nome`)
-* [ ] `POST /usuarios` → cria usuário com validações server-side:
+* [x] `GET /agencias/` -> retorna lista de agências (`id`, `nome`, `dominio`)
+* [x] `POST /usuarios/` -> cria usuário com validações server-side:
 
-  * Domínio de email conforme tipo
+  * Domínio de email conforme tipo (BB/NPBB) ou agência selecionada (`agencia.dominio`)
   * Formato da matrícula BB
-  * Vinculação correta (`funcionario_id` ou `agencia_id`)
   * Política de senha mínima (letras+ números; >=6)
-* [ ] Erros claros (400/409) com mensagens específicas
+* [x] Erros claros (400/409) com mensagens específicas
 
 ### Frontend
 
-* [ ] Componente `<UserRegister />`
-* [ ] Campos dinâmicos conforme tipo de usuário selecionado
-* [ ] Validações em tempo real (client-side)
-* [ ] Feedback visual de erro imediato
-* [ ] Botão de submissão habilitado apenas com formulário válido
-* [ ] Integração completa com APIs listadas
-
+* [x] Componente de cadastro (rota `/novo-usuario`)
+* [x] Campos dinâmicos conforme tipo de usuário selecionado
+* [x] Validações em tempo real (client-side)
+* [x] Feedback visual de erro imediato
+* [x] Botão de submissão habilitado apenas com formulário válido
+* [x] Integração com `GET /agencias/` e `POST /usuarios/`

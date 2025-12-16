@@ -10,8 +10,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../store/auth";
+import { ForgotPasswordDialog } from "../components/ForgotPasswordDialog";
 
 type FormState = {
   email: string;
@@ -22,7 +24,11 @@ export default function Login() {
   const [form, setForm] = useState<FormState>({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const { login, token, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || "/success";
 
   const handleChange = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -30,9 +36,9 @@ export default function Login() {
 
   useEffect(() => {
     if (!authLoading && token) {
-      window.location.href = "/success";
+      navigate(from, { replace: true });
     }
-  }, [authLoading, token]);
+  }, [authLoading, token, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +50,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(form.email, form.password);
-      window.location.href = "/success";
+      navigate(from, { replace: true });
     } catch (err: any) {
       setError(err?.message || "Erro ao autenticar");
     } finally {
@@ -96,6 +102,17 @@ export default function Login() {
               fullWidth
               autoComplete="current-password"
             />
+            <Box display="flex" justifyContent="flex-end">
+              <Button
+                type="button"
+                variant="text"
+                size="small"
+                onClick={() => setForgotOpen(true)}
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                Esqueceu a senha?
+              </Button>
+            </Box>
             {error && (
               <Alert severity="error" variant="filled">
                 {error}
@@ -114,7 +131,7 @@ export default function Login() {
               type="button"
               variant="text"
               onClick={() => {
-                window.location.href = "/register";
+                navigate("/novo-usuario");
               }}
               sx={{ textTransform: "none", fontWeight: 700 }}
             >
@@ -123,6 +140,11 @@ export default function Login() {
           </Stack>
         </Box>
       </Paper>
+      <ForgotPasswordDialog
+        open={forgotOpen}
+        initialEmail={form.email}
+        onClose={() => setForgotOpen(false)}
+      />
     </Container>
   );
 }

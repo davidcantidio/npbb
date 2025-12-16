@@ -1,36 +1,22 @@
-NPBB — Sistema de gestão de eventos, ativações, leads e questionários
-====================================================================
+# NPBB - Sistema de gestao de eventos
 
-Este repositório reúne protótipos, backend em FastAPI e material de documentação do projeto NPBB.
+Este repositorio contem:
+- **backend** em FastAPI/SQLModel (API + regras de negocio)
+- **frontend** em Vite/React/MUI (login/cadastro e modulo Eventos)
+- **docs** com especificacoes de telas e contratos de API
 
-Estrutura do repositório
-------------------------
-- backend/ — API FastAPI e modelos de domínio.
-- frontend/ — código do front (Vite/React).
-- docs/ — documentos e materiais de referência.
-- Infra/ — arquivos de infraestrutura (ex.: docker-compose.yml).
-- scripts/ — automações e scripts de suporte.
+## Estrutura
+- `backend/` - API FastAPI e modelos de dominio
+- `frontend/` - Frontend (Vite/React)
+- `docs/` - Documentacao e engenharia reversa das telas
+- `Infra/` - Infraestrutura (ex.: `docker-compose.yml`)
 
-Requisitos
-----------
-- Python 3.10+ (backend)
-- Node.js 18+ e npm (frontend)
-- Docker opcional para orquestração local
+## Backend
 
-Configuração de ambiente (.env)
--------------------------------
-O backend carrega variáveis a partir de `backend/.env` (copie de `backend/.env.example`):
-- `DATABASE_URL`: conexão usada pelo app (Postgres/Supabase).
-- `DIRECT_URL`: conexão direta para migrations/seed (recomendado no Supabase).
-- `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`: JWT.
-- `FRONTEND_ORIGIN`: CORS liberado para o front (ex.: `http://localhost:5173`).
+### Requisitos
+- Python 3.10+
 
-Observações:
-- Em produção/homologação, o backend exige `DATABASE_URL` válido (fallback SQLite é apenas para testes com `TESTING=true` ou `pytest`).
-- Em alguns ambientes o pooler do Supabase pode dar timeout; prefira `DIRECT_URL` (porta 5432) para migrations/DDL.
-
-Backend: como rodar
--------------------
+### Setup
 ```bash
 cd backend
 python -m venv .venv
@@ -39,55 +25,75 @@ python -m venv .venv
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
-Endpoint de saúde: `GET /health` (retorna `{"status": "ok"}`).
 
-Migrations e seed (dev)
-----------------------
+Endpoint de saude: `GET /health`.
+
+### Variaveis de ambiente
+O backend carrega variaveis do `backend/.env` (copie de `backend/.env.example`).
+
+Principais:
+- `DATABASE_URL`: conexao usada pela API (Postgres/Supabase)
+- `DIRECT_URL`: conexao direta para migrations/seed (no Supabase, recomendado para DDL/migrations)
+- `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`: JWT
+- `FRONTEND_ORIGIN`: CORS (ex.: `http://localhost:5173`)
+
+Recuperacao de senha / email:
+- `EMAIL_BACKEND=console|smtp`
+- `PASSWORD_RESET_URL`, `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`, `PASSWORD_RESET_DEBUG`
+- `SMTP_*` (quando `EMAIL_BACKEND=smtp`)
+
+### Migrations e seed (dev)
 ```bash
 cd backend
 alembic upgrade head
 python scripts/seed_sample.py
 ```
-- O seed cria agências/diretorias e alguns usuários de exemplo. Para definir a senha usada, exporte `SEED_PASSWORD` (padrão: `Senha123!`).
-- Para criar um admin via env vars: defina `ADMIN_EMAIL` e `ADMIN_PASSWORD` e rode `python scripts/seed_admin.py`.
-- Para criar uma migration: rode `alembic upgrade head`, depois `alembic revision --autogenerate -m "sua-mensagem"` e por fim `alembic upgrade head`.
-- Dicas: `Target database is not up to date` -> rode `alembic upgrade head` antes do autogenerate; `Multiple head revisions` -> use `alembic heads` e `alembic merge`.
 
-Frontend: como rodar
---------------------
+Notas:
+- `seed_sample.py` cria agencias/diretorias e usuarios de exemplo (senha via `SEED_PASSWORD`, padrao `Senha123!`).
+- Alembic no Supabase: prefira `DIRECT_URL` (porta 5432). O pooler (porta 6543) pode dar timeout em alguns ambientes.
+- Se aparecer `Target database is not up to date`, rode `alembic upgrade head` antes do `alembic revision --autogenerate`.
+- Se aparecer `Multiple head revisions`, use `alembic heads` e `alembic merge`.
+
+## Frontend
+
+### Requisitos
+- Node.js 18+
+
+### Setup
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-O Vite exibirá a URL local no terminal (geralmente http://localhost:5173).
 
-Frontend: variáveis de ambiente
-------------------------------
-Por padrão o front usa a API em `http://localhost:8000`. Para alterar, copie `frontend/.env.example` para `frontend/.env` e ajuste:
+### Variaveis de ambiente
+Por padrao o front usa `http://localhost:8000`. Para alterar:
 ```bash
-VITE_API_BASE_URL=http://localhost:8000
+cp .env.example .env
+# edite VITE_API_BASE_URL
 ```
 
-Rotas principais
-----------------
-- `/login` (pública)
-- `/novo-usuario` (pública)
-- `/reset-password` (pública, usado no link de recuperação)
-- `/` (protegida, exige login)
-- `/success` (protegida, exibe JSON do usuário logado)
+### Rotas principais
+- Publicas: `/login`, `/novo-usuario`, `/reset-password`
+- Protegidas: `/eventos`, `/eventos/novo`, `/eventos/:id`
+- Auxiliar: `/success` (exibe JSON do usuario logado)
 
-Recuperacao de senha: na tela de login ha o link "Esqueceu a senha?" que chama `POST /usuarios/forgot-password`; o link abre `/reset-password?token=...` e consome `POST /usuarios/reset-password` (detalhes em `docs/auth.md`).
+## Documentacao
+- Autenticacao e recuperacao de senha (API): `docs/auth.md`
+- Eventos (API): `docs/eventos_api.md`
+- Login (UI): `docs/login/login.md`
+- Cadastro de usuario (UI + API): `docs/login/new_user/login_tela_inicial.md`
+- Eventos (UI): `docs/tela-inicial/menu/Eventos/eventos.md`
 
-Docker (opcional)
------------------
+## Testes
 ```bash
-docker compose up --build
-```
-Ajuste portas/variáveis no `Infra/docker-compose.yml` conforme necessário.
+cd backend
+.\.venv\Scripts\python.exe -m pytest -q
 
-Documentação
-------------
-Materiais de apoio e notas estão em `docs/`.
-- `docs/auth.md`: contrato dos endpoints `/auth/login` e `/auth/me`.
-- `docs/login/new_user/login_tela_inicial.md`: especificação/fluxo do cadastro (`GET /agencias/`, `POST /usuarios/`).
+cd ../frontend
+npm test -- --run
+```
+
+## Seguranca (importante)
+Nao versione segredos em `.env`. Use `.env.example` como template e mantenha credenciais apenas localmente (ou via secrets do deploy).

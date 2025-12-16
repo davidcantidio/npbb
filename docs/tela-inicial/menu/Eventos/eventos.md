@@ -1,126 +1,111 @@
-# Página de Eventos (Listagem)
+# Pagina de Eventos (Listagem)
 
 ## 1. Nome da Tela
 **Listagem de Eventos**
 
-Tela principal que exibe todos os eventos cadastrados, com ações rápidas de visualizar, editar e excluir.
+Tela principal que exibe todos os eventos cadastrados, com acoes rapidas de visualizar e excluir, alem de filtros e paginacao.
+
+Status no novo sistema:
+- Frontend: implementado em `/eventos`
+- Backend: endpoints em `/evento` (ver `docs/eventos_api.md`)
+Detalhe do evento: `docs/tela-inicial/menu/Eventos/Detalhes_Evento/detalhes_evento.md`.
 
 ---
 
-## 2. Referência Visual
-Print do sistema original:  
+## 2. Referencia Visual
+Print do sistema original:
 `docs/tela-inicial/menu/Eventos/eventos.png`
 
 ---
 
 ## 3. Estrutura da Tela
 
-### 3.1 Navegação
-- Menu lateral:
-  - Dashboard
-  - Eventos (página atual)
-  - Ativos 
-  - Leads
-  - Cupons
-- Logo Banco do Brasil
+### 3.1 Header Superior
+- Titulo: **Eventos**
+- Botao **+ Novo** (navega para `/eventos/novo`)
+- Botao **Atualizar**
 
-### 3.2 Header Superior
-- Título: **Eventos**
-- Botão **+ Novo** (abre formulário de criação)
-- Ícones: menu sanduíche | fullscreen | modo escuro | atualizar | perfil (Admin)
-- Breadcrumb: `Dashboard > Eventos`
+### 3.2 Filtros
+Filtros disponiveis (com botao **Aplicar** e **Limpar filtros**):
+- Evento (texto -> `search`)
+- Estado (UF -> `estado`)
+- Local (cidade -> `cidade`)
+- Diretoria (dropdown -> `diretoria_id`)
+- Data (date -> `data`)
 
 ### 3.3 Tabela de Eventos
+Colunas exibidas no front atual:
+1. **ID**
+2. **QRCode** (icone que abre `qr_code_url` em nova aba quando existir)
+3. **Nome do Evento** (link para `/eventos/:id`)
+4. **Periodo** (datas prevista/realizada)
+5. **Cidade / UF**
+6. **Diretoria**
+7. **Status**
+8. **Acoes** (ver / editar / excluir)
 
-| # | Coluna               | Conteúdo                                                                 | Observação no Novo Sistema                                      |
-|---|---------------------|--------------------------------------------------------------------------|-----------------------------------------------------------------|
-| 1 | **ID**              | Numérico sequencial                                                      |                                                                  |
-| 2 | **QRCode**          | QRCode do evento (atual)                                                 |                                                                  |
-| 3 | **Nome do Evento**  | Clique abre tela de Detalhes                                             |                                                                  |
-| 4 | **Período**         | Formato: `DD/MM/AAAA – DD/MM/AAAA`                                       |                                                                  |
-| 5 | **Cidade / UF**     | Ex.: São Paulo / SP                                                      |                                                                  |
-| 6 | **Diretoria**       | *Não exibida no front atual* (campo existe no modelo)                    |                                                                  |
-| 7 | **Ações**           | Ícones: Visualizar | Editar | Excluir                                     |                                                                  |
+### 3.4 Paginacao
+- Paginacao numerica (1..N)
+- Seletor de itens por pagina: 10/25/50/100
 
 ---
 
 ## 4. Comportamento da Tela
 
-| Ação                 | Comportamento                                                                                   |
-|----------------------|-------------------------------------------------------------------------------------------------|
-| **+ Novo**           | Abre Formulário de Evento (aba “Evento”)                                                        |
-| **Visualizar**       | Abre tela de Detalhes do Evento (somente leitura) com todas as abas                             |
-| **Editar**           | Abre Formulário de Evento com todas as abas preenchidas                                         |
-| **Excluir**          | Modal de confirmação<br>Bloqueia exclusão se houver vínculos (ativação, investimento, cotas, convites) |
-| **Atualizar** (ícone)| Recarrega a lista                                                                               |
-| Filtros (barra topo) | Filtros por Evento, Estado, Local, Data; botão “Limpar filtros”                                  |
-| Paginação            | Paginação numérica na base da tabela (1..N)                                                     |
+| Acao | Comportamento |
+|---|---|
+| **+ Novo** | Abre formulario de criacao do evento (`/eventos/novo`) |
+| **Visualizar** | Abre detalhe do evento (`/eventos/:id`) (no MVP: placeholder) |
+| **Excluir** | Modal de confirmacao; chama `DELETE /evento/{id}` e exibe erro caso o backend bloqueie (409) |
+| **Editar** | Ainda nao implementado no front (botao desabilitado) |
+| **Atualizar** | Recarrega os dados da listagem |
+| **Aplicar** | Aplica filtros e volta para pagina 1 |
+| **Limpar filtros** | Remove filtros e volta para pagina 1 |
 
 ---
 
-## 5. Regras de Negócio
-
-- Exibição do período: datas previstas no intervalo; (realizadas não aparecem na UI atual).
-- Exclusão bloqueada enquanto existirem vínculos (ativação, investimento, cotas, convites).
-- Ordenação padrão: mais recente primeiro (aparente pelo ID/período).
-
----
-
-## 6. Chamadas de API observadas (Playwright)
-
-- `POST /auth/login` (autenticação)
-- `GET /auth/me` (perfil)
-- `GET /evento` (listagem principal, paginada)
-- `GET /evento/all/cidades` (dicionário de cidades)
-- `GET /evento/all/estados` (dicionário de estados)
-- Ações esperadas (não clicadas nesta captura): `GET /evento/{id}`, `PUT /evento/{id}`, `DELETE /evento/{id}`; criação via `POST /evento` (botão “Novo”).
+## 5. Regras de Negocio
+- Ordenacao: mais recente primeiro (backend ordena por `Evento.id desc`).
+- Exclusao bloqueada quando existir vinculo (o backend retorna `409 EVENTO_DELETE_BLOCKED` com `dependencies`).
+- Visibilidade: usuario `tipo_usuario=agencia` ve apenas eventos da propria `agencia_id`.
 
 ---
 
-## 7. Diferenças — Sistema Original × Nova Versão
+## 6. Chamadas de API (novo sistema)
 
-| Item               | Sistema Original                 | Nova Versão (atual/front observado) |
-|--------------------|----------------------------------|-------------------------------------|
-| QR Code            | Usado para check-in de leads     | Exibido na grid                     |
-| Coluna Diretoria   | Não existe                       | Campo no modelo; não exibido na grid atual |
-| Territórios / Tags | Não exibidos                     | Não aparecem na grid atual          |
-| Filtros            | Nenhum                           | Filtros por Evento, Estado, Local, Data + limpar |
-| Paginação          | Não mapeada                      | Paginação numérica inferior         |
-| Módulos vinculados | Apenas Leads                     | Eventos + Leads + Cupons (menu lateral) |
+### Listagem
+- `GET /evento?skip=0&limit=25&search=...&estado=...&cidade=...&data=YYYY-MM-DD&diretoria_id=...`
+  - Header: `X-Total-Count` (total com filtros aplicados)
 
----
+### Dicionarios (para filtros)
+- `GET /evento/all/cidades`
+- `GET /evento/all/estados`
+- `GET /evento/all/diretorias`
 
-## 8. Pendências / Dúvidas (resolvidas: resposta = “sim”)
+### Acoes por linha
+- `GET /evento/{id}` (detalhe)
+- `DELETE /evento/{id}` (exclusao)
 
-- Diretoria deve aparecer na grid ou apenas em filtros? **Sim** (grid e filtros).
-- Exibir datas realizadas / indicador de evento concluído? **Sim**.
-- Exportação CSV da listagem será necessária? **Sim**.
-- Territórios/Tags na linha (chips) entram em fase 2? **Sim** (planejar para fase 2).
+Contrato completo dos endpoints: `docs/eventos_api.md`.
 
 ---
 
-## 9. Backlog da Tela (Requisitos)
+## 7. Backlog (status)
 
 ### Backend
-- `GET /evento` (com filtros opcionais)
-- `GET /evento/{id}`
-- `POST /evento`
-- `PUT /evento/{id}`
-- `DELETE /evento/{id}` → validar dependências antes de excluir
-- Dicionários: `GET /evento/all/cidades`, `GET /evento/all/estados`
-- Exportação: endpoint CSV (a definir) para contemplar decisão “sim”.
+- [x] `GET /evento` (paginado + filtros `search/estado/cidade/data/diretoria_id` + `X-Total-Count`)
+- [x] `GET /evento/{id}`
+- [x] `POST /evento`
+- [x] `PUT /evento/{id}`
+- [x] `DELETE /evento/{id}` com validacao de dependencias (409 com `dependencies`)
+- [x] Dicionarios: `GET /evento/all/cidades`, `GET /evento/all/estados`, `GET /evento/all/diretorias`
+- [ ] Exportacao CSV (a definir)
 
 ### Frontend
-- Página `<EventosList />`
-- Componentes:
-  - `<EventosTable />`
-  - `<EventoRow />`
-  - `<ButtonNovoEvento />`
-  - Filtros (Evento, Estado, Local, Data) + limpar
-- Funcionalidades:
-  - Botão Novo → navega para formulário
-  - Ações Visualizar / Editar / Excluir com modal
-  - Exibição de QRCode e Diretoria; exibir datas realizadas/indicador de concluído
-  - Territórios/Tags em chips na linha (fase 2)
-  - Exportação CSV da listagem
-  - Paginação numérica inferior
+- [x] Pagina `/eventos` com filtros e paginacao
+- [x] Componente de linha (`EventoRow`) com QRCode e acoes
+- [x] Botao **+ Novo** -> `/eventos/novo`
+- [x] Exclusao com modal e feedback de erro
+- [x] Coluna Diretoria na grid e filtro por Diretoria
+- [ ] Editar evento (tela + integracao `PUT /evento/{id}`)
+- [ ] Exportacao CSV (quando o endpoint existir)

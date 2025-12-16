@@ -9,6 +9,14 @@ Base da API: `http://localhost:8000` (ajuste conforme ambiente).
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: minutos para expiracao do token.
 - `FRONTEND_ORIGIN`: liberacao de CORS para o front.
 
+Recuperacao de senha:
+- `EMAIL_BACKEND`: `console` (padrao em dev) ou `smtp`.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS`, `SMTP_SSL` (quando `EMAIL_BACKEND=smtp`).
+- `PASSWORD_RESET_URL`: URL base do frontend para reset (ex.: `http://localhost:5173/reset-password`). Se nao informado, o backend usa `FRONTEND_ORIGIN` + `/reset-password`.
+- `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`: expiracao do token (default `60`, minimo `5`).
+- `PASSWORD_RESET_TOKEN_SECRET`: segredo opcional para hashear tokens (fallback: `SECRET_KEY`).
+- `PASSWORD_RESET_DEBUG`: quando `true`, o backend retorna `token`, `expires_at` e `reset_url` na resposta do forgot-password.
+
 ## POST `/auth/login`
 - Body JSON: `{"email": "user@example.com", "password": "Senha123!"}`
 - 200 OK:
@@ -67,6 +75,7 @@ Para cadastro de usuarios e listagem de agencias (fluxo de "Criar Conta"), veja 
 - Observacoes:
   - Com `EMAIL_BACKEND=console` (padrao em dev), o "email" e impresso no terminal do `uvicorn`.
   - Em desenvolvimento, com `PASSWORD_RESET_DEBUG=true`, o backend retorna tambem `token`, `expires_at` e `reset_url`.
+  - O link enviado aponta para o frontend em `/reset-password?token=...` (rota publica).
 
 ### POST `/usuarios/reset-password`
 - Body JSON: `{"token":"<token>","password":"Nova123"}`

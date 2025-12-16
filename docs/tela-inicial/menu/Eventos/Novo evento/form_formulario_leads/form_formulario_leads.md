@@ -1,93 +1,68 @@
-# Configuração do Formulário de Lead / Landing Page
+# Configuracao do Formulario de Lead / Landing Page (Evento)
 
 ## 1. Nome da Tela
-**Formulário de Lead** (aba do fluxo de novo evento/edição)
+**Formulario de Lead** (aba do evento)
+
+Status no novo sistema:
+- Frontend: nao implementado.
+- Backend: nao implementado.
 
 ---
 
-## 2. Referência Visual
-Baseada na tela atual (tema + preview + checkboxes de campos + URLs e botões “Salvar e Visualizar” / “Salvar”).
+## 2. Objetivo
+Configurar a pagina de captura (landing) e os campos do formulario de lead por evento, incluindo:
+- tema/layout
+- campos ativos (checkbox)
+- URLs geradas (landing, promotor, questionario)
 
 ---
 
-## 3. Estrutura da Tela (Componentes Visíveis)
+## 3. Estrutura (proposta)
+### 3.1 Temas
+- Lista de temas (ex.: Surf, Padrao, BB Seguros).
+- Selecao unica.
+- Preview ao lado.
 
-### 3.1 Navegação / Contexto
-- Abas do evento:
-  - Evento
-  - **Formulário de Lead** (aba atual)
-  - Gamificação
-  - Ativações
-  - Questionário
-  - Ingressos/Cotas (rota dedicada)
-  - Investimentos (rota dedicada)
+### 3.2 Campos do formulario
+Checkboxes (exemplo observado no sistema original):
+- CPF, Nome, Sobrenome, Telefone, Email, Data de nascimento, Endereco, Interesses, Genero, Area de atuacao
 
-### 3.2 Seção: Temas (Layout da Página de Captura)
-- Temas disponíveis: Surf, Padrão, BB Seguros.
-- Miniatura/preview do formulário exibida ao lado.
-- Seleção única (radio/button).
+### 3.3 URLs geradas
+- URL da landing
+- URL para promotor
+- URL do questionario
+- URL da API (link para documentacao)
 
-### 3.3 Seção: Campos do Formulário
-- Checkboxes (observado): CPF, Nome, Sobrenome, Telefone, E-mail, Data de Nascimento, Endereço, Interesses, Gênero, Área de atuação.
-- Campos obrigatórios destacados; ordem configurável.
-
-### 3.4 Seção: URLs Geradas
-- Endereço da landing
-- Endereço para promotor
-- Endereço do questionário
-- Endereço da API (com botão “Acessar documentação”)
-- Botões “Visualizar” em cada linha.
-
-### 3.5 Ações
-- Botões: **Salvar e Visualizar**, **Salvar** (aplica config e permite pré-visualização).
+### 3.4 Acoes
+- Botao **Salvar**
+- Botao **Salvar e visualizar** (abre preview)
 
 ---
 
-## 4. Comportamento da Tela
-- Seleção de tema atualiza preview.
-- Checkboxes ligam/desligam campos do formulário; alguns são obrigatórios.
-- Ao salvar, backend persiste tema, campos e URLs; permite pré-visualizar com “Salvar e Visualizar”.
-- URLs exibidas com botões de acesso direto e link de documentação para API.
+## 4. Regras de negocio (proposta)
+- Cada evento possui sua propria configuracao (tema + campos + URLs).
+- Definir quais campos sao obrigatorios e quais sao opcionais.
+- Integracao de envio do lead:
+  - MVP: armazenar em banco local
+  - Fase 2: integrar com Salesforce (se aplicavel)
 
 ---
 
-## 5. Regras de Negócio Identificadas
-- Cada evento tem sua própria configuração de tema, campos e URLs.
-- Campos mínimos para lead: Nome, Sobrenome, CPF, Data de nascimento (Email/Telefone desejáveis).
-- Formulário alimenta: criação de lead no Salesforce + banco local (`lead` + `salesforce_id`).
-- Landing associada ao evento; questionário associado ao evento; URL do promotor para cadastro em campo (provável vínculo a ativação ou token de evento).
+## 5. Endpoints (proposta / a confirmar)
+Sugerido seguir o padrao do modulo de eventos (`/evento`):
+- `GET /evento/{id}/form-config`
+- `PUT /evento/{id}/form-config`
+
+Observacao: as URLs (landing/promotor/questionario) podem ser geradas a partir de `evento.id` e/ou `slug/token` (a definir).
 
 ---
 
-## 6. Diferenças Entre o Original e a Nossa Versão
-- Mantém: seleção de tema, seleção de campos, geração de URLs.
-- Adapta: persistência em tabelas próprias (template HTML/CSS, configuração por evento, campos por evento, URLs).
-- Integração com Salesforce via backend; sem módulo “Leads” no menu (lead é consequência desta configuração).
+## 6. Backlog (status)
+### Backend
+- [ ] Modelo/tabelas para templates e configuracao por evento
+- [ ] Endpoints para ler/salvar configuracao
+- [ ] Definir estrategia de URLs (slug/token) e politica de acesso
 
----
-
-## 7. Pendências / Pontos a Confirmar
-- Comportamento exato da URL do promotor (seleciona ativação ou token direto).
-- Personalização de textos (título, descrição, mensagem de agradecimento) por formulário.
-- Relacionamento do questionário (por evento/ativação/lead).
-
----
-
-## 8. Desdobramento em Requisitos (Backlog da Tela)
-
-### Backend (FastAPI)
-- `GET /eventos/{id}/form-config`, `PUT /eventos/{id}/form-config`
-  - Tema selecionado, lista de campos ativos
-  - Geração/atualização das URLs: landing, questionário, promotor, API
-- Modelo de dados: tabelas de template (HTML/CSS), config por evento, campos por evento, armazenamento das URLs (slug/token)
-
-### Frontend (React)
-- Aba `<EventoFormLead />`
-- Componentes:
-  - Lista de temas (cards/radios) + preview
-  - Lista de campos (checkbox)
-  - Seção de URLs (com botões “Visualizar” e link de documentação)
-- Lógica:
-  - Carregar config ao abrir a aba
-  - Enviar mudanças ao salvar
-  - Mostrar feedback de sucesso/erro
+### Frontend
+- [ ] Aba/pagina de formulario de lead no detalhe do evento
+- [ ] Selecao de tema + preview + checkboxes + secao de URLs

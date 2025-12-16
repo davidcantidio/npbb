@@ -1,102 +1,113 @@
-﻿# [NOME DA TELA]
+# [NOME DA TELA]
+
+Template para documentar telas do sistema original e traduzir em requisitos para o novo sistema.
+
+---
 
 ## 1. Nome da Tela
-Descreva o nome exato da tela e sua funÃ§Ã£o.  
-Ex.: **Cadastro de Evento**, **Listagem de Leads**, **Dashboard Inicial**, etc.
+Descreva o nome exato da tela e sua funcao.
+
+Exemplos:
+- **Cadastro de Evento**
+- **Listagem de Leads**
+- **Dashboard Inicial**
 
 ---
 
-## 2. ReferÃªncia Visual
+## 2. Referencia Visual
 - Inserir print: `./print.png`
-- Caso haja mais de um estado da tela (ex.: modal, estado vazio, erro), adicionar prints extras.
+- Se houver mais de um estado (modal, vazio, erro), adicionar prints extras.
+- Se a tela depender de um fluxo, liste os passos para reproduzir.
 
 ---
 
-## 3. Estrutura da Tela (Componentes VisÃ­veis)
-Liste, de cima para baixo, todos os elementos que o usuÃ¡rio vÃª.
+## 3. Estrutura da Tela (componentes visiveis)
+Liste, de cima para baixo, todos os elementos que o usuario ve.
 
-### Exemplos:
-- Menu lateral  
-- Header com aÃ§Ãµes  
-- Filtros superiores  
-- Tabela / cards / grÃ¡ficos  
-- Modais  
-- BotÃµes de aÃ§Ã£o  
+Exemplos:
+- Menu lateral
+- Header com acoes
+- Filtros superiores
+- Tabela / cards / graficos
+- Modais
+- Botoes de acao
 
-Se houver seÃ§Ãµes, dividir em subtÃ­tulos:
-
-#### 3.1 NavegaÃ§Ã£o  
-#### 3.2 Filtros  
-#### 3.3 ConteÃºdo Principal  
-#### 3.4 AÃ§Ãµes da Tela  
+Se houver secoes, dividir em subtitulos:
+- 3.1 Navegacao
+- 3.2 Filtros
+- 3.3 Conteudo principal
+- 3.4 Acoes da tela
 
 ---
 
 ## 4. Comportamento da Tela
-Como os elementos reagem Ã s interaÃ§Ãµes:
-
-- O que acontece ao mudar filtros  
-- Como a tabela Ã© atualizada  
-- Se hÃ¡ paginaÃ§Ã£o, scroll infinito ou lazy loading  
-- Quando modais aparecem  
-- Feedbacks (toast, alertas, validaÃ§Ãµes visuais)  
+Como os elementos reagem as interacoes:
+- O que acontece ao mudar filtros
+- Como a tabela e atualizada
+- Se ha paginacao, scroll infinito ou lazy loading
+- Quando modais aparecem
+- Feedbacks (toast, alertas, validacoes visuais)
 
 ---
 
-## 5. Regras de NegÃ³cio Identificadas
-Liste as regras lÃ³gicas que a tela implica.
+## 5. Regras de Negocio Identificadas
+Liste as regras logicas que a tela implica.
 
 Exemplos:
-- â€œNÃ£o Ã© possÃ­vel excluir um evento com ativaÃ§Ãµes vinculadasâ€
-- â€œFiltros sÃ£o combinÃ¡veis (data + evento + estado)â€
-- â€œDropdown de subtipo depende do tipo selecionadoâ€
+- "Nao e possivel excluir um evento com ativacoes vinculadas"
+- "Filtros sao combinaveis (data + evento + estado)"
+- "Dropdown de subtipo depende do tipo selecionado"
 
-Se algo nÃ£o estiver claro, marcar como **pendente de confirmaÃ§Ã£o**.
+Se algo nao estiver claro, marcar como **pendente de confirmacao**.
 
 ---
 
-## 6. DiferenÃ§as Entre o Original e a Nossa VersÃ£o
+## 6. Diferencas (Original x Novo Sistema)
 Divida em dois blocos:
 
-### Original:
-- Descrever fielmente o comportamento/elementos que existem hoje.
+### Original
+- Descrever fielmente comportamento/elementos do sistema atual.
 
-### Nossa VersÃ£o:
-- O que serÃ¡ mantido  
-- O que serÃ¡ mudado  
-- O que serÃ¡ removido  
-- O que serÃ¡ adicionado  
-
-*(Essa Ã© a parte mais importante do template.)*
+### Novo sistema
+- O que sera mantido
+- O que sera mudado
+- O que sera removido
+- O que sera adicionado
 
 ---
 
-## 7. PendÃªncias / DÃºvidas / InformaÃ§Ãµes Faltantes
-
+## 7. Pendencias / Duvidas
 Liste tudo que ainda precisa ser descoberto/analisado:
-
-- Campos cujo significado Ã© incerto  
-- Regras que precisam ser testadas no app original  
-- DecisÃµes que dependem do time/PO  
-- Fluxos que precisam de mais prints  
+- Campos cujo significado e incerto
+- Regras que precisam ser testadas no app original
+- Decisoes que dependem do time/PO
+- Fluxos que precisam de mais prints
 
 ---
 
-## 8. Desdobramento em Requisitos (Backlog da Tela)
+## 8. Backlog (requisitos)
 Transforme tudo em tarefas claras.
 
 ### Backend
-- Endpoints necessÃ¡rios  
-- Filtros aceitos  
-- Formatos de resposta  
-- Regras de validaÃ§Ã£o  
-- Regras de agregaÃ§Ã£o (se for dashboard)  
+- Endpoints necessarios
+- Filtros aceitos
+- Formatos de resposta
+- Regras de validacao
+- Regras de agregacao (se for dashboard)
 - Regras de CRUD (criar, editar, listar, excluir)
 
 ### Frontend
-- Componentes necessÃ¡rios  
-- Estados e interaÃ§Ãµes  
-- Comportamento dos filtros  
-- FormulÃ¡rios  
-- Modalidades de listagem  
-- LÃ³gica visual (ex.
+- Paginas/rotas
+- Componentes necessarios
+- Estados e interacoes
+- Comportamento dos filtros
+- Formularios e validacoes
+- Modalidades de listagem (tabela, cards, etc)
+
+---
+
+## 9. Modelo de dados (opcional)
+Se fizer sentido, documente entidades/tabelas envolvidas:
+- tabelas e campos
+- relacionamentos (1:N, N:N)
+- indices/constraints importantes

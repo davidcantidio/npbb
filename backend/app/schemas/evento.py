@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -13,6 +14,7 @@ class EventoListItem(BaseModel):
     id: int
     qr_code_url: Optional[str] = None
     nome: str
+    investimento: Optional[Decimal] = None
 
     data_inicio_prevista: Optional[date] = None
     data_fim_prevista: Optional[date] = None
@@ -24,7 +26,7 @@ class EventoListItem(BaseModel):
 
     diretoria_id: Optional[int] = None
     agencia_id: int
-    status: str
+    status_id: int
 
     created_at: datetime
     updated_at: datetime
@@ -40,6 +42,7 @@ class EventoRead(BaseModel):
 
     nome: str
     descricao: str
+    investimento: Optional[Decimal] = None
 
     data_inicio_prevista: Optional[date] = None
     data_inicio_realizada: Optional[date] = None
@@ -62,7 +65,7 @@ class EventoRead(BaseModel):
     tag_ids: list[int] = Field(default_factory=list)
     territorio_ids: list[int] = Field(default_factory=list)
 
-    status: str
+    status_id: int
 
     created_at: datetime
     updated_at: datetime
@@ -73,6 +76,7 @@ class EventoRead(BaseModel):
 class EventoCreate(BaseModel):
     nome: str
     descricao: str
+    investimento: Decimal | None = None
     concorrencia: bool = False
     cidade: str
     estado: str
@@ -87,7 +91,7 @@ class EventoCreate(BaseModel):
     tag_ids: list[int] = Field(default_factory=list)
     territorio_ids: list[int] = Field(default_factory=list)
 
-    status: str = "Previsto"
+    status_id: int | None = None
 
     thumbnail: Optional[str] = None
     divisao_demandante_id: int | None = None
@@ -115,6 +119,7 @@ class EventoCreate(BaseModel):
 class EventoUpdate(BaseModel):
     nome: str | None = None
     descricao: str | None = None
+    investimento: Decimal | None = None
     concorrencia: bool | None = None
     cidade: str | None = None
     estado: str | None = None
@@ -129,7 +134,7 @@ class EventoUpdate(BaseModel):
     tag_ids: list[int] | None = None
     territorio_ids: list[int] | None = None
 
-    status: str | None = None
+    status_id: int | None = None
 
     thumbnail: str | None = None
     divisao_demandante_id: int | None = None

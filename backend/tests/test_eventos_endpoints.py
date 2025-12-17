@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 from sqlalchemy.pool import StaticPool
 from datetime import date
 from decimal import Decimal
@@ -14,6 +14,7 @@ from app.models.models import (
     DivisaoDemandante,
     Diretoria,
     Evento,
+    StatusEvento,
     SubtipoEvento,
     Tag,
     Territorio,
@@ -36,6 +37,13 @@ def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
     engine = make_engine()
     SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        for nome in ["Previsto", "A Confirmar", "Confirmado", "Realizado", "Cancelado"]:
+            exists = session.exec(select(StatusEvento).where(StatusEvento.nome == nome)).first()
+            if not exists:
+                session.add(StatusEvento(nome=nome))
+        session.commit()
     return engine
 
 
@@ -130,7 +138,10 @@ def seed_evento(
     inicio: date,
     fim: date,
     diretoria_id: int | None = None,
+    status_nome: str = "Previsto",
 ) -> Evento:
+    status = session.exec(select(StatusEvento).where(StatusEvento.nome == status_nome)).first()
+    assert status and status.id
     evento = Evento(
         nome=nome,
         descricao="descricao",
@@ -140,7 +151,7 @@ def seed_evento(
         agencia_id=agencia_id,
         tipo_id=tipo_id,
         diretoria_id=diretoria_id,
-        status="Previsto",
+        status_id=status.id,
         data_inicio_prevista=inicio,
         data_fim_prevista=fim,
     )
@@ -322,6 +333,10 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
         terr_a = seed_territorio(session, "Territorio A")
         terr_b = seed_territorio(session, "Territorio B")
         seed_user(session, "user@example.com", "Senha123!", "npbb")
+        status_previsto = session.exec(select(StatusEvento).where(StatusEvento.nome == "Previsto")).first()
+        status_cancelado = session.exec(select(StatusEvento).where(StatusEvento.nome == "Cancelado")).first()
+        assert status_previsto and status_previsto.id
+        assert status_cancelado and status_cancelado.id
         ag1_id = ag1.id
         tipo_id = tipo.id
         div_a_id = div_a.id
@@ -330,6 +345,8 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
         tag_b_id = tag_b.id
         terr_a_id = terr_a.id
         terr_b_id = terr_b.id
+        previsto_id = status_previsto.id
+        cancelado_id = status_cancelado.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
@@ -339,11 +356,14 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
         json={
             "nome": "Evento Novo",
             "descricao": "descricao",
+            "investimento": "100.00",
             "cidade": "Sao Paulo",
             "estado": "sp",
             "agencia_id": ag1_id,
             "tipo_id": tipo_id,
             "divisao_demandante_id": div_a_id,
+            "data_inicio_prevista": "2099-01-01",
+            "data_fim_prevista": "2099-01-02",
             "tag_ids": [tag_a_id],
             "territorio_ids": [terr_a_id],
         },
@@ -354,6 +374,8 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     assert created["nome"] == "Evento Novo"
     assert created["estado"] == "SP"
     assert created["divisao_demandante_id"] == div_a_id
+    assert Decimal(str(created["investimento"])) == Decimal("100.00")
+    assert created["status_id"] == previsto_id
     assert created["tag_ids"] == [tag_a_id]
     assert created["territorio_ids"] == [terr_a_id]
 
@@ -366,6 +388,7 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
             "cidade": "Rio de Janeiro",
             "estado": "rj",
             "divisao_demandante_id": div_b_id,
+            "status_id": cancelado_id,
             "tag_ids": [tag_b_id],
             "territorio_ids": [terr_a_id, terr_b_id],
         },
@@ -375,6 +398,7 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     assert updated["cidade"] == "Rio de Janeiro"
     assert updated["estado"] == "RJ"
     assert updated["divisao_demandante_id"] == div_b_id
+    assert updated["status_id"] == cancelado_id
     assert updated["tag_ids"] == [tag_b_id]
     assert updated["territorio_ids"] == sorted([terr_a_id, terr_b_id])
 
@@ -482,3 +506,24 @@ def test_evento_all_dominios(client, engine):
 
     diretorias_search = client.get("/evento/all/diretorias?search=aud", headers=headers).json()
     assert any(d["id"] == diretoria_b_id for d in diretorias_search)
+
+    statuses = client.get("/evento/all/status-evento", headers=headers).json()
+    assert any(s["nome"] == "Previsto" for s in statuses)
+
+
+def test_evento_criar_tag_dinamica(client, engine):
+    with Session(engine) as session:
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.post("/evento/tags", headers=headers, json={"nome": "Nova Tag"})
+    assert resp.status_code == 201
+    tag = resp.json()
+    assert tag["id"]
+    assert tag["nome"] == "Nova Tag"
+
+    resp_2 = client.post("/evento/tags", headers=headers, json={"nome": "Nova Tag"})
+    assert resp_2.status_code == 200
+    assert resp_2.json()["id"] == tag["id"]

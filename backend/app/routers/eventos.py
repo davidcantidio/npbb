@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy import delete as sa_delete
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.core.auth import get_current_user
@@ -34,7 +35,9 @@ from app.models.models import (
 from app.schemas.dominios import (
     DivisaoDemandanteRead,
     DiretoriaRead,
+    StatusEventoRead,
     SubtipoEventoRead,
+    TagCreate,
     TagRead,
     TerritorioRead,
     TipoEventoRead,
@@ -144,21 +147,44 @@ def _normalize_estado(value: str | None) -> str | None:
     return text.upper() if text else None
 
 
-def _parse_status(value: str | None) -> StatusEvento | None:
-    if value is None:
-        return None
-    raw = str(value).strip()
-    if not raw:
-        return None
-    try:
-        return StatusEvento(raw)
-    except ValueError:
-        allowed = ", ".join([s.value for s in StatusEvento])
+STATUS_PREVISTO = "Previsto"
+STATUS_A_CONFIRMAR = "A Confirmar"
+STATUS_CONFIRMADO = "Confirmado"
+STATUS_REALIZADO = "Realizado"
+STATUS_CANCELADO = "Cancelado"
+
+
+def _infer_status_nome(data_inicio_prevista: date | None, data_fim_prevista: date | None) -> str:
+    """Infere o nome do status quando o cliente nao envia `status_id`.
+
+    Regra exigida:
+    - se `data_inicio_prevista` > hoje -> Previsto
+
+    Complemento:
+    - se `data_fim_prevista` < hoje -> Realizado
+    - caso contrario -> Confirmado
+    - se nao houver datas -> A Confirmar
+    """
+    today = date.today()
+    if data_inicio_prevista and data_inicio_prevista > today:
+        return STATUS_PREVISTO
+    if data_fim_prevista and data_fim_prevista < today:
+        return STATUS_REALIZADO
+    if data_inicio_prevista and data_inicio_prevista <= today:
+        return STATUS_CONFIRMADO
+    return STATUS_A_CONFIRMAR
+
+
+def _get_status_id_by_nome(session: Session, nome: str) -> int:
+    row = session.exec(select(StatusEvento).where(func.lower(StatusEvento.nome) == nome.lower())).first()
+    if not row or row.id is None:
         _raise_http(
-            status.HTTP_400_BAD_REQUEST,
-            code="STATUS_INVALID",
-            message=f"Status invalido. Use um de: {allowed}",
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="STATUS_NOT_CONFIGURED",
+            message=f"Status '{nome}' nao configurado no banco",
         )
+    return row.id
+
 
 def _normalize_unique_ids(values: list[int] | None, *, code: str, message: str) -> list[int]:
     if not values:
@@ -232,7 +258,12 @@ def criar_evento(
     for territorio_id in territorio_ids:
         _validate_fk(session, Territorio, territorio_id, "TERRITORIO_NOT_FOUND", "Territorio nao encontrado")
 
-    status_enum = _parse_status(payload.status) or StatusEvento.PREVISTO
+    status_id = payload.status_id
+    if status_id is not None:
+        _validate_fk(session, StatusEvento, status_id, "STATUS_NOT_FOUND", "Status nao encontrado")
+    else:
+        status_nome = _infer_status_nome(payload.data_inicio_prevista, payload.data_fim_prevista)
+        status_id = _get_status_id_by_nome(session, status_nome)
 
     evento = Evento(
         thumbnail=_normalize_str(payload.thumbnail),
@@ -240,6 +271,7 @@ def criar_evento(
         qr_code_url=_normalize_str(payload.qr_code_url),
         nome=_normalize_str(payload.nome) or "",
         descricao=_normalize_str(payload.descricao) or "",
+        investimento=payload.investimento,
         data_inicio_prevista=payload.data_inicio_prevista,
         data_inicio_realizada=payload.data_inicio_realizada,
         data_fim_prevista=payload.data_fim_prevista,
@@ -254,7 +286,7 @@ def criar_evento(
         gestor_id=payload.gestor_id,
         tipo_id=payload.tipo_id,
         subtipo_id=payload.subtipo_id,
-        status=status_enum,
+        status_id=status_id,
     )
     session.add(evento)
     session.flush()
@@ -271,6 +303,38 @@ def criar_evento(
     session.refresh(evento)
     read = EventoRead.model_validate(evento, from_attributes=True)
     return read.model_copy(update={"tag_ids": tag_ids, "territorio_ids": territorio_ids})
+
+
+@router.post("/tags", response_model=TagRead, status_code=status.HTTP_201_CREATED)
+def criar_tag(
+    payload: TagCreate,
+    response: Response,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    nome = _normalize_str(payload.nome)
+    if not nome:
+        _raise_http(status.HTTP_400_BAD_REQUEST, code="TAG_NAME_REQUIRED", message="nome obrigatorio")
+
+    existing = session.exec(select(Tag).where(func.lower(Tag.nome) == nome.lower())).first()
+    if existing:
+        response.status_code = status.HTTP_200_OK
+        return existing
+
+    tag = Tag(nome=nome)
+    session.add(tag)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        existing = session.exec(select(Tag).where(func.lower(Tag.nome) == nome.lower())).first()
+        if existing:
+            response.status_code = status.HTTP_200_OK
+            return existing
+        raise
+
+    session.refresh(tag)
+    return tag
 
 
 @router.put("/{evento_id}", response_model=EventoRead)
@@ -340,9 +404,20 @@ def atualizar_evento(
             "Divisao demandante nao encontrada",
         )
 
-    if "status" in data:
-        status_enum = _parse_status(data.get("status"))
-        data["status"] = status_enum
+    if "status_id" in data:
+        if data.get("status_id") is None:
+            _raise_http(
+                status.HTTP_400_BAD_REQUEST,
+                code="STATUS_REQUIRED",
+                message="status_id obrigatorio",
+            )
+        _validate_fk(
+            session,
+            StatusEvento,
+            data.get("status_id"),
+            "STATUS_NOT_FOUND",
+            "Status nao encontrado",
+        )
 
     if "nome" in data:
         data["nome"] = _normalize_str(data["nome"])
@@ -477,6 +552,30 @@ def listar_estados(
     rows = session.exec(query.order_by(func.lower(Evento.estado))).all()
     values = [uf for uf in rows if uf and str(uf).strip()]
     return values
+
+
+@router.get("/all/status-evento", response_model=list[StatusEventoRead])
+def listar_status_evento(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(StatusEvento)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(StatusEvento.nome.ilike(like))
+    desired = [
+        STATUS_PREVISTO,
+        STATUS_A_CONFIRMAR,
+        STATUS_CONFIRMADO,
+        STATUS_REALIZADO,
+        STATUS_CANCELADO,
+    ]
+    order_case = case(
+        *[(func.lower(StatusEvento.nome) == nome.lower(), idx) for idx, nome in enumerate(desired, start=1)],
+        else_=99,
+    )
+    return session.exec(query.order_by(order_case, StatusEvento.nome)).all()
 
 
 @router.get("/all/divisoes-demandantes", response_model=list[DivisaoDemandanteRead])

@@ -1,6 +1,6 @@
 """Esquemas de leitura para dominios (dicionarios) usados no front."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DiretoriaRead(BaseModel):
@@ -44,3 +44,14 @@ class TagRead(BaseModel):
     nome: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StatusEventoRead(BaseModel):
+    id: int
+    nome: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TagCreate(BaseModel):
+    nome: str = Field(min_length=1, max_length=80)

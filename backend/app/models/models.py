@@ -59,11 +59,14 @@ class PasswordResetToken(SQLModel, table=True):
     used_at: Optional[datetime] = None
 
 
-class StatusEvento(str, Enum):
-    PREVISTO = "Previsto"
-    REALIZADO = "Realizado"
-    CANCELADO = "Cancelado"
-    EM_ANDAMENTO = "Em andamento"
+class StatusEvento(SQLModel, table=True):
+    __tablename__ = "status_evento"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nome: str = Field(max_length=30, unique=True)
+    created_at: datetime = Field(default_factory=now_utc)
+
+    eventos: List["Evento"] = Relationship(back_populates="status")
 
 
 class TipoInvestimento(str, Enum):
@@ -179,6 +182,7 @@ class Evento(SQLModel, table=True):
 
     nome: str = Field(max_length=100)
     descricao: str = Field(max_length=240)
+    investimento: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2)))
 
     data_inicio_prevista: Optional[date] = None
     data_inicio_realizada: Optional[date] = None
@@ -199,7 +203,7 @@ class Evento(SQLModel, table=True):
     tipo_id: int = Field(foreign_key="tipo_evento.id")
     subtipo_id: Optional[int] = Field(default=None, foreign_key="subtipo_evento.id")
 
-    status: StatusEvento
+    status_id: int = Field(foreign_key="status_evento.id")
 
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(default_factory=now_utc)
@@ -210,6 +214,7 @@ class Evento(SQLModel, table=True):
     gestor: Optional[Funcionario] = Relationship(back_populates="eventos_gestor")
     tipo: Optional[TipoEvento] = Relationship(back_populates="eventos")
     subtipo: Optional[SubtipoEvento] = Relationship(back_populates="eventos")
+    status: Optional[StatusEvento] = Relationship(back_populates="eventos")
 
     territorios: List["EventoTerritorio"] = Relationship(back_populates="evento")
     tags: List["EventoTag"] = Relationship(back_populates="evento")

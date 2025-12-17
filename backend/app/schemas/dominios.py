@@ -10,6 +10,13 @@ class DiretoriaRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DivisaoDemandanteRead(BaseModel):
+    id: int
+    nome: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TipoEventoRead(BaseModel):
     id: int
     nome: str
@@ -37,4 +44,3 @@ class TagRead(BaseModel):
     nome: str
 
     model_config = ConfigDict(from_attributes=True)
-

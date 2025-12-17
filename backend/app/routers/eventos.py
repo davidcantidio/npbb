@@ -15,6 +15,7 @@ from app.models.models import (
     Agencia,
     Ativacao,
     CotaCortesia,
+    DivisaoDemandante,
     Diretoria,
     Evento,
     EventoTag,
@@ -31,6 +32,7 @@ from app.models.models import (
     UsuarioTipo,
 )
 from app.schemas.dominios import (
+    DivisaoDemandanteRead,
     DiretoriaRead,
     SubtipoEventoRead,
     TagRead,
@@ -210,6 +212,13 @@ def criar_evento(
                 message="Subtipo nao pertence ao tipo informado",
             )
     _validate_fk(session, Diretoria, payload.diretoria_id, "DIRETORIA_NOT_FOUND", "Diretoria nao encontrada")
+    _validate_fk(
+        session,
+        DivisaoDemandante,
+        payload.divisao_demandante_id,
+        "DIVISAO_DEMANDANTE_NOT_FOUND",
+        "Divisao demandante nao encontrada",
+    )
     _validate_fk(session, Funcionario, payload.gestor_id, "GESTOR_NOT_FOUND", "Gestor nao encontrado")
 
     tag_ids = _normalize_unique_ids(
@@ -227,7 +236,7 @@ def criar_evento(
 
     evento = Evento(
         thumbnail=_normalize_str(payload.thumbnail),
-        divisao_demandante=_normalize_str(payload.divisao_demandante),
+        divisao_demandante_id=payload.divisao_demandante_id,
         qr_code_url=_normalize_str(payload.qr_code_url),
         nome=_normalize_str(payload.nome) or "",
         descricao=_normalize_str(payload.descricao) or "",
@@ -322,6 +331,14 @@ def atualizar_evento(
         _validate_fk(session, Diretoria, data.get("diretoria_id"), "DIRETORIA_NOT_FOUND", "Diretoria nao encontrada")
     if "gestor_id" in data:
         _validate_fk(session, Funcionario, data.get("gestor_id"), "GESTOR_NOT_FOUND", "Gestor nao encontrado")
+    if "divisao_demandante_id" in data:
+        _validate_fk(
+            session,
+            DivisaoDemandante,
+            data.get("divisao_demandante_id"),
+            "DIVISAO_DEMANDANTE_NOT_FOUND",
+            "Divisao demandante nao encontrada",
+        )
 
     if "status" in data:
         status_enum = _parse_status(data.get("status"))
@@ -337,8 +354,6 @@ def atualizar_evento(
         data["estado"] = _normalize_estado(data["estado"])
     if "thumbnail" in data:
         data["thumbnail"] = _normalize_str(data["thumbnail"])
-    if "divisao_demandante" in data:
-        data["divisao_demandante"] = _normalize_str(data["divisao_demandante"])
     if "qr_code_url" in data:
         data["qr_code_url"] = _normalize_str(data["qr_code_url"])
 
@@ -440,9 +455,13 @@ def excluir_evento(
 def listar_cidades(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
+    estado: str | None = Query(None, min_length=1, max_length=10),
 ):
     query = select(Evento.cidade).where(Evento.cidade.is_not(None)).distinct()
     query = _apply_visibility(query, current_user)
+    if estado:
+        uf = estado.strip().lower()
+        query = query.where(func.lower(Evento.estado) == uf)
     rows = session.exec(query.order_by(func.lower(Evento.cidade))).all()
     values = [c for c in rows if c and str(c).strip()]
     return values
@@ -458,6 +477,19 @@ def listar_estados(
     rows = session.exec(query.order_by(func.lower(Evento.estado))).all()
     values = [uf for uf in rows if uf and str(uf).strip()]
     return values
+
+
+@router.get("/all/divisoes-demandantes", response_model=list[DivisaoDemandanteRead])
+def listar_divisoes_demandantes(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    query = select(DivisaoDemandante)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(DivisaoDemandante.nome.ilike(like))
+    return session.exec(query.order_by(DivisaoDemandante.nome)).all()
 
 
 @router.get("/all/diretorias", response_model=list[DiretoriaRead])

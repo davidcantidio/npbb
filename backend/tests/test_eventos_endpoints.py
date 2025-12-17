@@ -11,6 +11,7 @@ from app.models.models import (
     Agencia,
     Ativacao,
     CotaCortesia,
+    DivisaoDemandante,
     Diretoria,
     Evento,
     SubtipoEvento,
@@ -88,6 +89,14 @@ def seed_territorio(session: Session, nome: str = "territorio-a") -> Territorio:
     session.commit()
     session.refresh(territorio)
     return territorio
+
+
+def seed_divisao(session: Session, nome: str = "Esportes") -> DivisaoDemandante:
+    divisao = DivisaoDemandante(nome=nome)
+    session.add(divisao)
+    session.commit()
+    session.refresh(divisao)
+    return divisao
 
 
 def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
@@ -252,9 +261,11 @@ def test_evento_dicionarios_cidades_estados(client, engine):
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
     cities = client.get("/evento/all/cidades", headers={"Authorization": f"Bearer {token}"}).json()
+    cities_sp = client.get("/evento/all/cidades?estado=sp", headers={"Authorization": f"Bearer {token}"}).json()
     states = client.get("/evento/all/estados", headers={"Authorization": f"Bearer {token}"}).json()
     assert "Sao Paulo" in cities
     assert "Rio de Janeiro" in cities
+    assert cities_sp == ["Sao Paulo"]
     assert "SP" in states
     assert "RJ" in states
 
@@ -304,6 +315,8 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
+        div_a = seed_divisao(session, "Esportes")
+        div_b = seed_divisao(session, "Agro")
         tag_a = seed_tag(session, "tag-a")
         tag_b = seed_tag(session, "tag-b")
         terr_a = seed_territorio(session, "Territorio A")
@@ -311,6 +324,8 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
         seed_user(session, "user@example.com", "Senha123!", "npbb")
         ag1_id = ag1.id
         tipo_id = tipo.id
+        div_a_id = div_a.id
+        div_b_id = div_b.id
         tag_a_id = tag_a.id
         tag_b_id = tag_b.id
         terr_a_id = terr_a.id
@@ -328,6 +343,7 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
             "estado": "sp",
             "agencia_id": ag1_id,
             "tipo_id": tipo_id,
+            "divisao_demandante_id": div_a_id,
             "tag_ids": [tag_a_id],
             "territorio_ids": [terr_a_id],
         },
@@ -337,6 +353,7 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     assert created["id"]
     assert created["nome"] == "Evento Novo"
     assert created["estado"] == "SP"
+    assert created["divisao_demandante_id"] == div_a_id
     assert created["tag_ids"] == [tag_a_id]
     assert created["territorio_ids"] == [terr_a_id]
 
@@ -348,6 +365,7 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
         json={
             "cidade": "Rio de Janeiro",
             "estado": "rj",
+            "divisao_demandante_id": div_b_id,
             "tag_ids": [tag_b_id],
             "territorio_ids": [terr_a_id, terr_b_id],
         },
@@ -356,6 +374,7 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     updated = update_resp.json()
     assert updated["cidade"] == "Rio de Janeiro"
     assert updated["estado"] == "RJ"
+    assert updated["divisao_demandante_id"] == div_b_id
     assert updated["tag_ids"] == [tag_b_id]
     assert updated["territorio_ids"] == sorted([terr_a_id, terr_b_id])
 
@@ -410,6 +429,10 @@ def test_evento_all_dominios(client, engine):
         diretoria_b = seed_diretoria(session, "audit")
         diretoria_a_id = diretoria_a.id
         diretoria_b_id = diretoria_b.id
+        divisao_a = seed_divisao(session, "Esportes")
+        divisao_b = seed_divisao(session, "Agro")
+        divisao_a_id = divisao_a.id
+        divisao_b_id = divisao_b.id
 
         tipo_a = seed_tipo(session, "Congresso")
         tipo_b = seed_tipo(session, "Feira")
@@ -435,6 +458,10 @@ def test_evento_all_dominios(client, engine):
     diretorias = client.get("/evento/all/diretorias", headers=headers).json()
     assert any(d["id"] == diretoria_a_id for d in diretorias)
     assert any(d["id"] == diretoria_b_id for d in diretorias)
+
+    divisoes = client.get("/evento/all/divisoes-demandantes", headers=headers).json()
+    assert any(d["id"] == divisao_a_id for d in divisoes)
+    assert any(d["id"] == divisao_b_id for d in divisoes)
 
     tipos = client.get("/evento/all/tipos-evento", headers=headers).json()
     assert any(t["id"] == tipo_a_id for t in tipos)

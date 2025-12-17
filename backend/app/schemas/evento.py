@@ -35,7 +35,7 @@ class EventoListItem(BaseModel):
 class EventoRead(BaseModel):
     id: int
     thumbnail: Optional[str] = None
-    divisao_demandante: Optional[str] = None
+    divisao_demandante_id: Optional[int] = None
     qr_code_url: Optional[str] = None
 
     nome: str
@@ -90,7 +90,7 @@ class EventoCreate(BaseModel):
     status: str = "Previsto"
 
     thumbnail: Optional[str] = None
-    divisao_demandante: Optional[str] = None
+    divisao_demandante_id: int | None = None
     qr_code_url: Optional[str] = None
 
     data_inicio_prevista: Optional[date] = None
@@ -132,7 +132,7 @@ class EventoUpdate(BaseModel):
     status: str | None = None
 
     thumbnail: str | None = None
-    divisao_demandante: str | None = None
+    divisao_demandante_id: int | None = None
     qr_code_url: str | None = None
 
     data_inicio_prevista: date | None = None

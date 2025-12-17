@@ -112,6 +112,16 @@ class Diretoria(SQLModel, table=True):
     cotas: List["CotaCortesia"] = Relationship(back_populates="diretoria")
 
 
+class DivisaoDemandante(SQLModel, table=True):
+    __tablename__ = "divisao_demandante"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nome: str = Field(max_length=100, unique=True)
+    created_at: datetime = Field(default_factory=now_utc)
+
+    eventos: List["Evento"] = Relationship(back_populates="divisao_demandante")
+
+
 class Funcionario(SQLModel, table=True):
     __tablename__ = "funcionario"
 
@@ -163,8 +173,8 @@ class Evento(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     thumbnail: Optional[str] = Field(default=None, max_length=500)
-    # No banco é ENUM "divisao", aqui mantemos como str para flexibilidade futura
-    divisao_demandante: Optional[str] = Field(default=None, max_length=100)
+    # Divisao demandante (lookup table).
+    divisao_demandante_id: Optional[int] = Field(default=None, foreign_key="divisao_demandante.id")
     qr_code_url: Optional[str] = Field(default=None, max_length=500)
 
     nome: str = Field(max_length=100)
@@ -196,6 +206,7 @@ class Evento(SQLModel, table=True):
 
     agencia: Optional[Agencia] = Relationship(back_populates="eventos")
     diretoria: Optional[Diretoria] = Relationship(back_populates="eventos")
+    divisao_demandante: Optional[DivisaoDemandante] = Relationship(back_populates="eventos")
     gestor: Optional[Funcionario] = Relationship(back_populates="eventos_gestor")
     tipo: Optional[TipoEvento] = Relationship(back_populates="eventos")
     subtipo: Optional[SubtipoEvento] = Relationship(back_populates="eventos")

@@ -30,9 +30,17 @@ const theme = createTheme({
   shape: { borderRadius: 12 },
   typography: {
     fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, -apple-system, sans-serif',
+    fontSize: 13,
     fontWeightRegular: 400,
     fontWeightMedium: 600,
     fontWeightBold: 700,
+  },
+  components: {
+    MuiTextField: { defaultProps: { size: "small" } },
+    MuiAutocomplete: { defaultProps: { size: "small" } },
+    MuiSelect: { defaultProps: { size: "small" } },
+    MuiFormControl: { defaultProps: { size: "small" } },
+    MuiChip: { defaultProps: { size: "small" } },
   },
 });
 
@@ -65,6 +73,14 @@ function AppRoutes() {
       />
       <Route
         path="/eventos/novo"
+        element={
+          <ProtectedRoute>
+            <NewEvent />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/eventos/:id/editar"
         element={
           <ProtectedRoute>
             <NewEvent />

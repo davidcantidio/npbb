@@ -6,7 +6,7 @@
 Tela que centraliza todas as informacoes de um evento e, no sistema original, agrega abas de modulos relacionados (Formulario de Lead, Gamificacao, Ativacoes, Questionario, etc).
 
 Status no novo sistema (MVP):
-- Frontend: existe a rota `/eventos/:id`, mas no MVP ela exibe apenas um JSON simples do evento (placeholder), sem abas.
+- Frontend: implementado em `/eventos/:id`, com exibicao estruturada dos dados (inclui datas previstas/realizadas, QRCode, diretoria e dominios relacionados).
 - Backend: CRUD de evento esta implementado em `/evento` (ver `docs/eventos_api.md`).
 
 ---
@@ -18,12 +18,16 @@ Status no novo sistema (MVP):
 ---
 
 ## 3. Conteudo (MVP)
-No MVP, a pagina de detalhe mostra os dados basicos do evento (como JSON ou card simples), incluindo:
+No MVP, a pagina de detalhe mostra os dados basicos do evento, incluindo:
 - Identificacao: `id`, `nome`
 - Local: `cidade`, `estado`
-- Organizacao: `diretoria_id`, `agencia_id`
-- Status e datas (previstas/realizadas)
+- Organizacao: `agencia_id`, `diretoria_id`, `divisao_demandante_id`
+- Status: `status_id` (FK para `status_evento`) + datas previstas
 - Relacionamentos N:N: `tag_ids`, `territorio_ids`
+
+Acoes disponiveis:
+- **Editar**: navega para `/eventos/:id/editar` (reutiliza o formulario e chama `PUT /evento/{id}`).
+- **Excluir**: confirma e chama `DELETE /evento/{id}` (pode retornar 409 se houver dependencias).
 
 ---
 
@@ -57,5 +61,6 @@ Observacao: endpoints por aba ainda nao estao implementados (apenas o CRUD basic
 - [ ] Endpoints por aba (lead form, gamificacao, ativacoes, questionario, etc)
 
 ### Frontend
-- [x] Rota `/eventos/:id` (placeholder)
-- [ ] UI completa de detalhe com tabs e edicao
+- [x] Rota `/eventos/:id` (detalhe do evento)
+- [x] Editar evento (rota `/eventos/:id/editar` + integracao `PUT /evento/{id}`)
+- [ ] UI completa de detalhe com tabs e edicao por aba (fase 2)

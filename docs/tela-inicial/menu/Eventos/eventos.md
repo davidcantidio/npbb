@@ -38,10 +38,10 @@ Colunas exibidas no front atual:
 1. **ID**
 2. **QRCode** (icone que abre `qr_code_url` em nova aba quando existir)
 3. **Nome do Evento** (link para `/eventos/:id`)
-4. **Periodo** (datas prevista/realizada)
+4. **Periodo** (datas previstas)
 5. **Cidade / UF**
 6. **Diretoria**
-7. **Status**
+7. **Status** (dropdown com cores)
 8. **Acoes** (ver / editar / excluir)
 
 ### 3.4 Paginacao
@@ -57,7 +57,8 @@ Colunas exibidas no front atual:
 | **+ Novo** | Abre formulario de criacao do evento (`/eventos/novo`) |
 | **Visualizar** | Abre detalhe do evento (`/eventos/:id`) (no MVP: placeholder) |
 | **Excluir** | Modal de confirmacao; chama `DELETE /evento/{id}` e exibe erro caso o backend bloqueie (409) |
-| **Editar** | Ainda nao implementado no front (botao desabilitado) |
+| **Editar** | Navega para `/eventos/:id/editar` (reutiliza o formulario e chama `PUT /evento/{id}`) |
+| **Status** | Dropdown na coluna **Status**; ao alterar, chama `PUT /evento/{id}` com `status_id` |
 | **Atualizar** | Recarrega os dados da listagem |
 | **Aplicar** | Aplica filtros e volta para pagina 1 |
 | **Limpar filtros** | Remove filtros e volta para pagina 1 |
@@ -68,6 +69,7 @@ Colunas exibidas no front atual:
 - Ordenacao: mais recente primeiro (backend ordena por `Evento.id desc`).
 - Exclusao bloqueada quando existir vinculo (o backend retorna `409 EVENTO_DELETE_BLOCKED` com `dependencies`).
 - Visibilidade: usuario `tipo_usuario=agencia` ve apenas eventos da propria `agencia_id`.
+- Status: exibido como chip com cores (Previsto=neutro, A Confirmar=warning, Confirmado=info, Realizado=success, Cancelado=error).
 
 ---
 
@@ -81,9 +83,11 @@ Colunas exibidas no front atual:
 - `GET /evento/all/cidades`
 - `GET /evento/all/estados`
 - `GET /evento/all/diretorias`
+- `GET /evento/all/status-evento`
 
 ### Acoes por linha
 - `GET /evento/{id}` (detalhe)
+- `PUT /evento/{id}` (atualizacao, incluindo `status_id`)
 - `DELETE /evento/{id}` (exclusao)
 
 Contrato completo dos endpoints: `docs/eventos_api.md`.
@@ -107,5 +111,5 @@ Contrato completo dos endpoints: `docs/eventos_api.md`.
 - [x] Botao **+ Novo** -> `/eventos/novo`
 - [x] Exclusao com modal e feedback de erro
 - [x] Coluna Diretoria na grid e filtro por Diretoria
-- [ ] Editar evento (tela + integracao `PUT /evento/{id}`)
+- [x] Editar evento (tela `/eventos/:id/editar` + integracao `PUT /evento/{id}`)
 - [ ] Exportacao CSV (quando o endpoint existir)

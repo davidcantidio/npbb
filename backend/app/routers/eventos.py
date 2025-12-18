@@ -79,6 +79,8 @@ def listar_eventos(
     estado: str | None = Query(None, min_length=1, max_length=10),
     cidade: str | None = Query(None, min_length=1, max_length=100),
     data: date | None = Query(None),
+    data_inicio: date | None = Query(None),
+    data_fim: date | None = Query(None),
     diretoria_id: int | None = Query(None, ge=1),
 ):
     """Lista eventos com paginação e filtros opcionais.
@@ -116,13 +118,30 @@ def listar_eventos(
         query = query.where(Evento.diretoria_id == diretoria_id)
         count_query = count_query.where(Evento.diretoria_id == diretoria_id)
 
-    if data:
+    if data_inicio and data_fim and data_fim < data_inicio:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="DATE_RANGE_INVALID",
+            message="data_fim deve ser maior/igual a data_inicio",
+        )
+
+    if data_inicio or data_fim:
+        inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)
+        fim = func.coalesce(Evento.data_fim_prevista, Evento.data_fim_realizada, inicio)
+        query = query.where(inicio.is_not(None))
+        count_query = count_query.where(inicio.is_not(None))
+
+        if data_inicio:
+            query = query.where(fim >= data_inicio)
+            count_query = count_query.where(fim >= data_inicio)
+        if data_fim:
+            query = query.where(inicio <= data_fim)
+            count_query = count_query.where(inicio <= data_fim)
+    elif data:
         inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)
         fim = func.coalesce(Evento.data_fim_prevista, Evento.data_fim_realizada, inicio)
         query = query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
-        count_query = (
-            count_query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
-        )
+        count_query = count_query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
 
     total = session.exec(count_query).one()
     items = session.exec(query.order_by(Evento.id.desc()).offset(skip).limit(limit)).all()
@@ -150,6 +169,8 @@ def exportar_eventos_csv(
     estado: str | None = Query(None, min_length=1, max_length=10),
     cidade: str | None = Query(None, min_length=1, max_length=100),
     data: date | None = Query(None),
+    data_inicio: date | None = Query(None),
+    data_fim: date | None = Query(None),
     diretoria_id: int | None = Query(None, ge=1),
 ):
     """Exporta a listagem de eventos em CSV (com filtros opcionais).
@@ -175,7 +196,22 @@ def exportar_eventos_csv(
     if diretoria_id is not None:
         query = query.where(Evento.diretoria_id == diretoria_id)
 
-    if data:
+    if data_inicio and data_fim and data_fim < data_inicio:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="DATE_RANGE_INVALID",
+            message="data_fim deve ser maior/igual a data_inicio",
+        )
+
+    if data_inicio or data_fim:
+        inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)
+        fim = func.coalesce(Evento.data_fim_prevista, Evento.data_fim_realizada, inicio)
+        query = query.where(inicio.is_not(None))
+        if data_inicio:
+            query = query.where(fim >= data_inicio)
+        if data_fim:
+            query = query.where(inicio <= data_fim)
+    elif data:
         inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)
         fim = func.coalesce(Evento.data_fim_prevista, Evento.data_fim_realizada, inicio)
         query = query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)

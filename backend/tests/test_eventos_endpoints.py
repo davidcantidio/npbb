@@ -239,6 +239,22 @@ def test_evento_list_paginado_e_filtros(client, engine):
     assert resp_date.headers.get("X-Total-Count") == "1"
     assert resp_date.json()[0]["nome"] == "Evento Beta"
 
+    resp_range = client.get(
+        "/evento?data_inicio=2025-02-11&data_fim=2025-02-20",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_range.status_code == 200
+    assert resp_range.headers.get("X-Total-Count") == "1"
+    assert resp_range.json()[0]["nome"] == "Evento Beta"
+
+    resp_bad_range = client.get(
+        "/evento?data_inicio=2025-02-10&data_fim=2025-02-01",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_bad_range.status_code == 400
+    detail = resp_bad_range.json()["detail"]
+    assert detail["code"] == "DATE_RANGE_INVALID"
+
     resp_dir = client.get(f"/evento?diretoria_id={dir_a_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp_dir.status_code == 200
     assert resp_dir.headers.get("X-Total-Count") == "1"

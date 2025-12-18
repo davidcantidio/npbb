@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -126,6 +128,191 @@ def listar_eventos(
     items = session.exec(query.order_by(Evento.id.desc()).offset(skip).limit(limit)).all()
     response.headers["X-Total-Count"] = str(total)
     return items
+
+
+def _format_csv_date(value: date | None) -> str:
+    if not value:
+        return ""
+    return value.strftime("%Y-%m-%d")
+
+
+def _csv_filename() -> str:
+    return "eventos.csv"
+
+
+@router.get("/export/csv")
+def exportar_eventos_csv(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(5000, ge=1, le=10000),
+    search: str | None = Query(None, min_length=1, max_length=100),
+    estado: str | None = Query(None, min_length=1, max_length=10),
+    cidade: str | None = Query(None, min_length=1, max_length=100),
+    data: date | None = Query(None),
+    diretoria_id: int | None = Query(None, ge=1),
+):
+    """Exporta a listagem de eventos em CSV (com filtros opcionais).
+
+    - respeita as mesmas regras de visibilidade de `/evento`
+    - inclui BOM UTF-8 (Excel-friendly)
+    """
+    query = select(Evento)
+    query = _apply_visibility(query, current_user)
+
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(Evento.nome.ilike(like))
+
+    if estado:
+        uf = estado.strip().lower()
+        query = query.where(func.lower(Evento.estado) == uf)
+
+    if cidade:
+        city = cidade.strip().lower()
+        query = query.where(func.lower(Evento.cidade) == city)
+
+    if diretoria_id is not None:
+        query = query.where(Evento.diretoria_id == diretoria_id)
+
+    if data:
+        inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)
+        fim = func.coalesce(Evento.data_fim_prevista, Evento.data_fim_realizada, inicio)
+        query = query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
+
+    eventos = session.exec(query.order_by(Evento.id.desc()).offset(skip).limit(limit)).all()
+
+    evento_ids = [e.id for e in eventos if e.id is not None]
+    agencia_ids: set[int] = {e.agencia_id for e in eventos if e.agencia_id}
+    diretoria_ids: set[int] = {e.diretoria_id for e in eventos if e.diretoria_id}
+    status_ids: set[int] = {e.status_id for e in eventos if e.status_id}
+    tipo_ids: set[int] = {e.tipo_id for e in eventos if e.tipo_id}
+    subtipo_ids: set[int] = {e.subtipo_id for e in eventos if e.subtipo_id}
+    divisao_ids: set[int] = {e.divisao_demandante_id for e in eventos if e.divisao_demandante_id}
+
+    def fetch_nome_map(model_cls, ids: set[int]) -> dict[int, str]:
+        if not ids:
+            return {}
+        rows = session.exec(
+            select(model_cls.id, model_cls.nome).where(model_cls.id.in_(sorted(ids)))
+        ).all()
+        return {
+            int(row_id): str(nome)
+            for row_id, nome in rows
+            if row_id is not None and nome is not None
+        }
+
+    agencia_nome_by_id = fetch_nome_map(Agencia, agencia_ids)
+    diretoria_nome_by_id = fetch_nome_map(Diretoria, diretoria_ids)
+    status_nome_by_id = fetch_nome_map(StatusEvento, status_ids)
+    tipo_nome_by_id = fetch_nome_map(TipoEvento, tipo_ids)
+    subtipo_nome_by_id = fetch_nome_map(SubtipoEvento, subtipo_ids)
+    divisao_nome_by_id = fetch_nome_map(DivisaoDemandante, divisao_ids)
+
+    tags_by_evento: dict[int, list[str]] = {}
+    territorios_by_evento: dict[int, list[str]] = {}
+
+    if evento_ids:
+        tag_rows = session.exec(
+            select(EventoTag.evento_id, Tag.nome)
+            .join(Tag, EventoTag.tag_id == Tag.id)
+            .where(EventoTag.evento_id.in_(evento_ids))
+            .order_by(EventoTag.evento_id, Tag.nome)
+        ).all()
+        for evento_id, nome in tag_rows:
+            if evento_id is None or not nome:
+                continue
+            tags_by_evento.setdefault(int(evento_id), []).append(str(nome))
+
+        territorio_rows = session.exec(
+            select(EventoTerritorio.evento_id, Territorio.nome)
+            .join(Territorio, EventoTerritorio.territorio_id == Territorio.id)
+            .where(EventoTerritorio.evento_id.in_(evento_ids))
+            .order_by(EventoTerritorio.evento_id, Territorio.nome)
+        ).all()
+        for evento_id, nome in territorio_rows:
+            if evento_id is None or not nome:
+                continue
+            territorios_by_evento.setdefault(int(evento_id), []).append(str(nome))
+
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer, delimiter=";")
+
+    writer.writerow(
+        [
+            "id",
+            "nome",
+            "descricao",
+            "agencia_id",
+            "agencia_nome",
+            "diretoria_id",
+            "diretoria_nome",
+            "divisao_demandante_id",
+            "divisao_demandante_nome",
+            "tipo_id",
+            "tipo_nome",
+            "subtipo_id",
+            "subtipo_nome",
+            "status_id",
+            "status_nome",
+            "estado",
+            "cidade",
+            "data_inicio_prevista",
+            "data_fim_prevista",
+            "data_inicio_realizada",
+            "data_fim_realizada",
+            "investimento",
+            "territorios",
+            "tags",
+            "qr_code_url",
+            "created_at",
+            "updated_at",
+        ]
+    )
+
+    for e in eventos:
+        eid = int(e.id) if e.id is not None else None
+        tags = ", ".join(tags_by_evento.get(eid or -1, [])) if eid is not None else ""
+        territorios = (
+            ", ".join(territorios_by_evento.get(eid or -1, [])) if eid is not None else ""
+        )
+        writer.writerow(
+            [
+                eid or "",
+                e.nome,
+                e.descricao,
+                e.agencia_id,
+                agencia_nome_by_id.get(e.agencia_id, ""),
+                e.diretoria_id or "",
+                diretoria_nome_by_id.get(e.diretoria_id or -1, "") if e.diretoria_id else "",
+                e.divisao_demandante_id or "",
+                divisao_nome_by_id.get(e.divisao_demandante_id or -1, "")
+                if e.divisao_demandante_id
+                else "",
+                e.tipo_id,
+                tipo_nome_by_id.get(e.tipo_id, ""),
+                e.subtipo_id or "",
+                subtipo_nome_by_id.get(e.subtipo_id or -1, "") if e.subtipo_id else "",
+                e.status_id,
+                status_nome_by_id.get(e.status_id, ""),
+                e.estado,
+                e.cidade,
+                _format_csv_date(e.data_inicio_prevista),
+                _format_csv_date(e.data_fim_prevista),
+                _format_csv_date(e.data_inicio_realizada),
+                _format_csv_date(e.data_fim_realizada),
+                str(e.investimento) if e.investimento is not None else "",
+                territorios,
+                tags,
+                e.qr_code_url or "",
+                e.created_at.isoformat() if e.created_at else "",
+                e.updated_at.isoformat() if e.updated_at else "",
+            ]
+        )
+
+    content = "\ufeff" + buffer.getvalue()
+    headers = {"Content-Disposition": f'attachment; filename="{_csv_filename()}"'}
+    return Response(content=content, media_type="text/csv; charset=utf-8", headers=headers)
 
 
 def _validate_fk(session: Session, model_cls, obj_id: int | None, code: str, message: str) -> None:

@@ -1,3 +1,5 @@
+import csv
+import io
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -527,3 +529,51 @@ def test_evento_criar_tag_dinamica(client, engine):
     resp_2 = client.post("/evento/tags", headers=headers, json={"nome": "Nova Tag"})
     assert resp_2.status_code == 200
     assert resp_2.json()["id"] == tag["id"]
+
+
+def test_evento_export_csv_respeita_visibilidade_agencia(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        ag2 = seed_agencia(session, "Sherpa", "sherpa.com.br")
+        tipo = seed_tipo(session)
+        ag1_id = ag1.id
+
+        e1 = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A1",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        e1_id = e1.id
+        seed_evento(
+            session,
+            agencia_id=ag2.id,
+            tipo_id=tipo.id,
+            nome="Evento A2",
+            cidade="Rio de Janeiro",
+            estado="RJ",
+            inicio=date(2025, 1, 2),
+            fim=date(2025, 1, 2),
+        )
+
+        seed_user(session, "agencia@agencia.com.br", "Senha123!", "agencia", agencia_id=ag1.id)
+
+    token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = client.get("/evento/export/csv", headers=headers)
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers.get("content-type", "")
+    assert "eventos.csv" in resp.headers.get("content-disposition", "")
+
+    text = resp.content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text), delimiter=";")
+    rows = list(reader)
+    assert rows
+    assert ag1_id is not None
+    assert e1_id is not None
+    assert all(int(row["agencia_id"]) == ag1_id for row in rows)
+    assert any(int(row["id"]) == e1_id for row in rows)

@@ -85,6 +85,9 @@ Colunas exibidas no front atual:
 - `GET /evento/all/diretorias`
 - `GET /evento/all/status-evento`
 
+### Exportacao
+- `GET /evento/export/csv` (download da listagem filtrada)
+
 ### Acoes por linha
 - `GET /evento/{id}` (detalhe)
 - `PUT /evento/{id}` (atualizacao, incluindo `status_id`)
@@ -103,7 +106,7 @@ Contrato completo dos endpoints: `docs/eventos_api.md`.
 - [x] `PUT /evento/{id}`
 - [x] `DELETE /evento/{id}` com validacao de dependencias (409 com `dependencies`)
 - [x] Dicionarios: `GET /evento/all/cidades`, `GET /evento/all/estados`, `GET /evento/all/diretorias`
-- [ ] Exportacao CSV (a definir)
+- [x] Exportacao CSV (`GET /evento/export/csv`)
 
 ### Frontend
 - [x] Pagina `/eventos` com filtros e paginacao
@@ -112,4 +115,4 @@ Contrato completo dos endpoints: `docs/eventos_api.md`.
 - [x] Exclusao com modal e feedback de erro
 - [x] Coluna Diretoria na grid e filtro por Diretoria
 - [x] Editar evento (tela `/eventos/:id/editar` + integracao `PUT /evento/{id}`)
-- [ ] Exportacao CSV (quando o endpoint existir)
+- [x] Exportacao CSV (botao na listagem + download)

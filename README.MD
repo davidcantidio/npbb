@@ -46,10 +46,12 @@ Recuperacao de senha / email:
 ```bash
 cd backend
 alembic upgrade head
+python scripts/seed_domains.py
 python scripts/seed_sample.py
 ```
 
 Notas:
+- `seed_domains.py` popula apenas tabelas de dominio (diretorias/divisoes/tipos/subtipos/territorios/tags/status).
 - `seed_sample.py` cria agencias/diretorias e usuarios de exemplo (senha via `SEED_PASSWORD`, padrao `Senha123!`).
 - Alembic no Supabase: prefira `DIRECT_URL` (porta 5432). O pooler (porta 6543) pode dar timeout em alguns ambientes.
 - Se aparecer `Target database is not up to date`, rode `alembic upgrade head` antes do `alembic revision --autogenerate`.

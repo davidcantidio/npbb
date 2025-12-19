@@ -64,7 +64,58 @@ curl http://localhost:8000/auth/me \
 ```
 
 ## Cadastro (usuarios/agencias)
-Para cadastro de usuarios e listagem de agencias (fluxo de "Criar Conta"), veja `docs/login/new_user/login_tela_inicial.md`.
+Estes endpoints suportam o fluxo de "Criar conta" no frontend.
+
+### GET `/agencias/`
+Lista agencias (publico; nao requer JWT). Usado para popular o dropdown no cadastro.
+
+Query params:
+- `skip` (int, default `0`)
+- `limit` (int, default `50`, max `200`)
+- `search` (string, opcional) - busca por `nome` ou `dominio`
+
+Headers:
+- `X-Total-Count`: total de agencias com filtros aplicados
+
+Resposta (exemplo):
+```json
+[
+  { "id": 1, "nome": "V3A", "dominio": "v3a.com.br" }
+]
+```
+
+### POST `/usuarios/`
+Cria uma conta de usuario (publico; nao requer JWT). A senha e enviada em texto e **hasheada no servidor**.
+
+Body JSON (`UsuarioCreate`):
+- `email` (string)
+- `password` (string)
+- `tipo_usuario` (`bb|npbb|agencia`)
+- `matricula` (string, apenas `bb`)
+- `agencia_id` (int, apenas `agencia`)
+
+Respostas:
+- `201 Created`: retorna `UsuarioRead`
+- `400 Bad Request`: erro de validacao (erro estruturado em `detail`)
+- `409 Conflict`: violacao de unicidade (ex.: email ja cadastrado)
+
+Formato de erro estruturado:
+```json
+{
+  "detail": {
+    "code": "SOME_CODE",
+    "message": "Mensagem humana",
+    "field": "campo_opcional"
+  }
+}
+```
+
+Regras de dominio (servidor):
+- `bb`: email termina com `@bb.com.br` + matricula no formato `^[A-Za-z][0-9]{1,16}$`
+- `npbb`: email termina com `@npbb.com.br`
+- `agencia`: dominio do email deve corresponder ao `agencia.dominio` selecionado
+
+Para detalhes do fluxo e validacoes do formulario, veja `docs/login/new_user/login_tela_inicial.md`.
 
 ## Recuperacao de senha (usuarios)
 

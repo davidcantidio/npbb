@@ -53,7 +53,7 @@ Observacao: para Agencia, a validacao aceita `email@v3a.com.br` e subdominios co
 
 Query params:
 - `skip` (default 0)
-- `limit` (default 25)
+- `limit` (default 50, max 200)
 - `search` (opcional)
 
 Headers:

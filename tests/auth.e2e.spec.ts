@@ -1,8 +1,8 @@
 import { test, expect, request } from "@playwright/test";
 
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
-const API_USER = process.env.API_USER || "admin@example.com";
-const API_PASS = process.env.API_PASS || "senha-forte";
+const API_USER = process.env.API_USER || "agencia@agencia.com.br";
+const API_PASS = process.env.API_PASS || "Senha123!";
 
 test.describe("Auth API e2e", () => {
   test("login sucesso e /auth/me com token válido", async () => {

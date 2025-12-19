@@ -90,11 +90,17 @@ cp .env.example .env
 
 ## Testes
 ```bash
+# Backend (pytest)
 cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 
+# Frontend (vitest)
 cd ../frontend
 npm test -- --run
+
+# E2E (Playwright) - requer backend + frontend rodando e seed aplicado
+cd ../
+npx playwright test
 ```
 
 ## Seguranca (importante)

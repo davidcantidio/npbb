@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 const UI_BASE_URL = process.env.UI_BASE_URL || "http://localhost:5173";
-const AUTH_USER = process.env.AUTH_USER || "admin@example.com";
-const AUTH_PASS = process.env.AUTH_PASS || "senha-forte";
+const AUTH_USER = process.env.AUTH_USER || "agencia@agencia.com.br";
+const AUTH_PASS = process.env.AUTH_PASS || "Senha123!";
 
 test.describe("Login UI", () => {
   test("faz login, redireciona e grava token no localStorage", async ({ page }) => {

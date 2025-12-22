@@ -5,7 +5,7 @@
 
 Status no novo sistema:
 - Frontend: nao implementado.
-- Backend: nao implementado.
+- Backend: parcialmente implementado (modelos/migrations existem; endpoints pendentes).
 
 ---
 
@@ -46,6 +46,17 @@ Checkboxes (exemplo observado no sistema original):
   - MVP: armazenar em banco local
   - Fase 2: integrar com Salesforce (se aplicavel)
 
+### 4.1 Contrato de persistencia (MVP)
+Decisao para representar "campos ativos" e "obrigatorio" no backend:
+- "Campo ativo" = existe um registro em `FormularioLeadCampo` (tabela `formulario_lead_campo`) para a configuracao do evento (`config_id`).
+  - Campo desativado = ausencia do registro.
+- `obrigatorio` (bool) = se o campo deve ser obrigatorio no preenchimento do formulario.
+- `ordem` (int) = ordem de exibicao (ordenacao ascendente) dos campos no formulario.
+
+Observacao:
+- A chave natural de um campo dentro de uma configuracao e `nome_campo`.
+  - Boa pratica: nao permitir nomes duplicados por `config_id` (validar na API).
+
 ---
 
 ## 5. Endpoints (proposta / a confirmar)
@@ -59,7 +70,7 @@ Observacao: as URLs (landing/promotor/questionario) podem ser geradas a partir d
 
 ## 6. Backlog (status)
 ### Backend
-- [ ] Modelo/tabelas para templates e configuracao por evento
+- [x] Modelo/tabelas para templates e configuracao por evento (ja existem no backend)
 - [ ] Endpoints para ler/salvar configuracao
 - [ ] Definir estrategia de URLs (slug/token) e politica de acesso
 

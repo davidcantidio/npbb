@@ -1,9 +1,7 @@
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
-  Container,
   Paper,
   Stack,
   Typography,
@@ -12,28 +10,25 @@ import {
 import { useAuth } from "../store/auth";
 
 export default function Success() {
-  const { user, loading, error, logout } = useAuth();
+  const { user, loading, error } = useAuth();
 
   return (
-    <Container maxWidth="md" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
+    <Box sx={{ width: "100%" }}>
       <Paper
-        elevation={3}
+        elevation={2}
         sx={{
           width: "100%",
-          p: 4,
-          borderRadius: 3,
+          p: 3,
+          borderRadius: 2,
           display: "flex",
           flexDirection: "column",
           gap: 3,
         }}
       >
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h5" fontWeight={700}>
-            Login realizado
+          <Typography variant="h4" fontWeight={900}>
+            Dashboard
           </Typography>
-          <Button onClick={logout} variant="outlined" color="primary">
-            Sair
-          </Button>
         </Box>
 
         {loading && (
@@ -72,6 +67,6 @@ export default function Success() {
           </Box>
         )}
       </Paper>
-    </Container>
+    </Box>
   );
 }

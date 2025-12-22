@@ -10,8 +10,10 @@ import ResetPassword from "./pages/ResetPassword";
 import EventsList from "./pages/EventsList";
 import EventDetail from "./pages/EventDetail";
 import NewEvent from "./pages/NewEvent";
+import ComingSoon from "./pages/ComingSoon";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import AppLayout from "./components/layout/AppLayout";
 
 const theme = createTheme({
   palette: {
@@ -54,47 +56,24 @@ function AppRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route
-        path="/success"
         element={
           <ProtectedRoute>
-            <Success />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
-      <Route path="/dashboard" element={<Navigate to="/success" replace />} />
+      >
+        <Route path="/success" element={<Success />} />
+        <Route path="/dashboard" element={<Navigate to="/success" replace />} />
 
-      <Route
-        path="/eventos"
-        element={
-          <ProtectedRoute>
-            <EventsList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/eventos/novo"
-        element={
-          <ProtectedRoute>
-            <NewEvent />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/eventos/:id/editar"
-        element={
-          <ProtectedRoute>
-            <NewEvent />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/eventos/:id"
-        element={
-          <ProtectedRoute>
-            <EventDetail />
-          </ProtectedRoute>
-        }
-      />
+        <Route path="/eventos" element={<EventsList />} />
+        <Route path="/eventos/novo" element={<NewEvent />} />
+        <Route path="/eventos/:id/editar" element={<NewEvent />} />
+        <Route path="/eventos/:id" element={<EventDetail />} />
+
+        <Route path="/ativos" element={<ComingSoon title="Ativos" />} />
+        <Route path="/leads" element={<ComingSoon title="Leads" />} />
+        <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

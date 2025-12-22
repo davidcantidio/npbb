@@ -656,6 +656,27 @@ def test_evento_put_form_config_aplica_visibilidade_agencia(client, engine):
     assert resp.status_code == 404
 
 
+def test_list_formulario_campos_catalogo(client, engine):
+    with Session(engine) as session:
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.get("/evento/all/formulario-campos", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == [
+        "CPF",
+        "Nome",
+        "Sobrenome",
+        "Telefone",
+        "Email",
+        "Data de nascimento",
+        "Endereco",
+        "Interesses",
+        "Genero",
+        "Area de atuacao",
+    ]
+
+
 def test_evento_dicionarios_cidades_estados(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")

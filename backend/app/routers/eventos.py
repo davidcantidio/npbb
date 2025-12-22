@@ -59,6 +59,19 @@ from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
 
+FORMULARIO_CAMPOS_CATALOGO = [
+    "CPF",
+    "Nome",
+    "Sobrenome",
+    "Telefone",
+    "Email",
+    "Data de nascimento",
+    "Endereco",
+    "Interesses",
+    "Genero",
+    "Area de atuacao",
+]
+
 
 def _raise_http(status_code: int, code: str, message: str, extra: dict | None = None) -> None:
     detail: dict = {"code": code, "message": message}
@@ -908,6 +921,14 @@ def listar_formulario_templates(
         like = f"%{search.strip()}%"
         query = query.where(FormularioLandingTemplate.nome.ilike(like))
     return session.exec(query.order_by(FormularioLandingTemplate.nome)).all()
+
+
+@router.get("/all/formulario-campos", response_model=list[str])
+def listar_formulario_campos(
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Lista o catálogo de campos possíveis para o Formulário de Lead (MVP)."""
+    return FORMULARIO_CAMPOS_CATALOGO
 
 
 @router.get("/{evento_id}/form-config", response_model=FormularioLeadConfigRead)

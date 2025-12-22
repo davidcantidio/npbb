@@ -24,6 +24,8 @@ from app.models.models import (
     EventoTag,
     EventoTerritorio,
     FormularioLandingTemplate,
+    FormularioLeadCampo,
+    FormularioLeadConfig,
     Funcionario,
     QuestionarioPagina,
     QuestionarioResposta,
@@ -46,7 +48,11 @@ from app.schemas.dominios import (
     TipoEventoRead,
 )
 from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate
-from app.schemas.formulario_lead import FormularioLandingTemplateRead
+from app.schemas.formulario_lead import (
+    FormularioLandingTemplateRead,
+    FormularioLeadCampoRead,
+    FormularioLeadConfigRead,
+)
 
 router = APIRouter(prefix="/evento", tags=["evento"])
 
@@ -899,6 +905,41 @@ def listar_formulario_templates(
         like = f"%{search.strip()}%"
         query = query.where(FormularioLandingTemplate.nome.ilike(like))
     return session.exec(query.order_by(FormularioLandingTemplate.nome)).all()
+
+
+@router.get("/{evento_id}/form-config", response_model=FormularioLeadConfigRead)
+@router.get("/{evento_id}/form-config/", response_model=FormularioLeadConfigRead)
+def obter_formulario_lead_config(
+    evento_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Retorna a configuração do Formulário de Lead para um evento.
+
+    MVP: se não existir config persistida, retorna um "config default" (sem persistir).
+    """
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    config = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).first()
+    if not config:
+        return FormularioLeadConfigRead(evento_id=evento_id, template_id=None, campos=[])
+
+    campos = session.exec(
+        select(FormularioLeadCampo)
+        .where(FormularioLeadCampo.config_id == config.id)
+        .order_by(FormularioLeadCampo.ordem, FormularioLeadCampo.id)
+    ).all()
+
+    read = FormularioLeadConfigRead.model_validate(config, from_attributes=True)
+    return read.model_copy(
+        update={"campos": [FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos]}
+    )
 
 
 @router.get("/{evento_id}", response_model=EventoRead)

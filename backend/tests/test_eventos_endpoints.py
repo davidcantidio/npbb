@@ -17,6 +17,8 @@ from app.models.models import (
     Diretoria,
     Evento,
     FormularioLandingTemplate,
+    FormularioLeadCampo,
+    FormularioLeadConfig,
     StatusEvento,
     SubtipoEvento,
     Tag,
@@ -275,6 +277,124 @@ def test_list_formulario_templates_ordenado(client, engine):
     assert resp.status_code == 200
     nomes = [item["nome"] for item in resp.json()]
     assert nomes == sorted(nomes)
+
+
+def test_evento_form_config_retorna_default_quando_nao_existe(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["evento_id"] == evento_id
+    assert payload["template_id"] is None
+    assert payload["campos"] == []
+    assert payload["urls"] == {
+        "url_landing": None,
+        "url_promotor": None,
+        "url_questionario": None,
+        "url_api": None,
+    }
+    assert "url_landing" not in payload
+
+
+def test_evento_form_config_retorna_config_e_campos_ordenados(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+        template = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        session.add(template)
+        session.commit()
+        session.refresh(template)
+        template_id = template.id
+
+        config = FormularioLeadConfig(
+            evento_id=evento_id,
+            nome="Config Landing",
+            template_id=template_id,
+            url_landing="https://example.com/landing",
+            url_api="https://example.com/api",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+
+        session.add(
+            FormularioLeadCampo(
+                config_id=config.id,
+                nome_campo="Email",
+                obrigatorio=True,
+                ordem=2,
+            )
+        )
+        session.add(
+            FormularioLeadCampo(
+                config_id=config.id,
+                nome_campo="Nome",
+                obrigatorio=True,
+                ordem=1,
+            )
+        )
+        session.commit()
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["evento_id"] == evento_id
+    assert payload["template_id"] == template_id
+    assert [c["nome_campo"] for c in payload["campos"]] == ["Nome", "Email"]
+    assert payload["urls"]["url_landing"] == "https://example.com/landing"
+    assert payload["urls"]["url_api"] == "https://example.com/api"
+
+
+def test_evento_form_config_aplica_visibilidade_agencia(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        ag2 = seed_agencia(session, "Sherpa", "sherpa.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "agencia@agencia.com.br", "Senha123!", "agencia", agencia_id=ag2.id)
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
+    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 404
 
 
 def test_evento_dicionarios_cidades_estados(client, engine):

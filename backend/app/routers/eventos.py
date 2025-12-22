@@ -36,6 +36,7 @@ from app.models.models import (
     TipoEvento,
     Usuario,
     UsuarioTipo,
+    now_utc,
 )
 from app.schemas.dominios import (
     DivisaoDemandanteRead,
@@ -52,6 +53,7 @@ from app.schemas.formulario_lead import (
     FormularioLandingTemplateRead,
     FormularioLeadCampoRead,
     FormularioLeadConfigRead,
+    FormularioLeadConfigUpsert,
 )
 from app.utils.urls import build_evento_public_urls
 
@@ -940,6 +942,74 @@ def obter_formulario_lead_config(
         .order_by(FormularioLeadCampo.ordem, FormularioLeadCampo.id)
     ).all()
 
+    read = FormularioLeadConfigRead.model_validate(config, from_attributes=True)
+    url_updates = {key: value for key, value in computed_urls.items() if getattr(read, key) is None}
+    return read.model_copy(
+        update={
+            "campos": [FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos],
+            **url_updates,
+        }
+    )
+
+
+@router.put("/{evento_id}/form-config", response_model=FormularioLeadConfigRead)
+@router.put("/{evento_id}/form-config/", response_model=FormularioLeadConfigRead)
+def upsert_formulario_lead_config(
+    evento_id: int,
+    payload: FormularioLeadConfigUpsert,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Cria/atualiza config do Formulário de Lead (MVP: apenas template_id)."""
+    if payload.campos:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="FORM_CONFIG_FIELDS_NOT_SUPPORTED",
+            message="Atualizacao de campos ainda nao suportada neste endpoint",
+        )
+
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    if payload.template_id is not None:
+        _validate_fk(
+            session,
+            FormularioLandingTemplate,
+            payload.template_id,
+            "FORM_TEMPLATE_NOT_FOUND",
+            "Template nao encontrado",
+        )
+
+    config = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).first()
+    if not config:
+        config = FormularioLeadConfig(
+            evento_id=evento_id,
+            nome="Formulario de Lead",
+            template_id=payload.template_id,
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+    else:
+        config.template_id = payload.template_id
+        config.atualizado_em = now_utc()
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+
+    campos = session.exec(
+        select(FormularioLeadCampo)
+        .where(FormularioLeadCampo.config_id == config.id)
+        .order_by(FormularioLeadCampo.ordem, FormularioLeadCampo.id)
+    ).all()
+
+    computed_urls = build_evento_public_urls(evento_id, backend_base_url=str(request.base_url))
     read = FormularioLeadConfigRead.model_validate(config, from_attributes=True)
     url_updates = {key: value for key, value in computed_urls.items() if getattr(read, key) is None}
     return read.model_copy(

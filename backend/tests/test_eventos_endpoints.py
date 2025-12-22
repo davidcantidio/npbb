@@ -395,6 +395,151 @@ def test_evento_form_config_aplica_visibilidade_agencia(client, engine):
     assert resp.status_code == 404
 
 
+def test_evento_put_form_config_cria_e_atualiza_template_id(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+        template_a = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        template_b = FormularioLandingTemplate(nome="Padrao", html_conteudo="<html></html>")
+        session.add(template_a)
+        session.add(template_b)
+        session.commit()
+        session.refresh(template_a)
+        session.refresh(template_b)
+
+        template_a_id = template_a.id
+        template_b_id = template_b.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    resp_create = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={"template_id": template_a_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_create.status_code == 200
+    assert resp_create.json()["template_id"] == template_a_id
+
+    with Session(engine) as session:
+        configs = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).all()
+        assert len(configs) == 1
+
+    resp_update = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={"template_id": template_b_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_update.status_code == 200
+    assert resp_update.json()["template_id"] == template_b_id
+
+    with Session(engine) as session:
+        configs = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).all()
+        assert len(configs) == 1
+        assert configs[0].template_id == template_b_id
+
+
+def test_evento_put_form_config_valida_template_id(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={"template_id": 9999},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "FORM_TEMPLATE_NOT_FOUND"
+
+
+def test_evento_put_form_config_rejeita_campos_por_enquanto(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+        template = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        session.add(template)
+        session.commit()
+        session.refresh(template)
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={
+            "template_id": template.id,
+            "campos": [{"nome_campo": "Email", "obrigatorio": True, "ordem": 1}],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "FORM_CONFIG_FIELDS_NOT_SUPPORTED"
+
+
+def test_evento_put_form_config_aplica_visibilidade_agencia(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        ag2 = seed_agencia(session, "Sherpa", "sherpa.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "agencia@agencia.com.br", "Senha123!", "agencia", agencia_id=ag2.id)
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
+    resp = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={"template_id": None},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+
+
 def test_evento_dicionarios_cidades_estados(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")

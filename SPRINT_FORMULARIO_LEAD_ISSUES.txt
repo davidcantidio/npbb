@@ -1,0 +1,279 @@
+SPRINT: Configuração do Formulário de Lead por Evento (MVP)
+==========================================================
+
+Contexto do código atual (já existe hoje)
+---------------------------------------
+- Backend já tem os modelos e migrations:
+  - app/models/models.py: FormularioLandingTemplate, FormularioLeadConfig, FormularioLeadCampo
+  - alembic/versions/289b4605dc23_init.py cria as tabelas
+- Backend ainda NÃO tem:
+  - schemas (Pydantic) específicos para esse módulo
+  - endpoints para ler/salvar a configuração do formulário de lead por evento
+  - endpoint para listar templates/temas (para dropdown do front)
+- Frontend ainda NÃO tem:
+  - serviços para consumir /evento/{id}/form-config
+  - página/aba “Formulário de Lead” no detalhe do evento
+
+Objetivo do sprint (escopo)
+---------------------------
+Entregar a “Configuração do Formulário de Lead” por evento (painel interno):
+- escolher 1 tema/template
+- selecionar campos ativos (checkbox) e marcar obrigatórios/opcionais
+- visualizar URLs geradas (landing, promotor, questionário, API)
+- salvar e recarregar a configuração
+
+Fora do escopo deste sprint (vira backlog futuro)
+------------------------------------------------
+- Landing page pública funcional capturando leads (POST /lead)
+- Fluxo do promotor / check-in
+- Questionário público
+- Integração Salesforce
+- Editor de HTML/CSS do template (no máximo preview)
+
+
+ISSUES (ordem de execução sugerida; cada uma é a menor entrega possível)
+======================================================================
+
+01) Decisão de contrato: “campos ativos” e “obrigatório”
+-------------------------------------------------------
+Descrição:
+- Definir como o backend vai representar campos do formulário.
+Decisão proposta (MVP, compatível com o modelo atual):
+- “Campo ativo” = existe registro em FormularioLeadCampo.
+- “obrigatorio” = bool no registro.
+- “ordem” = int no registro.
+Aceite:
+- Documento curto no PR/README (ou comentário no novo schema) descrevendo a regra.
+
+
+02) Backend: criar schemas do módulo Formulário de Lead (read/write)
+-------------------------------------------------------------------
+Descrição:
+- Criar arquivo novo: app/schemas/formulario_lead.py
+- Incluir modelos Pydantic mínimos:
+  - FormularioLandingTemplateRead (id, nome)
+  - FormularioLeadCampoRead/Write (nome_campo, obrigatorio, ordem)
+  - FormularioLeadConfigRead (evento_id, template_id, urls, campos[])
+  - FormularioLeadConfigUpsert (template_id, campos[])
+Aceite:
+- Imports funcionando e tipagem clara (sem quebrar nada existente).
+
+
+03) Backend: endpoint listar templates (temas)
+--------------------------------------------
+Descrição:
+- Adicionar em app/routers/eventos.py (ou novo router):
+  - GET /evento/all/formulario-templates
+  - Retorna lista: [{id, nome}]
+Aceite:
+- Endpoint responde 200 e ordena por nome.
+
+
+04) Backend: seed de templates (dev)
+-----------------------------------
+Descrição:
+- Atualizar script de seed (ex.: backend/scripts/seed_sample.py) para garantir templates:
+  - “Surf”, “Padrão”, “BB Seguros”
+- Conteúdo html/css pode ser placeholder (MVP), mas precisa existir registro.
+Aceite:
+- Rodar o seed 2x não duplica (idempotente).
+
+
+05) Backend: GET /evento/{id}/form-config (retorna config ou “vazio”)
+--------------------------------------------------------------------
+Descrição:
+- Implementar GET /evento/{id}/form-config
+Comportamento MVP:
+- Se evento não existir (ou não visível ao usuário), retornar 404/403 conforme regra já aplicada em /evento.
+- Se não existir FormularioLeadConfig para o evento:
+  - retornar um “config default” (sem persistir) com:
+    - evento_id
+    - template_id: null
+    - campos: []
+    - urls: calculadas (ver issue 06) OU vazias por enquanto (ver issue 06)
+Aceite:
+- Front consegue renderizar um formulário “em branco”.
+
+
+06) Backend: util para gerar URLs do evento (landing/promotor/questionário/API)
+------------------------------------------------------------------------------
+Descrição:
+- Criar helper (ex.: app/utils/urls.py) para gerar URLs.
+- Adicionar env var (ex.: PUBLIC_APP_BASE_URL) com fallback local.
+- Definir padrões (MVP):
+  - landing:   {PUBLIC_APP_BASE_URL}/landing/eventos/{evento_id}
+  - promotor:  {PUBLIC_APP_BASE_URL}/promotor/eventos/{evento_id}
+  - quest:     {PUBLIC_APP_BASE_URL}/questionario/eventos/{evento_id}
+  - api-doc:   {PUBLIC_APP_BASE_URL}/docs (ou link do Swagger do backend)
+Aceite:
+- GET /evento/{id}/form-config retorna urls preenchidas (mesmo sem config salva).
+
+
+07) Backend: PUT /evento/{id}/form-config (criar/atualizar config sem campos)
+----------------------------------------------------------------------------
+Descrição:
+- Implementar PUT /evento/{id}/form-config aceitando:
+  - template_id (opcional)
+- Upsert:
+  - se não existe config, cria
+  - se existe, atualiza template_id
+Aceite:
+- PUT retorna 200 com o config atualizado (template_id persistido).
+
+
+08) Backend: PUT /evento/{id}/form-config (substituir lista de campos)
+----------------------------------------------------------------------
+Descrição:
+- Estender o PUT para aceitar campos:
+  - campos: [{nome_campo, obrigatorio, ordem}]
+- Estratégia MVP: “replace all”
+  - apaga campos antigos daquela config e recria a lista enviada (em transação)
+- Validações mínimas:
+  - nome_campo não vazio e max_length <= 80
+  - ordem >= 0
+  - não permitir nomes duplicados no payload
+Aceite:
+- Após PUT, GET devolve exatamente a lista enviada.
+
+
+09) Backend: endpoint de “catálogo” de campos possíveis (opcional, mas recomendado)
+----------------------------------------------------------------------------------
+Descrição:
+- Criar GET /evento/all/formulario-campos
+- Retornar lista ordenada com os nomes possíveis (do doc):
+  - CPF, Nome, Sobrenome, Telefone, Email, Data de nascimento, Endereco, Interesses, Genero, Area de atuacao
+Obs:
+- Alternativa (mais simples): manter lista no front (ver issue 13).
+Aceite:
+- Front consegue montar checkboxes sem hardcode.
+
+
+10) Backend: testes (GET/PUT form-config)
+----------------------------------------
+Descrição:
+- Criar arquivo: backend/tests/test_formulario_lead_config_endpoints.py
+- Cobrir casos mínimos:
+  - GET retorna default quando não existe config
+  - PUT cria config
+  - PUT atualiza template_id
+  - PUT salva campos e GET retorna igual
+  - permissões (usuário AGENCIA só acessa eventos da agência)
+Aceite:
+- pytest passa (sqlite em memória, padrão do projeto).
+
+
+11) Frontend: serviços (API) para Formulário de Lead
+----------------------------------------------------
+Descrição:
+- Adicionar funções em frontend/src/services/eventos.ts (ou novo arquivo):
+  - listFormularioTemplates()
+  - getEventoFormConfig(eventoId)
+  - updateEventoFormConfig(eventoId, payload)
+  - (opcional) listFormularioCampos()
+Aceite:
+- Funções tipadas e reutilizáveis.
+
+
+12) Frontend: rota e página placeholder do Formulário de Lead (protegida)
+-------------------------------------------------------------------------
+Descrição:
+- Criar página: frontend/src/pages/EventLeadFormConfig.tsx (ou similar)
+- Adicionar rota: /eventos/:id/formulario-lead
+- Renderizar:
+  - título + subtítulo
+  - loader + tratamento de erro
+Aceite:
+- Página acessa sem quebrar o build; aparece no menu/fluxo (ver issue 14).
+
+
+13) Frontend: fonte da lista de campos (hardcode vs endpoint)
+-------------------------------------------------------------
+Descrição:
+- Se issue 09 NÃO for feita: criar constante local com os nomes dos campos possíveis.
+- Se issue 09 for feita: consumir /evento/all/formulario-campos.
+Aceite:
+- UI consegue renderizar os checkboxes dos campos possíveis.
+
+
+14) Frontend: navegação para a aba/página “Formulário de Lead”
+--------------------------------------------------------------
+Descrição:
+- No detalhe do evento (frontend/src/pages/EventDetail.tsx):
+  - adicionar botão/aba “Formulário de Lead” que navega para /eventos/:id/formulario-lead
+Aceite:
+- Usuário encontra a tela a partir do fluxo normal (detalhe do evento).
+
+
+15) Frontend: carregar config + templates e renderizar dropdown “Tema”
+----------------------------------------------------------------------
+Descrição:
+- Na página EventLeadFormConfig:
+  - carregar templates e config em paralelo
+  - dropdown de tema (seleção única)
+  - persistir seleção no estado local
+Aceite:
+- Trocar tema altera o estado local (sem salvar ainda).
+
+
+16) Frontend: renderizar checkboxes de campos (ativos) + obrigatório/opcional
+-----------------------------------------------------------------------------
+Descrição:
+- Implementar lista com:
+  - checkbox “ativo”
+  - toggle/checkbox “obrigatório” (habilitado apenas se ativo)
+  - ordem (pode ser automática por lista; MVP: ordem = índice)
+Aceite:
+- UI permite marcar/desmarcar campos e obrigatoriedade.
+
+
+17) Frontend: seção “URLs geradas” (read-only)
+----------------------------------------------
+Descrição:
+- Mostrar 4 URLs retornadas pela API:
+  - landing, promotor, questionário, api
+- Incluir botão “copiar” por URL (Clipboard API).
+Aceite:
+- Copiar funciona e dá feedback visual.
+
+
+18) Frontend: botão “Salvar” (PUT /form-config)
+-----------------------------------------------
+Descrição:
+- Enviar template_id + campos ativos via PUT
+- Após salvar, mostrar snackbar/alert de sucesso
+Aceite:
+- Recarregar a página mantém as escolhas persistidas.
+
+
+19) Frontend: botão “Salvar e visualizar”
+-----------------------------------------
+Descrição (MVP):
+- Após salvar, abrir url_landing em nova aba (window.open)
+Aceite:
+- Clique abre uma nova aba com a URL (mesmo que a landing ainda não esteja implementada).
+
+
+20) Frontend E2E (mínimo): login → abrir evento → abrir Formulário de Lead
+--------------------------------------------------------------------------
+Descrição:
+- Criar teste Playwright:
+  - login com usuário seed
+  - navegar para /eventos/:id
+  - clicar em “Formulário de Lead”
+  - verificar que a tela carrega sem erro
+Aceite:
+- Teste passa em ambiente local.
+
+
+21) Documentação: endpoints do Formulário de Lead
+-------------------------------------------------
+Descrição:
+- Atualizar docs com:
+  - GET /evento/{id}/form-config
+  - PUT /evento/{id}/form-config
+  - GET /evento/all/formulario-templates
+  - (opcional) GET /evento/all/formulario-campos
+- Incluir exemplos de payload e erros.
+Aceite:
+- Documento publicado em npbb/docs (ou README) e linkado no README principal.
+

@@ -1,0 +1,340 @@
+{
+  "deck": {
+    "titulo_deck": "BI NPBB — 2025 (entregas) e 2026 (plataforma de dados)",
+    "publico": "Maurício (visão estratégica)",
+    "objetivo": "Mostrar entregas de 2025, propor visão 2026 com BI como dono do dado, e pedir patrocínio para adoção + integrações.",
+    "regras_gerais_para_direcao_de_arte": {
+      "limite_texto_por_slide": "Título + (opcional) 1 headline + 3 a 5 bullets curtos",
+      "uma_ideia_por_slide": true,
+      "evitar_paragrafos": true,
+      "diagramas_preferidos": ["fluxo", "timeline", "matriz agora/depois", "cards de módulos"],
+      "tom": "executivo, direto"
+    },
+    "assets_disponiveis": [
+      {
+        "nome": "Infográfico pipeline BI",
+        "arquivo_sugerido": "BI.jpeg",
+        "uso": "Slide de arquitetura/pipeline"
+      }
+    ]
+  },
+  "slides": [
+    {
+      "id": 1,
+      "titulo_no_slide": "BI NPBB: de relatório para decisão",
+      "headline_no_slide_opcional": "2026 = plataforma + dados confiáveis + insights acionáveis",
+      "texto_no_slide": {
+        "bullets": [
+          "Entregas 2025 (o que já rodou)",
+          "Visão 2026 (unificação → inteligência → decisão)",
+          "O que precisamos para escalar (adoção + integrações)"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Abrir alinhando: o foco é valor estratégico, não estética de dashboard."
+      ],
+      "direcao_de_arte": {
+        "layout": "Capa simples (título grande + headline).",
+        "visual": "Sem gráficos. Pode usar ícone discreto de 'dados/decisão'."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 2,
+      "titulo_no_slide": "Por que estamos aqui",
+      "headline_no_slide_opcional": "BI como motor de decisão (e não fábrica de planilha)",
+      "texto_no_slide": {
+        "bullets": [
+          "Decisão estratégica baseada em dados unificados",
+          "Menos retrabalho e menos risco operacional",
+          "Integração com Salesforce e cruzamentos via Databricks",
+          "IA como horizonte (não promessa mágica)"
+        ]
+      },
+      "notas_do_apresentador": [
+        "A frase 'fábrica de planilha' pode ser usada com humor rápido, sem exagerar."
+      ],
+      "direcao_de_arte": {
+        "layout": "4 cards/ícones (Decisão / Eficiência / Integração / Inovação).",
+        "visual": "Sem números. Só posicionamento."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 3,
+      "titulo_no_slide": "Cenário atual (dores objetivas)",
+      "headline_no_slide_opcional": "Dados existem, mas estão espalhados e inconsistentes",
+      "texto_no_slide": {
+        "bullets": [
+          "Coleta e formatos variam entre agências",
+          "Parte do processo é manual (planilhas)",
+          "Padronização fraca = comparabilidade fraca",
+          "Distribuição de ingressos hoje é planilha"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Não dramatizar. Mostrar que é resolvível com unificação e obrigatoriedade."
+      ],
+      "direcao_de_arte": {
+        "layout": "Antes → Depois (lado esquerdo 'planilhas/silos', direito 'sistema/base').",
+        "visual": "Ícones simples (planilha, banco, alerta, check)."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 4,
+      "titulo_no_slide": "Entregas 2025 (já em produção)",
+      "headline_no_slide_opcional": "Base construída — agora é escala e governança",
+      "texto_no_slide": {
+        "bullets": [
+          "Dashboard de fechamento (eventos por agência)",
+          "Ferramenta de pesquisa de preços",
+          "Análise: engajamento de pessoas ≤ 40 anos"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Se existir algum número (ex.: eventos analisados), inserir depois como dado opcional. Não inventar."
+      ],
+      "direcao_de_arte": {
+        "layout": "3 cards (um por entrega).",
+        "visual": "Se tiver print, usar miniatura discreta (opcional)."
+      },
+      "dados_ou_assets_necessarios": [
+        "Opcional: 1 KPI por entrega (se houver). Ex.: quantidade de eventos no dashboard, tempo economizado, etc."
+      ]
+    },
+    {
+      "id": 5,
+      "titulo_no_slide": "Aprendizados de 2025",
+      "headline_no_slide_opcional": "Sem padronizar a coleta, BI vira debate de dado",
+      "texto_no_slide": {
+        "bullets": [
+          "Padronização é pré-requisito para escala",
+          "Dependência de agência = variação e lacunas",
+          "Precisamos de um fluxo único e obrigatório"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Aqui você amarra: por isso o sistema é obrigatório."
+      ],
+      "direcao_de_arte": {
+        "layout": "Bullets + um callout (⚠️) destacando 'fluxo único e obrigatório'.",
+        "visual": "Sem diagrama."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 6,
+      "titulo_no_slide": "Visão 2026: BI dono da plataforma e dos dados",
+      "headline_no_slide_opcional": "Governança + rastreabilidade + base única",
+      "texto_no_slide": {
+        "bullets": [
+          "Sistema obrigatório para unificar coleta e recebimento de dados",
+          "BI como dono do processo (plataforma, dados e governança)",
+          "Regras de negócio atuais preservadas (menos caos, mais controle)",
+          "Ponto em definição: cadastro feito por agências ou pelo BI"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Deixar claro o item em definição sem parecer indecisão: é escolha operacional a ser alinhada."
+      ],
+      "direcao_de_arte": {
+        "layout": "Estrutura em 3 camadas: Operação (agências/BI) → Plataforma → Dados/Insights.",
+        "visual": "Diagrama simples com setas."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 7,
+      "titulo_no_slide": "Sistema 2026 — MVP (o que nasce primeiro)",
+      "headline_no_slide_opcional": "Foco: cadastrar, organizar e gerar base confiável",
+      "texto_no_slide": {
+        "bullets": [
+          "Cadastro de eventos e ativações (padrão único)",
+          "Páginas de captura de leads por evento/ativação",
+          "Questionários de satisfação integrados",
+          "Distribuição de ingressos (substitui planilha por interface + banco + automações)",
+          "Dashboards permanentes dentro do sistema"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Não detalhar regras de distribuição. Só afirmar: 'mesmas regras atuais, menos planilha'."
+      ],
+      "direcao_de_arte": {
+        "layout": "5 cards (módulos do MVP).",
+        "visual": "Ícones por módulo. Sem fluxos aqui."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 8,
+      "titulo_no_slide": "Pós-MVP (expansão)",
+      "headline_no_slide_opcional": "Evolução por camadas, sem tentar abraçar o mundo",
+      "texto_no_slide": {
+        "bullets": [
+          "Check-in (depois do MVP)",
+          "Rotinas de qualidade de dados e auditoria",
+          "Mais amarração presença × engajamento × lead"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Humor permitido: 'check-in vem depois porque a gente aprendeu a priorizar'."
+      ],
+      "direcao_de_arte": {
+        "layout": "Matriz 'MVP' vs 'Depois' (2 colunas).",
+        "visual": "Checkmarks no MVP e setas no Depois."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 9,
+      "titulo_no_slide": "Pipeline de dados (do lead ao insight)",
+      "headline_no_slide_opcional": "Coleta → Unificação → Análise → Decisão",
+      "texto_no_slide": {
+        "bullets": [
+          "Dados no sistema: eventos, ativações, leads, satisfação, ingressos",
+          "Banco central (Supabase) como fonte única",
+          "Engajou: envia ao Salesforce + guarda cópia com ID Salesforce",
+          "Dashboards oficiais no sistema + ad-hoc no Power BI"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Esse é o slide âncora da história. Se o diretor só lembrar de um, é este."
+      ],
+      "direcao_de_arte": {
+        "layout": "Diagrama em camadas ou fluxo vertical.",
+        "visual": "Usar o infográfico BI.jpeg como base e adaptar labels se necessário."
+      },
+      "dados_ou_assets_necessarios": [
+        "Asset: BI.jpeg (infográfico)",
+        "Opcional: nomes dos sistemas em caixas (Sistema BI / Supabase / Salesforce / Power BI)"
+      ]
+    },
+    {
+      "id": 10,
+      "titulo_no_slide": "Integrações (onde mora o valor estratégico)",
+      "headline_no_slide_opcional": "Quando cruza com dados internos, vira decisão de negócio",
+      "texto_no_slide": {
+        "bullets": [
+          "Databricks no ambiente interno para cruzamentos com bases do BB",
+          "Habilita análises de impacto (perfil, recorrência, efeito de ativação)",
+          "Dependência: integração e colaboração com outros departamentos"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Aqui você vende o porquê do investimento: sem cruzamento, fica só ‘foto do evento’."
+      ],
+      "direcao_de_arte": {
+        "layout": "Diagrama 'Externo (Supabase) ↔ Interno (Databricks/BB)'.",
+        "visual": "2 blocos grandes + seta dupla."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 11,
+      "titulo_no_slide": "Governança e LGPD (BI assume a bronca)",
+      "headline_no_slide_opcional": "Dado bom é dado controlado e rastreável",
+      "texto_no_slide": {
+        "bullets": [
+          "BI responsável por LGPD (políticas, acesso e retenção)",
+          "Controle de acesso por perfil",
+          "Auditoria/logs (mínimo viável já no MVP)",
+          "Menos planilha = menos risco"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Direto: isso reduz risco e acelera qualquer aprovação interna."
+      ],
+      "direcao_de_arte": {
+        "layout": "Checklist com 4 itens + selo visual de 'governança'.",
+        "visual": "Sem juridiquês no slide."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 12,
+      "titulo_no_slide": "Horizonte de inovação: IA sobre base vetorizada",
+      "headline_no_slide_opcional": "IA como atalho de consulta, não como muleta",
+      "texto_no_slide": {
+        "bullets": [
+          "Supabase permite vetorização para busca semântica",
+          "Agente de IA para responder perguntas sobre eventos",
+          "Pré-requisito: base unificada e bem governada"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Enfatizar: isso é horizonte. Primeiro a casa, depois a automação."
+      ],
+      "direcao_de_arte": {
+        "layout": "Mock simples 'Pergunta → Resposta'.",
+        "visual": "Balões de chat estilizados."
+      },
+      "dados_ou_assets_necessarios": [
+        "Exemplo de pergunta (definir): 'Quais eventos tiveram maior engajamento do público ≤40 no último trimestre?'"
+      ]
+    },
+    {
+      "id": 13,
+      "titulo_no_slide": "Como saber se 2026 deu certo",
+      "headline_no_slide_opcional": "Critérios objetivos (sem 'acho que')",
+      "texto_no_slide": {
+        "bullets": [
+          "Adoção: % de eventos cadastrados no sistema (meta alta, porque é obrigatório)",
+          "Qualidade: redução de inconsistências e retrabalho",
+          "Velocidade: tempo de fechamento e resposta a perguntas",
+          "Valor: insights usados em decisão (planejamento e verba)",
+          "Integração: cruzamentos viáveis via Databricks"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Se o Maurício pedir KPI numérico, vocês colocam depois. Aqui é definição de sucesso."
+      ],
+      "direcao_de_arte": {
+        "layout": "Tabela simples 2 colunas (Dimensão / Como medir).",
+        "visual": "Sem gráficos se não houver números."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 14,
+      "titulo_no_slide": "Roadmap 2026 (fases + dependências)",
+      "headline_no_slide_opcional": "Plano realista, com o que depende de terceiros",
+      "texto_no_slide": {
+        "bullets": [
+          "Q1–Q2: MVP (cadastro + base + dashboards + ingressos)",
+          "Q2–Q3: qualidade de dados + integrações Salesforce (evolução)",
+          "Q3–Q4: check-in + cruzamentos Databricks + governança madura",
+          "Dependências: adesão das agências, definição do cadastro, integrações internas"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Deixar claro: ambição é alta, mas depende de integração com outros departamentos."
+      ],
+      "direcao_de_arte": {
+        "layout": "Timeline horizontal por trimestre.",
+        "visual": "Blocos por fase + faixa de 'dependências' abaixo."
+      },
+      "dados_ou_assets_necessarios": []
+    },
+    {
+      "id": 15,
+      "titulo_no_slide": "O que precisamos do Maurício",
+      "headline_no_slide_opcional": "Três 'sins' para sair do piloto e virar padrão",
+      "texto_no_slide": {
+        "bullets": [
+          "Patrocínio do uso obrigatório do sistema (agências)",
+          "Prioridade para integrações com áreas internas (Databricks/cross)",
+          "Definição do modelo operacional: agência cadastra ou BI cadastra (e como valida)"
+        ]
+      },
+      "notas_do_apresentador": [
+        "Fechar pedindo decisão/encaminhamento, não só 'ok bonito'."
+      ],
+      "direcao_de_arte": {
+        "layout": "3 cards grandes (SIM 1 / SIM 2 / SIM 3).",
+        "visual": "Slide final com cara de 'decisão'."
+      },
+      "dados_ou_assets_necessarios": []
+    }
+  ]
+}

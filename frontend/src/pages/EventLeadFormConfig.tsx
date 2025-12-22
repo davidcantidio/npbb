@@ -6,13 +6,18 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Divider,
   FormControlLabel,
+  IconButton,
+  InputAdornment,
   Paper,
+  Snackbar,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
@@ -37,6 +42,11 @@ export default function EventLeadFormConfig() {
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "info";
+  }>({ open: false, message: "", severity: "success" });
 
   const selectedTemplate = useMemo(() => {
     if (templateId == null) return null;
@@ -76,6 +86,50 @@ export default function EventLeadFormConfig() {
 
   const setCampoObrigatorio = useCallback((nome: string, obrigatorio: boolean) => {
     setCamposObrigatorios((prev) => ({ ...prev, [nome]: obrigatorio }));
+  }, []);
+
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
+    const value = (text || "").trim();
+    if (!value) {
+      setSnackbar({ open: true, message: `Sem URL para copiar (${label}).`, severity: "info" });
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        setSnackbar({ open: true, message: `Copiado: ${label}`, severity: "success" });
+        return;
+      }
+    } catch {
+      // fallback abaixo
+    }
+
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "0";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      setSnackbar({
+        open: true,
+        message: ok ? `Copiado: ${label}` : `N\u00e3o foi poss\u00edvel copiar (${label}).`,
+        severity: ok ? "success" : "error",
+      });
+    } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err?.message || `N\u00e3o foi poss\u00edvel copiar (${label}).`,
+        severity: "error",
+      });
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -264,6 +318,95 @@ export default function EventLeadFormConfig() {
                 Nenhum campo disponível.
               </Typography>
             )}
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900} gutterBottom>
+                URLs geradas
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Links p\u00fablicos gerados pela API (somente leitura).
+              </Typography>
+
+              <Stack spacing={1}>
+                <TextField
+                  label="Landing"
+                  value={config.urls.url_landing}
+                  fullWidth
+                  InputProps={{
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="Copiar URL da landing"
+                          size="small"
+                          onClick={() => copyToClipboard(config.urls.url_landing, "Landing")}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  label="Promotor"
+                  value={config.urls.url_promotor}
+                  fullWidth
+                  InputProps={{
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="Copiar URL do promotor"
+                          size="small"
+                          onClick={() => copyToClipboard(config.urls.url_promotor, "Promotor")}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  label="Question\u00e1rio"
+                  value={config.urls.url_questionario}
+                  fullWidth
+                  InputProps={{
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="Copiar URL do questionario"
+                          size="small"
+                          onClick={() => copyToClipboard(config.urls.url_questionario, "Question\u00e1rio")}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  label="API"
+                  value={config.urls.url_api}
+                  fullWidth
+                  InputProps={{
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="Copiar URL da API"
+                          size="small"
+                          onClick={() => copyToClipboard(config.urls.url_api, "API")}
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Stack>
+            </Box>
           </Stack>
         ) : (
           <Typography variant="body2" color="text.secondary">
@@ -271,6 +414,25 @@ export default function EventLeadFormConfig() {
           </Typography>
         )}
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2400}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setSnackbar((prev) => ({ ...prev, open: false }));
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

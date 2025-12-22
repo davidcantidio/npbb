@@ -451,3 +451,24 @@ export async function listFormularioCampos(token: string): Promise<string[]> {
   });
   return handleResponse<string[]>(res);
 }
+
+export const FORMULARIO_CAMPOS_POSSIVEIS_FALLBACK = [
+  "CPF",
+  "Nome",
+  "Sobrenome",
+  "Telefone",
+  "Email",
+  "Data de nascimento",
+  "Endereco",
+  "Interesses",
+  "Genero",
+  "Area de atuacao",
+] as const;
+
+export async function getFormularioCamposPossiveis(token: string): Promise<string[]> {
+  try {
+    return await listFormularioCampos(token);
+  } catch {
+    return [...FORMULARIO_CAMPOS_POSSIVEIS_FALLBACK];
+  }
+}

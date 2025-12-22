@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
+  FormControlLabel,
   Paper,
   Stack,
   Typography,
@@ -11,7 +13,11 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
-import { getEventoFormConfig, type EventoFormConfig } from "../services/eventos";
+import {
+  getEventoFormConfig,
+  getFormularioCamposPossiveis,
+  type EventoFormConfig,
+} from "../services/eventos";
 import { useAuth } from "../store/auth";
 
 export default function EventLeadFormConfig() {
@@ -20,16 +26,53 @@ export default function EventLeadFormConfig() {
   const { token } = useAuth();
 
   const [config, setConfig] = useState<EventoFormConfig | null>(null);
+  const [camposPossiveis, setCamposPossiveis] = useState<string[]>([]);
+  const [camposAtivos, setCamposAtivos] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const camposPossiveisUniq = useMemo(() => {
+    const seen = new Set<string>();
+    const items: string[] = [];
+    for (const nome of camposPossiveis) {
+      const normalized = String(nome || "").trim();
+      if (!normalized) continue;
+      if (seen.has(normalized.toLowerCase())) continue;
+      seen.add(normalized.toLowerCase());
+      items.push(normalized);
+    }
+    return items;
+  }, [camposPossiveis]);
+
+  const toggleCampo = useCallback((nome: string) => {
+    setCamposAtivos((prev) => {
+      const next = new Set(prev);
+      if (next.has(nome)) next.delete(nome);
+      else next.add(nome);
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(eventoId)) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getEventoFormConfig(token, eventoId);
-      setConfig(data);
+      const [configRes, camposRes] = await Promise.all([
+        getEventoFormConfig(token, eventoId),
+        getFormularioCamposPossiveis(token),
+      ]);
+      setConfig(configRes);
+      setCamposPossiveis(camposRes);
+
+      const catalogByLower = new Map(camposRes.map((nome) => [nome.trim().toLowerCase(), nome.trim()]));
+      const initialAtivos = new Set<string>();
+      for (const campo of configRes.campos || []) {
+        const normalized = String(campo?.nome_campo || "").trim();
+        if (!normalized) continue;
+        initialAtivos.add(catalogByLower.get(normalized.toLowerCase()) ?? normalized);
+      }
+      setCamposAtivos(initialAtivos);
     } catch (err: any) {
       setError(err?.message || "Erro ao carregar configuração do formulário");
     } finally {
@@ -91,13 +134,42 @@ export default function EventLeadFormConfig() {
             </Typography>
           </Stack>
         ) : config ? (
-          <Stack spacing={1}>
-            <Typography variant="subtitle1" fontWeight={900}>
-              Placeholder
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Em breve: seleção de tema, campos e URLs geradas.
-            </Typography>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900} gutterBottom>
+                Campos possíveis
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Marque os campos que estarão ativos no formulário. (Placeholder: ainda não salva)
+              </Typography>
+            </Box>
+
+            {camposPossiveisUniq.length ? (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                  columnGap: 3,
+                }}
+              >
+                {camposPossiveisUniq.map((nome) => (
+                  <FormControlLabel
+                    key={nome}
+                    control={
+                      <Checkbox
+                        checked={camposAtivos.has(nome)}
+                        onChange={() => toggleCampo(nome)}
+                      />
+                    }
+                    label={nome}
+                  />
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Nenhum campo disponível.
+              </Typography>
+            )}
           </Stack>
         ) : (
           <Typography variant="body2" color="text.secondary">
@@ -108,4 +180,3 @@ export default function EventLeadFormConfig() {
     </Box>
   );
 }
-

@@ -32,6 +32,7 @@ export default function EventLeadFormConfig() {
   const [config, setConfig] = useState<EventoFormConfig | null>(null);
   const [camposPossiveis, setCamposPossiveis] = useState<string[]>([]);
   const [camposAtivos, setCamposAtivos] = useState<Set<string>>(() => new Set());
+  const [camposObrigatorios, setCamposObrigatorios] = useState<Record<string, boolean>>({});
   const [templates, setTemplates] = useState<FormularioTemplate[]>([]);
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,10 +59,23 @@ export default function EventLeadFormConfig() {
   const toggleCampo = useCallback((nome: string) => {
     setCamposAtivos((prev) => {
       const next = new Set(prev);
-      if (next.has(nome)) next.delete(nome);
+      const wasActive = next.has(nome);
+      if (wasActive) next.delete(nome);
       else next.add(nome);
+
+      if (!wasActive) {
+        setCamposObrigatorios((prevObrigatorios) => {
+          if (Object.prototype.hasOwnProperty.call(prevObrigatorios, nome)) return prevObrigatorios;
+          return { ...prevObrigatorios, [nome]: true };
+        });
+      }
+
       return next;
     });
+  }, []);
+
+  const setCampoObrigatorio = useCallback((nome: string, obrigatorio: boolean) => {
+    setCamposObrigatorios((prev) => ({ ...prev, [nome]: obrigatorio }));
   }, []);
 
   const load = useCallback(async () => {
@@ -81,12 +95,16 @@ export default function EventLeadFormConfig() {
 
       const catalogByLower = new Map(camposRes.map((nome) => [nome.trim().toLowerCase(), nome.trim()]));
       const initialAtivos = new Set<string>();
+      const initialObrigatorios: Record<string, boolean> = {};
       for (const campo of configRes.campos || []) {
         const normalized = String(campo?.nome_campo || "").trim();
         if (!normalized) continue;
-        initialAtivos.add(catalogByLower.get(normalized.toLowerCase()) ?? normalized);
+        const canonical = catalogByLower.get(normalized.toLowerCase()) ?? normalized;
+        initialAtivos.add(canonical);
+        initialObrigatorios[canonical] = Boolean(campo?.obrigatorio);
       }
       setCamposAtivos(initialAtivos);
+      setCamposObrigatorios(initialObrigatorios);
     } catch (err: any) {
       setError(err?.message || "Erro ao carregar configuração do formulário");
     } finally {
@@ -182,20 +200,64 @@ export default function EventLeadFormConfig() {
                   display: "grid",
                   gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
                   columnGap: 3,
+                  rowGap: 1,
                 }}
               >
-                {camposPossiveisUniq.map((nome) => (
-                  <FormControlLabel
-                    key={nome}
-                    control={
-                      <Checkbox
-                        checked={camposAtivos.has(nome)}
-                        onChange={() => toggleCampo(nome)}
-                      />
-                    }
-                    label={nome}
-                  />
-                ))}
+                {camposPossiveisUniq.map((nome, index) => {
+                  const ativo = camposAtivos.has(nome);
+                  const obrigatorio = ativo ? (camposObrigatorios[nome] ?? true) : false;
+
+                  return (
+                    <Box
+                      key={nome}
+                      sx={{
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: 2,
+                        border: 1,
+                        borderColor: "divider",
+                        backgroundColor: ativo ? "rgba(103, 80, 164, 0.05)" : "transparent",
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        gap={1}
+                        flexWrap="wrap"
+                      >
+                        <Box>
+                          <Typography variant="body2" fontWeight={800} lineHeight={1.2}>
+                            {nome}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            ordem {index}
+                          </Typography>
+                        </Box>
+
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                          <FormControlLabel
+                            sx={{ m: 0 }}
+                            control={<Checkbox size="small" checked={ativo} onChange={() => toggleCampo(nome)} />}
+                            label="Ativo"
+                          />
+                          <FormControlLabel
+                            sx={{ m: 0 }}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={obrigatorio}
+                                disabled={!ativo}
+                                onChange={(_, checked) => setCampoObrigatorio(nome, checked)}
+                              />
+                            }
+                            label="Obrigatório"
+                          />
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  );
+                })}
               </Box>
             ) : (
               <Typography variant="body2" color="text.secondary">

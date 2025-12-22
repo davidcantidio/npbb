@@ -24,6 +24,7 @@ import {
   getEventoFormConfig,
   getFormularioCamposPossiveis,
   listFormularioTemplates,
+  updateEventoFormConfig,
   type EventoFormConfig,
   type FormularioTemplate,
 } from "../services/eventos";
@@ -41,6 +42,7 @@ export default function EventLeadFormConfig() {
   const [templates, setTemplates] = useState<FormularioTemplate[]>([]);
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -166,6 +168,66 @@ export default function EventLeadFormConfig() {
     }
   }, [token, eventoId]);
 
+  const handleSave = useCallback(async () => {
+    if (!token || !Number.isFinite(eventoId)) return;
+
+    setSaving(true);
+    try {
+      const ordemByLower = new Map(camposPossiveisUniq.map((nome, index) => [nome.toLowerCase(), index]));
+      const camposPayload = camposPossiveisUniq
+        .map((nome, index) => {
+          if (!camposAtivos.has(nome)) return null;
+          return {
+            nome_campo: nome,
+            obrigatorio: camposObrigatorios[nome] ?? true,
+            ordem: index,
+          };
+        })
+        .filter(Boolean) as Array<{ nome_campo: string; obrigatorio: boolean; ordem: number }>;
+
+      const extras = [...camposAtivos].filter((nome) => !ordemByLower.has(nome.toLowerCase()));
+      extras.sort((a, b) => a.localeCompare(b));
+      extras.forEach((nome, index) => {
+        camposPayload.push({
+          nome_campo: nome,
+          obrigatorio: camposObrigatorios[nome] ?? true,
+          ordem: camposPossiveisUniq.length + index,
+        });
+      });
+
+      const updated = await updateEventoFormConfig(token, eventoId, {
+        template_id: templateId ?? null,
+        campos: camposPayload,
+      });
+
+      setConfig(updated);
+      setTemplateId(updated.template_id ?? null);
+
+      const catalogByLower = new Map(camposPossiveis.map((nome) => [nome.trim().toLowerCase(), nome.trim()]));
+      const nextAtivos = new Set<string>();
+      const nextObrigatorios: Record<string, boolean> = {};
+      for (const campo of updated.campos || []) {
+        const normalized = String(campo?.nome_campo || "").trim();
+        if (!normalized) continue;
+        const canonical = catalogByLower.get(normalized.toLowerCase()) ?? normalized;
+        nextAtivos.add(canonical);
+        nextObrigatorios[canonical] = Boolean(campo?.obrigatorio);
+      }
+      setCamposAtivos(nextAtivos);
+      setCamposObrigatorios(nextObrigatorios);
+
+      setSnackbar({ open: true, message: "Configuração salva com sucesso.", severity: "success" });
+    } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err?.message || "Erro ao salvar configuração.",
+        severity: "error",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [token, eventoId, templateId, camposPossiveis, camposPossiveisUniq, camposAtivos, camposObrigatorios]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -193,15 +255,25 @@ export default function EventLeadFormConfig() {
         </Box>
 
         {Number.isFinite(eventoId) ? (
-          <Button
-            component={RouterLink}
-            to={`/eventos/${eventoId}`}
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            sx={{ textTransform: "none" }}
-          >
-            Voltar ao evento
-          </Button>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+            <Button
+              component={RouterLink}
+              to={`/eventos/${eventoId}`}
+              variant="outlined"
+              startIcon={<ArrowBackIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Voltar ao evento
+            </Button>
+            <Button
+              variant="contained"
+              disabled={!config || loading || saving}
+              onClick={handleSave}
+              sx={{ textTransform: "none", fontWeight: 800 }}
+            >
+              {saving ? <CircularProgress size={22} color="inherit" /> : "Salvar"}
+            </Button>
+          </Stack>
         ) : null}
       </Stack>
 

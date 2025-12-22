@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -8,6 +9,7 @@ import {
   FormControlLabel,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -16,7 +18,9 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 import {
   getEventoFormConfig,
   getFormularioCamposPossiveis,
+  listFormularioTemplates,
   type EventoFormConfig,
+  type FormularioTemplate,
 } from "../services/eventos";
 import { useAuth } from "../store/auth";
 
@@ -28,8 +32,15 @@ export default function EventLeadFormConfig() {
   const [config, setConfig] = useState<EventoFormConfig | null>(null);
   const [camposPossiveis, setCamposPossiveis] = useState<string[]>([]);
   const [camposAtivos, setCamposAtivos] = useState<Set<string>>(() => new Set());
+  const [templates, setTemplates] = useState<FormularioTemplate[]>([]);
+  const [templateId, setTemplateId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedTemplate = useMemo(() => {
+    if (templateId == null) return null;
+    return templates.find((t) => t.id === templateId) ?? null;
+  }, [templates, templateId]);
 
   const camposPossiveisUniq = useMemo(() => {
     const seen = new Set<string>();
@@ -58,12 +69,15 @@ export default function EventLeadFormConfig() {
     setLoading(true);
     setError(null);
     try {
-      const [configRes, camposRes] = await Promise.all([
+      const [configRes, templatesRes, camposRes] = await Promise.all([
         getEventoFormConfig(token, eventoId),
+        listFormularioTemplates(token).catch(() => []),
         getFormularioCamposPossiveis(token),
       ]);
       setConfig(configRes);
+      setTemplates(templatesRes);
       setCamposPossiveis(camposRes);
+      setTemplateId(configRes.template_id ?? null);
 
       const catalogByLower = new Map(camposRes.map((nome) => [nome.trim().toLowerCase(), nome.trim()]));
       const initialAtivos = new Set<string>();
@@ -135,6 +149,24 @@ export default function EventLeadFormConfig() {
           </Stack>
         ) : config ? (
           <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900} gutterBottom>
+                Tema
+              </Typography>
+              <Autocomplete
+                options={templates}
+                value={selectedTemplate}
+                onChange={(_, value) => setTemplateId(value ? value.id : null)}
+                getOptionLabel={(option) => option.nome}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                sx={{ width: "100%" }}
+                renderInput={(params) => <TextField {...params} label="Tema" placeholder="Selecione..." />}
+              />
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ pt: 0.5 }}>
+                Trocar tema altera apenas o estado local (ainda não salva).
+              </Typography>
+            </Box>
+
             <Box>
               <Typography variant="subtitle1" fontWeight={900} gutterBottom>
                 Campos possíveis

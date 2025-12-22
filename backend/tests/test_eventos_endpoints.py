@@ -478,7 +478,7 @@ def test_evento_put_form_config_valida_template_id(client, engine):
     assert resp.json()["detail"]["code"] == "FORM_TEMPLATE_NOT_FOUND"
 
 
-def test_evento_put_form_config_rejeita_campos_por_enquanto(client, engine):
+def test_evento_put_form_config_replace_campos(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
@@ -499,18 +499,134 @@ def test_evento_put_form_config_rejeita_campos_por_enquanto(client, engine):
         session.add(template)
         session.commit()
         session.refresh(template)
+        template_id = template.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    payload = {
+        "template_id": template_id,
+        "campos": [
+            {"nome_campo": "Nome", "obrigatorio": True, "ordem": 0},
+            {"nome_campo": "Email", "obrigatorio": True, "ordem": 1},
+        ],
+    }
+    resp = client.put(
+        f"/evento/{evento_id}/form-config",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+
+    get_resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    assert get_resp.status_code == 200
+    assert get_resp.json()["template_id"] == template_id
+    assert get_resp.json()["campos"] == payload["campos"]
+
+    # replace all
+    payload2 = {
+        "template_id": template_id,
+        "campos": [{"nome_campo": "Telefone", "obrigatorio": False, "ordem": 0}],
+    }
+    resp2 = client.put(
+        f"/evento/{evento_id}/form-config",
+        json=payload2,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp2.status_code == 200
+
+    get_resp2 = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    assert get_resp2.status_code == 200
+    assert get_resp2.json()["campos"] == payload2["campos"]
+
+
+def test_evento_put_form_config_campos_duplicados_retorna_422(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
     resp = client.put(
         f"/evento/{evento_id}/form-config",
         json={
-            "template_id": template.id,
-            "campos": [{"nome_campo": "Email", "obrigatorio": True, "ordem": 1}],
+            "campos": [
+                {"nome_campo": "Email", "obrigatorio": True, "ordem": 0},
+                {"nome_campo": "email", "obrigatorio": False, "ordem": 1},
+            ]
         },
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 400
-    assert resp.json()["detail"]["code"] == "FORM_CONFIG_FIELDS_NOT_SUPPORTED"
+    assert resp.status_code == 422
+
+
+def test_evento_put_form_config_nao_apaga_campos_quando_omitido(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+        template_a = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        template_b = FormularioLandingTemplate(nome="Padrao", html_conteudo="<html></html>")
+        session.add(template_a)
+        session.add(template_b)
+        session.commit()
+        session.refresh(template_a)
+        session.refresh(template_b)
+        template_a_id = template_a.id
+        template_b_id = template_b.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp_create = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={
+            "template_id": template_a_id,
+            "campos": [{"nome_campo": "Email", "obrigatorio": True, "ordem": 0}],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_create.status_code == 200
+    assert resp_create.json()["campos"] == [{"nome_campo": "Email", "obrigatorio": True, "ordem": 0}]
+
+    # Atualiza somente template_id (campos omitido) e preserva lista.
+    resp_update = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={"template_id": template_b_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_update.status_code == 200
+    assert resp_update.json()["template_id"] == template_b_id
+    assert resp_update.json()["campos"] == [{"nome_campo": "Email", "obrigatorio": True, "ordem": 0}]
+
+    # Envia campos vazio explicitamente: limpa lista.
+    resp_clear = client.put(
+        f"/evento/{evento_id}/form-config",
+        json={"campos": []},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_clear.status_code == 200
+    assert resp_clear.json()["campos"] == []
 
 
 def test_evento_put_form_config_aplica_visibilidade_agencia(client, engine):

@@ -961,14 +961,7 @@ def upsert_formulario_lead_config(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Cria/atualiza config do Formulário de Lead (MVP: apenas template_id)."""
-    if payload.campos:
-        _raise_http(
-            status.HTTP_400_BAD_REQUEST,
-            code="FORM_CONFIG_FIELDS_NOT_SUPPORTED",
-            message="Atualizacao de campos ainda nao suportada neste endpoint",
-        )
-
+    """Cria/atualiza config do Formulário de Lead (MVP: template + campos)."""
     evento = session.get(Evento, evento_id)
     if not evento:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
@@ -991,17 +984,35 @@ def upsert_formulario_lead_config(
         config = FormularioLeadConfig(
             evento_id=evento_id,
             nome="Formulario de Lead",
-            template_id=payload.template_id,
         )
-        session.add(config)
+    config.template_id = payload.template_id
+    config.atualizado_em = now_utc()
+    session.add(config)
+
+    replace_campos = "campos" in payload.model_fields_set
+
+    # MVP: estrategia "replace all" para lista de campos (em transacao).
+    try:
+        session.flush()  # garante config.id para FK sem commitar
+
+        if replace_campos:
+            session.exec(sa_delete(FormularioLeadCampo).where(FormularioLeadCampo.config_id == config.id))
+            for campo in payload.campos:
+                session.add(
+                    FormularioLeadCampo(
+                        config_id=config.id,
+                        nome_campo=campo.nome_campo.strip(),
+                        obrigatorio=campo.obrigatorio,
+                        ordem=campo.ordem,
+                    )
+                )
+
         session.commit()
-        session.refresh(config)
-    else:
-        config.template_id = payload.template_id
-        config.atualizado_em = now_utc()
-        session.add(config)
-        session.commit()
-        session.refresh(config)
+    except Exception:
+        session.rollback()
+        raise
+
+    session.refresh(config)
 
     campos = session.exec(
         select(FormularioLeadCampo)

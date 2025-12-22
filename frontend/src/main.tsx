@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
 import EventsList from "./pages/EventsList";
 import EventDetail from "./pages/EventDetail";
+import EventLeadFormConfig from "./pages/EventLeadFormConfig";
 import NewEvent from "./pages/NewEvent";
 import ComingSoon from "./pages/ComingSoon";
 import { AuthProvider } from "./store/auth";
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route path="/eventos/novo" element={<NewEvent />} />
         <Route path="/eventos/:id/editar" element={<NewEvent />} />
         <Route path="/eventos/:id" element={<EventDetail />} />
+        <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
 
         <Route path="/ativos" element={<ComingSoon title="Ativos" />} />
         <Route path="/leads" element={<ComingSoon title="Leads" />} />

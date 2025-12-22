@@ -279,6 +279,15 @@ export default function EventDetail() {
             Editar
           </Button>
           <Button
+            component={RouterLink}
+            to={`/eventos/${eventoId}/formulario-lead`}
+            variant="outlined"
+            disabled={!evento || loading}
+            sx={{ textTransform: "none", fontWeight: 800 }}
+          >
+            Formulário de Lead
+          </Button>
+          <Button
             color="error"
             variant="contained"
             startIcon={<DeleteOutlineOutlinedIcon />}

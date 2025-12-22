@@ -16,6 +16,7 @@ from app.models.models import (
     DivisaoDemandante,
     Diretoria,
     Evento,
+    FormularioLandingTemplate,
     StatusEvento,
     SubtipoEvento,
     Tag,
@@ -259,6 +260,21 @@ def test_evento_list_paginado_e_filtros(client, engine):
     assert resp_dir.status_code == 200
     assert resp_dir.headers.get("X-Total-Count") == "1"
     assert resp_dir.json()[0]["nome"] == "Evento Alpha"
+
+
+def test_list_formulario_templates_ordenado(client, engine):
+    with Session(engine) as session:
+        session.add(FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>"))
+        session.add(FormularioLandingTemplate(nome="BB Seguros", html_conteudo="<html></html>"))
+        session.add(FormularioLandingTemplate(nome="Padrao", html_conteudo="<html></html>"))
+        user = seed_user(session, "user2@example.com", "Senha123!", "npbb")
+        session.commit()
+
+    token = login_and_get_token(client, "user2@example.com", "Senha123!")
+    resp = client.get("/evento/all/formulario-templates", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    nomes = [item["nome"] for item in resp.json()]
+    assert nomes == sorted(nomes)
 
 
 def test_evento_dicionarios_cidades_estados(client, engine):

@@ -23,6 +23,7 @@ from app.models.models import (
     Evento,
     EventoTag,
     EventoTerritorio,
+    FormularioLandingTemplate,
     Funcionario,
     QuestionarioPagina,
     QuestionarioResposta,
@@ -45,6 +46,7 @@ from app.schemas.dominios import (
     TipoEventoRead,
 )
 from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate
+from app.schemas.formulario_lead import FormularioLandingTemplateRead
 
 router = APIRouter(prefix="/evento", tags=["evento"])
 
@@ -880,6 +882,23 @@ def listar_tags(
         like = f"%{search.strip()}%"
         query = query.where(Tag.nome.ilike(like))
     return session.exec(query.order_by(Tag.nome)).all()
+
+
+@router.get("/all/formulario-templates", response_model=list[FormularioLandingTemplateRead])
+def listar_formulario_templates(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    search: str | None = Query(None, min_length=1, max_length=100),
+):
+    """Lista temas/templates disponíveis para a landing de leads.
+
+    Retorna apenas `id` e `nome`, ordenado por `nome`.
+    """
+    query = select(FormularioLandingTemplate)
+    if search:
+        like = f"%{search.strip()}%"
+        query = query.where(FormularioLandingTemplate.nome.ilike(like))
+    return session.exec(query.order_by(FormularioLandingTemplate.nome)).all()
 
 
 @router.get("/{evento_id}", response_model=EventoRead)

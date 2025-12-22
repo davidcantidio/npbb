@@ -3,32 +3,35 @@ Seed de dados de desenvolvimento (Supabase) para popular dominios basicos.
 
 - Agencias (4)
 - Diretorias (lista)
+- Templates de landing (temas)
 - Tipos/Subtipos de evento (dominios)
 - Territorios (dominios)
 - Usuarios: npbb, bb (com funcionario), agencia (associado a agencia V3A)
 
 Variaveis de ambiente:
-- DATABASE_URL / DIRECT_URL: conexao Postgres (Supabase).
+- DATABASE_URL / DIRECT_URL: conexao Postgres (Supabase). Para seed, usamos DIRECT_URL se existir.
 - SECRET_KEY: exigido pelo util de JWT, mas aqui so usamos hash de senha.
 - SEED_PASSWORD: senha para todos os usuarios criados (padrao: "Senha123!").
 """
 
 import os
+import time
 from pathlib import Path
 
-from sqlmodel import Session, select
+from sqlmodel import Session, create_engine, select
 from dotenv import load_dotenv
+from sqlalchemy.exc import OperationalError
 
 # Garante que o pacote app seja encontrado quando o script eh executado diretamente
 BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in os.sys.path:
     os.sys.path.insert(0, str(BASE_DIR))
 
-from app.db.database import engine  # noqa: E402
 from app.models.models import (  # noqa: E402
     Agencia,
     Diretoria,
     DivisaoDemandante,
+    FormularioLandingTemplate,
     Funcionario,
     SubtipoEvento,
     Territorio,
@@ -40,6 +43,58 @@ from app.utils.security import hash_password  # noqa: E402
 
 
 PASSWORD = os.getenv("SEED_PASSWORD", "Senha123!")
+
+
+def _load_env() -> None:
+    """Carrega .env priorizando `backend/.env` e caindo para `.env` na raiz do repo."""
+    candidate_paths = [
+        BASE_DIR / ".env",  # backend/.env
+        BASE_DIR.parent / ".env",  # npbb/.env
+    ]
+    for env_path in candidate_paths:
+        if env_path.exists():
+            load_dotenv(env_path)
+            return
+    load_dotenv()
+
+
+def _build_seed_engine():
+    echo = os.getenv("SQL_ECHO", "false").lower() == "true"
+    connect_timeout = int(os.getenv("SEED_CONNECT_TIMEOUT", "10"))
+
+    direct_url = os.getenv("DIRECT_URL")
+    database_url = os.getenv("DATABASE_URL")
+
+    candidates: list[tuple[str, str]] = []
+    if direct_url:
+        candidates.append(("DIRECT_URL", direct_url))
+    if database_url and database_url != direct_url:
+        candidates.append(("DATABASE_URL", database_url))
+    if not candidates:
+        raise RuntimeError("DIRECT_URL/DATABASE_URL nao configuradas.")
+
+    last_error: Exception | None = None
+    for label, url in candidates:
+        engine = create_engine(url, echo=echo, connect_args={"connect_timeout": connect_timeout})
+        for attempt in range(1, 4):
+            try:
+                with engine.connect() as conn:
+                    # força a abertura da conexao antes de iniciar o seed
+                    conn.exec_driver_sql("SELECT 1")
+                print(f"Conectado ao banco via {label}.")
+                return engine
+            except OperationalError as exc:
+                last_error = exc
+                wait_seconds = attempt * 2
+                print(
+                    f"Aviso: falha ao conectar via {label} (tentativa {attempt}/3). "
+                    f"Tentando novamente em {wait_seconds}s..."
+                )
+                time.sleep(wait_seconds)
+
+        print(f"Aviso: nao foi possivel conectar via {label}. Tentando proxima URL...")
+
+    raise last_error or RuntimeError("Nao foi possivel conectar ao banco para executar o seed.")
 
 
 def ensure_agencias(session: Session) -> dict[str, Agencia]:
@@ -221,6 +276,50 @@ def ensure_territorios(session: Session) -> dict[str, Territorio]:
     return result
 
 
+def ensure_formulario_templates(session: Session) -> dict[str, FormularioLandingTemplate]:
+    templates: dict[str, dict[str, str | None]] = {
+        "Surf": {
+            "html": "<html><body><h1>Template Surf</h1><p>Placeholder (MVP).</p></body></html>",
+            "css": "body{font-family:Arial,sans-serif;background:#f5f7fb}h1{color:#1e88e5}",
+        },
+        "Padrão": {
+            "html": "<html><body><h1>Template Padrão</h1><p>Placeholder (MVP).</p></body></html>",
+            "css": "body{font-family:Arial,sans-serif;background:#ffffff}h1{color:#4a148c}",
+        },
+        "BB Seguros": {
+            "html": "<html><body><h1>Template BB Seguros</h1><p>Placeholder (MVP).</p></body></html>",
+            "css": "body{font-family:Arial,sans-serif;background:#ffffff}h1{color:#0d47a1}",
+        },
+    }
+
+    result: dict[str, FormularioLandingTemplate] = {}
+    for nome, conteudo in templates.items():
+        template = session.exec(select(FormularioLandingTemplate).where(FormularioLandingTemplate.nome == nome)).first()
+        if not template:
+            template = FormularioLandingTemplate(
+                nome=nome,
+                html_conteudo=str(conteudo["html"]),
+                css_conteudo=conteudo["css"],
+            )
+            session.add(template)
+            session.commit()
+            session.refresh(template)
+        else:
+            changed = False
+            if not template.html_conteudo:
+                template.html_conteudo = str(conteudo["html"])
+                changed = True
+            if template.css_conteudo is None and conteudo["css"] is not None:
+                template.css_conteudo = str(conteudo["css"])
+                changed = True
+            if changed:
+                session.add(template)
+                session.commit()
+                session.refresh(template)
+        result[nome] = template
+    return result
+
+
 def ensure_funcionario_dimac(session: Session, diretoria_dimac: Diretoria) -> Funcionario:
     funcionario = session.exec(
         select(Funcionario).where(Funcionario.email == "funcionario@bb.com.br")
@@ -269,10 +368,12 @@ def ensure_usuario(
 
 
 def main():
-    load_dotenv(BASE_DIR / ".env")
+    _load_env()
+    engine = _build_seed_engine()
     with Session(engine) as session:
         agencias = ensure_agencias(session)
         diretorias = ensure_diretorias(session)
+        ensure_formulario_templates(session)
         ensure_divisoes_demandantes(session)
         ensure_tipos_subtipos_evento(session)
         ensure_territorios(session)

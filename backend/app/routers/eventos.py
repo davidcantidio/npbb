@@ -6,7 +6,7 @@ import csv
 import io
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import case, func
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.exc import IntegrityError
@@ -53,6 +53,7 @@ from app.schemas.formulario_lead import (
     FormularioLeadCampoRead,
     FormularioLeadConfigRead,
 )
+from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
 
@@ -911,6 +912,7 @@ def listar_formulario_templates(
 @router.get("/{evento_id}/form-config/", response_model=FormularioLeadConfigRead)
 def obter_formulario_lead_config(
     evento_id: int,
+    request: Request,
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -926,9 +928,11 @@ def obter_formulario_lead_config(
         if evento.agencia_id != current_user.agencia_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
 
+    computed_urls = build_evento_public_urls(evento_id, backend_base_url=str(request.base_url))
+
     config = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).first()
     if not config:
-        return FormularioLeadConfigRead(evento_id=evento_id, template_id=None, campos=[])
+        return FormularioLeadConfigRead(evento_id=evento_id, template_id=None, campos=[], **computed_urls)
 
     campos = session.exec(
         select(FormularioLeadCampo)
@@ -937,8 +941,12 @@ def obter_formulario_lead_config(
     ).all()
 
     read = FormularioLeadConfigRead.model_validate(config, from_attributes=True)
+    url_updates = {key: value for key, value in computed_urls.items() if getattr(read, key) is None}
     return read.model_copy(
-        update={"campos": [FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos]}
+        update={
+            "campos": [FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos],
+            **url_updates,
+        }
     )
 
 

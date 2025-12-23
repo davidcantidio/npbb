@@ -57,6 +57,7 @@ from app.schemas.formulario_lead import (
     FormularioLeadConfigUpsert,
 )
 from app.schemas.gamificacao import GamificacaoCreate, GamificacaoRead
+from app.utils.http_errors import raise_http_error
 from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
@@ -88,18 +89,17 @@ FORMULARIO_CAMPOS_DEFAULT: list[tuple[str, bool]] = [
 
 
 def _raise_http(status_code: int, code: str, message: str, extra: dict | None = None) -> None:
-    detail: dict = {"code": code, "message": message}
-    if extra:
-        detail.update(extra)
-    raise HTTPException(status_code=status_code, detail=detail)
+    raise_http_error(status_code, code=code, message=message, extra=extra)
 
 
 def _apply_visibility(query, current_user: Usuario):
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
         if not current_user.agencia_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Usuario agencia sem agencia_id",
+            _raise_http(
+                status.HTTP_403_FORBIDDEN,
+                code="FORBIDDEN",
+                message="Usuario agencia sem agencia_id",
+                extra={"field": "agencia_id"},
             )
         return query.where(Evento.agencia_id == current_user.agencia_id)
     return query
@@ -609,15 +609,19 @@ def atualizar_evento(
     """Atualiza um evento existente (PUT)."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     data = payload.model_dump(exclude_unset=True)
     if not data:
-        _raise_http(status.HTTP_400_BAD_REQUEST, code="NO_FIELDS", message="Nenhum campo para atualizar")
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="VALIDATION_ERROR_NO_FIELDS",
+            message="Nenhum campo para atualizar",
+        )
 
     tag_ids_update = data.pop("tag_ids", None)
     territorio_ids_update = data.pop("territorio_ids", None)
@@ -742,11 +746,11 @@ def excluir_evento(
     """Exclui evento, bloqueando quando houver dependencias."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     ativacoes = session.exec(
         select(func.count()).select_from(Ativacao).where(Ativacao.evento_id == evento_id)
@@ -959,11 +963,11 @@ def obter_formulario_lead_config(
     """
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     computed_urls = build_evento_public_urls(evento_id, backend_base_url=str(request.base_url))
 
@@ -1009,11 +1013,11 @@ def upsert_formulario_lead_config(
     """Cria/atualiza config do Formulário de Lead (MVP: template + campos)."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     update_template = "template_id" in payload.model_fields_set
     if update_template and payload.template_id is not None:
@@ -1087,11 +1091,11 @@ def listar_gamificacoes(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     gamificacoes = session.exec(
         select(Gamificacao)
@@ -1120,15 +1124,15 @@ def criar_gamificacao(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     ativacao = session.get(Ativacao, payload.ativacao_id)
     if not ativacao or ativacao.evento_id != evento_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ativacao nao encontrada")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="ATIVACAO_NOT_FOUND", message="Ativacao nao encontrada")
 
     gamificacao = Gamificacao(
         ativacao_id=payload.ativacao_id,
@@ -1145,9 +1149,11 @@ def criar_gamificacao(
         session.rollback()
         existing = session.exec(select(Gamificacao).where(Gamificacao.ativacao_id == payload.ativacao_id)).first()
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Gamificacao ja existe para esta ativacao",
+            _raise_http(
+                status.HTTP_409_CONFLICT,
+                code="GAMIFICACAO_ALREADY_EXISTS",
+                message="Gamificacao ja existe para esta ativacao",
+                extra={"field": "ativacao_id"},
             )
         raise
 
@@ -1164,11 +1170,11 @@ def obter_evento(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     tag_ids = session.exec(
         select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)

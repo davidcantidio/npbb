@@ -13,6 +13,7 @@ import {
   IconButton,
   Paper,
   Stack,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -86,6 +87,16 @@ export default function EventGamificacao() {
   const [deletingTarget, setDeletingTarget] = useState<Gamificacao | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
     if (!token || !isValidEventoId) return;
@@ -495,10 +506,18 @@ export default function EventGamificacao() {
               try {
                 await deleteGamificacao(token, deletingTarget.id);
                 setGamificacoes((prev) => prev.filter((g) => g.id !== deletingTarget.id));
+                if (editing?.id === deletingTarget.id) cancelEdit();
                 setDeleteOpen(false);
                 setDeletingTarget(null);
+                setSnackbar({
+                  open: true,
+                  message: "Gamificação excluída com sucesso.",
+                  severity: "success",
+                });
               } catch (err: any) {
-                setDeleteError(err?.message || "Erro ao excluir.");
+                const message = err?.message || "Erro ao excluir.";
+                setDeleteError(message);
+                setSnackbar({ open: true, message, severity: "error" });
               } finally {
                 setDeleting(false);
               }
@@ -509,6 +528,22 @@ export default function EventGamificacao() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

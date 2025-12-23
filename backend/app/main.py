@@ -14,10 +14,16 @@ app = FastAPI(title="NPBB API")
 
 frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 origins = [origin.strip() for origin in frontend_origin.split(",") if origin.strip()]
+allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
+if not allow_origin_regex and any(
+    "localhost" in origin or "127.0.0.1" in origin for origin in origins
+):
+    allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

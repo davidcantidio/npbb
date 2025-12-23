@@ -85,6 +85,9 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
 
   const message = (err as any)?.message;
   if (typeof message !== "string" || !message.trim()) return fallback;
+  if (message === "Failed to fetch") {
+    return "Nao foi possivel conectar a API. Verifique se o backend esta rodando e se o CORS permite este endereco.";
+  }
 
   try {
     const parsed = JSON.parse(message);

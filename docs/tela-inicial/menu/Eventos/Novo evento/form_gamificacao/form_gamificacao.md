@@ -24,9 +24,10 @@ Status no novo sistema:
 ### 3.1 Formulario
 - **Nome da gamificacao** (obrigatorio)
 - **Descricao** (obrigatorio; referencia mostra contador 0/240)
+- **Premio** (obrigatorio)
 - **Titulo do feedback de sucesso** (obrigatorio)
 - **Descricao do feedback de sucesso** (obrigatorio; referencia mostra contador 0/240)
-- **Premio**: aparece como coluna na tabela da tela original; confirmar se e campo de input dedicado ou se e derivado (ex.: titulo_feedback).
+Observacao: a tela original exibe a coluna **Premio** na tabela; no MVP manter `premio` como campo do contrato.
 
 ### 3.2 Lista de gamificacoes
 Tabela com:

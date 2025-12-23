@@ -27,6 +27,7 @@ from app.models.models import (
     FormularioLeadCampo,
     FormularioLeadConfig,
     Funcionario,
+    Gamificacao,
     QuestionarioPagina,
     QuestionarioResposta,
     StatusEvento,
@@ -55,6 +56,7 @@ from app.schemas.formulario_lead import (
     FormularioLeadConfigRead,
     FormularioLeadConfigUpsert,
 )
+from app.schemas.gamificacao import GamificacaoCreate, GamificacaoRead
 from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
@@ -1074,6 +1076,83 @@ def upsert_formulario_lead_config(
             **url_updates,
         }
     )
+
+
+@router.get("/{evento_id}/gamificacoes", response_model=list[GamificacaoRead])
+@router.get("/{evento_id}/gamificacoes/", response_model=list[GamificacaoRead])
+def listar_gamificacoes(
+    evento_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    gamificacoes = session.exec(
+        select(Gamificacao)
+        .join(Ativacao, Gamificacao.ativacao_id == Ativacao.id)
+        .where(Ativacao.evento_id == evento_id)
+        .order_by(Gamificacao.id)
+    ).all()
+    return [GamificacaoRead.model_validate(g, from_attributes=True) for g in gamificacoes]
+
+
+@router.post(
+    "/{evento_id}/gamificacoes",
+    response_model=GamificacaoRead,
+    status_code=status.HTTP_201_CREATED,
+)
+@router.post(
+    "/{evento_id}/gamificacoes/",
+    response_model=GamificacaoRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def criar_gamificacao(
+    evento_id: int,
+    payload: GamificacaoCreate,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
+
+    ativacao = session.get(Ativacao, payload.ativacao_id)
+    if not ativacao or ativacao.evento_id != evento_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ativacao nao encontrada")
+
+    gamificacao = Gamificacao(
+        ativacao_id=payload.ativacao_id,
+        nome=payload.nome,
+        descricao=payload.descricao,
+        premio=payload.premio,
+        titulo_feedback=payload.titulo_feedback,
+        texto_feedback=payload.texto_feedback,
+    )
+    session.add(gamificacao)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        existing = session.exec(select(Gamificacao).where(Gamificacao.ativacao_id == payload.ativacao_id)).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Gamificacao ja existe para esta ativacao",
+            )
+        raise
+
+    session.refresh(gamificacao)
+    return GamificacaoRead.model_validate(gamificacao, from_attributes=True)
 
 
 @router.get("/{evento_id}", response_model=EventoRead)

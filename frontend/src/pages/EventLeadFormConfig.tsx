@@ -28,6 +28,7 @@ import {
   type EventoFormConfig,
   type FormularioTemplate,
 } from "../services/eventos";
+import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
 
 export default function EventLeadFormConfig() {
@@ -238,6 +239,8 @@ export default function EventLeadFormConfig() {
 
   return (
     <Box sx={{ width: "100%" }}>
+      <EventWizardStepper activeStep={1} sx={{ mb: 2 }} />
+
       <Stack
         direction={{ xs: "column", md: "row" }}
         justifyContent="space-between"
@@ -258,12 +261,21 @@ export default function EventLeadFormConfig() {
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
             <Button
               component={RouterLink}
-              to={`/eventos/${eventoId}`}
+              to={`/eventos/${eventoId}/editar`}
               variant="outlined"
               startIcon={<ArrowBackIcon />}
               sx={{ textTransform: "none" }}
             >
-              Voltar ao evento
+              Voltar (Evento)
+            </Button>
+            <Button
+              component={RouterLink}
+              to={`/eventos/${eventoId}/gamificacao`}
+              variant="outlined"
+              disabled={!config || loading || saving}
+              sx={{ textTransform: "none", fontWeight: 800 }}
+            >
+              Próximo
             </Button>
             <Button
               variant="contained"

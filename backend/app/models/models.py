@@ -335,10 +335,10 @@ class Gamificacao(SQLModel, table=True):
     ativacao_id: int = Field(foreign_key="ativacao.id", unique=True)
 
     nome: str = Field(max_length=150)
-    descricao: str = Field(max_length=500)
-    premio: Optional[str] = Field(default=None, max_length=200)
-    titulo_feedback: Optional[str] = Field(default=None, max_length=200)
-    texto_feedback: Optional[str] = Field(default=None, max_length=500)
+    descricao: str = Field(max_length=240)
+    premio: str = Field(max_length=200)
+    titulo_feedback: str = Field(max_length=200)
+    texto_feedback: str = Field(max_length=240)
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="gamificacao")
 

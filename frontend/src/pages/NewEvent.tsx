@@ -39,6 +39,7 @@ import {
   TipoEvento,
   updateEvento,
 } from "../services/eventos";
+import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
 
 type FormState = {
@@ -92,7 +93,6 @@ const UF_OPTIONS = [
   "TO",
 ];
 
-const MAJOR_STEPS = ["Evento", "Formulário de Lead", "Ativações e Questionário"];
 const EVENT_SUBSTEPS = ["Agência", "Informações do evento", "Classificação"];
 
 type EstadosCidadesData = {
@@ -523,10 +523,10 @@ export default function NewEvent() {
 
       if (isEdit) {
         const updated = await updateEvento(token, eventoId, payload);
-        navigate(`/eventos/${updated.id}`, { replace: true });
+        navigate(`/eventos/${updated.id}/formulario-lead`, { replace: true });
       } else {
         const created = await createEvento(token, payload);
-        navigate(`/eventos/${created.id}`, { replace: true });
+        navigate(`/eventos/${created.id}/formulario-lead`, { replace: true });
       }
     } catch (err: any) {
       setError(err?.message || (isEdit ? "Erro ao salvar alterações" : "Erro ao criar evento"));
@@ -579,23 +579,7 @@ export default function NewEvent() {
         ) : null}
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <Stack spacing={3}>
-            <Stepper activeStep={0} alternativeLabel sx={{ pt: 0.5 }}>
-              {MAJOR_STEPS.map((label, index) => (
-                <Step key={label}>
-                  <StepLabel
-                    optional={
-                      index === 0 ? undefined : (
-                        <Typography variant="caption" color="text.secondary">
-                          Em breve
-                        </Typography>
-                      )
-                    }
-                  >
-                    {label}
-                  </StepLabel>
-                </Step>
-              ))}
-            </Stepper>
+            <EventWizardStepper activeStep={0} />
 
             <Stepper activeStep={eventSubStep}>
               {EVENT_SUBSTEPS.map((label) => (

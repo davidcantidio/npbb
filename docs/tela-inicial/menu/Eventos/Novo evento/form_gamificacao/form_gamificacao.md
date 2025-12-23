@@ -8,8 +8,8 @@ Contrato MVP (decisao): `docs/gamificacao_decisao_mvp.md`
 Aba/tela usada para cadastrar mecanicas gamificadas relacionadas a um evento (ex.: desafios, premios, textos de feedback).
 
 Status no novo sistema:
-- Frontend: nao implementado.
-- Backend: parcialmente implementado (modelos/migrations existem; endpoints pendentes).
+- Frontend: implementado (MVP: criar/editar/excluir/listar).
+- Backend: implementado (endpoints + validacoes + permissoes).
 
 ---
 
@@ -38,9 +38,9 @@ Tabela com:
 ---
 
 ## 4. Regras de negocio (proposta)
-- Gamificacao esta vinculada a uma ativacao (DECISAO: opcao B).
-  - Relacao: 1:1 com `Ativacao` via `gamificacao.ativacao_id` (UNIQUE).
-  - Consequencia: o evento pode ter multiplas gamificacoes (1:N) indiretamente, via suas ativacoes.
+- Gamificacao pertence a um unico evento e e selecionada em uma ativacao (conforme tela de referencia).
+  - Relacao: 1:N `Evento` -> `Gamificacao` via `gamificacao.evento_id`.
+  - Na `Ativacao`, existe selecao opcional de `gamificacao_id` (inclui opcao "Nenhuma").
 - Campos obrigatorios (referencia):
   - nome, descricao, titulo_feedback, texto_feedback
 - Limites (referencia):
@@ -56,7 +56,7 @@ Sugerido seguir o padrao do modulo de eventos (`/evento`):
 - `DELETE /gamificacao/{id}` (remove)
 
 Observacao (contrato decidido):
-- Para criar/editar, a gamificacao precisa ser vinculada a uma `ativacao_id` do evento.
+- A gamificacao e criada no contexto do evento; a vinculacao ocorre na ativacao via `gamificacao_id` (ou "Nenhuma").
 
 ---
 

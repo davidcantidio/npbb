@@ -27,6 +27,7 @@ Campos sugeridos:
 - **Nome da ativacao** (obrigatorio)
 - **Mensagem do QR Code** (opcional, max 240)
 - **Mensagem** (opcional, max 240)
+- **Gamificacao** (opcional; seleciona uma gamificacao cadastrada no evento, ou "Nenhuma")
 - Switches:
   - Redireciona para pesquisa
   - Check-in unico
@@ -37,6 +38,7 @@ Campos sugeridos:
 Tabela/lista com:
 - Nome
 - Check-in unico (sim/nao)
+- Gamificacao (nome ou sim/nao)
 - Acoes: visualizar / editar / excluir
 
 ---

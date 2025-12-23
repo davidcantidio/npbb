@@ -1,14 +1,13 @@
-"""Rotas de gamificacao (CRUD por ativacao) - MVP."""
+"""Rotas de gamificacao (CRUD por evento) - MVP."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_session
-from app.models.models import Ativacao, Evento, Gamificacao, Usuario, UsuarioTipo
+from app.models.models import Evento, Gamificacao, Usuario, UsuarioTipo
 from app.schemas.gamificacao import GamificacaoRead, GamificacaoUpdate
 from app.utils.http_errors import raise_http_error
 
@@ -47,15 +46,7 @@ def _get_visible_gamificacao_or_404(
             message="Gamificacao nao encontrada",
         )
 
-    ativacao = session.get(Ativacao, gamificacao.ativacao_id)
-    if not ativacao:
-        raise_http_error(
-            status.HTTP_404_NOT_FOUND,
-            code="GAMIFICACAO_NOT_FOUND",
-            message="Gamificacao nao encontrada",
-        )
-
-    evento = session.get(Evento, ativacao.evento_id)
+    evento = session.get(Evento, gamificacao.evento_id)
     if not evento:
         raise_http_error(
             status.HTTP_404_NOT_FOUND,
@@ -93,19 +84,7 @@ def atualizar_gamificacao(
         setattr(gamificacao, key, value)
 
     session.add(gamificacao)
-    try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        existing = session.exec(select(Gamificacao).where(Gamificacao.ativacao_id == gamificacao.ativacao_id)).first()
-        if existing and existing.id != gamificacao.id:
-            raise_http_error(
-                status.HTTP_409_CONFLICT,
-                code="GAMIFICACAO_ALREADY_EXISTS",
-                message="Gamificacao ja existe para esta ativacao",
-                field="ativacao_id",
-            )
-        raise
+    session.commit()
 
     session.refresh(gamificacao)
     return GamificacaoRead.model_validate(gamificacao, from_attributes=True)

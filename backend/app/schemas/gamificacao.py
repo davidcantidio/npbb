@@ -1,4 +1,4 @@
-"""Schemas do modulo de Gamificacao (por ativacao) - MVP."""
+"""Schemas do modulo de Gamificacao (por evento) - MVP."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def _normalize_required(text: str, *, field_name: str) -> str:
 
 class GamificacaoRead(BaseModel):
     id: int
-    ativacao_id: int
+    evento_id: int
     nome: str
     descricao: str
     premio: str
@@ -25,7 +25,6 @@ class GamificacaoRead(BaseModel):
 
 
 class GamificacaoCreate(BaseModel):
-    ativacao_id: int = Field(ge=1)
     nome: str = Field(min_length=1, max_length=150)
     descricao: str = Field(min_length=1, max_length=240)
     premio: str = Field(min_length=1, max_length=200)
@@ -66,4 +65,3 @@ class GamificacaoUpdate(BaseModel):
         if self.texto_feedback is not None:
             update["texto_feedback"] = _normalize_required(self.texto_feedback, field_name="texto_feedback")
         return self.model_copy(update=update)
-

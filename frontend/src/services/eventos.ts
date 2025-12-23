@@ -475,7 +475,7 @@ export async function getFormularioCamposPossiveis(token: string): Promise<strin
 
 export type Gamificacao = {
   id: number;
-  ativacao_id: number;
+  evento_id: number;
   nome: string;
   descricao: string;
   premio: string;
@@ -484,7 +484,6 @@ export type Gamificacao = {
 };
 
 export type CreateEventoGamificacaoPayload = {
-  ativacao_id: number;
   nome: string;
   descricao: string;
   premio: string;

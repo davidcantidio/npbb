@@ -1,5 +1,4 @@
 from datetime import date
-from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +7,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Ativacao, Evento, StatusEvento, TipoEvento, Usuario
+from app.models.models import Agencia, Evento, StatusEvento, TipoEvento, Usuario
 from app.utils.security import hash_password
 
 
@@ -117,19 +116,6 @@ def seed_evento(
     return evento
 
 
-def seed_ativacao(session: Session, *, evento_id: int, nome: str) -> Ativacao:
-    ativacao = Ativacao(
-        nome=nome,
-        descricao="descricao",
-        evento_id=evento_id,
-        valor=Decimal("0"),
-    )
-    session.add(ativacao)
-    session.commit()
-    session.refresh(ativacao)
-    return ativacao
-
-
 def test_evento_gamificacoes_get_retorna_lista_vazia(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
@@ -145,7 +131,6 @@ def test_evento_gamificacoes_get_retorna_lista_vazia(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
-        seed_ativacao(session, evento_id=evento.id, nome="Ativacao 1")
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
@@ -169,10 +154,6 @@ def test_evento_gamificacoes_post_cria_e_get_retorna_ordenado(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
-        at1 = seed_ativacao(session, evento_id=evento.id, nome="Ativacao 1")
-        at2 = seed_ativacao(session, evento_id=evento.id, nome="Ativacao 2")
-        at1_id = at1.id
-        at2_id = at2.id
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
@@ -180,7 +161,6 @@ def test_evento_gamificacoes_post_cria_e_get_retorna_ordenado(client, engine):
     resp_create_2 = client.post(
         f"/evento/{evento_id}/gamificacoes",
         json={
-            "ativacao_id": at2_id,
             "nome": "G2",
             "descricao": "Descricao 2",
             "premio": "Premio 2",
@@ -190,12 +170,11 @@ def test_evento_gamificacoes_post_cria_e_get_retorna_ordenado(client, engine):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp_create_2.status_code == 201
-    assert resp_create_2.json()["ativacao_id"] == at2_id
+    assert resp_create_2.json()["evento_id"] == evento_id
 
     resp_create_1 = client.post(
         f"/evento/{evento_id}/gamificacoes",
         json={
-            "ativacao_id": at1_id,
             "nome": "G1",
             "descricao": "Descricao 1",
             "premio": "Premio 1",
@@ -205,7 +184,7 @@ def test_evento_gamificacoes_post_cria_e_get_retorna_ordenado(client, engine):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp_create_1.status_code == 201
-    assert resp_create_1.json()["ativacao_id"] == at1_id
+    assert resp_create_1.json()["evento_id"] == evento_id
 
     resp_list = client.get(f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"})
     assert resp_list.status_code == 200
@@ -231,7 +210,6 @@ def test_evento_gamificacoes_aplica_visibilidade_agencia(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
-        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Ativacao 1")
         evento_id = evento.id
 
     token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
@@ -243,7 +221,6 @@ def test_evento_gamificacoes_aplica_visibilidade_agencia(client, engine):
     resp_post = client.post(
         f"/evento/{evento_id}/gamificacoes",
         json={
-            "ativacao_id": ativacao.id,
             "nome": "G1",
             "descricao": "Descricao",
             "premio": "Premio",
@@ -271,16 +248,13 @@ def test_gamificacao_put_atualiza_e_delete_remove(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
-        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Ativacao 1")
         evento_id = evento.id
-        ativacao_id = ativacao.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
     resp_create = client.post(
         f"/evento/{evento_id}/gamificacoes",
         json={
-            "ativacao_id": ativacao_id,
             "nome": "G1",
             "descricao": "Descricao 1",
             "premio": "Premio 1",
@@ -329,15 +303,12 @@ def test_gamificacao_put_delete_aplica_visibilidade_agencia(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
-        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Ativacao 1")
         evento_id = evento.id
-        ativacao_id = ativacao.id
 
     token_npbb = login_and_get_token(client, "user@example.com", "Senha123!")
     resp_create = client.post(
         f"/evento/{evento_id}/gamificacoes",
         json={
-            "ativacao_id": ativacao_id,
             "nome": "G1",
             "descricao": "Descricao 1",
             "premio": "Premio 1",

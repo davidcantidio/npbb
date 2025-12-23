@@ -1098,10 +1098,7 @@ def listar_gamificacoes(
             _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
     gamificacoes = session.exec(
-        select(Gamificacao)
-        .join(Ativacao, Gamificacao.ativacao_id == Ativacao.id)
-        .where(Ativacao.evento_id == evento_id)
-        .order_by(Gamificacao.id)
+        select(Gamificacao).where(Gamificacao.evento_id == evento_id).order_by(Gamificacao.id)
     ).all()
     return [GamificacaoRead.model_validate(g, from_attributes=True) for g in gamificacoes]
 
@@ -1130,12 +1127,8 @@ def criar_gamificacao(
         if evento.agencia_id != current_user.agencia_id:
             _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
-    ativacao = session.get(Ativacao, payload.ativacao_id)
-    if not ativacao or ativacao.evento_id != evento_id:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="ATIVACAO_NOT_FOUND", message="Ativacao nao encontrada")
-
     gamificacao = Gamificacao(
-        ativacao_id=payload.ativacao_id,
+        evento_id=evento_id,
         nome=payload.nome,
         descricao=payload.descricao,
         premio=payload.premio,
@@ -1143,19 +1136,7 @@ def criar_gamificacao(
         texto_feedback=payload.texto_feedback,
     )
     session.add(gamificacao)
-    try:
-        session.commit()
-    except IntegrityError:
-        session.rollback()
-        existing = session.exec(select(Gamificacao).where(Gamificacao.ativacao_id == payload.ativacao_id)).first()
-        if existing:
-            _raise_http(
-                status.HTTP_409_CONFLICT,
-                code="GAMIFICACAO_ALREADY_EXISTS",
-                message="Gamificacao ja existe para esta ativacao",
-                extra={"field": "ativacao_id"},
-            )
-        raise
+    session.commit()
 
     session.refresh(gamificacao)
     return GamificacaoRead.model_validate(gamificacao, from_attributes=True)

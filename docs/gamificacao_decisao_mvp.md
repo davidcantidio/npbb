@@ -1,16 +1,15 @@
 # Gamificacao (MVP) - Decisao de contrato
 
 ## Decisao
-- **Gamificacao e vinculada a Ativacao (opcao B)**.
-- Relacao no backend:
-  - `gamificacao.ativacao_id` e **obrigatorio** e **UNIQUE** (1:1 por ativacao)
-  - `ativacao.evento_id` define o evento
-  - Logo, um evento pode ter **multiplas** gamificacoes (1:N) indiretamente, via suas ativacoes.
+- **Gamificacao pertence ao Evento** e e **selecionada na Ativacao** (conforme tela de referencia).
+- Relacao no backend (MVP):
+  - `gamificacao.evento_id` e **obrigatorio** (1:N evento -> gamificacoes)
+  - `ativacao.gamificacao_id` e **opcional** (uma ativacao pode apontar para uma gamificacao ou "Nenhuma")
 
 ## Racional
-- O modelo/migration atual ja suportam essa relacao (tabela `gamificacao` existe e tem `ativacao_id` UNIQUE).
-- Mantem compatibilidade com o desenho de dominio (Ativacao como unidade operacional do evento).
-- Permite listar "Gamificacoes adicionadas" no contexto do evento via join `evento -> ativacao -> gamificacao`.
+- A tela de referencia lista/cadastra gamificacoes antes das ativacoes e, no formulario de ativacao, o usuario escolhe a gamificacao correspondente (ou nenhuma).
+- Simplifica o fluxo: nao exige `ativacao_id` para criar gamificacao.
+- Permite reutilizar a mesma gamificacao em mais de uma ativacao (caso o negocio permita), sem limitar a 1:1.
 
 ## Campos do formulario (MVP)
 Conforme tela de referencia, os campos sao **obrigatorios**:
@@ -24,5 +23,5 @@ Observacao:
 - A tela original exibe a coluna **Premio** na tabela; no MVP, manter `premio` como campo do contrato (obrigatorio).
 
 ## Impactos na API/UI
-- Para **criar** uma gamificacao, a API precisa receber `ativacao_id` (e validar que a ativacao pertence ao evento e nao possui gamificacao ainda).
-- A UI precisa permitir escolher a ativacao (ou derivar de alguma selecao de ativacao no fluxo).
+- Para **criar** uma gamificacao, a API usa o `evento_id` do path (`POST /evento/{id}/gamificacoes`).
+- Para **vincular** uma gamificacao a uma ativacao, a ativacao precisa ter um campo opcional `gamificacao_id` (selecionado no formulario de ativacao, com opcao "Nenhuma"), validando que a gamificacao pertence ao evento.

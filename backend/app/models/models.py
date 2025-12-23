@@ -219,6 +219,7 @@ class Evento(SQLModel, table=True):
     territorios: List["EventoTerritorio"] = Relationship(back_populates="evento")
     tags: List["EventoTag"] = Relationship(back_populates="evento")
     ativacoes: List["Ativacao"] = Relationship(back_populates="evento")
+    gamificacoes: List["Gamificacao"] = Relationship(back_populates="evento")
     cotas: List["CotaCortesia"] = Relationship(back_populates="evento")
     paginas_questionario: List["QuestionarioPagina"] = Relationship(back_populates="evento")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="evento")
@@ -306,6 +307,7 @@ class Ativacao(SQLModel, table=True):
     nome: str = Field(max_length=100)
     descricao: str = Field(max_length=200)
     evento_id: int = Field(foreign_key="evento.id")
+    gamificacao_id: Optional[int] = Field(default=None, foreign_key="gamificacao.id")
 
     valor: Decimal = Field(sa_column=Column(Numeric(12, 2)))
 
@@ -320,7 +322,7 @@ class Ativacao(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=now_utc)
 
     evento: Optional[Evento] = Relationship(back_populates="ativacoes")
-    gamificacao: Optional["Gamificacao"] = Relationship(back_populates="ativacao")
+    gamificacao: Optional["Gamificacao"] = Relationship(back_populates="ativacoes")
     termo_uso_obj: Optional["TermoUsoAtivacao"] = Relationship(back_populates="ativacao")
     investimentos: List["Investimento"] = Relationship(back_populates="ativacao")
     ativacao_leads: List["AtivacaoLead"] = Relationship(back_populates="ativacao")
@@ -332,7 +334,7 @@ class Gamificacao(SQLModel, table=True):
     __tablename__ = "gamificacao"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    ativacao_id: int = Field(foreign_key="ativacao.id", unique=True)
+    evento_id: int = Field(foreign_key="evento.id")
 
     nome: str = Field(max_length=150)
     descricao: str = Field(max_length=240)
@@ -340,7 +342,8 @@ class Gamificacao(SQLModel, table=True):
     titulo_feedback: str = Field(max_length=200)
     texto_feedback: str = Field(max_length=240)
 
-    ativacao: Optional[Ativacao] = Relationship(back_populates="gamificacao")
+    evento: Optional[Evento] = Relationship(back_populates="gamificacoes")
+    ativacoes: List[Ativacao] = Relationship(back_populates="gamificacao")
 
 
 class TermoUsoAtivacao(SQLModel, table=True):

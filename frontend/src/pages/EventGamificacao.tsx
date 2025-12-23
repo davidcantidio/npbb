@@ -40,10 +40,9 @@ import {
 } from "../services/eventos";
 import { useAuth } from "../store/auth";
 
-type CreateForm = Omit<CreateEventoGamificacaoPayload, "ativacao_id"> & { ativacao_id: string };
+type CreateForm = CreateEventoGamificacaoPayload;
 
 const EMPTY_FORM: CreateForm = {
-  ativacao_id: "",
   nome: "",
   descricao: "",
   premio: "",
@@ -63,6 +62,40 @@ function normalizeText(value: string) {
   return String(value || "").trim();
 }
 
+function getApiErrorCode(err: unknown): string | null {
+  const message = (err as any)?.message;
+  if (typeof message !== "string" || !message) return null;
+  try {
+    const parsed = JSON.parse(message);
+    if (parsed && typeof parsed.code === "string") return parsed.code;
+  } catch {
+    // ignore
+  }
+  if (message.includes("EVENTO_NOT_FOUND")) return "EVENTO_NOT_FOUND";
+  if (message.includes("GAMIFICACAO_NOT_FOUND")) return "GAMIFICACAO_NOT_FOUND";
+  if (message.includes("FORBIDDEN")) return "FORBIDDEN";
+  return null;
+}
+
+function getApiErrorMessage(err: unknown, fallback: string): string {
+  const code = getApiErrorCode(err);
+  if (code === "EVENTO_NOT_FOUND") return "Evento não encontrado ou você não tem permissão para acessá-lo.";
+  if (code === "GAMIFICACAO_NOT_FOUND") return "Gamificação não encontrada ou você não tem permissão para acessá-la.";
+  if (code === "FORBIDDEN") return "Você não tem permissão para realizar esta ação.";
+
+  const message = (err as any)?.message;
+  if (typeof message !== "string" || !message.trim()) return fallback;
+
+  try {
+    const parsed = JSON.parse(message);
+    if (parsed && typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+  } catch {
+    // ignore
+  }
+
+  return message;
+}
+
 export default function EventGamificacao() {
   const { id } = useParams();
   const eventoId = Number(id);
@@ -74,6 +107,7 @@ export default function EventGamificacao() {
   const [gamificacoes, setGamificacoes] = useState<Gamificacao[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outOfScope, setOutOfScope] = useState(false);
 
   const [createAttempted, setCreateAttempted] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
@@ -104,6 +138,9 @@ export default function EventGamificacao() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setOutOfScope(false);
+    setEvento(null);
+    setGamificacoes([]);
 
     Promise.all([getEvento(token, eventoId), listEventoGamificacoes(token, eventoId)])
       .then(([eventoRes, listRes]) => {
@@ -113,7 +150,9 @@ export default function EventGamificacao() {
       })
       .catch((err: any) => {
         if (cancelled) return;
-        setError(err?.message || "Erro ao carregar gamificações.");
+        const code = getApiErrorCode(err);
+        if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
+        setError(getApiErrorMessage(err, "Erro ao carregar gamificações."));
       })
       .finally(() => {
         if (cancelled) return;
@@ -136,7 +175,6 @@ export default function EventGamificacao() {
     setCreateAttempted(false);
     setCreateError(null);
     setCreateForm({
-      ativacao_id: String(item.ativacao_id),
       nome: item.nome,
       descricao: item.descricao,
       premio: item.premio,
@@ -151,7 +189,7 @@ export default function EventGamificacao() {
     setDeleteOpen(true);
   };
 
-  const canAct = Boolean(token) && isValidEventoId;
+  const canAct = Boolean(token) && isValidEventoId && !outOfScope;
   const isEditing = Boolean(editing);
   const isBusy = creating || saving || deleting;
 
@@ -229,7 +267,7 @@ export default function EventGamificacao() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {isEditing
               ? `Editando a gamificação "${editing?.nome || ""}" (#${editing?.id ?? ""}).`
-              : "MVP: a gamificação é vinculada a uma ativação."}
+              : "Cadastre gamificações do evento. Na etapa de Ativações você poderá selecionar uma delas (ou Nenhuma)."}
           </Typography>
 
           {createError && (
@@ -239,22 +277,6 @@ export default function EventGamificacao() {
           )}
 
           <Stack spacing={2}>
-            <TextField
-              label="Ativação (ID)"
-              required
-              value={createForm.ativacao_id}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, ativacao_id: e.target.value }))}
-              disabled={!canAct || loading || creating || saving || isEditing}
-              fullWidth
-              error={createAttempted && !isEditing && (!createForm.ativacao_id || Number(createForm.ativacao_id) <= 0)}
-              helperText={
-                isEditing
-                  ? "A ativação não pode ser alterada no modo de edição."
-                  : createAttempted && (!createForm.ativacao_id || Number(createForm.ativacao_id) <= 0)
-                    ? "Informe um ID de ativação válido."
-                    : "Informe o ID da ativação do evento."
-              }
-            />
             <TextField
               label="Nome da gamificação"
               required
@@ -355,17 +377,12 @@ export default function EventGamificacao() {
                   setCreateAttempted(true);
                   setCreateError(null);
 
-                  const ativacaoId = Number(createForm.ativacao_id);
                   const nome = normalizeText(createForm.nome);
                   const descricao = normalizeText(createForm.descricao);
                   const premio = normalizeText(createForm.premio);
                   const titulo = normalizeText(createForm.titulo_feedback);
                   const texto = normalizeText(createForm.texto_feedback);
 
-                  if (!Number.isFinite(ativacaoId) || ativacaoId <= 0) {
-                    setCreateError("Informe um ID de ativação válido.");
-                    return;
-                  }
                   if (!nome || !descricao || !premio || !titulo || !texto) {
                     setCreateError("Preencha todos os campos obrigatórios.");
                     return;
@@ -389,7 +406,7 @@ export default function EventGamificacao() {
                         severity: "success",
                       });
                     } catch (err: any) {
-                      const message = err?.message || "Erro ao atualizar gamificação.";
+                      const message = getApiErrorMessage(err, "Erro ao atualizar gamificação.");
                       setCreateError(message);
                       setSnackbar({ open: true, message, severity: "error" });
                     } finally {
@@ -401,7 +418,6 @@ export default function EventGamificacao() {
                   setCreating(true);
                   try {
                     const created = await createEventoGamificacao(token, eventoId, {
-                      ativacao_id: ativacaoId,
                       nome,
                       descricao,
                       premio,
@@ -417,7 +433,9 @@ export default function EventGamificacao() {
                       severity: "success",
                     });
                   } catch (err: any) {
-                    const message = err?.message || "Erro ao criar gamificação.";
+                    const code = getApiErrorCode(err);
+                    if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
+                    const message = getApiErrorMessage(err, "Erro ao criar gamificação.");
                     setCreateError(message);
                     setSnackbar({ open: true, message, severity: "error" });
                   } finally {
@@ -554,7 +572,7 @@ export default function EventGamificacao() {
                   severity: "success",
                 });
               } catch (err: any) {
-                const message = err?.message || "Erro ao excluir.";
+                const message = getApiErrorMessage(err, "Erro ao excluir.");
                 setDeleteError(message);
                 setSnackbar({ open: true, message, severity: "error" });
               } finally {

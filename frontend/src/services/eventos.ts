@@ -472,3 +472,72 @@ export async function getFormularioCamposPossiveis(token: string): Promise<strin
     return [...FORMULARIO_CAMPOS_POSSIVEIS_FALLBACK];
   }
 }
+
+export type Gamificacao = {
+  id: number;
+  ativacao_id: number;
+  nome: string;
+  descricao: string;
+  premio: string;
+  titulo_feedback: string;
+  texto_feedback: string;
+};
+
+export type CreateEventoGamificacaoPayload = {
+  ativacao_id: number;
+  nome: string;
+  descricao: string;
+  premio: string;
+  titulo_feedback: string;
+  texto_feedback: string;
+};
+
+export type UpdateGamificacaoPayload = {
+  nome?: string;
+  descricao?: string;
+  premio?: string;
+  titulo_feedback?: string;
+  texto_feedback?: string;
+};
+
+export async function listEventoGamificacoes(token: string, eventoId: number): Promise<Gamificacao[]> {
+  const res = await fetch(`${API_BASE_URL}/evento/${eventoId}/gamificacoes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<Gamificacao[]>(res);
+}
+
+export async function createEventoGamificacao(
+  token: string,
+  eventoId: number,
+  payload: CreateEventoGamificacaoPayload,
+): Promise<Gamificacao> {
+  const res = await fetch(`${API_BASE_URL}/evento/${eventoId}/gamificacoes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Gamificacao>(res);
+}
+
+export async function updateGamificacao(
+  token: string,
+  gamificacaoId: number,
+  payload: UpdateGamificacaoPayload,
+): Promise<Gamificacao> {
+  const res = await fetch(`${API_BASE_URL}/gamificacao/${gamificacaoId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Gamificacao>(res);
+}
+
+export async function deleteGamificacao(token: string, gamificacaoId: number): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/gamificacao/${gamificacaoId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 204) return;
+  await handleResponse<unknown>(res);
+}

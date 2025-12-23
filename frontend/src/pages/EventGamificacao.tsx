@@ -36,12 +36,19 @@ import {
   type CreateEventoGamificacaoPayload,
   type EventoRead,
   type Gamificacao,
-  type UpdateGamificacaoPayload,
 } from "../services/eventos";
 import { useAuth } from "../store/auth";
 
-type EditForm = Required<UpdateGamificacaoPayload>;
 type CreateForm = Omit<CreateEventoGamificacaoPayload, "ativacao_id"> & { ativacao_id: string };
+
+const EMPTY_FORM: CreateForm = {
+  ativacao_id: "",
+  nome: "",
+  descricao: "",
+  premio: "",
+  titulo_feedback: "",
+  texto_feedback: "",
+};
 
 const MAX_LEN = {
   nome: 150,
@@ -68,28 +75,12 @@ export default function EventGamificacao() {
   const [error, setError] = useState<string | null>(null);
 
   const [createAttempted, setCreateAttempted] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateForm>({
-    ativacao_id: "",
-    nome: "",
-    descricao: "",
-    premio: "",
-    titulo_feedback: "",
-    texto_feedback: "",
-  });
+  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Gamificacao | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({
-    nome: "",
-    descricao: "",
-    premio: "",
-    titulo_feedback: "",
-    texto_feedback: "",
-  });
   const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingTarget, setDeletingTarget] = useState<Gamificacao | null>(null);
@@ -129,17 +120,18 @@ export default function EventGamificacao() {
     return `Configure as gamificações do evento #${eventoId}.`;
   }, [evento?.nome, eventoId, isValidEventoId]);
 
-  const openEdit = (item: Gamificacao) => {
+  const startEdit = (item: Gamificacao) => {
     setEditing(item);
-    setEditForm({
+    setCreateAttempted(false);
+    setCreateError(null);
+    setCreateForm({
+      ativacao_id: String(item.ativacao_id),
       nome: item.nome,
       descricao: item.descricao,
       premio: item.premio,
       titulo_feedback: item.titulo_feedback,
       texto_feedback: item.texto_feedback,
     });
-    setEditError(null);
-    setEditOpen(true);
   };
 
   const openDelete = (item: Gamificacao) => {
@@ -149,6 +141,15 @@ export default function EventGamificacao() {
   };
 
   const canAct = Boolean(token) && isValidEventoId;
+  const isEditing = Boolean(editing);
+  const isBusy = creating || saving || deleting;
+
+  const cancelEdit = () => {
+    setEditing(null);
+    setCreateAttempted(false);
+    setCreateError(null);
+    setCreateForm(EMPTY_FORM);
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -210,12 +211,14 @@ export default function EventGamificacao() {
             maxWidth: { xs: "100%", md: 420 },
             flexShrink: 0,
           }}
-        >
+          >
           <Typography variant="h6" fontWeight={900} gutterBottom>
-            Adicionar gamificação
+            {isEditing ? "Editar gamificação" : "Adicionar gamificação"}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            MVP: a gamificação é vinculada a uma ativação.
+            {isEditing
+              ? `Editando a gamificação "${editing?.nome || ""}" (#${editing?.id ?? ""}).`
+              : "MVP: a gamificação é vinculada a uma ativação."}
           </Typography>
 
           {createError && (
@@ -230,10 +233,14 @@ export default function EventGamificacao() {
               required
               value={createForm.ativacao_id}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, ativacao_id: e.target.value }))}
-              disabled={!canAct || loading || creating}
+              disabled={!canAct || loading || creating || saving || isEditing}
               fullWidth
-              error={createAttempted && (!createForm.ativacao_id || Number(createForm.ativacao_id) <= 0)}
-              helperText="Informe o ID da ativação do evento."
+              error={createAttempted && !isEditing && (!createForm.ativacao_id || Number(createForm.ativacao_id) <= 0)}
+              helperText={
+                isEditing
+                  ? "A ativação não pode ser alterada no modo de edição."
+                  : "Informe o ID da ativação do evento."
+              }
             />
             <TextField
               label="Nome da gamificação"
@@ -241,7 +248,7 @@ export default function EventGamificacao() {
               value={createForm.nome}
               inputProps={{ maxLength: MAX_LEN.nome }}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, nome: e.target.value }))}
-              disabled={!canAct || loading || creating}
+              disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.nome)}
             />
@@ -251,7 +258,7 @@ export default function EventGamificacao() {
               value={createForm.descricao}
               inputProps={{ maxLength: MAX_LEN.descricao }}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, descricao: e.target.value }))}
-              disabled={!canAct || loading || creating}
+              disabled={!canAct || loading || creating || saving}
               multiline
               minRows={4}
               fullWidth
@@ -264,7 +271,7 @@ export default function EventGamificacao() {
               value={createForm.premio}
               inputProps={{ maxLength: MAX_LEN.premio }}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, premio: e.target.value }))}
-              disabled={!canAct || loading || creating}
+              disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.premio)}
             />
@@ -274,7 +281,7 @@ export default function EventGamificacao() {
               value={createForm.titulo_feedback}
               inputProps={{ maxLength: MAX_LEN.titulo_feedback }}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, titulo_feedback: e.target.value }))}
-              disabled={!canAct || loading || creating}
+              disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.titulo_feedback)}
             />
@@ -284,7 +291,7 @@ export default function EventGamificacao() {
               value={createForm.texto_feedback}
               inputProps={{ maxLength: MAX_LEN.texto_feedback }}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, texto_feedback: e.target.value }))}
-              disabled={!canAct || loading || creating}
+              disabled={!canAct || loading || creating || saving}
               multiline
               minRows={4}
               fullWidth
@@ -292,61 +299,92 @@ export default function EventGamificacao() {
               helperText={`${createForm.texto_feedback.length}/${MAX_LEN.texto_feedback} caracteres`}
             />
 
-            <Button
-              variant="contained"
-              disabled={!canAct || loading || creating}
-              onClick={async () => {
-                if (!token || !isValidEventoId) return;
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
+              {isEditing && (
+                <Button
+                  variant="outlined"
+                  disabled={!canAct || loading || isBusy}
+                  onClick={cancelEdit}
+                  sx={{ textTransform: "none" }}
+                >
+                  Cancelar
+                </Button>
+              )}
+              <Button
+                variant="contained"
+                disabled={!canAct || loading || isBusy}
+                onClick={async () => {
+                  if (!token || !isValidEventoId) return;
 
-                setCreateAttempted(true);
-                setCreateError(null);
+                  setCreateAttempted(true);
+                  setCreateError(null);
 
-                const ativacaoId = Number(createForm.ativacao_id);
-                const nome = normalizeText(createForm.nome);
-                const descricao = normalizeText(createForm.descricao);
-                const premio = normalizeText(createForm.premio);
-                const titulo = normalizeText(createForm.titulo_feedback);
-                const texto = normalizeText(createForm.texto_feedback);
+                  const ativacaoId = Number(createForm.ativacao_id);
+                  const nome = normalizeText(createForm.nome);
+                  const descricao = normalizeText(createForm.descricao);
+                  const premio = normalizeText(createForm.premio);
+                  const titulo = normalizeText(createForm.titulo_feedback);
+                  const texto = normalizeText(createForm.texto_feedback);
 
-                if (!Number.isFinite(ativacaoId) || ativacaoId <= 0) {
-                  setCreateError("Informe um ID de ativação válido.");
-                  return;
-                }
-                if (!nome || !descricao || !premio || !titulo || !texto) {
-                  setCreateError("Preencha todos os campos obrigatórios.");
-                  return;
-                }
+                  if (!Number.isFinite(ativacaoId) || ativacaoId <= 0) {
+                    setCreateError("Informe um ID de ativação válido.");
+                    return;
+                  }
+                  if (!nome || !descricao || !premio || !titulo || !texto) {
+                    setCreateError("Preencha todos os campos obrigatórios.");
+                    return;
+                  }
 
-                setCreating(true);
-                try {
-                  const created = await createEventoGamificacao(token, eventoId, {
-                    ativacao_id: ativacaoId,
-                    nome,
-                    descricao,
-                    premio,
-                    titulo_feedback: titulo,
-                    texto_feedback: texto,
-                  });
-                  setGamificacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
-                  setCreateAttempted(false);
-                  setCreateForm({
-                    ativacao_id: "",
-                    nome: "",
-                    descricao: "",
-                    premio: "",
-                    titulo_feedback: "",
-                    texto_feedback: "",
-                  });
-                } catch (err: any) {
-                  setCreateError(err?.message || "Erro ao criar gamificação.");
-                } finally {
-                  setCreating(false);
-                }
-              }}
-              sx={{ fontWeight: 800, textTransform: "none" }}
-            >
-              {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar gamificação"}
-            </Button>
+                  if (editing) {
+                    setSaving(true);
+                    try {
+                      const updated = await updateGamificacao(token, editing.id, {
+                        nome,
+                        descricao,
+                        premio,
+                        titulo_feedback: titulo,
+                        texto_feedback: texto,
+                      });
+                      setGamificacoes((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+                      cancelEdit();
+                    } catch (err: any) {
+                      setCreateError(err?.message || "Erro ao atualizar gamificação.");
+                    } finally {
+                      setSaving(false);
+                    }
+                    return;
+                  }
+
+                  setCreating(true);
+                  try {
+                    const created = await createEventoGamificacao(token, eventoId, {
+                      ativacao_id: ativacaoId,
+                      nome,
+                      descricao,
+                      premio,
+                      titulo_feedback: titulo,
+                      texto_feedback: texto,
+                    });
+                    setGamificacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
+                    setCreateAttempted(false);
+                    setCreateForm(EMPTY_FORM);
+                  } catch (err: any) {
+                    setCreateError(err?.message || "Erro ao criar gamificação.");
+                  } finally {
+                    setCreating(false);
+                  }
+                }}
+                sx={{ fontWeight: 800, textTransform: "none" }}
+              >
+                {saving || creating ? (
+                  <CircularProgress size={22} color="inherit" />
+                ) : isEditing ? (
+                  "Atualizar gamificação"
+                ) : (
+                  "Adicionar gamificação"
+                )}
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
 
@@ -395,7 +433,7 @@ export default function EventGamificacao() {
                           aria-label="Editar"
                           size="small"
                           disabled={!canAct}
-                          onClick={() => openEdit(item)}
+                          onClick={() => startEdit(item)}
                         >
                           <EditOutlinedIcon fontSize="small" />
                         </IconButton>
@@ -427,119 +465,6 @@ export default function EventGamificacao() {
           )}
         </Paper>
       </Stack>
-
-      <Dialog
-        open={editOpen}
-        onClose={() => (saving ? null : setEditOpen(false))}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Editar gamificação</DialogTitle>
-        <DialogContent>
-          {editError && (
-            <Alert severity="error" variant="filled" sx={{ mb: 2 }}>
-              {editError}
-            </Alert>
-          )}
-
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField
-              label="Nome"
-              required
-              value={editForm.nome}
-              inputProps={{ maxLength: MAX_LEN.nome }}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, nome: e.target.value }))}
-              disabled={saving}
-              fullWidth
-            />
-            <TextField
-              label="Descrição"
-              required
-              value={editForm.descricao}
-              inputProps={{ maxLength: MAX_LEN.descricao }}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, descricao: e.target.value }))}
-              disabled={saving}
-              multiline
-              minRows={3}
-              fullWidth
-            />
-            <TextField
-              label="Prêmio"
-              required
-              value={editForm.premio}
-              inputProps={{ maxLength: MAX_LEN.premio }}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, premio: e.target.value }))}
-              disabled={saving}
-              fullWidth
-            />
-            <TextField
-              label="Título do feedback de sucesso"
-              required
-              value={editForm.titulo_feedback}
-              inputProps={{ maxLength: MAX_LEN.titulo_feedback }}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, titulo_feedback: e.target.value }))}
-              disabled={saving}
-              fullWidth
-            />
-            <TextField
-              label="Descrição do feedback de sucesso"
-              required
-              value={editForm.texto_feedback}
-              inputProps={{ maxLength: MAX_LEN.texto_feedback }}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, texto_feedback: e.target.value }))}
-              disabled={saving}
-              multiline
-              minRows={3}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditOpen(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            disabled={!token || saving || !editing}
-            onClick={async () => {
-              if (!token || !editing) return;
-
-              const nome = normalizeText(editForm.nome);
-              const descricao = normalizeText(editForm.descricao);
-              const premio = normalizeText(editForm.premio);
-              const titulo = normalizeText(editForm.titulo_feedback);
-              const texto = normalizeText(editForm.texto_feedback);
-
-              if (!nome || !descricao || !premio || !titulo || !texto) {
-                setEditError("Preencha todos os campos obrigatórios.");
-                return;
-              }
-
-              setSaving(true);
-              setEditError(null);
-              try {
-                const updated = await updateGamificacao(token, editing.id, {
-                  nome,
-                  descricao,
-                  premio,
-                  titulo_feedback: titulo,
-                  texto_feedback: texto,
-                });
-                setGamificacoes((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
-                setEditOpen(false);
-                setEditing(null);
-              } catch (err: any) {
-                setEditError(err?.message || "Erro ao salvar.");
-              } finally {
-                setSaving(false);
-              }
-            }}
-            sx={{ fontWeight: 800 }}
-          >
-            {saving ? <CircularProgress size={22} color="inherit" /> : "Salvar"}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog open={deleteOpen} onClose={() => (deleting ? null : setDeleteOpen(false))}>
         <DialogTitle>Excluir gamificação</DialogTitle>

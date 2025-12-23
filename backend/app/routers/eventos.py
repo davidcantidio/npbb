@@ -72,6 +72,18 @@ FORMULARIO_CAMPOS_CATALOGO = [
     "Area de atuacao",
 ]
 
+FORMULARIO_CAMPOS_ORDEM_BY_LOWER = {nome.lower(): index for index, nome in enumerate(FORMULARIO_CAMPOS_CATALOGO)}
+
+# Defaults (MVP) quando ainda nao existe config persistida para o evento.
+# Screenshot/UX: CPF, Nome, Sobrenome, Email e Data de nascimento ativos; Sobrenome opcional.
+FORMULARIO_CAMPOS_DEFAULT: list[tuple[str, bool]] = [
+    ("CPF", True),
+    ("Nome", True),
+    ("Sobrenome", False),
+    ("Email", True),
+    ("Data de nascimento", True),
+]
+
 
 def _raise_http(status_code: int, code: str, message: str, extra: dict | None = None) -> None:
     detail: dict = {"code": code, "message": message}
@@ -955,7 +967,17 @@ def obter_formulario_lead_config(
 
     config = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).first()
     if not config:
-        return FormularioLeadConfigRead(evento_id=evento_id, template_id=None, campos=[], **computed_urls)
+        default_campos = [
+            FormularioLeadCampoRead(
+                nome_campo=nome,
+                obrigatorio=obrigatorio,
+                ordem=FORMULARIO_CAMPOS_ORDEM_BY_LOWER.get(nome.lower(), 0),
+            )
+            for nome, obrigatorio in FORMULARIO_CAMPOS_DEFAULT
+        ]
+        return FormularioLeadConfigRead(
+            evento_id=evento_id, template_id=None, campos=default_campos, **computed_urls
+        )
 
     campos = session.exec(
         select(FormularioLeadCampo)

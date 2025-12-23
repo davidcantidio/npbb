@@ -1,5 +1,7 @@
 # Aba de Gamificacao (Evento)
 
+Contrato MVP (decisao): `docs/gamificacao_decisao_mvp.md`
+
 ## 1. Nome da Tela
 **Gamificacao do Evento**
 
@@ -7,7 +9,7 @@ Aba/tela usada para cadastrar mecanicas gamificadas relacionadas a um evento (ex
 
 Status no novo sistema:
 - Frontend: nao implementado.
-- Backend: nao implementado.
+- Backend: parcialmente implementado (modelos/migrations existem; endpoints pendentes).
 
 ---
 
@@ -20,11 +22,11 @@ Status no novo sistema:
 
 ## 3. Estrutura (proposta)
 ### 3.1 Formulario
-- **Nome** (obrigatorio)
-- **Descricao** (obrigatorio)
-- Premio (a confirmar no original)
-- Titulo do feedback de sucesso (opcional)
-- Descricao do feedback de sucesso (opcional)
+- **Nome da gamificacao** (obrigatorio)
+- **Descricao** (obrigatorio; referencia mostra contador 0/240)
+- **Titulo do feedback de sucesso** (obrigatorio)
+- **Descricao do feedback de sucesso** (obrigatorio; referencia mostra contador 0/240)
+- **Premio**: aparece como coluna na tabela da tela original; confirmar se e campo de input dedicado ou se e derivado (ex.: titulo_feedback).
 
 ### 3.2 Lista de gamificacoes
 Tabela com:
@@ -35,9 +37,13 @@ Tabela com:
 ---
 
 ## 4. Regras de negocio (proposta)
-- Gamificacao pertence a um unico evento (1:N).
-- Campos obrigatorios: nome e descricao.
-- Definir limite de caracteres e se existe campo "premio" obrigatorio.
+- Gamificacao esta vinculada a uma ativacao (DECISAO: opcao B).
+  - Relacao: 1:1 com `Ativacao` via `gamificacao.ativacao_id` (UNIQUE).
+  - Consequencia: o evento pode ter multiplas gamificacoes (1:N) indiretamente, via suas ativacoes.
+- Campos obrigatorios (referencia):
+  - nome, descricao, titulo_feedback, texto_feedback
+- Limites (referencia):
+  - `descricao` e `texto_feedback`: max 240 chars (contador na UI original).
 
 ---
 
@@ -47,6 +53,9 @@ Sugerido seguir o padrao do modulo de eventos (`/evento`):
 - `POST /evento/{id}/gamificacoes` (cria)
 - `PUT /gamificacao/{id}` (edita)
 - `DELETE /gamificacao/{id}` (remove)
+
+Observacao (contrato decidido):
+- Para criar/editar, a gamificacao precisa ser vinculada a uma `ativacao_id` do evento.
 
 ---
 

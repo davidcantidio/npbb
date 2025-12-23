@@ -250,7 +250,9 @@ export default function EventGamificacao() {
               helperText={
                 isEditing
                   ? "A ativação não pode ser alterada no modo de edição."
-                  : "Informe o ID da ativação do evento."
+                  : createAttempted && (!createForm.ativacao_id || Number(createForm.ativacao_id) <= 0)
+                    ? "Informe um ID de ativação válido."
+                    : "Informe o ID da ativação do evento."
               }
             />
             <TextField
@@ -262,6 +264,7 @@ export default function EventGamificacao() {
               disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.nome)}
+              helperText={createAttempted && !normalizeText(createForm.nome) ? "Informe o nome da gamificação." : "\u00A0"}
             />
             <TextField
               label="Descrição"
@@ -274,7 +277,14 @@ export default function EventGamificacao() {
               minRows={4}
               fullWidth
               error={createAttempted && !normalizeText(createForm.descricao)}
-              helperText={`${createForm.descricao.length}/${MAX_LEN.descricao} caracteres`}
+              helperText={
+                <Box component="span" sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Box component="span">
+                    {createAttempted && !normalizeText(createForm.descricao) ? "Informe a descrição." : "\u00A0"}
+                  </Box>
+                  <Box component="span">{`${createForm.descricao.length}/${MAX_LEN.descricao} caracteres`}</Box>
+                </Box>
+              }
             />
             <TextField
               label="Prêmio"
@@ -285,6 +295,7 @@ export default function EventGamificacao() {
               disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.premio)}
+              helperText={createAttempted && !normalizeText(createForm.premio) ? "Informe o prêmio." : "\u00A0"}
             />
             <TextField
               label="Título do feedback de sucesso"
@@ -295,6 +306,11 @@ export default function EventGamificacao() {
               disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.titulo_feedback)}
+              helperText={
+                createAttempted && !normalizeText(createForm.titulo_feedback)
+                  ? "Informe o título do feedback."
+                  : "\u00A0"
+              }
             />
             <TextField
               label="Descrição do feedback de sucesso"
@@ -307,7 +323,16 @@ export default function EventGamificacao() {
               minRows={4}
               fullWidth
               error={createAttempted && !normalizeText(createForm.texto_feedback)}
-              helperText={`${createForm.texto_feedback.length}/${MAX_LEN.texto_feedback} caracteres`}
+              helperText={
+                <Box component="span" sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                  <Box component="span">
+                    {createAttempted && !normalizeText(createForm.texto_feedback)
+                      ? "Informe a descrição do feedback."
+                      : "\u00A0"}
+                  </Box>
+                  <Box component="span">{`${createForm.texto_feedback.length}/${MAX_LEN.texto_feedback} caracteres`}</Box>
+                </Box>
+              }
             />
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
@@ -358,8 +383,15 @@ export default function EventGamificacao() {
                       });
                       setGamificacoes((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
                       cancelEdit();
+                      setSnackbar({
+                        open: true,
+                        message: "Gamificação atualizada com sucesso.",
+                        severity: "success",
+                      });
                     } catch (err: any) {
-                      setCreateError(err?.message || "Erro ao atualizar gamificação.");
+                      const message = err?.message || "Erro ao atualizar gamificação.";
+                      setCreateError(message);
+                      setSnackbar({ open: true, message, severity: "error" });
                     } finally {
                       setSaving(false);
                     }
@@ -379,8 +411,15 @@ export default function EventGamificacao() {
                     setGamificacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
                     setCreateAttempted(false);
                     setCreateForm(EMPTY_FORM);
+                    setSnackbar({
+                      open: true,
+                      message: "Gamificação adicionada com sucesso.",
+                      severity: "success",
+                    });
                   } catch (err: any) {
-                    setCreateError(err?.message || "Erro ao criar gamificação.");
+                    const message = err?.message || "Erro ao criar gamificação.";
+                    setCreateError(message);
+                    setSnackbar({ open: true, message, severity: "error" });
                   } finally {
                     setCreating(false);
                   }
@@ -443,7 +482,7 @@ export default function EventGamificacao() {
                         <IconButton
                           aria-label="Editar"
                           size="small"
-                          disabled={!canAct}
+                          disabled={!canAct || isBusy}
                           onClick={() => startEdit(item)}
                         >
                           <EditOutlinedIcon fontSize="small" />
@@ -452,7 +491,7 @@ export default function EventGamificacao() {
                           aria-label="Excluir"
                           size="small"
                           color="error"
-                          disabled={!canAct}
+                          disabled={!canAct || isBusy}
                           onClick={() => openDelete(item)}
                         >
                           <DeleteOutlineOutlinedIcon fontSize="small" />

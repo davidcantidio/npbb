@@ -28,10 +28,12 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import {
+  createEventoGamificacao,
   deleteGamificacao,
   getEvento,
   listEventoGamificacoes,
   updateGamificacao,
+  type CreateEventoGamificacaoPayload,
   type EventoRead,
   type Gamificacao,
   type UpdateGamificacaoPayload,
@@ -39,6 +41,7 @@ import {
 import { useAuth } from "../store/auth";
 
 type EditForm = Required<UpdateGamificacaoPayload>;
+type CreateForm = Omit<CreateEventoGamificacaoPayload, "ativacao_id"> & { ativacao_id: string };
 
 const MAX_LEN = {
   nome: 150,
@@ -63,6 +66,18 @@ export default function EventGamificacao() {
   const [gamificacoes, setGamificacoes] = useState<Gamificacao[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [createAttempted, setCreateAttempted] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateForm>({
+    ativacao_id: "",
+    nome: "",
+    descricao: "",
+    premio: "",
+    titulo_feedback: "",
+    texto_feedback: "",
+  });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Gamificacao | null>(null);
@@ -185,82 +200,233 @@ export default function EventGamificacao() {
         </Alert>
       )}
 
-      <Paper elevation={2} sx={{ borderRadius: 1, overflow: "hidden" }}>
-        <Box sx={{ px: 2.5, py: 2 }}>
-          <Typography variant="h6" fontWeight={900}>
-            Gamificações adicionadas
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="flex-start">
+        <Paper
+          elevation={2}
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            width: "100%",
+            maxWidth: { xs: "100%", md: 420 },
+            flexShrink: 0,
+          }}
+        >
+          <Typography variant="h6" fontWeight={900} gutterBottom>
+            Adicionar gamificação
           </Typography>
-        </Box>
-        <Divider />
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            MVP: a gamificação é vinculada a uma ativação.
+          </Typography>
 
-        {loading ? (
-          <Box
-            sx={{
-              p: 4,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
-            }}
-          >
-            <CircularProgress size={22} />
-            <Typography variant="body2" color="text.secondary">
-              Carregando...
+          {createError && (
+            <Alert severity="error" variant="filled" sx={{ mb: 2 }}>
+              {createError}
+            </Alert>
+          )}
+
+          <Stack spacing={2}>
+            <TextField
+              label="Ativação (ID)"
+              required
+              value={createForm.ativacao_id}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, ativacao_id: e.target.value }))}
+              disabled={!canAct || loading || creating}
+              fullWidth
+              error={createAttempted && (!createForm.ativacao_id || Number(createForm.ativacao_id) <= 0)}
+              helperText="Informe o ID da ativação do evento."
+            />
+            <TextField
+              label="Nome da gamificação"
+              required
+              value={createForm.nome}
+              inputProps={{ maxLength: MAX_LEN.nome }}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, nome: e.target.value }))}
+              disabled={!canAct || loading || creating}
+              fullWidth
+              error={createAttempted && !normalizeText(createForm.nome)}
+            />
+            <TextField
+              label="Descrição"
+              required
+              value={createForm.descricao}
+              inputProps={{ maxLength: MAX_LEN.descricao }}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, descricao: e.target.value }))}
+              disabled={!canAct || loading || creating}
+              multiline
+              minRows={4}
+              fullWidth
+              error={createAttempted && !normalizeText(createForm.descricao)}
+              helperText={`${createForm.descricao.length}/${MAX_LEN.descricao} caracteres`}
+            />
+            <TextField
+              label="Prêmio"
+              required
+              value={createForm.premio}
+              inputProps={{ maxLength: MAX_LEN.premio }}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, premio: e.target.value }))}
+              disabled={!canAct || loading || creating}
+              fullWidth
+              error={createAttempted && !normalizeText(createForm.premio)}
+            />
+            <TextField
+              label="Título do feedback de sucesso"
+              required
+              value={createForm.titulo_feedback}
+              inputProps={{ maxLength: MAX_LEN.titulo_feedback }}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, titulo_feedback: e.target.value }))}
+              disabled={!canAct || loading || creating}
+              fullWidth
+              error={createAttempted && !normalizeText(createForm.titulo_feedback)}
+            />
+            <TextField
+              label="Descrição do feedback de sucesso"
+              required
+              value={createForm.texto_feedback}
+              inputProps={{ maxLength: MAX_LEN.texto_feedback }}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, texto_feedback: e.target.value }))}
+              disabled={!canAct || loading || creating}
+              multiline
+              minRows={4}
+              fullWidth
+              error={createAttempted && !normalizeText(createForm.texto_feedback)}
+              helperText={`${createForm.texto_feedback.length}/${MAX_LEN.texto_feedback} caracteres`}
+            />
+
+            <Button
+              variant="contained"
+              disabled={!canAct || loading || creating}
+              onClick={async () => {
+                if (!token || !isValidEventoId) return;
+
+                setCreateAttempted(true);
+                setCreateError(null);
+
+                const ativacaoId = Number(createForm.ativacao_id);
+                const nome = normalizeText(createForm.nome);
+                const descricao = normalizeText(createForm.descricao);
+                const premio = normalizeText(createForm.premio);
+                const titulo = normalizeText(createForm.titulo_feedback);
+                const texto = normalizeText(createForm.texto_feedback);
+
+                if (!Number.isFinite(ativacaoId) || ativacaoId <= 0) {
+                  setCreateError("Informe um ID de ativação válido.");
+                  return;
+                }
+                if (!nome || !descricao || !premio || !titulo || !texto) {
+                  setCreateError("Preencha todos os campos obrigatórios.");
+                  return;
+                }
+
+                setCreating(true);
+                try {
+                  const created = await createEventoGamificacao(token, eventoId, {
+                    ativacao_id: ativacaoId,
+                    nome,
+                    descricao,
+                    premio,
+                    titulo_feedback: titulo,
+                    texto_feedback: texto,
+                  });
+                  setGamificacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
+                  setCreateAttempted(false);
+                  setCreateForm({
+                    ativacao_id: "",
+                    nome: "",
+                    descricao: "",
+                    premio: "",
+                    titulo_feedback: "",
+                    texto_feedback: "",
+                  });
+                } catch (err: any) {
+                  setCreateError(err?.message || "Erro ao criar gamificação.");
+                } finally {
+                  setCreating(false);
+                }
+              }}
+              sx={{ fontWeight: 800, textTransform: "none" }}
+            >
+              {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar gamificação"}
+            </Button>
+          </Stack>
+        </Paper>
+
+        <Paper elevation={2} sx={{ borderRadius: 1, overflow: "hidden", width: "100%", flex: 1 }}>
+          <Box sx={{ px: 2.5, py: 2 }}>
+            <Typography variant="h6" fontWeight={900}>
+              Gamificações adicionadas
             </Typography>
           </Box>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nome</TableCell>
-                <TableCell width={220}>Prêmio</TableCell>
-                <TableCell width={120} align="right">
-                  Ações
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {gamificacoes.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.nome}</TableCell>
-                  <TableCell>{item.premio}</TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <IconButton
-                        aria-label="Editar"
-                        size="small"
-                        disabled={!canAct}
-                        onClick={() => openEdit(item)}
-                      >
-                        <EditOutlinedIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        aria-label="Excluir"
-                        size="small"
-                        color="error"
-                        disabled={!canAct}
-                        onClick={() => openDelete(item)}
-                      >
-                        <DeleteOutlineOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
+          <Divider />
 
-              {!gamificacoes.length && (
+          {loading ? (
+            <Box
+              sx={{
+                p: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+              }}
+            >
+              <CircularProgress size={22} />
+              <Typography variant="body2" color="text.secondary">
+                Carregando...
+              </Typography>
+            </Box>
+          ) : (
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={3}>
-                    <Typography variant="body2" color="text.secondary">
-                      Nenhuma gamificação adicionada.
-                    </Typography>
+                  <TableCell>Nome</TableCell>
+                  <TableCell width={220}>Prêmio</TableCell>
+                  <TableCell width={120} align="right">
+                    Ações
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </Paper>
+              </TableHead>
+              <TableBody>
+                {gamificacoes.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.nome}</TableCell>
+                    <TableCell>{item.premio}</TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <IconButton
+                          aria-label="Editar"
+                          size="small"
+                          disabled={!canAct}
+                          onClick={() => openEdit(item)}
+                        >
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          aria-label="Excluir"
+                          size="small"
+                          color="error"
+                          disabled={!canAct}
+                          onClick={() => openDelete(item)}
+                        >
+                          <DeleteOutlineOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+                {!gamificacoes.length && (
+                  <TableRow>
+                    <TableCell colSpan={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Nenhuma gamificação adicionada.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </Paper>
+      </Stack>
 
       <Dialog
         open={editOpen}
@@ -421,4 +587,3 @@ export default function EventGamificacao() {
     </Box>
   );
 }
-

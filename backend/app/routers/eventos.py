@@ -991,7 +991,8 @@ def upsert_formulario_lead_config(
         if evento.agencia_id != current_user.agencia_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento nao encontrado")
 
-    if payload.template_id is not None:
+    update_template = "template_id" in payload.model_fields_set
+    if update_template and payload.template_id is not None:
         _validate_fk(
             session,
             FormularioLandingTemplate,
@@ -1006,7 +1007,8 @@ def upsert_formulario_lead_config(
             evento_id=evento_id,
             nome="Formulario de Lead",
         )
-    config.template_id = payload.template_id
+    if update_template:
+        config.template_id = payload.template_id
     config.atualizado_em = now_utc()
     session.add(config)
 

@@ -30,6 +30,7 @@ def make_engine():
 @pytest.fixture
 def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
+    monkeypatch.setenv("PUBLIC_APP_BASE_URL", "http://localhost:5173")
     engine = make_engine()
     SQLModel.metadata.create_all(engine)
 
@@ -242,6 +243,52 @@ def test_form_config_put_atualiza_template_id(client, engine):
         assert configs[0].template_id == template_b_id
 
 
+def test_form_config_put_omitir_template_id_mantem_template(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+        template = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        session.add(template)
+        session.commit()
+        session.refresh(template)
+        template_id = template.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    payload_inicial = {
+        "template_id": template_id,
+        "campos": [{"nome_campo": "Nome", "obrigatorio": True, "ordem": 0}],
+    }
+    resp_create = client.put(f"/evento/{evento_id}/form-config", json=payload_inicial, headers=headers)
+    assert resp_create.status_code == 200
+    assert resp_create.json()["template_id"] == template_id
+
+    payload_campos = {
+        "campos": [
+            {"nome_campo": "Nome", "obrigatorio": True, "ordem": 0},
+            {"nome_campo": "Email", "obrigatorio": True, "ordem": 1},
+        ]
+    }
+    resp_update = client.put(f"/evento/{evento_id}/form-config", json=payload_campos, headers=headers)
+    assert resp_update.status_code == 200
+    assert resp_update.json()["template_id"] == template_id
+    assert resp_update.json()["campos"] == payload_campos["campos"]
+
+
 def test_form_config_put_salva_campos_e_get_retorna_igual(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
@@ -323,4 +370,3 @@ def test_form_config_permissoes_usuario_agencia_so_acessa_eventos_da_agencia(cli
         headers=headers,
     )
     assert resp_put.status_code == 404
-

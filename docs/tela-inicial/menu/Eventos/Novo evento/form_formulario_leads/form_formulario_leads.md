@@ -4,8 +4,8 @@
 **Formulario de Lead** (aba do evento)
 
 Status no novo sistema:
-- Frontend: nao implementado.
-- Backend: parcialmente implementado (modelos/migrations existem; endpoints pendentes).
+- Frontend: implementado (MVP: tema + campos + URLs + salvar).
+- Backend: implementado (endpoints + templates + catalogo de campos).
 
 ---
 
@@ -59,21 +59,26 @@ Observacao:
 
 ---
 
-## 5. Endpoints (proposta / a confirmar)
-Sugerido seguir o padrao do modulo de eventos (`/evento`):
+## 5. Endpoints (implementado)
+Contrato detalhado: `docs/formulario_lead_api.md`
+
+Padrao do modulo de eventos (`/evento`):
 - `GET /evento/{id}/form-config`
 - `PUT /evento/{id}/form-config`
+- `GET /evento/all/formulario-templates`
+- `GET /evento/all/formulario-campos` (opcional)
 
-Observacao: as URLs (landing/promotor/questionario) podem ser geradas a partir de `evento.id` e/ou `slug/token` (a definir).
+Observacao (MVP): as URLs (landing/promotor/questionario) sao geradas a partir de `evento.id`.
 
 ---
 
 ## 6. Backlog (status)
 ### Backend
 - [x] Modelo/tabelas para templates e configuracao por evento (ja existem no backend)
-- [ ] Endpoints para ler/salvar configuracao
-- [ ] Definir estrategia de URLs (slug/token) e politica de acesso
+- [x] Endpoints para ler/salvar configuracao
+- [x] Estrategia de URLs (MVP por evento_id) + politica de acesso (AGENCIA ve apenas sua agencia)
 
 ### Frontend
-- [ ] Aba/pagina de formulario de lead no detalhe do evento
-- [ ] Selecao de tema + preview + checkboxes + secao de URLs
+- [x] Aba/pagina de formulario de lead no detalhe do evento
+- [x] Selecao de tema + checkboxes + secao de URLs + salvar
+- [ ] Preview do template / botao "Salvar e visualizar" (backlog)

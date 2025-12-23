@@ -84,6 +84,7 @@ cp .env.example .env
 ## Documentacao
 - Autenticacao e recuperacao de senha (API): `docs/auth.md`
 - Eventos (API): `docs/eventos_api.md`
+- Formulario de Lead (API): `docs/formulario_lead_api.md`
 - Login (UI): `docs/login/login.md`
 - Cadastro de usuario (UI + API): `docs/login/new_user/login_tela_inicial.md`
 - Eventos (UI): `docs/tela-inicial/menu/Eventos/eventos.md`

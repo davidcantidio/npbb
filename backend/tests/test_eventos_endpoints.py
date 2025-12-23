@@ -40,6 +40,7 @@ def make_engine():
 @pytest.fixture
 def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
+    monkeypatch.setenv("PUBLIC_APP_BASE_URL", "http://localhost:5173")
     engine = make_engine()
     SQLModel.metadata.create_all(engine)
 

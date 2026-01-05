@@ -21,6 +21,28 @@ Permitir que o usuario cadastre ativacoes (acoes do evento) e configure regras c
 
 ---
 
+## 2.1 Contrato (MVP) - decisoes
+### Campos (UI -> API/DB)
+- **Nome da ativacao** -> `nome` (obrigatorio; max 100)
+- **Mensagem do QR Code** -> `mensagem_qrcode` (opcional; max 240)
+- **Mensagem** -> `descricao` (opcional; max 240)
+  - Nota: hoje no DB `descricao` e obrigatorio e max 200; para o MVP vamos ajustar para ser opcional e max 240 (issue "alinhar modelo/DB").
+- **Gamificacao** -> `gamificacao_id` (opcional)
+  - Regra: se informado, deve pertencer ao mesmo evento (`gamificacao.evento_id == ativacao.evento_id`).
+- Switches:
+  - **Redireciona para pesquisa** -> `redireciona_pesquisa` (bool; default `false`)
+  - **Check-in unico** -> `checkin_unico` (bool; default `false`)
+  - **Termo de uso** -> `termo_uso` (bool; default `false`)
+  - **Gerar cupom** -> `gera_cupom` (bool; default `false`)
+    - Nota: o comportamento de gerar cupom/fluxo publico nao entra no MVP; por enquanto e apenas flag/configuracao.
+- **Valor** -> `valor` (fora do MVP)
+  - Decisao MVP: nao expor no formulario/API de ativacoes; backend seta `0.00` no create.
+
+### Ordenacao (MVP)
+- Lista de ativacoes: ordenar por `id` asc.
+
+---
+
 ## 3. Estrutura (proposta)
 ### 3.1 Formulario de ativacao
 Campos sugeridos:
@@ -58,6 +80,34 @@ Sugerido seguir o padrao do modulo de eventos (`/evento`):
 - `POST /evento/{id}/ativacoes` (cria)
 - `PUT /ativacao/{id}` (edita)
 - `DELETE /ativacao/{id}` (remove)
+
+### 5.1 Payloads (MVP)
+#### AtivacaoRead (response)
+Campos retornados (MVP):
+- `id`, `evento_id`, `nome`, `descricao`, `mensagem_qrcode`, `gamificacao_id`
+- `redireciona_pesquisa`, `checkin_unico`, `termo_uso`, `gera_cupom`
+- `created_at`, `updated_at`
+
+#### POST /evento/{id}/ativacoes (create)
+Request (MVP):
+- `nome` (obrigatorio)
+- `descricao` (opcional)
+- `mensagem_qrcode` (opcional)
+- `gamificacao_id` (opcional)
+- switches (opcionais; default `false`)
+
+#### PUT /ativacao/{id} (update)
+Request (MVP):
+- todos os campos acima como opcionais
+- regra: payload sem campos retorna `400` com code `VALIDATION_ERROR_NO_FIELDS`
+
+### 5.2 Regras e erros (MVP)
+- Se `gamificacao_id` nao pertencer ao evento: `400` com code `GAMIFICACAO_OUT_OF_SCOPE`
+- Exclusao bloqueada por dependencias: `409` com code `ATIVACAO_DELETE_BLOCKED` e `dependencies` no detail:
+  - `ativacao_leads`
+  - `cupons`
+  - `respostas_questionario`
+  - `investimentos`
 
 ---
 

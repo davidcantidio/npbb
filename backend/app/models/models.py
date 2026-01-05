@@ -305,11 +305,11 @@ class Ativacao(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     nome: str = Field(max_length=100)
-    descricao: str = Field(max_length=200)
+    descricao: Optional[str] = Field(default=None, max_length=240)
     evento_id: int = Field(foreign_key="evento.id")
     gamificacao_id: Optional[int] = Field(default=None, foreign_key="gamificacao.id")
 
-    valor: Decimal = Field(sa_column=Column(Numeric(12, 2)))
+    valor: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2)))
 
     mensagem_qrcode: Optional[str] = Field(default=None, max_length=240)
 

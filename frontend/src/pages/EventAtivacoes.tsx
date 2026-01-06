@@ -4,20 +4,25 @@ import {
   Box,
   Button,
   CircularProgress,
+  Divider,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControlLabel,
   IconButton,
+  MenuItem,
   Paper,
   Snackbar,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -28,10 +33,12 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import {
+  createEventoAtivacao,
   deleteAtivacao,
   getEvento,
   listEventoAtivacoes,
   listEventoGamificacoes,
+  type CreateEventoAtivacaoPayload,
   type Ativacao,
   type EventoRead,
   type Gamificacao,
@@ -84,6 +91,43 @@ function getApiErrorExtra(err: unknown): any {
   }
 }
 
+type CreateForm = {
+  nome: string;
+  mensagem_qrcode: string;
+  descricao: string;
+  gamificacao_id: number | null;
+  redireciona_pesquisa: boolean;
+  checkin_unico: boolean;
+  termo_uso: boolean;
+  gera_cupom: boolean;
+};
+
+const EMPTY_CREATE_FORM: CreateForm = {
+  nome: "",
+  mensagem_qrcode: "",
+  descricao: "",
+  gamificacao_id: null,
+  redireciona_pesquisa: false,
+  checkin_unico: false,
+  termo_uso: false,
+  gera_cupom: false,
+};
+
+const MAX_LEN = {
+  nome: 100,
+  mensagem_qrcode: 240,
+  descricao: 240,
+} as const;
+
+function normalizeText(value: string) {
+  return String(value || "").trim();
+}
+
+function normalizeOptionalText(value: string) {
+  const trimmed = String(value || "").trim();
+  return trimmed ? trimmed : null;
+}
+
 export default function EventAtivacoes() {
   const { id } = useParams();
   const eventoId = Number(id);
@@ -97,6 +141,11 @@ export default function EventAtivacoes() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outOfScope, setOutOfScope] = useState(false);
+
+  const [createAttempted, setCreateAttempted] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [viewing, setViewing] = useState<Ativacao | null>(null);
 
@@ -125,6 +174,48 @@ export default function EventAtivacoes() {
     return `Configure as ativacoes do evento #${eventoId}.`;
   }, [evento?.nome, eventoId, isValidEventoId]);
 
+  const canAct = Boolean(token) && isValidEventoId && !outOfScope;
+  const formDisabled = !canAct || creating;
+
+  const nomeNormalized = normalizeText(createForm.nome);
+  const nomeRequiredError = createAttempted && !nomeNormalized;
+
+  const handleCreate = async () => {
+    setCreateAttempted(true);
+    if (!canAct) return;
+    if (!nomeNormalized) return;
+
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      const payload: CreateEventoAtivacaoPayload = {
+        nome: nomeNormalized,
+        descricao: normalizeOptionalText(createForm.descricao),
+        mensagem_qrcode: normalizeOptionalText(createForm.mensagem_qrcode),
+        gamificacao_id: createForm.gamificacao_id,
+        redireciona_pesquisa: createForm.redireciona_pesquisa,
+        checkin_unico: createForm.checkin_unico,
+        termo_uso: createForm.termo_uso,
+        gera_cupom: createForm.gera_cupom,
+      };
+
+      const created = await createEventoAtivacao(token, eventoId, payload);
+      setAtivacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
+      setCreateForm(EMPTY_CREATE_FORM);
+      setCreateAttempted(false);
+      setSnackbar({ open: true, message: "Ativacao adicionada com sucesso.", severity: "success" });
+    } catch (err: any) {
+      const code = getApiErrorCode(err);
+      if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
+      const message = getApiErrorMessage(err, "Erro ao adicionar ativacao.");
+      setCreateError(message);
+      setSnackbar({ open: true, message, severity: "error" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   useEffect(() => {
     if (!token || !isValidEventoId) return;
 
@@ -135,6 +226,9 @@ export default function EventAtivacoes() {
     setEvento(null);
     setAtivacoes([]);
     setGamificacoes([]);
+    setCreateAttempted(false);
+    setCreateError(null);
+    setCreateForm(EMPTY_CREATE_FORM);
 
     Promise.all([
       getEvento(token, eventoId),
@@ -223,15 +317,142 @@ export default function EventAtivacoes() {
             </Typography>
           </Box>
         ) : (
-          <Stack spacing={2}>
+          <Stack spacing={3}>
             <Box>
               <Typography variant="subtitle1" fontWeight={900} gutterBottom>
-                Ativacoes adicionadas
+                Nova ativacao
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {evento?.nome ? `Evento: ${evento.nome}` : `Evento #${eventoId}`}
               </Typography>
             </Box>
+
+            {createError && <Alert severity="error">{createError}</Alert>}
+
+            <Stack spacing={2}>
+              <TextField
+                label="Nome da ativacao"
+                value={createForm.nome}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, nome: e.target.value }))}
+                disabled={formDisabled}
+                required
+                error={Boolean(nomeRequiredError)}
+                helperText={
+                  nomeRequiredError ? "Nome obrigatorio." : `${createForm.nome.length}/${MAX_LEN.nome}`
+                }
+                fullWidth
+                inputProps={{ maxLength: MAX_LEN.nome }}
+              />
+
+              <TextField
+                label="Mensagem do QR Code"
+                value={createForm.mensagem_qrcode}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, mensagem_qrcode: e.target.value }))}
+                disabled={formDisabled}
+                multiline
+                minRows={2}
+                helperText={`${createForm.mensagem_qrcode.length}/${MAX_LEN.mensagem_qrcode}`}
+                fullWidth
+                inputProps={{ maxLength: MAX_LEN.mensagem_qrcode }}
+              />
+
+              <TextField
+                label="Mensagem"
+                value={createForm.descricao}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, descricao: e.target.value }))}
+                disabled={formDisabled}
+                multiline
+                minRows={2}
+                helperText={`${createForm.descricao.length}/${MAX_LEN.descricao}`}
+                fullWidth
+                inputProps={{ maxLength: MAX_LEN.descricao }}
+              />
+
+              <TextField
+                select
+                label="Gamificacao"
+                value={createForm.gamificacao_id ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const parsed = raw === "" ? null : Number(raw);
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    gamificacao_id: parsed != null && Number.isFinite(parsed) ? parsed : null,
+                  }));
+                }}
+                disabled={formDisabled}
+                fullWidth
+              >
+                <MenuItem value="">Nenhuma</MenuItem>
+                {gamificacoes.map((g) => (
+                  <MenuItem key={g.id} value={g.id}>
+                    {g.nome}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <Stack direction="row" flexWrap="wrap" columnGap={3} rowGap={1}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={createForm.redireciona_pesquisa}
+                      disabled={formDisabled}
+                      onChange={(_, checked) =>
+                        setCreateForm((prev) => ({ ...prev, redireciona_pesquisa: checked }))
+                      }
+                    />
+                  }
+                  label="Redireciona para pesquisa"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={createForm.checkin_unico}
+                      disabled={formDisabled}
+                      onChange={(_, checked) => setCreateForm((prev) => ({ ...prev, checkin_unico: checked }))}
+                    />
+                  }
+                  label="Check-in unico"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={createForm.termo_uso}
+                      disabled={formDisabled}
+                      onChange={(_, checked) => setCreateForm((prev) => ({ ...prev, termo_uso: checked }))}
+                    />
+                  }
+                  label="Termo de uso"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={createForm.gera_cupom}
+                      disabled={formDisabled}
+                      onChange={(_, checked) => setCreateForm((prev) => ({ ...prev, gera_cupom: checked }))}
+                    />
+                  }
+                  label="Gerar cupom"
+                />
+              </Stack>
+
+              <Stack direction="row" justifyContent="flex-end">
+                <Button
+                  variant="contained"
+                  onClick={handleCreate}
+                  disabled={!canAct || creating}
+                  sx={{ textTransform: "none", fontWeight: 800 }}
+                >
+                  {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar"}
+                </Button>
+              </Stack>
+            </Stack>
+
+            <Divider />
+
+            <Typography variant="subtitle1" fontWeight={900}>
+              Ativacoes adicionadas
+            </Typography>
 
             <Table>
               <TableHead>

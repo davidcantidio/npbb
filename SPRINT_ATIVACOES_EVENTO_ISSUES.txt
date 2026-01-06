@@ -1,0 +1,308 @@
+SPRINT: Ativacoes do Evento (MVP)
+================================
+
+Contexto do codigo atual (ja existe hoje)
+----------------------------------------
+- Documentacao/UX do modulo:
+  - docs/tela-inicial/menu/Eventos/Novo evento/form_ativacao/form_ativacao.md
+- Backend ja tem modelos/migrations (mas nao tem rotas/schemas):
+  - app/models/models.py: Ativacao, TermoUsoAtivacao (e relacao com Gamificacao)
+  - alembic/versions/289b4605dc23_init.py: tabela ativacao existe
+  - alembic/versions/b7c2d5f9a8e1_*: ativacao.gamificacao_id (opcional) existe
+- Backend ainda NAO tem:
+  - schemas Pydantic do modulo de ativacoes
+  - endpoints CRUD para ativacoes (GET/POST por evento; PUT/DELETE por ativacao)
+  - regra de bloqueio de exclusao por dependencias (ativacao_lead, cupons, respostas_questionario, etc)
+- Frontend:
+  - rota /eventos/:id/ativacoes ja existe e aponta para frontend/src/pages/EventAtivacoes.tsx (placeholder "Em breve")
+  - ainda nao existe integracao com a API, lista/tabela, formulario, nem modal de exclusao
+
+
+Objetivo do sprint (escopo)
+---------------------------
+Entregar a tela "Ativacoes" (painel interno / wizard do evento):
+- listar ativacoes do evento
+- criar nova ativacao
+- editar ativacao existente
+- excluir ativacao (com confirmacao e bloqueio por dependencias)
+- selecionar gamificacao opcional
+- configurar switches (redireciona_pesquisa, checkin_unico, termo_uso, gera_cupom)
+- manter permissao/visibilidade igual ao modulo de eventos (AGENCIA ve apenas eventos da propria agencia)
+
+
+Fora do escopo deste sprint (vira backlog futuro)
+------------------------------------------------
+- Fluxo publico de check-in/QR code e seus comportamentos
+- Geracao efetiva de cupom (engine/disparo) e integracoes
+- Gerenciamento do conteudo do Termo de Uso (titulo/texto) por ativacao
+- Redirecionamento real para pesquisa/questionario no app do participante
+- Relatorios/metricas por ativacao
+
+
+ISSUES (ordem de execucao sugerida; cada uma e a menor entrega possivel)
+======================================================================
+
+01) Decisao de contrato: campos do Formulario de Ativacao (MVP)
+--------------------------------------------------------------
+Descricao:
+- Alinhar doc (form_ativacao.md) com o modelo atual Ativacao (DB) e com o que entra no MVP:
+  - nome (obrigatorio; max 100)
+  - mensagem_qrcode (opcional; max 240)
+  - mensagem (opcional; max 240) -> decidir se usa `descricao` (hoje obrigatorio e max 200) ou cria coluna nova
+  - gamificacao_id (opcional; deve pertencer ao mesmo evento)
+  - switches: redireciona_pesquisa, checkin_unico, termo_uso, gera_cupom
+  - valor (existe no DB; decidir se fica fora do MVP e como tratar no create: null vs 0)
+- Definir ordenacao da lista (MVP: id asc) e payloads de API (read/create/update).
+- Definir dependencias que bloqueiam DELETE (MVP) e formato do erro (code + extra.dependencies).
+Aceite:
+- Documento curto no repo (ou update em docs/tela-inicial/menu/Eventos/Novo evento/form_ativacao/form_ativacao.md) com as decisoes e limites.
+
+
+02) Backend: alinhar modelo/DB Ativacao com o contrato (se necessario)
+---------------------------------------------------------------------
+Descricao:
+- Se a issue 01 decidir que "Mensagem" nao e obrigatoria e/ou precisa de max 240:
+  - ajustar `Ativacao.descricao` (nullable e/ou tamanho) OU criar coluna nova (ex.: mensagem) + migration alembic
+- Ajustar tipagem de `valor` para Optional no modelo (se for manter null no MVP).
+Aceite:
+- Alembic upgrade head roda sem erro e o contrato do DB reflete o MVP.
+
+
+03) Backend: schemas Pydantic do modulo Ativacao (read/create/update)
+--------------------------------------------------------------------
+Descricao:
+- Criar arquivo: app/schemas/ativacao.py com modelos minimos:
+  - AtivacaoRead (id, evento_id, nome, mensagem_qrcode, mensagem/descricao, gamificacao_id, switches, created_at, updated_at)
+  - AtivacaoCreate (campos do formulario + switches; defaults false)
+  - AtivacaoUpdate (campos opcionais)
+- Validacoes/normalizacao (trim; max length; nome obrigatorio).
+Aceite:
+- Imports funcionando; validacoes coerentes com o contrato decidido na issue 01.
+
+
+04) Backend: endpoint GET /evento/{id}/ativacoes (lista)
+--------------------------------------------------------
+Descricao:
+- Implementar em app/routers/eventos.py:
+  - GET /evento/{evento_id}/ativacoes
+- Regras:
+  - 404 se evento nao existe (ou nao e visivel ao usuario AGENCIA)
+  - retornar lista ordenada (MVP: por id asc)
+Aceite:
+- Endpoint retorna 200 com lista (vazia quando nao existir).
+
+
+05) Backend: endpoint POST /evento/{id}/ativacoes (criar)
+--------------------------------------------------------
+Descricao:
+- Implementar em app/routers/eventos.py:
+  - POST /evento/{evento_id}/ativacoes
+- Regras:
+  - validar campos (issue 01/03)
+  - se gamificacao_id for informado, validar que gamificacao.evento_id == evento_id
+  - defaults: switches false; valor conforme decisao (null/0)
+Aceite:
+- Endpoint retorna 201 e o item criado aparece no GET.
+
+
+06) Backend: router /ativacao (PUT atualizar)
+--------------------------------------------
+Descricao:
+- Criar arquivo: app/routers/ativacao.py (prefix /ativacao) seguindo padrao do router de gamificacao.
+- Implementar:
+  - PUT /ativacao/{ativacao_id}
+- Regras:
+  - 404 se ativacao nao existe (ou nao pertence a evento visivel ao usuario AGENCIA)
+  - 400 se payload vier sem campos (VALIDATION_ERROR_NO_FIELDS)
+  - atualizar updated_at
+Aceite:
+- Atualizacao via API funciona e respeita permissao.
+
+
+07) Backend: router /ativacao (DELETE com bloqueio por dependencias)
+-------------------------------------------------------------------
+Descricao:
+- Implementar:
+  - DELETE /ativacao/{ativacao_id}
+- Regras MVP:
+  - bloquear exclusao se existirem dependencias (definir na issue 01), por exemplo:
+    - ativacao_lead
+    - cupons
+    - respostas_questionario
+    - investimentos (se aplicavel)
+  - retornar 409 com code ATIVACAO_DELETE_BLOCKED + extra.dependencies
+Aceite:
+- Exclusao retorna 204 quando permitido e 409 quando bloqueado, com payload estruturado.
+
+
+08) Backend: padrao de erros/codigos do modulo Ativacao
+-------------------------------------------------------
+Descricao:
+- Padronizar codigos para consumo do front:
+  - EVENTO_NOT_FOUND
+  - ATIVACAO_NOT_FOUND
+  - GAMIFICACAO_OUT_OF_SCOPE (ou similar)
+  - ATIVACAO_DELETE_BLOCKED
+Aceite:
+- Erros retornam JSON consistente (code/message/extra) como nos outros modulos.
+
+
+09) Backend: testes (ativacoes por evento + /ativacao CRUD)
+----------------------------------------------------------
+Descricao:
+- Criar arquivo: backend/tests/test_ativacao_endpoints.py
+- Cobrir casos minimos:
+  - GET lista vazia
+  - POST cria e GET retorna
+  - PUT atualiza campos/switches
+  - DELETE remove
+  - DELETE bloqueado quando houver dependencia (seed minima)
+  - permissao/visibilidade usuario AGENCIA (404 fora do escopo)
+Aceite:
+- pytest passa.
+
+
+10) Backend: seed sample de ativacoes (dev) (opcional)
+------------------------------------------------------
+Descricao:
+- Atualizar scripts/seed_sample.py para criar 2-3 ativacoes de exemplo por evento seed:
+  - uma sem gamificacao
+  - uma com gamificacao (se existir)
+Aceite:
+- Rodar seed 2x nao duplica (idempotente).
+
+
+11) Frontend: tipos e servicos (API) de Ativacao
+------------------------------------------------
+Descricao:
+- Adicionar em frontend/src/services/eventos.ts (ou arquivo dedicado):
+  - type Ativacao
+  - type CreateEventoAtivacaoPayload
+  - type UpdateAtivacaoPayload
+  - listEventoAtivacoes(token, eventoId)
+  - createEventoAtivacao(token, eventoId, payload)
+  - updateAtivacao(token, ativacaoId, payload)
+  - deleteAtivacao(token, ativacaoId)
+Aceite:
+- Funcoes tipadas e reutilizaveis (padrao igual ao modulo de gamificacao).
+
+
+12) Frontend: EventAtivacoes - carregar evento + listas (ativacoes e gamificacoes)
+---------------------------------------------------------------------------------
+Descricao:
+- Evoluir frontend/src/pages/EventAtivacoes.tsx:
+  - usar token (useAuth)
+  - carregar em paralelo:
+    - getEvento
+    - listEventoAtivacoes
+    - listEventoGamificacoes (para dropdown)
+  - estados: loading/erro/outOfScope
+Aceite:
+- Pagina carrega sem "Em breve" e mostra estados corretamente.
+
+
+13) Frontend: lista/tabela de ativacoes
+---------------------------------------
+Descricao:
+- Renderizar tabela "Ativacoes adicionadas" com colunas (MVP):
+  - Nome
+  - Check-in unico (Sim/Nao)
+  - Gamificacao (nome ou "Nenhuma")
+  - Acoes: visualizar / editar / excluir
+Aceite:
+- Lista renderiza com estado vazio e atualiza apos create/update/delete.
+
+
+14) Frontend: formulario de ativacao (criar)
+--------------------------------------------
+Descricao:
+- Implementar formulario com campos do MVP:
+  - Nome da ativacao (obrigatorio)
+  - Mensagem do QR Code (opcional, max 240; contador)
+  - Mensagem (opcional, max 240; contador) conforme contrato
+  - Gamificacao (select; opcoes: "Nenhuma" + gamificacoes do evento)
+  - Switches: redireciona_pesquisa, checkin_unico, termo_uso, gera_cupom
+- Botao "Adicionar" chama POST e atualiza lista.
+Aceite:
+- Criar ativacao funciona e aparece na tabela.
+
+
+15) Frontend: editar ativacao
+-----------------------------
+Descricao:
+- Ao clicar "editar":
+  - preencher formulario com dados do item
+  - alternar CTA para "Atualizar" e exibir "Cancelar"
+  - chamar PUT e atualizar lista sem recarregar a pagina
+Aceite:
+- Edicao funciona e UI reflete o resultado.
+
+
+16) Frontend: visualizar ativacao (read-only)
+---------------------------------------------
+Descricao:
+- Ao clicar "visualizar":
+  - abrir dialog/modal com os dados (campos + switches) em modo read-only
+- MVP: pode reutilizar o mesmo formulario em modo disabled.
+Aceite:
+- Visualizacao abre e fecha sem alterar dados.
+
+
+17) Frontend: excluir ativacao (confirmacao + tratamento de bloqueio)
+---------------------------------------------------------------------
+Descricao:
+- Ao clicar "excluir":
+  - abrir modal/dialog de confirmacao
+  - ao confirmar, chamar DELETE e remover da tabela
+  - se API retornar 409 ATIVACAO_DELETE_BLOCKED, mostrar mensagem amigavel + dependencias
+Aceite:
+- Exclusao funciona com confirmacao e feedback correto.
+
+
+18) Frontend: validacoes e UX (MVP)
+-----------------------------------
+Descricao:
+- Validacao client-side minima:
+  - nome required
+  - max length para mensagens (contador 0/240)
+- UX:
+  - desabilitar botoes durante requests
+  - snackbar/alert de sucesso/erro
+Aceite:
+- Formulario impede salvar invalido e mostra feedback claro.
+
+
+19) Frontend E2E (minimo): login -> abrir evento -> abrir Ativacoes
+-------------------------------------------------------------------
+Descricao:
+- Criar teste Playwright (ex.: tests/ativacoes.ui.spec.ts):
+  - login com usuario seed
+  - navegar para /eventos/:id
+  - abrir fluxo do wizard e acessar /eventos/:id/ativacoes (ou navegar diretamente)
+  - verificar titulo "Ativacoes" e que a tela carrega sem erro
+Aceite:
+- Teste passa localmente (requer backend+frontend rodando e seed).
+
+
+20) Documentacao: endpoints do modulo Ativacao
+----------------------------------------------
+Descricao:
+- Publicar doc em docs/ativacoes_api.md com:
+  - GET /evento/{id}/ativacoes
+  - POST /evento/{id}/ativacoes
+  - PUT /ativacao/{id}
+  - DELETE /ativacao/{id}
+- Incluir exemplos de payloads e erros (incluindo DELETE bloqueado 409).
+Aceite:
+- Documento linkado no README principal.
+
+
+21) Alinhamento com print/tela original (ajustes finos) (opcional)
+------------------------------------------------------------------
+Descricao:
+- Revisar referencias (ex.: playwright-event-detail-ativacoes.png) e alinhar:
+  - labels, ordem dos campos, textos
+  - nomes das colunas e acoes
+Aceite:
+- UI do MVP fica coerente com o material de referencia.
+

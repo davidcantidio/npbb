@@ -540,3 +540,86 @@ export async function deleteGamificacao(token: string, gamificacaoId: number): P
   if (res.status === 204) return;
   await handleResponse<unknown>(res);
 }
+
+export type Ativacao = {
+  id: number;
+  evento_id: number;
+  nome: string;
+  descricao?: string | null;
+  mensagem_qrcode?: string | null;
+  gamificacao_id?: number | null;
+
+  redireciona_pesquisa: boolean;
+  checkin_unico: boolean;
+  termo_uso: boolean;
+  gera_cupom: boolean;
+
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateEventoAtivacaoPayload = {
+  nome: string;
+  descricao?: string | null;
+  mensagem_qrcode?: string | null;
+  gamificacao_id?: number | null;
+
+  redireciona_pesquisa?: boolean;
+  checkin_unico?: boolean;
+  termo_uso?: boolean;
+  gera_cupom?: boolean;
+};
+
+export type UpdateAtivacaoPayload = {
+  nome?: string;
+  descricao?: string | null;
+  mensagem_qrcode?: string | null;
+  gamificacao_id?: number | null;
+
+  redireciona_pesquisa?: boolean;
+  checkin_unico?: boolean;
+  termo_uso?: boolean;
+  gera_cupom?: boolean;
+};
+
+export async function listEventoAtivacoes(token: string, eventoId: number): Promise<Ativacao[]> {
+  const res = await fetch(`${API_BASE_URL}/evento/${eventoId}/ativacoes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<Ativacao[]>(res);
+}
+
+export async function createEventoAtivacao(
+  token: string,
+  eventoId: number,
+  payload: CreateEventoAtivacaoPayload,
+): Promise<Ativacao> {
+  const res = await fetch(`${API_BASE_URL}/evento/${eventoId}/ativacoes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Ativacao>(res);
+}
+
+export async function updateAtivacao(
+  token: string,
+  ativacaoId: number,
+  payload: UpdateAtivacaoPayload,
+): Promise<Ativacao> {
+  const res = await fetch(`${API_BASE_URL}/ativacao/${ativacaoId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Ativacao>(res);
+}
+
+export async function deleteAtivacao(token: string, ativacaoId: number): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/ativacao/${ativacaoId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 204) return;
+  await handleResponse<unknown>(res);
+}

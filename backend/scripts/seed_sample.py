@@ -16,6 +16,7 @@ Variaveis de ambiente:
 
 import os
 import time
+from decimal import Decimal
 from pathlib import Path
 
 from sqlmodel import Session, create_engine, select
@@ -29,10 +30,13 @@ if str(BASE_DIR) not in os.sys.path:
 
 from app.models.models import (  # noqa: E402
     Agencia,
+    Ativacao,
     Diretoria,
     DivisaoDemandante,
+    Evento,
     FormularioLandingTemplate,
     Funcionario,
+    Gamificacao,
     SubtipoEvento,
     Territorio,
     TipoEvento,
@@ -367,6 +371,91 @@ def ensure_usuario(
     return usuario
 
 
+def ensure_ativacoes_sample(session: Session, *, agencia_ids: list[int]) -> int:
+    """Cria 2-3 ativações de exemplo por evento (idempotente).
+
+    Regras (MVP):
+    - sempre cria 2 ativações sem gamificação
+    - cria 1 ativação com gamificação (se existir gamificação cadastrada no evento)
+    """
+
+    eventos = session.exec(
+        select(Evento).where(Evento.agencia_id.in_(agencia_ids)).order_by(Evento.id)
+    ).all()
+    if not eventos:
+        print("Nenhum evento encontrado para criar ativações de exemplo.")
+        return 0
+
+    created = 0
+    for evento in eventos:
+        if not evento.id:
+            continue
+        created_event = 0
+
+        gamificacao = session.exec(
+            select(Gamificacao).where(Gamificacao.evento_id == evento.id).order_by(Gamificacao.id)
+        ).first()
+
+        samples: list[dict[str, object]] = [
+            {
+                "nome": "Ativacao - Check-in",
+                "descricao": "Ativacao de exemplo (check-in unico).",
+                "mensagem_qrcode": "Check-in valido apenas uma vez.",
+                "checkin_unico": True,
+            },
+            {
+                "nome": "Ativacao - Cupom",
+                "descricao": "Ativacao de exemplo (gera cupom).",
+                "mensagem_qrcode": "Cupom gerado apos o check-in.",
+                "gera_cupom": True,
+                "termo_uso": True,
+            },
+        ]
+
+        if gamificacao and gamificacao.id:
+            samples.append(
+                {
+                    "nome": "Ativacao - Gamificacao",
+                    "descricao": "Ativacao de exemplo vinculada a uma gamificacao.",
+                    "mensagem_qrcode": "Valide para participar da gamificacao.",
+                    "gamificacao_id": gamificacao.id,
+                }
+            )
+
+        for sample in samples:
+            nome = str(sample["nome"])
+            exists = session.exec(
+                select(Ativacao).where(Ativacao.evento_id == evento.id, Ativacao.nome == nome)
+            ).first()
+            if exists:
+                continue
+
+            ativacao = Ativacao(
+                evento_id=evento.id,
+                nome=nome,
+                descricao=str(sample.get("descricao") or ""),
+                mensagem_qrcode=str(sample.get("mensagem_qrcode") or ""),
+                gamificacao_id=sample.get("gamificacao_id"),
+                redireciona_pesquisa=bool(sample.get("redireciona_pesquisa", False)),
+                checkin_unico=bool(sample.get("checkin_unico", False)),
+                termo_uso=bool(sample.get("termo_uso", False)),
+                gera_cupom=bool(sample.get("gera_cupom", False)),
+                valor=Decimal("0.00"),
+            )
+            session.add(ativacao)
+            created_event += 1
+
+        if created_event:
+            session.commit()
+            created += created_event
+
+    if created:
+        print(f"Ativacoes de exemplo criadas: {created}.")
+    else:
+        print("Ativacoes de exemplo ja existiam; nada a criar.")
+    return created
+
+
 def main():
     _load_env()
     engine = _build_seed_engine()
@@ -403,6 +492,8 @@ def main():
             agencia_id=agencias["V3A"].id,
             nome_info="Usuario Agencia (V3A)",
         )
+
+        ensure_ativacoes_sample(session, agencia_ids=[a.id for a in agencias.values() if a.id])
 
     print("Seed de desenvolvimento concluido.")
     print(f"Senha usada: {PASSWORD!r}")

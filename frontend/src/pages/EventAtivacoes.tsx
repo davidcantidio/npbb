@@ -175,22 +175,30 @@ export default function EventAtivacoes() {
   }, [evento?.nome, eventoId, isValidEventoId]);
 
   const canAct = Boolean(token) && isValidEventoId && !outOfScope;
-  const formDisabled = !canAct || creating;
+  const isBusy = creating || deleting;
+  const formDisabled = !canAct || isBusy;
 
   const nomeNormalized = normalizeText(createForm.nome);
   const nomeRequiredError = createAttempted && !nomeNormalized;
 
   const handleCreate = async () => {
+    if (!token || !isValidEventoId) return;
+
     setCreateAttempted(true);
+    setCreateError(null);
     if (!canAct) return;
-    if (!nomeNormalized) return;
+
+    const nome = normalizeText(createForm.nome);
+    if (!nome) {
+      setCreateError("Informe o nome da ativacao.");
+      return;
+    }
 
     setCreating(true);
-    setCreateError(null);
 
     try {
       const payload: CreateEventoAtivacaoPayload = {
-        nome: nomeNormalized,
+        nome,
         descricao: normalizeOptionalText(createForm.descricao),
         mensagem_qrcode: normalizeOptionalText(createForm.mensagem_qrcode),
         gamificacao_id: createForm.gamificacao_id,
@@ -209,12 +217,12 @@ export default function EventAtivacoes() {
       const code = getApiErrorCode(err);
       if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
       const message = getApiErrorMessage(err, "Erro ao adicionar ativacao.");
-      setCreateError(message);
-      setSnackbar({ open: true, message, severity: "error" });
-    } finally {
-      setCreating(false);
-    }
-  };
+        setCreateError(message);
+        setSnackbar({ open: true, message, severity: "error" });
+      } finally {
+        setCreating(false);
+      }
+    };
 
   useEffect(() => {
     if (!token || !isValidEventoId) return;
@@ -333,7 +341,10 @@ export default function EventAtivacoes() {
               <TextField
                 label="Nome da ativacao"
                 value={createForm.nome}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, nome: e.target.value }))}
+                onChange={(e) => {
+                  setCreateForm((prev) => ({ ...prev, nome: e.target.value }));
+                  setCreateError(null);
+                }}
                 disabled={formDisabled}
                 required
                 error={Boolean(nomeRequiredError)}
@@ -347,7 +358,10 @@ export default function EventAtivacoes() {
               <TextField
                 label="Mensagem do QR Code"
                 value={createForm.mensagem_qrcode}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, mensagem_qrcode: e.target.value }))}
+                onChange={(e) => {
+                  setCreateForm((prev) => ({ ...prev, mensagem_qrcode: e.target.value }));
+                  setCreateError(null);
+                }}
                 disabled={formDisabled}
                 multiline
                 minRows={2}
@@ -359,7 +373,10 @@ export default function EventAtivacoes() {
               <TextField
                 label="Mensagem"
                 value={createForm.descricao}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, descricao: e.target.value }))}
+                onChange={(e) => {
+                  setCreateForm((prev) => ({ ...prev, descricao: e.target.value }));
+                  setCreateError(null);
+                }}
                 disabled={formDisabled}
                 multiline
                 minRows={2}
@@ -379,6 +396,7 @@ export default function EventAtivacoes() {
                     ...prev,
                     gamificacao_id: parsed != null && Number.isFinite(parsed) ? parsed : null,
                   }));
+                  setCreateError(null);
                 }}
                 disabled={formDisabled}
                 fullWidth
@@ -397,9 +415,10 @@ export default function EventAtivacoes() {
                     <Switch
                       checked={createForm.redireciona_pesquisa}
                       disabled={formDisabled}
-                      onChange={(_, checked) =>
-                        setCreateForm((prev) => ({ ...prev, redireciona_pesquisa: checked }))
-                      }
+                      onChange={(_, checked) => {
+                        setCreateError(null);
+                        setCreateForm((prev) => ({ ...prev, redireciona_pesquisa: checked }));
+                      }}
                     />
                   }
                   label="Redireciona para pesquisa"
@@ -409,7 +428,10 @@ export default function EventAtivacoes() {
                     <Switch
                       checked={createForm.checkin_unico}
                       disabled={formDisabled}
-                      onChange={(_, checked) => setCreateForm((prev) => ({ ...prev, checkin_unico: checked }))}
+                      onChange={(_, checked) => {
+                        setCreateError(null);
+                        setCreateForm((prev) => ({ ...prev, checkin_unico: checked }));
+                      }}
                     />
                   }
                   label="Check-in unico"
@@ -419,7 +441,10 @@ export default function EventAtivacoes() {
                     <Switch
                       checked={createForm.termo_uso}
                       disabled={formDisabled}
-                      onChange={(_, checked) => setCreateForm((prev) => ({ ...prev, termo_uso: checked }))}
+                      onChange={(_, checked) => {
+                        setCreateError(null);
+                        setCreateForm((prev) => ({ ...prev, termo_uso: checked }));
+                      }}
                     />
                   }
                   label="Termo de uso"
@@ -429,7 +454,10 @@ export default function EventAtivacoes() {
                     <Switch
                       checked={createForm.gera_cupom}
                       disabled={formDisabled}
-                      onChange={(_, checked) => setCreateForm((prev) => ({ ...prev, gera_cupom: checked }))}
+                      onChange={(_, checked) => {
+                        setCreateError(null);
+                        setCreateForm((prev) => ({ ...prev, gera_cupom: checked }));
+                      }}
                     />
                   }
                   label="Gerar cupom"
@@ -440,7 +468,7 @@ export default function EventAtivacoes() {
                 <Button
                   variant="contained"
                   onClick={handleCreate}
-                  disabled={!canAct || creating}
+                  disabled={!canAct || isBusy}
                   sx={{ textTransform: "none", fontWeight: 800 }}
                 >
                   {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar"}
@@ -477,12 +505,18 @@ export default function EventAtivacoes() {
                       <TableCell>{gamificacaoLabel}</TableCell>
                       <TableCell align="right">
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <IconButton aria-label="Visualizar" size="small" onClick={() => setViewing(item)}>
+                          <IconButton
+                            aria-label="Visualizar"
+                            size="small"
+                            disabled={!canAct || isBusy}
+                            onClick={() => setViewing(item)}
+                          >
                             <VisibilityOutlinedIcon fontSize="small" />
                           </IconButton>
                           <IconButton
                             aria-label="Editar"
                             size="small"
+                            disabled={!canAct || isBusy}
                             onClick={() =>
                               setSnackbar({
                                 open: true,
@@ -497,6 +531,7 @@ export default function EventAtivacoes() {
                             aria-label="Excluir"
                             size="small"
                             color="error"
+                            disabled={!canAct || isBusy}
                             onClick={() => {
                               setDeleteError(null);
                               setDeletingTarget(item);

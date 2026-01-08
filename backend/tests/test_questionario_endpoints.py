@@ -262,3 +262,51 @@ def test_questionario_put_salva_minimo(client, engine):
     assert saved["evento_id"] == evento_id
     assert len(saved["paginas"]) == 1
     assert len(saved["paginas"][0]["perguntas"]) == 1
+
+
+def test_questionario_put_objetiva_sem_opcoes_retorna_erro(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    payload = {
+        "paginas": [
+            {
+                "ordem": 1,
+                "titulo": "Pagina 1",
+                "descricao": None,
+                "perguntas": [
+                    {
+                        "ordem": 1,
+                        "tipo": "objetiva_unica",
+                        "texto": "Pergunta 1",
+                        "obrigatoria": False,
+                        "opcoes": [],
+                    }
+                ],
+            }
+        ]
+    }
+
+    resp = client.put(
+        f"/evento/{evento_id}/questionario",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "QUESTIONARIO_INVALID_STRUCTURE"

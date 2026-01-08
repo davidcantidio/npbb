@@ -245,6 +245,26 @@ export default function EventQuestionario() {
       return next.map((pagina, idx) => ({ ...pagina, ordem: idx + 1 }));
     });
   };
+  const getPerguntaTipoLabel = (tipo: string) => {
+    switch (tipo) {
+      case "aberta_texto_simples":
+        return "Texto curto";
+      case "aberta_texto_area":
+        return "Texto longo";
+      case "objetiva_unica":
+        return "Unica escolha";
+      case "objetiva_multipla":
+        return "Multipla escolha";
+      case "data":
+        return "Data";
+      case "avaliacao":
+        return "Avaliacao";
+      case "numerica":
+        return "Numerica";
+      default:
+        return tipo;
+    }
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -429,6 +449,34 @@ export default function EventQuestionario() {
                     <Typography variant="body2" color="text.secondary">
                       Ordem: {selectedPagina.ordem} · Perguntas: {selectedPagina.perguntas.length}
                     </Typography>
+                    <Divider />
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800} gutterBottom>
+                        Perguntas
+                      </Typography>
+                      {selectedPagina.perguntas.length ? (
+                        <Stack spacing={1}>
+                          {selectedPagina.perguntas.map((pergunta) => (
+                            <Box
+                              key={pergunta.id ?? `ordem-${pergunta.ordem}`}
+                              sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5 }}
+                            >
+                              <Typography variant="body2" fontWeight={700}>
+                                {pergunta.ordem}. {pergunta.texto || "Sem texto"}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Tipo: {getPerguntaTipoLabel(pergunta.tipo)} ·{" "}
+                                {pergunta.obrigatoria ? "Obrigatoria" : "Opcional"}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Nenhuma pergunta cadastrada.
+                        </Typography>
+                      )}
+                    </Box>
                   </Stack>
                 ) : (
                   <Typography variant="body2" color="text.secondary">

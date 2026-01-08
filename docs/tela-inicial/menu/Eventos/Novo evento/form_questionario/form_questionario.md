@@ -66,7 +66,7 @@ Um painel lateral lista paginas e suas ordens para navegacao rapida e reordenaca
 - `pagina_id`
 - `ordem`
 - `tipo`
-- `enunciado`
+- `texto`
 - `obrigatoria`
 
 ### Tabela `questionario_opcao`
@@ -83,6 +83,74 @@ Sugerido seguir o padrao do modulo de eventos (`/evento`):
 - `PUT /evento/{id}/questionario` (salva estrutura completa)
 
 Observacao: o PUT pode sobrescrever a estrutura inteira para simplificar (sem CRUD granular por item), ou pode existir CRUD separado por entidade (a definir).
+
+---
+
+## 6.1 Contrato (MVP) - decisoes
+### 6.1.1 JSON e nomes de campos
+- Payload em `snake_case`.
+- Campo da pergunta no payload: `texto` (alinhado ao modelo atual do backend).
+- `id` aparece no GET e e opcional no PUT (read-only; pode ser usado em upsert no futuro).
+- `opcao.valor_numerico` fica fora do MVP.
+
+### 6.1.2 Tipos aceitos (campo `tipo`)
+- `aberta_texto_simples`
+- `aberta_texto_area`
+- `objetiva_unica`
+- `objetiva_multipla`
+- `data`
+- `avaliacao`
+- `numerica`
+
+### 6.1.3 Exemplo de GET /evento/{id}/questionario
+```json
+{
+  "evento_id": 123,
+  "paginas": [
+    {
+      "id": 10,
+      "ordem": 1,
+      "titulo": "Pagina 1",
+      "descricao": "Opcional",
+      "perguntas": [
+        {
+          "id": 100,
+          "ordem": 1,
+          "tipo": "objetiva_unica",
+          "texto": "Como voce avalia?",
+          "obrigatoria": true,
+          "opcoes": [
+            { "id": 1000, "ordem": 1, "texto": "Otimo" },
+            { "id": 1001, "ordem": 2, "texto": "Bom" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 6.1.4 Exemplo de PUT /evento/{id}/questionario
+```json
+{
+  "paginas": [
+    {
+      "ordem": 1,
+      "titulo": "Pagina 1",
+      "descricao": "Opcional",
+      "perguntas": [
+        {
+          "ordem": 1,
+          "tipo": "aberta_texto_simples",
+          "texto": "Deixe um comentario",
+          "obrigatoria": false,
+          "opcoes": []
+        }
+      ]
+    }
+  ]
+}
+```
 
 ---
 

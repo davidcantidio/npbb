@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
@@ -176,6 +177,25 @@ export default function EventQuestionario() {
 
   const paginas = editorPaginas;
   const selectedPagina = paginas.find((pagina) => pagina.id === selectedPaginaId) ?? null;
+  const handleAddPagina = () => {
+    const newId = nextTempId();
+    setEditorPaginas((prev) => {
+      const maxOrdem = prev.reduce((max, pagina) => Math.max(max, pagina.ordem || 0), 0);
+      const ordem = maxOrdem + 1;
+      return [
+        ...prev,
+        {
+          id: newId,
+          ordem,
+          titulo: `Pagina ${ordem}`,
+          descricao: null,
+          perguntas: [],
+        },
+      ];
+    });
+    setSelectedPaginaId(newId);
+    setSelectedPerguntaId(null);
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -254,9 +274,20 @@ export default function EventQuestionario() {
                 variant="outlined"
                 sx={{ p: 2, width: { xs: "100%", md: 260 }, flexShrink: 0 }}
               >
-                <Typography variant="subtitle2" fontWeight={800} gutterBottom>
-                  Estrutura
-                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    Estrutura
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={handleAddPagina}
+                    sx={{ textTransform: "none", fontWeight: 700 }}
+                  >
+                    Nova pagina
+                  </Button>
+                </Stack>
 
                 {paginas.length ? (
                   <Stack spacing={1}>

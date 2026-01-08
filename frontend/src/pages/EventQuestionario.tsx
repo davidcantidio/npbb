@@ -6,6 +6,7 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -82,6 +83,16 @@ type EditorPagina = {
   perguntas: EditorPergunta[];
 };
 
+const PERGUNTA_TIPO_OPTIONS = [
+  { value: "aberta_texto_simples", label: "Texto curto" },
+  { value: "aberta_texto_area", label: "Texto longo" },
+  { value: "objetiva_unica", label: "Unica escolha" },
+  { value: "objetiva_multipla", label: "Multipla escolha" },
+  { value: "data", label: "Data" },
+  { value: "avaliacao", label: "Avaliacao" },
+  { value: "numerica", label: "Numerica" },
+] as const;
+
 export default function EventQuestionario() {
   const { id } = useParams();
   const eventoId = Number(id);
@@ -97,6 +108,7 @@ export default function EventQuestionario() {
   const [editorPaginas, setEditorPaginas] = useState<EditorPagina[]>([]);
   const [selectedPaginaId, setSelectedPaginaId] = useState<EditorId | null>(null);
   const [selectedPerguntaId, setSelectedPerguntaId] = useState<EditorId | null>(null);
+  const [novaPerguntaTipo, setNovaPerguntaTipo] = useState<string>(PERGUNTA_TIPO_OPTIONS[0].value);
 
   const tempIdRef = useRef(0);
   const nextTempId = () => {
@@ -244,6 +256,32 @@ export default function EventQuestionario() {
       next.splice(targetIndex, 0, moved);
       return next.map((pagina, idx) => ({ ...pagina, ordem: idx + 1 }));
     });
+  };
+  const handleAddPergunta = () => {
+    if (!selectedPaginaId) return;
+    const newId = nextTempId();
+    setEditorPaginas((prev) =>
+      prev.map((pagina) => {
+        if (pagina.id !== selectedPaginaId) return pagina;
+        const maxOrdem = pagina.perguntas.reduce((max, pergunta) => Math.max(max, pergunta.ordem || 0), 0);
+        const ordem = maxOrdem + 1;
+        return {
+          ...pagina,
+          perguntas: [
+            ...pagina.perguntas,
+            {
+              id: newId,
+              ordem,
+              tipo: novaPerguntaTipo,
+              texto: `Pergunta ${ordem}`,
+              obrigatoria: false,
+              opcoes: [],
+            },
+          ],
+        };
+      }),
+    );
+    setSelectedPerguntaId(newId);
   };
   const getPerguntaTipoLabel = (tipo: string) => {
     switch (tipo) {
@@ -447,13 +485,41 @@ export default function EventQuestionario() {
                       minRows={2}
                     />
                     <Typography variant="body2" color="text.secondary">
-                      Ordem: {selectedPagina.ordem} · Perguntas: {selectedPagina.perguntas.length}
+                      Ordem: {selectedPagina.ordem} - Perguntas: {selectedPagina.perguntas.length}
                     </Typography>
                     <Divider />
                     <Box>
                       <Typography variant="subtitle2" fontWeight={800} gutterBottom>
                         Perguntas
                       </Typography>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        alignItems={{ xs: "stretch", sm: "center" }}
+                        mb={2}
+                      >
+                        <TextField
+                          select
+                          label="Tipo da pergunta"
+                          value={novaPerguntaTipo}
+                          onChange={(event) => setNovaPerguntaTipo(event.target.value)}
+                          sx={{ minWidth: 220 }}
+                        >
+                          {PERGUNTA_TIPO_OPTIONS.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        <Button
+                          variant="contained"
+                          startIcon={<AddIcon />}
+                          onClick={handleAddPergunta}
+                          sx={{ textTransform: "none", fontWeight: 700 }}
+                        >
+                          Adicionar pergunta
+                        </Button>
+                      </Stack>
                       {selectedPagina.perguntas.length ? (
                         <Stack spacing={1}>
                           {selectedPagina.perguntas.map((pergunta) => (
@@ -465,7 +531,7 @@ export default function EventQuestionario() {
                                 {pergunta.ordem}. {pergunta.texto || "Sem texto"}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                Tipo: {getPerguntaTipoLabel(pergunta.tipo)} ·{" "}
+                                Tipo: {getPerguntaTipoLabel(pergunta.tipo)} -{" "}
                                 {pergunta.obrigatoria ? "Obrigatoria" : "Opcional"}
                               </Typography>
                             </Box>

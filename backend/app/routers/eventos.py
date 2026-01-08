@@ -1126,6 +1126,19 @@ def salvar_questionario(
         if evento.agencia_id != current_user.agencia_id:
             _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
+    respostas = session.exec(
+        select(func.count())
+        .select_from(QuestionarioResposta)
+        .where(QuestionarioResposta.evento_id == evento_id)
+    ).one()
+    if int(respostas) > 0:
+        _raise_http(
+            status.HTTP_409_CONFLICT,
+            code="QUESTIONARIO_UPDATE_BLOCKED",
+            message="Nao e possivel atualizar questionario com respostas",
+            extra={"dependencies": {"respostas_questionario": int(respostas)}},
+        )
+
     paginas = replace_questionario_estrutura(session, evento_id=evento_id, payload=payload)
     paginas_read = [QuestionarioPaginaRead.model_validate(p, from_attributes=True) for p in paginas]
     return QuestionarioEstruturaRead(evento_id=evento_id, paginas=paginas_read)

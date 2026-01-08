@@ -414,6 +414,30 @@ export default function EventQuestionario() {
       }),
     );
   };
+  const handleMoveOpcao = (paginaId: EditorId, perguntaId: EditorId, opcaoId: EditorId, direction: "up" | "down") => {
+    setEditorPaginas((prev) =>
+      prev.map((paginaItem) => {
+        if (paginaItem.id !== paginaId) return paginaItem;
+        return {
+          ...paginaItem,
+          perguntas: paginaItem.perguntas.map((perguntaItem) => {
+            if (perguntaItem.id !== perguntaId) return perguntaItem;
+            const index = perguntaItem.opcoes.findIndex((item) => item.id === opcaoId);
+            if (index < 0) return perguntaItem;
+            const targetIndex = direction === "up" ? index - 1 : index + 1;
+            if (targetIndex < 0 || targetIndex >= perguntaItem.opcoes.length) return perguntaItem;
+            const nextOpcoes = [...perguntaItem.opcoes];
+            const [moved] = nextOpcoes.splice(index, 1);
+            nextOpcoes.splice(targetIndex, 0, moved);
+            return {
+              ...perguntaItem,
+              opcoes: nextOpcoes.map((item, idx) => ({ ...item, ordem: idx + 1 })),
+            };
+          }),
+        };
+      }),
+    );
+  };
   const handleMovePergunta = (paginaId: EditorId, perguntaId: EditorId, direction: "up" | "down") => {
     setEditorPaginas((prev) =>
       prev.map((pagina) => {
@@ -821,7 +845,10 @@ export default function EventQuestionario() {
                                   </Stack>
                                   {selectedPergunta.opcoes.length ? (
                                     <Stack spacing={1}>
-                                      {selectedPergunta.opcoes.map((opcao) => (
+                                      {selectedPergunta.opcoes.map((opcao, index) => {
+                                        const isFirst = index === 0;
+                                        const isLast = index === selectedPergunta.opcoes.length - 1;
+                                        return (
                                         <Stack
                                           key={opcao.id ?? `ordem-${opcao.ordem}`}
                                           direction={{ xs: "column", sm: "row" }}
@@ -841,17 +868,38 @@ export default function EventQuestionario() {
                                             }
                                             fullWidth
                                           />
-                                          <IconButton
-                                            color="error"
-                                            aria-label="Excluir opcao"
-                                            onClick={() =>
-                                              handleDeleteOpcao(selectedPagina.id, selectedPergunta.id, opcao.id)
-                                            }
-                                          >
-                                            <DeleteOutlineIcon />
-                                          </IconButton>
+                                          <Stack direction="row" spacing={0.5}>
+                                            <IconButton
+                                              aria-label="Mover opcao para cima"
+                                              onClick={() =>
+                                                handleMoveOpcao(selectedPagina.id, selectedPergunta.id, opcao.id, "up")
+                                              }
+                                              disabled={isFirst}
+                                            >
+                                              <ArrowUpwardIcon fontSize="inherit" />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="Mover opcao para baixo"
+                                              onClick={() =>
+                                                handleMoveOpcao(selectedPagina.id, selectedPergunta.id, opcao.id, "down")
+                                              }
+                                              disabled={isLast}
+                                            >
+                                              <ArrowDownwardIcon fontSize="inherit" />
+                                            </IconButton>
+                                            <IconButton
+                                              color="error"
+                                              aria-label="Excluir opcao"
+                                              onClick={() =>
+                                                handleDeleteOpcao(selectedPagina.id, selectedPergunta.id, opcao.id)
+                                              }
+                                            >
+                                              <DeleteOutlineIcon />
+                                            </IconButton>
+                                          </Stack>
                                         </Stack>
-                                      ))}
+                                      );
+                                      })}
                                     </Stack>
                                   ) : (
                                     <Typography variant="body2" color="text.secondary">

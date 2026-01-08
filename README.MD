@@ -87,6 +87,7 @@ cp .env.example .env
 - Formulario de Lead (API): `docs/formulario_lead_api.md`
 - Gamificacao (API): `docs/gamificacao_api.md`
 - Ativacoes (API): `docs/ativacoes_api.md`
+- Questionario (API): `docs/questionario_api.md`
 - Login (UI): `docs/login/login.md`
 - Cadastro de usuario (UI + API): `docs/login/new_user/login_tela_inicial.md`
 - Eventos (UI): `docs/tela-inicial/menu/Eventos/eventos.md`

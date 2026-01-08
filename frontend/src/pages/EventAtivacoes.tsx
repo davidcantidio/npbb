@@ -339,7 +339,7 @@ export default function EventAtivacoes() {
 
             <Stack spacing={2}>
               <TextField
-                label="Nome da ativacao"
+                label="Nome da ativação"
                 value={createForm.nome}
                 onChange={(e) => {
                   setCreateForm((prev) => ({ ...prev, nome: e.target.value }));
@@ -365,7 +365,7 @@ export default function EventAtivacoes() {
                 disabled={formDisabled}
                 multiline
                 minRows={2}
-                helperText={`${createForm.mensagem_qrcode.length}/${MAX_LEN.mensagem_qrcode}`}
+                helperText={`${createForm.mensagem_qrcode.length}/${MAX_LEN.mensagem_qrcode} caracteres`}
                 fullWidth
                 inputProps={{ maxLength: MAX_LEN.mensagem_qrcode }}
               />
@@ -380,14 +380,14 @@ export default function EventAtivacoes() {
                 disabled={formDisabled}
                 multiline
                 minRows={2}
-                helperText={`${createForm.descricao.length}/${MAX_LEN.descricao}`}
+                helperText={`${createForm.descricao.length}/${MAX_LEN.descricao} caracteres`}
                 fullWidth
                 inputProps={{ maxLength: MAX_LEN.descricao }}
               />
 
               <TextField
                 select
-                label="Gamificacao"
+                label="Tipo de gamificação"
                 value={createForm.gamificacao_id ?? ""}
                 onChange={(e) => {
                   const raw = e.target.value;
@@ -421,7 +421,7 @@ export default function EventAtivacoes() {
                       }}
                     />
                   }
-                  label="Redireciona para pesquisa"
+                  label="Redirecionamento para tela de pesquisa"
                 />
                 <FormControlLabel
                   control={
@@ -434,7 +434,7 @@ export default function EventAtivacoes() {
                       }}
                     />
                   }
-                  label="Check-in unico"
+                  label="Check-in único por ativação"
                 />
                 <FormControlLabel
                   control={
@@ -460,7 +460,7 @@ export default function EventAtivacoes() {
                       }}
                     />
                   }
-                  label="Gerar cupom"
+                  label="Gerar Cupom"
                 />
               </Stack>
 
@@ -471,7 +471,7 @@ export default function EventAtivacoes() {
                   disabled={!canAct || isBusy}
                   sx={{ textTransform: "none", fontWeight: 800 }}
                 >
-                  {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar"}
+                  {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar ativação"}
                 </Button>
               </Stack>
             </Stack>
@@ -479,17 +479,17 @@ export default function EventAtivacoes() {
             <Divider />
 
             <Typography variant="subtitle1" fontWeight={900}>
-              Ativacoes adicionadas
+              Ativações adicionadas
             </Typography>
 
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
-                  <TableCell width={140}>Check-in unico</TableCell>
-                  <TableCell width={220}>Gamificacao</TableCell>
+                  <TableCell width={120}>Único</TableCell>
+                  <TableCell width={220}>Gamificação</TableCell>
                   <TableCell width={140} align="right">
-                    Acoes
+                    Ações
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -508,6 +508,7 @@ export default function EventAtivacoes() {
                           <IconButton
                             aria-label="Visualizar"
                             size="small"
+                            color="primary"
                             disabled={!canAct || isBusy}
                             onClick={() => setViewing(item)}
                           >
@@ -516,6 +517,7 @@ export default function EventAtivacoes() {
                           <IconButton
                             aria-label="Editar"
                             size="small"
+                            color="success"
                             disabled={!canAct || isBusy}
                             onClick={() =>
                               setSnackbar({
@@ -550,7 +552,7 @@ export default function EventAtivacoes() {
                   <TableRow>
                     <TableCell colSpan={4}>
                       <Typography variant="body2" color="text.secondary">
-                        Nenhuma ativacao adicionada.
+                        Nenhuma ativação adicionada.
                       </Typography>
                     </TableCell>
                   </TableRow>

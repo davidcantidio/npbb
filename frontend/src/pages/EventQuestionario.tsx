@@ -92,6 +92,22 @@ type EditorPagina = {
   perguntas: EditorPergunta[];
 };
 
+type PerguntaValidation = {
+  texto?: string;
+  opcoes?: string;
+  opcaoTextos?: Record<EditorId, string>;
+};
+
+type PaginaValidation = {
+  titulo?: string;
+  perguntas: Record<EditorId, PerguntaValidation>;
+};
+
+type QuestionarioValidation = {
+  hasErrors: boolean;
+  paginas: Record<EditorId, PaginaValidation>;
+};
+
 const PERGUNTA_TIPO_OPTIONS = [
   { value: "aberta_texto_simples", label: "Texto curto" },
   { value: "aberta_texto_area", label: "Texto longo" },
@@ -101,6 +117,54 @@ const PERGUNTA_TIPO_OPTIONS = [
   { value: "avaliacao", label: "Avaliacao" },
   { value: "numerica", label: "Numerica" },
 ] as const;
+
+const isPerguntaObjetiva = (tipo: string) => tipo === "objetiva_unica" || tipo === "objetiva_multipla";
+
+const validateQuestionario = (paginas: EditorPagina[]): QuestionarioValidation => {
+  let hasErrors = false;
+  const paginasErrors: Record<EditorId, PaginaValidation> = {};
+
+  paginas.forEach((pagina) => {
+    const paginaErrors: PaginaValidation = { perguntas: {} };
+    if (!pagina.titulo.trim()) {
+      paginaErrors.titulo = "Titulo obrigatorio.";
+      hasErrors = true;
+    }
+
+    pagina.perguntas.forEach((pergunta) => {
+      const perguntaErrors: PerguntaValidation = {};
+      if (!pergunta.texto.trim()) {
+        perguntaErrors.texto = "Texto obrigatorio.";
+        hasErrors = true;
+      }
+      if (isPerguntaObjetiva(pergunta.tipo)) {
+        if (pergunta.opcoes.length === 0) {
+          perguntaErrors.opcoes = "Adicione pelo menos uma opcao.";
+          hasErrors = true;
+        }
+        const opcaoTextos: Record<EditorId, string> = {};
+        pergunta.opcoes.forEach((opcao) => {
+          if (!opcao.texto.trim()) {
+            opcaoTextos[opcao.id] = "Opcao obrigatoria.";
+            hasErrors = true;
+          }
+        });
+        if (Object.keys(opcaoTextos).length) {
+          perguntaErrors.opcaoTextos = opcaoTextos;
+        }
+      }
+      if (Object.keys(perguntaErrors).length) {
+        paginaErrors.perguntas[pergunta.id] = perguntaErrors;
+      }
+    });
+
+    if (paginaErrors.titulo || Object.keys(paginaErrors.perguntas).length) {
+      paginasErrors[pagina.id] = paginaErrors;
+    }
+  });
+
+  return { hasErrors, paginas: paginasErrors };
+};
 
 export default function EventQuestionario() {
   const { id } = useParams();
@@ -223,6 +287,11 @@ export default function EventQuestionario() {
   const selectedPergunta =
     selectedPagina?.perguntas.find((pergunta) => pergunta.id === selectedPerguntaId) ?? null;
   const disableActions = isSaving;
+  const validation = useMemo(() => validateQuestionario(editorPaginas), [editorPaginas]);
+  const selectedPaginaErrors = selectedPagina ? validation.paginas[selectedPagina.id] : undefined;
+  const selectedPerguntaErrors =
+    selectedPagina && selectedPergunta ? selectedPaginaErrors?.perguntas[selectedPergunta.id] : undefined;
+  const disableSave = disableActions || validation.hasErrors;
 
   useEffect(() => {
     if (!selectedPaginaId) {
@@ -492,6 +561,13 @@ export default function EventQuestionario() {
   });
   const handleSave = async () => {
     if (!token || !isValidEventoId || isSaving) return;
+    if (validation.hasErrors) {
+      setSaveFeedback({
+        severity: "error",
+        message: "Existem campos obrigatorios pendentes. Revise os erros antes de salvar.",
+      });
+      return;
+    }
     setIsSaving(true);
     setSaveFeedback(null);
     try {
@@ -525,7 +601,6 @@ export default function EventQuestionario() {
         return tipo;
     }
   };
-  const isPerguntaObjetiva = (tipo: string) => tipo === "objetiva_unica" || tipo === "objetiva_multipla";
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -607,7 +682,7 @@ export default function EventQuestionario() {
               <Button
                 variant="contained"
                 onClick={handleSave}
-                disabled={disableActions}
+                disabled={disableSave}
                 sx={{ textTransform: "none", fontWeight: 800 }}
               >
                 {isSaving ? "Salvando..." : "Salvar"}
@@ -725,8 +800,8 @@ export default function EventQuestionario() {
                       onChange={(event) =>
                         handlePaginaFieldChange(selectedPagina.id, "titulo", event.target.value)
                       }
-                      error={!selectedPagina.titulo.trim()}
-                      helperText={!selectedPagina.titulo.trim() ? "Titulo obrigatorio." : " "}
+                      error={Boolean(selectedPaginaErrors?.titulo)}
+                      helperText={selectedPaginaErrors?.titulo ?? " "}
                     />
                     <TextField
                       label="Descricao da pagina"
@@ -870,6 +945,8 @@ export default function EventQuestionario() {
                                     event.target.value,
                                   )
                                 }
+                                error={Boolean(selectedPerguntaErrors?.texto)}
+                                helperText={selectedPerguntaErrors?.texto ?? " "}
                               />
                               <TextField
                                 select
@@ -923,6 +1000,11 @@ export default function EventQuestionario() {
                                       Adicionar opcao
                                     </Button>
                                   </Stack>
+                                  {selectedPerguntaErrors?.opcoes ? (
+                                    <Typography variant="caption" color="error" display="block" mb={1}>
+                                      {selectedPerguntaErrors.opcoes}
+                                    </Typography>
+                                  ) : null}
                                   {selectedPergunta.opcoes.length ? (
                                     <Stack spacing={1}>
                                       {selectedPergunta.opcoes.map((opcao, index) => {
@@ -946,6 +1028,8 @@ export default function EventQuestionario() {
                                                 event.target.value,
                                               )
                                             }
+                                            error={Boolean(selectedPerguntaErrors?.opcaoTextos?.[opcao.id])}
+                                            helperText={selectedPerguntaErrors?.opcaoTextos?.[opcao.id] ?? " "}
                                             fullWidth
                                           />
                                           <Stack direction="row" spacing={0.5}>

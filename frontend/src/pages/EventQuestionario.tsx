@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
@@ -201,6 +202,23 @@ export default function EventQuestionario() {
       prev.map((pagina) => (pagina.id === paginaId ? { ...pagina, [field]: value } : pagina)),
     );
   };
+  const handleDeletePagina = (paginaId: EditorId) => {
+    const pagina = editorPaginas.find((item) => item.id === paginaId);
+    const label = pagina?.titulo?.trim() ? ` "${pagina.titulo.trim()}"` : "";
+    if (!window.confirm(`Excluir pagina${label}? Esta acao remove suas perguntas.`)) return;
+
+    const index = editorPaginas.findIndex((item) => item.id === paginaId);
+    const nextPaginas = editorPaginas.filter((item) => item.id !== paginaId);
+    setEditorPaginas(nextPaginas);
+
+    if (paginaId !== selectedPaginaId) {
+      return;
+    }
+
+    const fallback = nextPaginas[index] ?? nextPaginas[index - 1] ?? null;
+    setSelectedPaginaId(fallback?.id ?? null);
+    setSelectedPerguntaId(fallback?.perguntas[0]?.id ?? null);
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -323,9 +341,23 @@ export default function EventQuestionario() {
               </Paper>
 
               <Paper variant="outlined" sx={{ p: 2, flex: 1 }}>
-                <Typography variant="subtitle2" fontWeight={800} gutterBottom>
-                  Pagina selecionada
-                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    Pagina selecionada
+                  </Typography>
+                  {selectedPagina ? (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteOutlineIcon />}
+                      onClick={() => handleDeletePagina(selectedPagina.id)}
+                      sx={{ textTransform: "none", fontWeight: 700 }}
+                    >
+                      Excluir pagina
+                    </Button>
+                  ) : null}
+                </Stack>
 
                 {selectedPagina ? (
                   <Stack spacing={2}>

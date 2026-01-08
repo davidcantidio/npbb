@@ -39,3 +39,30 @@ class QuestionarioPaginaRead(BaseModel):
 class QuestionarioEstruturaRead(BaseModel):
     evento_id: int
     paginas: list[QuestionarioPaginaRead] = Field(default_factory=list)
+
+
+class QuestionarioOpcaoWrite(BaseModel):
+    id: int | None = None
+    ordem: int
+    texto: str
+
+
+class QuestionarioPerguntaWrite(BaseModel):
+    id: int | None = None
+    ordem: int
+    tipo: TipoPergunta
+    texto: str
+    obrigatoria: bool = False
+    opcoes: list[QuestionarioOpcaoWrite] = Field(default_factory=list)
+
+
+class QuestionarioPaginaWrite(BaseModel):
+    id: int | None = None
+    ordem: int
+    titulo: str
+    descricao: str | None = None
+    perguntas: list[QuestionarioPerguntaWrite] = Field(default_factory=list)
+
+
+class QuestionarioEstruturaWrite(BaseModel):
+    paginas: list[QuestionarioPaginaWrite] = Field(default_factory=list)

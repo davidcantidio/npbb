@@ -1,8 +1,11 @@
 import os
 
 from fastapi import FastAPI
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.responses import JSONResponse
 
 from app.routers.agencias import router as agencias_router
 from app.routers.ativacao import router as ativacao_router
@@ -30,6 +33,27 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Total-Count", "Content-Disposition"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def questionario_validation_exception_handler(request, exc: RequestValidationError):
+    if "/questionario" not in request.url.path:
+        return await request_validation_exception_handler(request, exc)
+
+    body_errors = [error for error in exc.errors() if error.get("loc", [None])[0] == "body"]
+    if not body_errors:
+        return await request_validation_exception_handler(request, exc)
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "detail": {
+                "code": "QUESTIONARIO_INVALID_STRUCTURE",
+                "message": "Estrutura de questionario invalida",
+                "extra": {"errors": body_errors},
+            }
+        },
+    )
 
 
 @app.get("/health")

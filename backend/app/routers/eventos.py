@@ -1136,7 +1136,7 @@ def salvar_questionario(
             status.HTTP_409_CONFLICT,
             code="QUESTIONARIO_UPDATE_BLOCKED",
             message="Nao e possivel atualizar questionario com respostas",
-            extra={"dependencies": {"respostas_questionario": int(respostas)}},
+            extra={"extra": {"dependencies": {"respostas_questionario": int(respostas)}}},
         )
 
     paginas = replace_questionario_estrutura(session, evento_id=evento_id, payload=payload)

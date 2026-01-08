@@ -13,6 +13,7 @@ from app.models.models import (
     QuestionarioOpcao,
     QuestionarioPagina,
     QuestionarioPergunta,
+    QuestionarioResposta,
     StatusEvento,
     TipoEvento,
     TipoPergunta,
@@ -410,3 +411,36 @@ def test_questionario_aplica_visibilidade_agencia(client, engine):
     )
     assert resp_put.status_code == 404
     assert resp_put.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
+
+
+def test_questionario_put_bloqueado_por_respostas(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+        session.add(QuestionarioResposta(evento_id=evento_id))
+        session.commit()
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    resp_put = client.put(
+        f"/evento/{evento_id}/questionario",
+        json={"paginas": []},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_put.status_code == 409
+    detail = resp_put.json()["detail"]
+    assert detail["code"] == "QUESTIONARIO_UPDATE_BLOCKED"
+    deps = detail["extra"]["dependencies"]
+    assert deps["respostas_questionario"] == 1

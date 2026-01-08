@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink, useParams } from "react-router-dom";
@@ -42,6 +42,31 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
   return message;
 }
 
+type EditorId = string;
+
+type EditorOpcao = {
+  id: EditorId;
+  ordem: number;
+  texto: string;
+};
+
+type EditorPergunta = {
+  id: EditorId;
+  ordem: number;
+  tipo: string;
+  texto: string;
+  obrigatoria: boolean;
+  opcoes: EditorOpcao[];
+};
+
+type EditorPagina = {
+  id: EditorId;
+  ordem: number;
+  titulo: string;
+  descricao?: string | null;
+  perguntas: EditorPergunta[];
+};
+
 export default function EventQuestionario() {
   const { id } = useParams();
   const eventoId = Number(id);
@@ -54,6 +79,15 @@ export default function EventQuestionario() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outOfScope, setOutOfScope] = useState(false);
+  const [editorPaginas, setEditorPaginas] = useState<EditorPagina[]>([]);
+  const [selectedPaginaId, setSelectedPaginaId] = useState<EditorId | null>(null);
+  const [selectedPerguntaId, setSelectedPerguntaId] = useState<EditorId | null>(null);
+
+  const tempIdRef = useRef(0);
+  const nextTempId = () => {
+    tempIdRef.current += 1;
+    return `tmp-${tempIdRef.current}`;
+  };
 
   useEffect(() => {
     if (!token || !isValidEventoId) {
@@ -94,13 +128,53 @@ export default function EventQuestionario() {
     };
   }, [token, eventoId, isValidEventoId]);
 
+  useEffect(() => {
+    if (!questionario) {
+      setEditorPaginas([]);
+      setSelectedPaginaId(null);
+      setSelectedPerguntaId(null);
+      return;
+    }
+
+    const mappedPaginas = questionario.paginas.map((pagina) => {
+      const paginaId = typeof pagina.id == "number" ? String(pagina.id) : nextTempId();
+      const perguntas = pagina.perguntas.map((pergunta) => {
+        const perguntaId = typeof pergunta.id == "number" ? String(pergunta.id) : nextTempId();
+        const opcoes = pergunta.opcoes.map((opcao) => ({
+          id: typeof opcao.id == "number" ? String(opcao.id) : nextTempId(),
+          ordem: opcao.ordem,
+          texto: opcao.texto,
+        }));
+        return {
+          id: perguntaId,
+          ordem: pergunta.ordem,
+          tipo: pergunta.tipo,
+          texto: pergunta.texto,
+          obrigatoria: pergunta.obrigatoria,
+          opcoes,
+        };
+      });
+      return {
+        id: paginaId,
+        ordem: pagina.ordem,
+        titulo: pagina.titulo,
+        descricao: pagina.descricao ?? null,
+        perguntas,
+      };
+    });
+
+    setEditorPaginas(mappedPaginas);
+    setSelectedPaginaId(mappedPaginas[0]?.id ?? null);
+    setSelectedPerguntaId(mappedPaginas[0]?.perguntas[0]?.id ?? null);
+  }, [questionario]);
+
   const subtitle = useMemo(() => {
     if (!isValidEventoId) return "Configure o questionario do evento.";
     if (evento?.nome) return `Configure o questionario do evento "${evento.nome}".`;
     return `Configure o questionario do evento #${eventoId}.`;
   }, [evento?.nome, eventoId, isValidEventoId]);
 
-  const paginas = questionario?.paginas ?? [];
+  const paginas = editorPaginas;
   const totalPerguntas = paginas.reduce((total, pagina) => total + pagina.perguntas.length, 0);
   const totalOpcoes = paginas.reduce(
     (total, pagina) => total + pagina.perguntas.reduce((sum, pergunta) => sum + pergunta.opcoes.length, 0),

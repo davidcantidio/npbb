@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink, useParams } from "react-router-dom";
@@ -196,6 +196,11 @@ export default function EventQuestionario() {
     setSelectedPaginaId(newId);
     setSelectedPerguntaId(null);
   };
+  const handlePaginaFieldChange = (paginaId: EditorId, field: "titulo" | "descricao", value: string) => {
+    setEditorPaginas((prev) =>
+      prev.map((pagina) => (pagina.id === paginaId ? { ...pagina, [field]: value } : pagina)),
+    );
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -323,15 +328,28 @@ export default function EventQuestionario() {
                 </Typography>
 
                 {selectedPagina ? (
-                  <Stack spacing={1}>
-                    <Typography variant="body1" fontWeight={700}>
-                      {selectedPagina.ordem}. {selectedPagina.titulo}
-                    </Typography>
+                  <Stack spacing={2}>
+                    <TextField
+                      label="Titulo da pagina"
+                      required
+                      value={selectedPagina.titulo}
+                      onChange={(event) =>
+                        handlePaginaFieldChange(selectedPagina.id, "titulo", event.target.value)
+                      }
+                      error={!selectedPagina.titulo.trim()}
+                      helperText={!selectedPagina.titulo.trim() ? "Titulo obrigatorio." : " "}
+                    />
+                    <TextField
+                      label="Descricao da pagina"
+                      value={selectedPagina.descricao ?? ""}
+                      onChange={(event) =>
+                        handlePaginaFieldChange(selectedPagina.id, "descricao", event.target.value)
+                      }
+                      multiline
+                      minRows={2}
+                    />
                     <Typography variant="body2" color="text.secondary">
-                      {selectedPagina.descricao || "Sem descricao"}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {selectedPagina.perguntas.length} pergunta(s)
+                      Ordem: {selectedPagina.ordem} · Perguntas: {selectedPagina.perguntas.length}
                     </Typography>
                   </Stack>
                 ) : (

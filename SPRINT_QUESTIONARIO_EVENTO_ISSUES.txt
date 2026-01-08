@@ -1,0 +1,338 @@
+SPRINT: Questionario de Satisfacao do Evento (MVP)
+==================================================
+
+Contexto do codigo atual (ja existe hoje)
+----------------------------------------
+- Documentacao/UX do modulo:
+  - docs/tela-inicial/menu/Eventos/Novo evento/form_questionario/form_questionario.md
+  - referencia visual: playwright-event-detail-questionario.png
+- Backend ja tem modelos/migrations (mas nao tem endpoints):
+  - app/models/models.py: QuestionarioPagina, QuestionarioPergunta, QuestionarioOpcao (+ tabelas de resposta)
+  - alembic/versions/289b4605dc23_init.py: tabelas questionario_* existem
+- Backend ainda NAO tem:
+  - schemas Pydantic para a estrutura completa do questionario (read/write)
+  - endpoints para carregar/salvar configuracao por evento
+- Frontend:
+  - rota /eventos/:id/questionario existe e aponta para frontend/src/pages/EventQuestionario.tsx (placeholder "Em breve")
+  - ainda nao existe integracao com API nem editor (paginas/perguntas/opcoes)
+
+
+Objetivo do sprint (escopo)
+---------------------------
+Entregar a tela "Questionario de Satisfacao" (configuracao) por evento:
+- editar estrutura (paginas, perguntas, opcoes)
+- reordenar paginas/perguntas/opcoes
+- salvar e recarregar a estrutura via API
+- manter permissao/visibilidade igual ao modulo de eventos (AGENCIA ve apenas eventos da propria agencia)
+
+
+Fora do escopo deste sprint (vira backlog futuro)
+------------------------------------------------
+- Fluxo publico do questionario (respondido pelo lead)
+- Coleta/persistencia de respostas (questionario_resposta_*)
+- Relatorios/metricas de respostas
+- Regras de gatilho (ex.: "redireciona para pesquisa" no check-in)
+
+
+ISSUES (ordem de execucao sugerida; cada uma e a menor entrega possivel)
+======================================================================
+
+01) Decisao de contrato: estrutura + API do Questionario (MVP)
+-------------------------------------------------------------
+Descricao:
+- Definir contrato do JSON da estrutura completa (GET/PUT) e alinhar com o modelo atual no DB:
+  - pagina: id (read), ordem, titulo (obrigatorio; max 200), descricao (opcional)
+  - pergunta: id (read), ordem, texto/enunciado (obrigatorio; max 500), tipo (enum), obrigatoria
+  - opcao: id (read), ordem, texto (obrigatorio; max 200), valor_numerico (opcional; fica fora do MVP?)
+- Definir como o PUT funciona (MVP):
+  - estrategia A: PUT sobrescreve toda a estrutura (delete + insert)
+  - estrategia B: PUT faz upsert por id (mantem ids)
+- Definir ordenacao/ordem:
+  - como `ordem` e calculada (1..N) e validada
+  - como tratar itens repetidos/fora de faixa
+- Definir regras de validacao (MVP):
+  - pagina precisa de titulo
+  - pergunta precisa de texto e tipo valido
+  - perguntas OBJETIVA_* precisam de pelo menos 1 opcao
+  - (decidir) permitir questionario vazio vs exigir >= 1 pergunta para considerar "ativo"
+- Definir bloqueios (MVP):
+  - (decidir) bloquear PUT/DELETE de pagina/pergunta (via PUT) quando existirem respostas em questionario_resposta_*
+  - formato do erro (code + extra.dependencies)
+- Definir codigos de erro padrao (ex.: EVENTO_NOT_FOUND, QUESTIONARIO_INVALID_STRUCTURE, QUESTIONARIO_UPDATE_BLOCKED).
+Aceite:
+- Documento curto no repo (ou update no form_questionario.md) com as decisoes, limites e exemplos de payload.
+
+
+02) Backend: alinhar modelo/DB Questionario com o contrato (se necessario)
+--------------------------------------------------------------------------
+Descricao:
+- Se a issue 01 decidir ajustes de tamanho/obrigatoriedade/campos:
+  - ajustar SQLModel e/ou criar migration Alembic para refletir o MVP, por exemplo:
+    - max length para descricao de pagina (se aplicavel)
+    - nullability de campos
+    - indices/constraints importantes para ordenacao por (evento_id, ordem) e (pagina_id, ordem)
+- Garantir que a estrategia do PUT (issue 01) e viavel com FK/cascades (quando aplicavel).
+Aceite:
+- Alembic upgrade head roda sem erro e o contrato do DB reflete o MVP.
+
+
+03) Backend: schemas Pydantic do modulo Questionario (read/write)
+-----------------------------------------------------------------
+Descricao:
+- Criar arquivo: backend/app/schemas/questionario.py com modelos minimos:
+  - QuestionarioOpcaoRead / QuestionarioOpcaoWrite
+  - QuestionarioPerguntaRead / QuestionarioPerguntaWrite
+  - QuestionarioPaginaRead / QuestionarioPaginaWrite
+  - QuestionarioEstruturaRead (evento_id + paginas[])
+  - QuestionarioEstruturaWrite (paginas[])
+- Implementar validacoes/normalizacao conforme contrato (trim; max length; obrigatorios; regras de opcoes).
+Aceite:
+- Imports funcionando; validacoes coerentes com a decisao do item 01.
+
+
+04) Backend: endpoint GET /evento/{id}/questionario (estrutura completa)
+-----------------------------------------------------------------------
+Descricao:
+- Implementar em backend/app/routers/eventos.py:
+  - GET /evento/{evento_id}/questionario
+- Regras:
+  - 404 se evento nao existe (ou nao e visivel ao usuario AGENCIA)
+  - retornar estrutura completa com paginas/perguntas/opcoes (ordenado por ordem/id conforme contrato)
+  - quando nao existir configuracao, retornar estrutura vazia (paginas=[])
+Aceite:
+- Endpoint retorna 200 com estrutura (vazia quando nao existir).
+
+
+05) Backend: endpoint PUT /evento/{id}/questionario (salvar estrutura completa)
+------------------------------------------------------------------------------
+Descricao:
+- Implementar em backend/app/routers/eventos.py:
+  - PUT /evento/{evento_id}/questionario
+- Regras:
+  - validar payload (issue 01/03)
+  - aplicar estrategia decidida (full replace vs upsert)
+  - persistir ordem conforme payload
+  - (se decidido) bloquear update quando existirem respostas
+Aceite:
+- PUT retorna 200 com estrutura persistida; GET subsequente retorna identico.
+
+
+06) Backend: padrao de erros/codigos do modulo Questionario
+----------------------------------------------------------
+Descricao:
+- Padronizar codigos para consumo do front (detail.code/message/field/extra) como nos outros modulos.
+- Incluir pelo menos:
+  - EVENTO_NOT_FOUND
+  - QUESTIONARIO_INVALID_STRUCTURE (ou equivalente)
+  - QUESTIONARIO_UPDATE_BLOCKED (se aplicavel)
+Aceite:
+- Erros retornam JSON consistente e previsivel.
+
+
+07) Backend: testes (GET/PUT questionario por evento)
+-----------------------------------------------------
+Descricao:
+- Criar arquivo: backend/tests/test_questionario_endpoints.py
+- Cobrir casos minimos:
+  - GET retorna estrutura vazia quando nao existir
+  - PUT salva estrutura simples (1 pagina, 1 pergunta)
+  - PUT com pergunta objetiva sem opcao retorna erro
+  - PUT + GET roundtrip retorna igual
+  - permissao/visibilidade usuario AGENCIA (404 fora do escopo)
+  - (se aplicavel) PUT bloqueado quando houver respostas
+Aceite:
+- pytest passa.
+
+
+08) Backend: seed sample de questionario (dev) (opcional)
+---------------------------------------------------------
+Descricao:
+- Atualizar backend/scripts/seed_sample.py para criar um questionario de exemplo por evento seed:
+  - 1 pagina com 2-3 perguntas (tipos variados, incluindo objetiva com opcoes)
+Aceite:
+- Rodar seed 2x nao duplica (idempotente).
+
+
+09) Frontend: tipos e servicos (API) de Questionario
+----------------------------------------------------
+Descricao:
+- Adicionar em frontend/src/services/eventos.ts (ou arquivo dedicado):
+  - types: QuestionarioPagina, QuestionarioPergunta, QuestionarioOpcao, QuestionarioEstrutura
+  - getEventoQuestionario(token, eventoId) (GET /evento/{id}/questionario)
+  - updateEventoQuestionario(token, eventoId, payload) (PUT /evento/{id}/questionario)
+Aceite:
+- Funcoes tipadas e reutilizaveis (padrao igual ao modulo de gamificacao/ativacoes).
+
+
+10) Frontend: EventQuestionario - carregar evento + estrutura do questionario
+----------------------------------------------------------------------------
+Descricao:
+- Evoluir frontend/src/pages/EventQuestionario.tsx:
+  - usar token (useAuth)
+  - carregar em paralelo:
+    - getEvento
+    - getEventoQuestionario
+  - estados: loading/erro/outOfScope
+Aceite:
+- Pagina carrega sem "Em breve" e mostra estados corretamente.
+
+
+11) Frontend: layout base do editor (painel "Estrutura" + area principal)
+------------------------------------------------------------------------
+Descricao:
+- Criar layout em 2 colunas:
+  - painel lateral: lista de paginas (com selecao)
+  - area principal: editor da pagina selecionada
+Aceite:
+- UI renderiza com estado vazio (sem paginas) e com paginas carregadas.
+
+
+12) Frontend: criar pagina (adicionar ao estado local)
+------------------------------------------------------
+Descricao:
+- Botao "Adicionar pagina" cria nova pagina no estado:
+  - titulo default (ex.: "Nova pagina")
+  - ordem ao final
+  - seleciona automaticamente
+Aceite:
+- Nova pagina aparece no painel e pode ser selecionada.
+
+
+13) Frontend: editar pagina (titulo/descricao)
+----------------------------------------------
+Descricao:
+- No editor da pagina selecionada:
+  - campo titulo (obrigatorio)
+  - campo descricao (opcional)
+Aceite:
+- Alteracoes atualizam o estado local sem salvar automaticamente.
+
+
+14) Frontend: excluir pagina (confirmacao)
+------------------------------------------
+Descricao:
+- No painel de paginas:
+  - acao "Excluir" abre confirmacao
+  - ao confirmar, remove a pagina e suas perguntas/opcoes do estado
+Aceite:
+- Exclusao funciona sem quebrar a selecao (seleciona proxima pagina disponivel).
+
+
+15) Frontend: reordenar paginas
+-------------------------------
+Descricao:
+- Implementar acoes simples (setas cima/baixo) para mudar a ordem das paginas no painel.
+Aceite:
+- Reordenacao atualiza o estado e reflete na lista.
+
+
+16) Frontend: listar perguntas da pagina selecionada (somente leitura)
+----------------------------------------------------------------------
+Descricao:
+- Renderizar a lista de perguntas da pagina selecionada (com tipo e obrigatoria).
+Aceite:
+- Lista mostra estado vazio e renderiza perguntas carregadas.
+
+
+17) Frontend: adicionar pergunta (selecionar tipo)
+--------------------------------------------------
+Descricao:
+- Botao "Adicionar pergunta" cria pergunta no estado local com:
+  - tipo selecionado (dropdown/modal)
+  - texto default (vazio)
+  - obrigatoria default false
+Aceite:
+- Pergunta aparece na lista da pagina selecionada.
+
+
+18) Frontend: editar pergunta (texto/tipo/obrigatoria)
+------------------------------------------------------
+Descricao:
+- Editor de pergunta selecionada:
+  - campo texto (obrigatorio)
+  - dropdown tipo (enum)
+  - switch obrigatoria
+Aceite:
+- Edicao atualiza o estado local.
+
+
+19) Frontend: opcoes de pergunta objetiva (CRUD local)
+------------------------------------------------------
+Descricao:
+- Para tipos OBJETIVA_UNICA/OBJETIVA_MULTIPLA:
+  - permitir adicionar/editar/excluir opcoes (texto)
+Aceite:
+- UI permite manter pelo menos 1 opcao (validacao fica no item 23).
+
+
+20) Frontend: reordenar perguntas
+---------------------------------
+Descricao:
+- Implementar acoes (setas cima/baixo) para mudar ordem das perguntas dentro da pagina.
+Aceite:
+- Reordenacao reflete na lista e no payload gerado.
+
+
+21) Frontend: reordenar opcoes
+------------------------------
+Descricao:
+- Implementar acoes (setas cima/baixo) para mudar ordem das opcoes dentro da pergunta.
+Aceite:
+- Reordenacao reflete na lista e no payload gerado.
+
+
+22) Frontend: salvar estrutura (PUT) + feedback
+-----------------------------------------------
+Descricao:
+- Botao "Salvar" chama updateEventoQuestionario com a estrutura completa.
+- UX:
+  - desabilitar botoes durante request
+  - snackbar/alert de sucesso/erro
+Aceite:
+- Salvar funciona e, ao recarregar a pagina, o questionario permanece.
+
+
+23) Frontend: validacoes client-side (MVP)
+------------------------------------------
+Descricao:
+- Validacao client-side minima antes de salvar:
+  - pagina.titulo required
+  - pergunta.texto required
+  - perguntas OBJETIVA_* exigem >= 1 opcao com texto
+  - exibir erros de forma clara (inline) e impedir salvar quando invalido
+Aceite:
+- UI impede salvar invalido e mostra feedback claro.
+
+
+24) Frontend E2E (minimo): login -> criar evento -> abrir Questionario
+----------------------------------------------------------------------
+Descricao:
+- Criar teste Playwright (ex.: tests/questionario.ui.spec.ts):
+  - login com usuario seed
+  - criar evento via API (para nao depender de dados existentes)
+  - navegar para /eventos/:id/questionario
+  - verificar titulo "Questionario" e que a tela carrega sem erro
+  - cleanup (DELETE /evento/{id})
+Aceite:
+- Teste passa localmente (requer backend+frontend rodando e seed aplicado).
+
+
+25) Documentacao: endpoints do modulo Questionario
+--------------------------------------------------
+Descricao:
+- Publicar doc em docs/questionario_api.md com:
+  - GET /evento/{id}/questionario
+  - PUT /evento/{id}/questionario
+- Incluir exemplos de payload e erros (incluindo bloqueio, se aplicavel).
+Aceite:
+- Documento linkado no README principal.
+
+
+26) Alinhamento com print/tela original (ajustes finos) (opcional)
+------------------------------------------------------------------
+Descricao:
+- Revisar referencias (ex.: playwright-event-detail-questionario.png) e alinhar:
+  - labels, ordem dos campos, textos
+  - nomes dos botoes e mensagens de validacao
+Aceite:
+- UI do MVP fica coerente com o material de referencia.

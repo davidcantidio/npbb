@@ -59,6 +59,8 @@ from app.schemas.formulario_lead import (
     FormularioLeadConfigUpsert,
 )
 from app.schemas.gamificacao import GamificacaoCreate, GamificacaoRead
+from app.schemas.questionario import QuestionarioEstruturaRead, QuestionarioPaginaRead
+from app.services.questionario import load_questionario_estrutura
 from app.utils.http_errors import raise_http_error
 from app.utils.urls import build_evento_public_urls
 
@@ -1082,6 +1084,26 @@ def upsert_formulario_lead_config(
             **url_updates,
         }
     )
+
+
+@router.get("/{evento_id}/questionario", response_model=QuestionarioEstruturaRead)
+@router.get("/{evento_id}/questionario/", response_model=QuestionarioEstruturaRead)
+def obter_questionario(
+    evento_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+
+    paginas = load_questionario_estrutura(session, evento_id=evento_id)
+    paginas_read = [QuestionarioPaginaRead.model_validate(p, from_attributes=True) for p in paginas]
+    return QuestionarioEstruturaRead(evento_id=evento_id, paginas=paginas_read)
 
 
 @router.get("/{evento_id}/gamificacoes", response_model=list[GamificacaoRead])

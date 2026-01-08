@@ -113,6 +113,13 @@ Observacao: o PUT pode sobrescrever a estrutura inteira para simplificar (sem CR
 | Avaliacao | `avaliacao` | Avaliacao |
 | Numerica | `numerica` | Numerica |
 
+### 6.3 Estrategia de persistencia (PUT)
+- MVP: replace-all (delete + insert) por evento.
+- Itens removidos do payload sao excluidos no banco.
+- `id` no PUT e ignorado (read-only); novos ids sao gerados na persistencia.
+- `ordem` e persistido conforme enviado (validacao definida na issue de ordenacao).
+- Operacao deve ser transacional.
+
 ### 6.1.3 Exemplo de GET /evento/{id}/questionario
 ```json
 {

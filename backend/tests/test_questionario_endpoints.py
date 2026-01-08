@@ -310,3 +310,70 @@ def test_questionario_put_objetiva_sem_opcoes_retorna_erro(client, engine):
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert detail["code"] == "QUESTIONARIO_INVALID_STRUCTURE"
+
+
+def test_questionario_put_get_roundtrip(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    payload = {
+        "paginas": [
+            {
+                "ordem": 1,
+                "titulo": "Pagina 1",
+                "descricao": "Descricao",
+                "perguntas": [
+                    {
+                        "ordem": 1,
+                        "tipo": "aberta_texto_simples",
+                        "texto": "Pergunta 1",
+                        "obrigatoria": True,
+                        "opcoes": [],
+                    },
+                    {
+                        "ordem": 2,
+                        "tipo": "objetiva_unica",
+                        "texto": "Pergunta 2",
+                        "obrigatoria": False,
+                        "opcoes": [
+                            {"ordem": 1, "texto": "Opcao 1"},
+                            {"ordem": 2, "texto": "Opcao 2"},
+                        ],
+                    },
+                ],
+            }
+        ]
+    }
+
+    resp_put = client.put(
+        f"/evento/{evento_id}/questionario",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_put.status_code == 200
+
+    resp_get = client.get(
+        f"/evento/{evento_id}/questionario",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_get.status_code == 200
+    data = resp_get.json()
+    assert data["evento_id"] == evento_id
+    assert len(data["paginas"]) == 1
+    assert len(data["paginas"][0]["perguntas"]) == 2
+    assert data["paginas"][0]["perguntas"][1]["opcoes"][0]["texto"] == "Opcao 1"

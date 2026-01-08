@@ -346,6 +346,74 @@ export default function EventQuestionario() {
       updatedPagina.perguntas[index] ?? updatedPagina.perguntas[index - 1] ?? updatedPagina.perguntas[0];
     setSelectedPerguntaId(fallback.id);
   };
+  const handleAddOpcao = (paginaId: EditorId, perguntaId: EditorId) => {
+    const newId = nextTempId();
+    setEditorPaginas((prev) =>
+      prev.map((pagina) => {
+        if (pagina.id !== paginaId) return pagina;
+        return {
+          ...pagina,
+          perguntas: pagina.perguntas.map((pergunta) => {
+            if (pergunta.id !== perguntaId) return pergunta;
+            const maxOrdem = pergunta.opcoes.reduce((max, opcao) => Math.max(max, opcao.ordem || 0), 0);
+            const ordem = maxOrdem + 1;
+            return {
+              ...pergunta,
+              opcoes: [
+                ...pergunta.opcoes,
+                {
+                  id: newId,
+                  ordem,
+                  texto: `Opcao ${ordem}`,
+                },
+              ],
+            };
+          }),
+        };
+      }),
+    );
+  };
+  const handleOpcaoFieldChange = (paginaId: EditorId, perguntaId: EditorId, opcaoId: EditorId, value: string) => {
+    setEditorPaginas((prev) =>
+      prev.map((pagina) => {
+        if (pagina.id !== paginaId) return pagina;
+        return {
+          ...pagina,
+          perguntas: pagina.perguntas.map((pergunta) => {
+            if (pergunta.id !== perguntaId) return pergunta;
+            return {
+              ...pergunta,
+              opcoes: pergunta.opcoes.map((opcao) => (opcao.id === opcaoId ? { ...opcao, texto: value } : opcao)),
+            };
+          }),
+        };
+      }),
+    );
+  };
+  const handleDeleteOpcao = (paginaId: EditorId, perguntaId: EditorId, opcaoId: EditorId) => {
+    const pagina = editorPaginas.find((item) => item.id === paginaId);
+    const pergunta = pagina?.perguntas.find((item) => item.id === perguntaId);
+    const opcao = pergunta?.opcoes.find((item) => item.id === opcaoId);
+    const label = opcao?.texto?.trim() ? ` "${opcao.texto.trim()}"` : "";
+    if (!window.confirm(`Excluir opcao${label}?`)) return;
+
+    setEditorPaginas((prev) =>
+      prev.map((paginaItem) => {
+        if (paginaItem.id !== paginaId) return paginaItem;
+        return {
+          ...paginaItem,
+          perguntas: paginaItem.perguntas.map((perguntaItem) => {
+            if (perguntaItem.id !== perguntaId) return perguntaItem;
+            const remaining = perguntaItem.opcoes.filter((item) => item.id !== opcaoId);
+            return {
+              ...perguntaItem,
+              opcoes: remaining.map((item, idx) => ({ ...item, ordem: idx + 1 })),
+            };
+          }),
+        };
+      }),
+    );
+  };
   const handleMovePergunta = (paginaId: EditorId, perguntaId: EditorId, direction: "up" | "down") => {
     setEditorPaginas((prev) =>
       prev.map((pagina) => {
@@ -386,6 +454,7 @@ export default function EventQuestionario() {
         return tipo;
     }
   };
+  const isPerguntaObjetiva = (tipo: string) => tipo === "objetiva_unica" || tipo === "objetiva_multipla";
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -734,6 +803,63 @@ export default function EventQuestionario() {
                                 }
                                 label="Obrigatoria"
                               />
+                              {isPerguntaObjetiva(selectedPergunta.tipo) ? (
+                                <Box>
+                                  <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+                                    <Typography variant="subtitle2" fontWeight={800}>
+                                      Opcoes
+                                    </Typography>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<AddIcon />}
+                                      onClick={() => handleAddOpcao(selectedPagina.id, selectedPergunta.id)}
+                                      sx={{ textTransform: "none", fontWeight: 700 }}
+                                    >
+                                      Adicionar opcao
+                                    </Button>
+                                  </Stack>
+                                  {selectedPergunta.opcoes.length ? (
+                                    <Stack spacing={1}>
+                                      {selectedPergunta.opcoes.map((opcao) => (
+                                        <Stack
+                                          key={opcao.id ?? `ordem-${opcao.ordem}`}
+                                          direction={{ xs: "column", sm: "row" }}
+                                          spacing={1}
+                                          alignItems={{ xs: "stretch", sm: "center" }}
+                                        >
+                                          <TextField
+                                            label={`Opcao ${opcao.ordem}`}
+                                            value={opcao.texto}
+                                            onChange={(event) =>
+                                              handleOpcaoFieldChange(
+                                                selectedPagina.id,
+                                                selectedPergunta.id,
+                                                opcao.id,
+                                                event.target.value,
+                                              )
+                                            }
+                                            fullWidth
+                                          />
+                                          <IconButton
+                                            color="error"
+                                            aria-label="Excluir opcao"
+                                            onClick={() =>
+                                              handleDeleteOpcao(selectedPagina.id, selectedPergunta.id, opcao.id)
+                                            }
+                                          >
+                                            <DeleteOutlineIcon />
+                                          </IconButton>
+                                        </Stack>
+                                      ))}
+                                    </Stack>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Nenhuma opcao cadastrada.
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ) : null}
                             </Stack>
                           ) : (
                             <Typography variant="body2" color="text.secondary">

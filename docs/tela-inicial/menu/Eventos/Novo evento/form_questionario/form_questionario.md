@@ -129,6 +129,15 @@ Observacao: o PUT pode sobrescrever a estrutura inteira para simplificar (sem CR
 - O backend valida que a sequencia seja continua (1..N). Gaps, duplicados ou valores fora da faixa sao invalidos.
 - Se invalido, retornar erro `QUESTIONARIO_INVALID_STRUCTURE`.
 
+### 6.5 Validacoes MVP
+- `pagina.titulo`: obrigatorio, trim, max 200.
+- `pergunta.texto`: obrigatorio, trim, max 500.
+- `pergunta.tipo`: obrigatorio (ver lista de tipos aceitos).
+- `pergunta.obrigatoria`: default `false` quando ausente.
+- Perguntas objetivas (`objetiva_unica`/`objetiva_multipla`) devem ter `opcoes` com pelo menos 1 item.
+  - `opcao.texto`: obrigatorio, trim, max 200.
+- Questionario vazio: permitido (pode salvar `paginas=[]`).
+
 ### 6.1.3 Exemplo de GET /evento/{id}/questionario
 ```json
 {

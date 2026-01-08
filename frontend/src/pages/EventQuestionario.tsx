@@ -175,11 +175,7 @@ export default function EventQuestionario() {
   }, [evento?.nome, eventoId, isValidEventoId]);
 
   const paginas = editorPaginas;
-  const totalPerguntas = paginas.reduce((total, pagina) => total + pagina.perguntas.length, 0);
-  const totalOpcoes = paginas.reduce(
-    (total, pagina) => total + pagina.perguntas.reduce((sum, pergunta) => sum + pergunta.opcoes.length, 0),
-    0,
-  );
+  const selectedPagina = paginas.find((pagina) => pagina.id === selectedPaginaId) ?? null;
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -251,53 +247,69 @@ export default function EventQuestionario() {
               </Typography>
             </Box>
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Paginas
-                </Typography>
-                <Typography variant="h6" fontWeight={800}>
-                  {paginas.length}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Perguntas
-                </Typography>
-                <Typography variant="h6" fontWeight={800}>
-                  {totalPerguntas}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Opcoes
-                </Typography>
-                <Typography variant="h6" fontWeight={800}>
-                  {totalOpcoes}
-                </Typography>
-              </Box>
-            </Stack>
-
             <Divider />
 
-            {paginas.length ? (
-              <Stack spacing={1}>
-                {paginas.map((pagina) => (
-                  <Box key={pagina.id ?? `ordem-${pagina.ordem}`}>
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      {pagina.ordem}. {pagina.titulo}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, width: { xs: "100%", md: 260 }, flexShrink: 0 }}
+              >
+                <Typography variant="subtitle2" fontWeight={800} gutterBottom>
+                  Estrutura
+                </Typography>
+
+                {paginas.length ? (
+                  <Stack spacing={1}>
+                    {paginas.map((pagina) => {
+                      const isSelected = pagina.id === selectedPaginaId;
+                      return (
+                        <Button
+                          key={pagina.id ?? `ordem-${pagina.ordem}`}
+                          variant={isSelected ? "contained" : "text"}
+                          color={isSelected ? "primary" : "inherit"}
+                          onClick={() => setSelectedPaginaId(pagina.id)}
+                          sx={{
+                            textTransform: "none",
+                            justifyContent: "flex-start",
+                            fontWeight: isSelected ? 800 : 500,
+                          }}
+                        >
+                          {pagina.ordem}. {pagina.titulo}
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Nenhuma pagina cadastrada.
+                  </Typography>
+                )}
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 2, flex: 1 }}>
+                <Typography variant="subtitle2" fontWeight={800} gutterBottom>
+                  Pagina selecionada
+                </Typography>
+
+                {selectedPagina ? (
+                  <Stack spacing={1}>
+                    <Typography variant="body1" fontWeight={700}>
+                      {selectedPagina.ordem}. {selectedPagina.titulo}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {pagina.perguntas.length} pergunta(s)
+                      {selectedPagina.descricao || "Sem descricao"}
                     </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Nenhuma pagina cadastrada.
-              </Typography>
-            )}
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedPagina.perguntas.length} pergunta(s)
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Selecione uma pagina para editar.
+                  </Typography>
+                )}
+              </Paper>
+            </Stack>
           </Stack>
         )}
       </Paper>

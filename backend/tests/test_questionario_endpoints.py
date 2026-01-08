@@ -377,3 +377,36 @@ def test_questionario_put_get_roundtrip(client, engine):
     assert len(data["paginas"]) == 1
     assert len(data["paginas"][0]["perguntas"]) == 2
     assert data["paginas"][0]["perguntas"][1]["opcoes"][0]["texto"] == "Opcao 1"
+
+
+def test_questionario_aplica_visibilidade_agencia(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        ag2 = seed_agencia(session, "Sherpa", "sherpa.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "agencia@agencia.com.br", "Senha123!", "agencia", agencia_id=ag2.id)
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
+
+    resp_get = client.get(f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"})
+    assert resp_get.status_code == 404
+    assert resp_get.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
+
+    resp_put = client.put(
+        f"/evento/{evento_id}/questionario",
+        json={"paginas": []},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_put.status_code == 404
+    assert resp_put.json()["detail"]["code"] == "EVENTO_NOT_FOUND"

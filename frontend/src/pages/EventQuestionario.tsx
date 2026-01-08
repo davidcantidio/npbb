@@ -5,10 +5,12 @@ import {
   Button,
   CircularProgress,
   Divider,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -203,6 +205,22 @@ export default function EventQuestionario() {
 
   const paginas = editorPaginas;
   const selectedPagina = paginas.find((pagina) => pagina.id === selectedPaginaId) ?? null;
+  const selectedPergunta =
+    selectedPagina?.perguntas.find((pergunta) => pergunta.id === selectedPerguntaId) ?? null;
+
+  useEffect(() => {
+    if (!selectedPaginaId) {
+      if (selectedPerguntaId !== null) setSelectedPerguntaId(null);
+      return;
+    }
+    const pagina = editorPaginas.find((item) => item.id === selectedPaginaId);
+    if (!pagina || pagina.perguntas.length === 0) {
+      if (selectedPerguntaId !== null) setSelectedPerguntaId(null);
+      return;
+    }
+    const exists = pagina.perguntas.some((pergunta) => pergunta.id === selectedPerguntaId);
+    if (!exists) setSelectedPerguntaId(pagina.perguntas[0].id);
+  }, [editorPaginas, selectedPaginaId, selectedPerguntaId]);
   const handleAddPagina = () => {
     const newId = nextTempId();
     setEditorPaginas((prev) => {
@@ -282,6 +300,24 @@ export default function EventQuestionario() {
       }),
     );
     setSelectedPerguntaId(newId);
+  };
+  const handlePerguntaFieldChange = <K extends keyof EditorPergunta>(
+    paginaId: EditorId,
+    perguntaId: EditorId,
+    field: K,
+    value: EditorPergunta[K],
+  ) => {
+    setEditorPaginas((prev) =>
+      prev.map((pagina) => {
+        if (pagina.id !== paginaId) return pagina;
+        return {
+          ...pagina,
+          perguntas: pagina.perguntas.map((pergunta) =>
+            pergunta.id === perguntaId ? { ...pergunta, [field]: value } : pergunta,
+          ),
+        };
+      }),
+    );
   };
   const getPerguntaTipoLabel = (tipo: string) => {
     switch (tipo) {
@@ -522,26 +558,101 @@ export default function EventQuestionario() {
                       </Stack>
                       {selectedPagina.perguntas.length ? (
                         <Stack spacing={1}>
-                          {selectedPagina.perguntas.map((pergunta) => (
-                            <Box
-                              key={pergunta.id ?? `ordem-${pergunta.ordem}`}
-                              sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5 }}
-                            >
-                              <Typography variant="body2" fontWeight={700}>
-                                {pergunta.ordem}. {pergunta.texto || "Sem texto"}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                Tipo: {getPerguntaTipoLabel(pergunta.tipo)} -{" "}
-                                {pergunta.obrigatoria ? "Obrigatoria" : "Opcional"}
-                              </Typography>
-                            </Box>
-                          ))}
+                          {selectedPagina.perguntas.map((pergunta) => {
+                            const isSelected = pergunta.id === selectedPerguntaId;
+                            return (
+                              <Box
+                                key={pergunta.id ?? `ordem-${pergunta.ordem}`}
+                                onClick={() => setSelectedPerguntaId(pergunta.id)}
+                                sx={{
+                                  border: "1px solid",
+                                  borderColor: isSelected ? "primary.main" : "divider",
+                                  borderRadius: 2,
+                                  p: 1.5,
+                                  cursor: "pointer",
+                                  backgroundColor: isSelected ? "action.selected" : "transparent",
+                                }}
+                              >
+                                <Typography variant="body2" fontWeight={700}>
+                                  {pergunta.ordem}. {pergunta.texto || "Sem texto"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Tipo: {getPerguntaTipoLabel(pergunta.tipo)} -{" "}
+                                  {pergunta.obrigatoria ? "Obrigatoria" : "Opcional"}
+                                </Typography>
+                              </Box>
+                            );
+                          })}
                         </Stack>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
                           Nenhuma pergunta cadastrada.
                         </Typography>
                       )}
+                      {selectedPagina.perguntas.length ? (
+                        <>
+                          <Divider sx={{ my: 2 }} />
+                          {selectedPergunta ? (
+                            <Stack spacing={2}>
+                              <Typography variant="subtitle2" fontWeight={800}>
+                                Editar pergunta
+                              </Typography>
+                              <TextField
+                                label="Texto da pergunta"
+                                required
+                                value={selectedPergunta.texto}
+                                onChange={(event) =>
+                                  handlePerguntaFieldChange(
+                                    selectedPagina.id,
+                                    selectedPergunta.id,
+                                    "texto",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                              <TextField
+                                select
+                                label="Tipo da pergunta"
+                                value={selectedPergunta.tipo}
+                                onChange={(event) =>
+                                  handlePerguntaFieldChange(
+                                    selectedPagina.id,
+                                    selectedPergunta.id,
+                                    "tipo",
+                                    event.target.value,
+                                  )
+                                }
+                              >
+                                {PERGUNTA_TIPO_OPTIONS.map((option) => (
+                                  <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={selectedPergunta.obrigatoria}
+                                    onChange={(event) =>
+                                      handlePerguntaFieldChange(
+                                        selectedPagina.id,
+                                        selectedPergunta.id,
+                                        "obrigatoria",
+                                        event.target.checked,
+                                      )
+                                    }
+                                  />
+                                }
+                                label="Obrigatoria"
+                              />
+                            </Stack>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Selecione uma pergunta para editar.
+                            </Typography>
+                          )}
+                        </>
+                      ) : null}
                     </Box>
                   </Stack>
                 ) : (

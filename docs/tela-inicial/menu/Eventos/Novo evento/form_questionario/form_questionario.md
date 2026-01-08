@@ -102,6 +102,17 @@ Observacao: o PUT pode sobrescrever a estrutura inteira para simplificar (sem CR
 - `avaliacao`
 - `numerica`
 
+### 6.2 Mapa de tipos (doc -> enum -> label UI)
+| Doc (tipo sugerido) | Enum `TipoPergunta` | Label UI (sugerido) |
+| --- | --- | --- |
+| Texto curto | `aberta_texto_simples` | Texto curto |
+| Texto longo | `aberta_texto_area` | Texto longo |
+| Unica escolha | `objetiva_unica` | Unica escolha |
+| Multipla escolha | `objetiva_multipla` | Multipla escolha |
+| Data | `data` | Data |
+| Avaliacao | `avaliacao` | Avaliacao |
+| Numerica | `numerica` | Numerica |
+
 ### 6.1.3 Exemplo de GET /evento/{id}/questionario
 ```json
 {

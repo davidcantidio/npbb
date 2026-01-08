@@ -120,6 +120,15 @@ Observacao: o PUT pode sobrescrever a estrutura inteira para simplificar (sem CR
 - `ordem` e persistido conforme enviado (validacao definida na issue de ordenacao).
 - Operacao deve ser transacional.
 
+### 6.4 Regra de ordenacao (paginas/perguntas/opcoes)
+- `ordem` e obrigatoria e deve ser inteiro >= 1.
+- Para cada nivel:
+  - paginas: `ordem` unica dentro do evento
+  - perguntas: `ordem` unica dentro da pagina
+  - opcoes: `ordem` unica dentro da pergunta
+- O backend valida que a sequencia seja continua (1..N). Gaps, duplicados ou valores fora da faixa sao invalidos.
+- Se invalido, retornar erro `QUESTIONARIO_INVALID_STRUCTURE`.
+
 ### 6.1.3 Exemplo de GET /evento/{id}/questionario
 ```json
 {

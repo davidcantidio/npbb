@@ -346,6 +346,26 @@ export default function EventQuestionario() {
       updatedPagina.perguntas[index] ?? updatedPagina.perguntas[index - 1] ?? updatedPagina.perguntas[0];
     setSelectedPerguntaId(fallback.id);
   };
+  const handleMovePergunta = (paginaId: EditorId, perguntaId: EditorId, direction: "up" | "down") => {
+    setEditorPaginas((prev) =>
+      prev.map((pagina) => {
+        if (pagina.id !== paginaId) return pagina;
+        const index = pagina.perguntas.findIndex((item) => item.id === perguntaId);
+        if (index < 0) return pagina;
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= pagina.perguntas.length) return pagina;
+
+        const nextPerguntas = [...pagina.perguntas];
+        const [moved] = nextPerguntas.splice(index, 1);
+        nextPerguntas.splice(targetIndex, 0, moved);
+
+        return {
+          ...pagina,
+          perguntas: nextPerguntas.map((pergunta, idx) => ({ ...pergunta, ordem: idx + 1 })),
+        };
+      }),
+    );
+  };
   const getPerguntaTipoLabel = (tipo: string) => {
     switch (tipo) {
       case "aberta_texto_simples":
@@ -585,8 +605,10 @@ export default function EventQuestionario() {
                       </Stack>
                       {selectedPagina.perguntas.length ? (
                         <Stack spacing={1}>
-                          {selectedPagina.perguntas.map((pergunta) => {
+                          {selectedPagina.perguntas.map((pergunta, index) => {
                             const isSelected = pergunta.id === selectedPerguntaId;
+                            const isFirst = index === 0;
+                            const isLast = index === selectedPagina.perguntas.length - 1;
                             return (
                               <Box
                                 key={pergunta.id ?? `ordem-${pergunta.ordem}`}
@@ -600,13 +622,41 @@ export default function EventQuestionario() {
                                   backgroundColor: isSelected ? "action.selected" : "transparent",
                                 }}
                               >
-                                <Typography variant="body2" fontWeight={700}>
-                                  {pergunta.ordem}. {pergunta.texto || "Sem texto"}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Tipo: {getPerguntaTipoLabel(pergunta.tipo)} -{" "}
-                                  {pergunta.obrigatoria ? "Obrigatoria" : "Opcional"}
-                                </Typography>
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                                  <Box>
+                                    <Typography variant="body2" fontWeight={700}>
+                                      {pergunta.ordem}. {pergunta.texto || "Sem texto"}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Tipo: {getPerguntaTipoLabel(pergunta.tipo)} -{" "}
+                                      {pergunta.obrigatoria ? "Obrigatoria" : "Opcional"}
+                                    </Typography>
+                                  </Box>
+                                  <Stack direction="row" spacing={0.5}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleMovePergunta(selectedPagina.id, pergunta.id, "up");
+                                      }}
+                                      disabled={isFirst}
+                                      aria-label="Mover pergunta para cima"
+                                    >
+                                      <ArrowUpwardIcon fontSize="inherit" />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleMovePergunta(selectedPagina.id, pergunta.id, "down");
+                                      }}
+                                      disabled={isLast}
+                                      aria-label="Mover pergunta para baixo"
+                                    >
+                                      <ArrowDownwardIcon fontSize="inherit" />
+                                    </IconButton>
+                                  </Stack>
+                                </Stack>
                               </Box>
                             );
                           })}

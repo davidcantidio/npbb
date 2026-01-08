@@ -138,6 +138,13 @@ Observacao: o PUT pode sobrescrever a estrutura inteira para simplificar (sem CR
   - `opcao.texto`: obrigatorio, trim, max 200.
 - Questionario vazio: permitido (pode salvar `paginas=[]`).
 
+### 6.6 Bloqueio por respostas + codigos de erro
+- PUT bloqueia quando existir ao menos 1 `QuestionarioResposta` para o evento.
+  - HTTP 409, code `QUESTIONARIO_UPDATE_BLOCKED`.
+  - `detail.extra.dependencies` pode incluir `{ "respostas_questionario": N }`.
+- Evento nao encontrado (ou fora do escopo para AGENCIA): HTTP 404, code `EVENTO_NOT_FOUND`.
+- Estrutura invalida (validacoes/ordem): HTTP 400, code `QUESTIONARIO_INVALID_STRUCTURE`.
+
 ### 6.1.3 Exemplo de GET /evento/{id}/questionario
 ```json
 {

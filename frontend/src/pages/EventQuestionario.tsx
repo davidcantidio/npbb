@@ -23,7 +23,13 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
-import { getEvento, getEventoQuestionario, type EventoRead, type QuestionarioEstrutura } from "../services/eventos";
+import {
+  getEvento,
+  getEventoQuestionario,
+  updateEventoQuestionario,
+  type EventoRead,
+  type QuestionarioEstrutura,
+} from "../services/eventos";
 import { useAuth } from "../store/auth";
 
 function getApiErrorCode(err: unknown): string | null {
@@ -106,6 +112,10 @@ export default function EventQuestionario() {
   const [evento, setEvento] = useState<EventoRead | null>(null);
   const [questionario, setQuestionario] = useState<QuestionarioEstrutura | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<{ severity: "success" | "error"; message: string } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [outOfScope, setOutOfScope] = useState(false);
   const [editorPaginas, setEditorPaginas] = useState<EditorPagina[]>([]);
@@ -126,6 +136,8 @@ export default function EventQuestionario() {
       setError(null);
       setOutOfScope(false);
       setLoading(false);
+      setIsSaving(false);
+      setSaveFeedback(null);
       return;
     }
 
@@ -135,6 +147,8 @@ export default function EventQuestionario() {
     setOutOfScope(false);
     setEvento(null);
     setQuestionario(null);
+    setIsSaving(false);
+    setSaveFeedback(null);
 
     Promise.all([getEvento(token, eventoId), getEventoQuestionario(token, eventoId)])
       .then(([eventoRes, questionarioRes]) => {
@@ -208,6 +222,7 @@ export default function EventQuestionario() {
   const selectedPagina = paginas.find((pagina) => pagina.id === selectedPaginaId) ?? null;
   const selectedPergunta =
     selectedPagina?.perguntas.find((pergunta) => pergunta.id === selectedPerguntaId) ?? null;
+  const disableActions = isSaving;
 
   useEffect(() => {
     if (!selectedPaginaId) {
@@ -458,6 +473,38 @@ export default function EventQuestionario() {
       }),
     );
   };
+  const buildQuestionarioPayload = () => ({
+    paginas: editorPaginas.map((pagina, paginaIndex) => ({
+      ordem: paginaIndex + 1,
+      titulo: pagina.titulo,
+      descricao: pagina.descricao ?? null,
+      perguntas: pagina.perguntas.map((pergunta, perguntaIndex) => ({
+        ordem: perguntaIndex + 1,
+        tipo: pergunta.tipo,
+        texto: pergunta.texto,
+        obrigatoria: pergunta.obrigatoria,
+        opcoes: pergunta.opcoes.map((opcao, opcaoIndex) => ({
+          ordem: opcaoIndex + 1,
+          texto: opcao.texto,
+        })),
+      })),
+    })),
+  });
+  const handleSave = async () => {
+    if (!token || !isValidEventoId || isSaving) return;
+    setIsSaving(true);
+    setSaveFeedback(null);
+    try {
+      const payload = buildQuestionarioPayload();
+      const saved = await updateEventoQuestionario(token, eventoId, payload);
+      setQuestionario(saved);
+      setSaveFeedback({ severity: "success", message: "Questionario salvo com sucesso." });
+    } catch (err) {
+      setSaveFeedback({ severity: "error", message: getApiErrorMessage(err, "Erro ao salvar questionario.") });
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const getPerguntaTipoLabel = (tipo: string) => {
     switch (tipo) {
       case "aberta_texto_simples":
@@ -507,6 +554,7 @@ export default function EventQuestionario() {
               to={`/eventos/${eventoId}/ativacoes`}
               variant="outlined"
               startIcon={<ArrowBackIcon />}
+              disabled={disableActions}
               sx={{ textTransform: "none" }}
             >
               Voltar
@@ -515,6 +563,7 @@ export default function EventQuestionario() {
               component={RouterLink}
               to={`/eventos/${eventoId}`}
               variant="contained"
+              disabled={disableActions}
               sx={{ textTransform: "none", fontWeight: 800 }}
             >
               Finalizar
@@ -541,14 +590,39 @@ export default function EventQuestionario() {
           </Box>
         ) : (
           <Stack spacing={2}>
-            <Box>
-              <Typography variant="subtitle1" fontWeight={900} gutterBottom>
-                Estrutura do questionario
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {evento?.nome ? `Evento: ${evento.nome}` : `Evento #${eventoId}`}
-              </Typography>
-            </Box>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              gap={2}
+            >
+              <Box>
+                <Typography variant="subtitle1" fontWeight={900} gutterBottom>
+                  Estrutura do questionario
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {evento?.nome ? `Evento: ${evento.nome}` : `Evento #${eventoId}`}
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                onClick={handleSave}
+                disabled={disableActions}
+                sx={{ textTransform: "none", fontWeight: 800 }}
+              >
+                {isSaving ? "Salvando..." : "Salvar"}
+              </Button>
+            </Stack>
+
+            {saveFeedback ? (
+              <Alert
+                severity={saveFeedback.severity}
+                onClose={() => setSaveFeedback(null)}
+                sx={{ mt: -1 }}
+              >
+                {saveFeedback.message}
+              </Alert>
+            ) : null}
 
             <Divider />
 
@@ -566,6 +640,7 @@ export default function EventQuestionario() {
                     variant="outlined"
                     startIcon={<AddIcon />}
                     onClick={handleAddPagina}
+                    disabled={disableActions}
                     sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     Nova pagina
@@ -582,6 +657,7 @@ export default function EventQuestionario() {
                             variant={isSelected ? "contained" : "text"}
                             color={isSelected ? "primary" : "inherit"}
                             onClick={() => setSelectedPaginaId(pagina.id)}
+                            disabled={disableActions}
                             sx={{
                               textTransform: "none",
                               justifyContent: "flex-start",
@@ -595,7 +671,7 @@ export default function EventQuestionario() {
                             <IconButton
                               size="small"
                               onClick={() => handleMovePagina(pagina.id, "up")}
-                              disabled={index === 0}
+                              disabled={disableActions || index === 0}
                               aria-label="Mover pagina para cima"
                             >
                               <ArrowUpwardIcon fontSize="inherit" />
@@ -603,7 +679,7 @@ export default function EventQuestionario() {
                             <IconButton
                               size="small"
                               onClick={() => handleMovePagina(pagina.id, "down")}
-                              disabled={index === paginas.length - 1}
+                              disabled={disableActions || index === paginas.length - 1}
                               aria-label="Mover pagina para baixo"
                             >
                               <ArrowDownwardIcon fontSize="inherit" />
@@ -632,6 +708,7 @@ export default function EventQuestionario() {
                       color="error"
                       startIcon={<DeleteOutlineIcon />}
                       onClick={() => handleDeletePagina(selectedPagina.id)}
+                      disabled={disableActions}
                       sx={{ textTransform: "none", fontWeight: 700 }}
                     >
                       Excluir pagina
@@ -691,6 +768,7 @@ export default function EventQuestionario() {
                           variant="contained"
                           startIcon={<AddIcon />}
                           onClick={handleAddPergunta}
+                          disabled={disableActions}
                           sx={{ textTransform: "none", fontWeight: 700 }}
                         >
                           Adicionar pergunta
@@ -732,7 +810,7 @@ export default function EventQuestionario() {
                                         event.stopPropagation();
                                         handleMovePergunta(selectedPagina.id, pergunta.id, "up");
                                       }}
-                                      disabled={isFirst}
+                                      disabled={disableActions || isFirst}
                                       aria-label="Mover pergunta para cima"
                                     >
                                       <ArrowUpwardIcon fontSize="inherit" />
@@ -743,7 +821,7 @@ export default function EventQuestionario() {
                                         event.stopPropagation();
                                         handleMovePergunta(selectedPagina.id, pergunta.id, "down");
                                       }}
-                                      disabled={isLast}
+                                      disabled={disableActions || isLast}
                                       aria-label="Mover pergunta para baixo"
                                     >
                                       <ArrowDownwardIcon fontSize="inherit" />
@@ -774,6 +852,7 @@ export default function EventQuestionario() {
                                   color="error"
                                   startIcon={<DeleteIcon />}
                                   onClick={() => handleDeletePergunta(selectedPagina.id, selectedPergunta.id)}
+                                  disabled={disableActions}
                                   sx={{ textTransform: "none", fontWeight: 700 }}
                                 >
                                   Excluir pergunta
@@ -838,6 +917,7 @@ export default function EventQuestionario() {
                                       variant="outlined"
                                       startIcon={<AddIcon />}
                                       onClick={() => handleAddOpcao(selectedPagina.id, selectedPergunta.id)}
+                                      disabled={disableActions}
                                       sx={{ textTransform: "none", fontWeight: 700 }}
                                     >
                                       Adicionar opcao
@@ -874,7 +954,7 @@ export default function EventQuestionario() {
                                               onClick={() =>
                                                 handleMoveOpcao(selectedPagina.id, selectedPergunta.id, opcao.id, "up")
                                               }
-                                              disabled={isFirst}
+                                              disabled={disableActions || isFirst}
                                             >
                                               <ArrowUpwardIcon fontSize="inherit" />
                                             </IconButton>
@@ -883,7 +963,7 @@ export default function EventQuestionario() {
                                               onClick={() =>
                                                 handleMoveOpcao(selectedPagina.id, selectedPergunta.id, opcao.id, "down")
                                               }
-                                              disabled={isLast}
+                                              disabled={disableActions || isLast}
                                             >
                                               <ArrowDownwardIcon fontSize="inherit" />
                                             </IconButton>
@@ -893,6 +973,7 @@ export default function EventQuestionario() {
                                               onClick={() =>
                                                 handleDeleteOpcao(selectedPagina.id, selectedPergunta.id, opcao.id)
                                               }
+                                              disabled={disableActions}
                                             >
                                               <DeleteOutlineIcon />
                                             </IconButton>

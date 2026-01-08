@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Divider,
+  IconButton,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
@@ -219,6 +232,19 @@ export default function EventQuestionario() {
     setSelectedPaginaId(fallback?.id ?? null);
     setSelectedPerguntaId(fallback?.perguntas[0]?.id ?? null);
   };
+  const handleMovePagina = (paginaId: EditorId, direction: "up" | "down") => {
+    setEditorPaginas((prev) => {
+      const index = prev.findIndex((item) => item.id === paginaId);
+      if (index < 0) return prev;
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next.map((pagina, idx) => ({ ...pagina, ordem: idx + 1 }));
+    });
+  };
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -314,22 +340,42 @@ export default function EventQuestionario() {
 
                 {paginas.length ? (
                   <Stack spacing={1}>
-                    {paginas.map((pagina) => {
+                    {paginas.map((pagina, index) => {
                       const isSelected = pagina.id === selectedPaginaId;
                       return (
-                        <Button
-                          key={pagina.id ?? `ordem-${pagina.ordem}`}
-                          variant={isSelected ? "contained" : "text"}
-                          color={isSelected ? "primary" : "inherit"}
-                          onClick={() => setSelectedPaginaId(pagina.id)}
-                          sx={{
-                            textTransform: "none",
-                            justifyContent: "flex-start",
-                            fontWeight: isSelected ? 800 : 500,
-                          }}
-                        >
-                          {pagina.ordem}. {pagina.titulo}
-                        </Button>
+                        <Stack key={pagina.id ?? `ordem-${pagina.ordem}`} direction="row" alignItems="center" spacing={1}>
+                          <Button
+                            variant={isSelected ? "contained" : "text"}
+                            color={isSelected ? "primary" : "inherit"}
+                            onClick={() => setSelectedPaginaId(pagina.id)}
+                            sx={{
+                              textTransform: "none",
+                              justifyContent: "flex-start",
+                              fontWeight: isSelected ? 800 : 500,
+                              flex: 1,
+                            }}
+                          >
+                            {pagina.ordem}. {pagina.titulo}
+                          </Button>
+                          <Stack direction="row" spacing={0.5}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleMovePagina(pagina.id, "up")}
+                              disabled={index === 0}
+                              aria-label="Mover pagina para cima"
+                            >
+                              <ArrowUpwardIcon fontSize="inherit" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleMovePagina(pagina.id, "down")}
+                              disabled={index === paginas.length - 1}
+                              aria-label="Mover pagina para baixo"
+                            >
+                              <ArrowDownwardIcon fontSize="inherit" />
+                            </IconButton>
+                          </Stack>
+                        </Stack>
                       );
                     })}
                   </Stack>

@@ -17,6 +17,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Link as RouterLink, useParams } from "react-router-dom";
@@ -319,6 +320,32 @@ export default function EventQuestionario() {
       }),
     );
   };
+  const handleDeletePergunta = (paginaId: EditorId, perguntaId: EditorId) => {
+    const pagina = editorPaginas.find((item) => item.id === paginaId);
+    const pergunta = pagina?.perguntas.find((item) => item.id === perguntaId);
+    const label = pergunta?.texto?.trim() ? ` "${pergunta.texto.trim()}"` : "";
+    if (!window.confirm(`Excluir pergunta${label}? Esta acao remove suas opcoes.`)) return;
+
+    const index = pagina?.perguntas.findIndex((item) => item.id === perguntaId) ?? -1;
+    const nextPaginas = editorPaginas.map((item) => {
+      if (item.id !== paginaId) return item;
+      return {
+        ...item,
+        perguntas: item.perguntas.filter((perg) => perg.id !== perguntaId),
+      };
+    });
+    setEditorPaginas(nextPaginas);
+
+    if (selectedPerguntaId !== perguntaId) return;
+    const updatedPagina = nextPaginas.find((item) => item.id === paginaId);
+    if (!updatedPagina || updatedPagina.perguntas.length === 0) {
+      setSelectedPerguntaId(null);
+      return;
+    }
+    const fallback =
+      updatedPagina.perguntas[index] ?? updatedPagina.perguntas[index - 1] ?? updatedPagina.perguntas[0];
+    setSelectedPerguntaId(fallback.id);
+  };
   const getPerguntaTipoLabel = (tipo: string) => {
     switch (tipo) {
       case "aberta_texto_simples":
@@ -594,9 +621,21 @@ export default function EventQuestionario() {
                           <Divider sx={{ my: 2 }} />
                           {selectedPergunta ? (
                             <Stack spacing={2}>
-                              <Typography variant="subtitle2" fontWeight={800}>
-                                Editar pergunta
-                              </Typography>
+                              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                                <Typography variant="subtitle2" fontWeight={800}>
+                                  Editar pergunta
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<DeleteIcon />}
+                                  onClick={() => handleDeletePergunta(selectedPagina.id, selectedPergunta.id)}
+                                  sx={{ textTransform: "none", fontWeight: 700 }}
+                                >
+                                  Excluir pergunta
+                                </Button>
+                              </Stack>
                               <TextField
                                 label="Texto da pergunta"
                                 required

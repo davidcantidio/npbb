@@ -445,6 +445,61 @@ export async function updateEventoFormConfig(
   return handleResponse<EventoFormConfig>(res);
 }
 
+export type QuestionarioOpcao = {
+  id?: number;
+  ordem: number;
+  texto: string;
+};
+
+export type QuestionarioPergunta = {
+  id?: number;
+  ordem: number;
+  tipo: string;
+  texto: string;
+  obrigatoria: boolean;
+  opcoes: QuestionarioOpcao[];
+};
+
+export type QuestionarioPagina = {
+  id?: number;
+  ordem: number;
+  titulo: string;
+  descricao?: string | null;
+  perguntas: QuestionarioPergunta[];
+};
+
+export type QuestionarioEstrutura = {
+  evento_id?: number;
+  paginas: QuestionarioPagina[];
+};
+
+export type UpdateEventoQuestionarioPayload = {
+  paginas: QuestionarioPagina[];
+};
+
+export async function getEventoQuestionario(
+  token: string,
+  eventoId: number,
+): Promise<QuestionarioEstrutura> {
+  const res = await fetch(`${API_BASE_URL}/evento/${eventoId}/questionario`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<QuestionarioEstrutura>(res);
+}
+
+export async function updateEventoQuestionario(
+  token: string,
+  eventoId: number,
+  payload: UpdateEventoQuestionarioPayload,
+): Promise<QuestionarioEstrutura> {
+  const res = await fetch(`${API_BASE_URL}/evento/${eventoId}/questionario`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<QuestionarioEstrutura>(res);
+}
+
 export async function listFormularioCampos(token: string): Promise<string[]> {
   const res = await fetch(`${API_BASE_URL}/evento/all/formulario-campos`, {
     headers: { Authorization: `Bearer ${token}` },

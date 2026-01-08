@@ -37,9 +37,13 @@ from app.models.models import (  # noqa: E402
     FormularioLandingTemplate,
     Funcionario,
     Gamificacao,
+    QuestionarioOpcao,
+    QuestionarioPagina,
+    QuestionarioPergunta,
     SubtipoEvento,
     Territorio,
     TipoEvento,
+    TipoPergunta,
     Usuario,
     UsuarioTipo,
 )
@@ -456,6 +460,87 @@ def ensure_ativacoes_sample(session: Session, *, agencia_ids: list[int]) -> int:
     return created
 
 
+def ensure_questionario_sample(session: Session, *, agencia_ids: list[int]) -> int:
+    """Cria questionario de exemplo por evento (idempotente)."""
+    eventos = session.exec(
+        select(Evento).where(Evento.agencia_id.in_(agencia_ids)).order_by(Evento.id)
+    ).all()
+    if not eventos:
+        print("Nenhum evento encontrado para criar questionarios de exemplo.")
+        return 0
+
+    created = 0
+    for evento in eventos:
+        if not evento.id:
+            continue
+
+        exists = session.exec(
+            select(QuestionarioPagina.id).where(QuestionarioPagina.evento_id == evento.id)
+        ).first()
+        if exists:
+            continue
+
+        pagina = QuestionarioPagina(
+            evento_id=evento.id,
+            ordem=1,
+            titulo="Pagina 1",
+            descricao="Descricao da pagina",
+        )
+        session.add(pagina)
+        session.flush()
+
+        pergunta_texto = QuestionarioPergunta(
+            pagina_id=pagina.id,
+            ordem=1,
+            tipo=TipoPergunta.ABERTA_TEXTO_SIMPLES,
+            texto="Como voce avalia o evento?",
+            obrigatoria=True,
+        )
+        session.add(pergunta_texto)
+
+        pergunta_objetiva = QuestionarioPergunta(
+            pagina_id=pagina.id,
+            ordem=2,
+            tipo=TipoPergunta.OBJETIVA_UNICA,
+            texto="Qual a sua impressao geral?",
+            obrigatoria=False,
+        )
+        session.add(pergunta_objetiva)
+        session.flush()
+
+        opcoes = [
+            "Otimo",
+            "Bom",
+            "Regular",
+        ]
+        for ordem, texto in enumerate(opcoes, start=1):
+            session.add(
+                QuestionarioOpcao(
+                    pergunta_id=pergunta_objetiva.id,
+                    ordem=ordem,
+                    texto=texto,
+                )
+            )
+
+        pergunta_numerica = QuestionarioPergunta(
+            pagina_id=pagina.id,
+            ordem=3,
+            tipo=TipoPergunta.NUMERICA,
+            texto="Nota de 0 a 10",
+            obrigatoria=False,
+        )
+        session.add(pergunta_numerica)
+
+        session.commit()
+        created += 1
+
+    if created:
+        print(f"Questionarios de exemplo criados: {created}.")
+    else:
+        print("Questionarios de exemplo ja existiam; nada a criar.")
+    return created
+
+
 def main():
     _load_env()
     engine = _build_seed_engine()
@@ -494,6 +579,7 @@ def main():
         )
 
         ensure_ativacoes_sample(session, agencia_ids=[a.id for a in agencias.values() if a.id])
+        ensure_questionario_sample(session, agencia_ids=[a.id for a in agencias.values() if a.id])
 
     print("Seed de desenvolvimento concluido.")
     print(f"Senha usada: {PASSWORD!r}")

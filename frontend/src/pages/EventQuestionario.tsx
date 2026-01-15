@@ -109,10 +109,10 @@ type QuestionarioValidation = {
 };
 
 const PERGUNTA_TIPO_OPTIONS = [
-  { value: "aberta_texto_simples", label: "Texto curto" },
-  { value: "aberta_texto_area", label: "Texto longo" },
-  { value: "objetiva_unica", label: "Unica escolha" },
-  { value: "objetiva_multipla", label: "Multipla escolha" },
+  { value: "aberta_texto_simples", label: "Aberta texto simples" },
+  { value: "aberta_texto_area", label: "Aberta area de texto" },
+  { value: "objetiva_unica", label: "Objetiva unica escolha" },
+  { value: "objetiva_multipla", label: "Objetiva multipla escolha" },
   { value: "data", label: "Data" },
   { value: "avaliacao", label: "Avaliacao" },
   { value: "numerica", label: "Numerica" },
@@ -584,13 +584,13 @@ export default function EventQuestionario() {
   const getPerguntaTipoLabel = (tipo: string) => {
     switch (tipo) {
       case "aberta_texto_simples":
-        return "Texto curto";
+        return "Aberta texto simples";
       case "aberta_texto_area":
-        return "Texto longo";
+        return "Aberta area de texto";
       case "objetiva_unica":
-        return "Unica escolha";
+        return "Objetiva unica escolha";
       case "objetiva_multipla":
-        return "Multipla escolha";
+        return "Objetiva multipla escolha";
       case "data":
         return "Data";
       case "avaliacao":
@@ -702,92 +702,21 @@ export default function EventQuestionario() {
             <Divider />
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
-              <Paper
-                variant="outlined"
-                sx={{ p: 2, width: { xs: "100%", md: 260 }, flexShrink: 0 }}
-              >
-                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-                  <Typography variant="subtitle2" fontWeight={800}>
-                    Estrutura
-                  </Typography>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={handleAddPagina}
-                    disabled={disableActions}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
-                  >
-                    Nova pagina
-                  </Button>
-                </Stack>
-
-                {paginas.length ? (
-                  <Stack spacing={1}>
-                    {paginas.map((pagina, index) => {
-                      const isSelected = pagina.id === selectedPaginaId;
-                      return (
-                        <Stack key={pagina.id ?? `ordem-${pagina.ordem}`} direction="row" alignItems="center" spacing={1}>
-                          <Button
-                            variant={isSelected ? "contained" : "text"}
-                            color={isSelected ? "primary" : "inherit"}
-                            onClick={() => setSelectedPaginaId(pagina.id)}
-                            disabled={disableActions}
-                            sx={{
-                              textTransform: "none",
-                              justifyContent: "flex-start",
-                              fontWeight: isSelected ? 800 : 500,
-                              flex: 1,
-                            }}
-                          >
-                            {pagina.ordem}. {pagina.titulo}
-                          </Button>
-                          <Stack direction="row" spacing={0.5}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleMovePagina(pagina.id, "up")}
-                              disabled={disableActions || index === 0}
-                              aria-label="Mover pagina para cima"
-                            >
-                              <ArrowUpwardIcon fontSize="inherit" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleMovePagina(pagina.id, "down")}
-                              disabled={disableActions || index === paginas.length - 1}
-                              aria-label="Mover pagina para baixo"
-                            >
-                              <ArrowDownwardIcon fontSize="inherit" />
-                            </IconButton>
-                          </Stack>
-                        </Stack>
-                      );
-                    })}
-                  </Stack>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Nenhuma pagina cadastrada.
-                  </Typography>
-                )}
-              </Paper>
-
               <Paper variant="outlined" sx={{ p: 2, flex: 1 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
                   <Typography variant="subtitle2" fontWeight={800}>
-                    Pagina selecionada
+                    {selectedPagina ? `Pagina ${selectedPagina.ordem}` : "Pagina"}
                   </Typography>
                   {selectedPagina ? (
-                    <Button
+                    <IconButton
                       size="small"
-                      variant="outlined"
                       color="error"
-                      startIcon={<DeleteOutlineIcon />}
                       onClick={() => handleDeletePagina(selectedPagina.id)}
                       disabled={disableActions}
-                      sx={{ textTransform: "none", fontWeight: 700 }}
+                      aria-label="Excluir pagina"
                     >
-                      Excluir pagina
-                    </Button>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
                   ) : null}
                 </Stack>
 
@@ -812,14 +741,8 @@ export default function EventQuestionario() {
                       multiline
                       minRows={2}
                     />
-                    <Typography variant="body2" color="text.secondary">
-                      Ordem: {selectedPagina.ordem} - Perguntas: {selectedPagina.perguntas.length}
-                    </Typography>
                     <Divider />
                     <Box>
-                      <Typography variant="subtitle2" fontWeight={800} gutterBottom>
-                        Perguntas
-                      </Typography>
                       <Stack
                         direction={{ xs: "column", sm: "row" }}
                         spacing={1}
@@ -828,10 +751,10 @@ export default function EventQuestionario() {
                       >
                         <TextField
                           select
-                          label="Tipo da pergunta"
+                          label="Incluir pergunta"
                           value={novaPerguntaTipo}
                           onChange={(event) => setNovaPerguntaTipo(event.target.value)}
-                          sx={{ minWidth: 220 }}
+                          sx={{ flex: 1 }}
                         >
                           {PERGUNTA_TIPO_OPTIONS.map((option) => (
                             <MenuItem key={option.value} value={option.value}>
@@ -839,15 +762,16 @@ export default function EventQuestionario() {
                             </MenuItem>
                           ))}
                         </TextField>
-                        <Button
-                          variant="contained"
-                          startIcon={<AddIcon />}
+                        <IconButton
+                          size="small"
+                          color="primary"
                           onClick={handleAddPergunta}
                           disabled={disableActions}
-                          sx={{ textTransform: "none", fontWeight: 700 }}
+                          aria-label="Adicionar pergunta"
+                          sx={{ alignSelf: { xs: "flex-end", sm: "center" } }}
                         >
-                          Adicionar pergunta
-                        </Button>
+                          <AddIcon fontSize="small" />
+                        </IconButton>
                       </Stack>
                       {selectedPagina.perguntas.length ? (
                         <Stack spacing={1}>
@@ -1086,6 +1010,74 @@ export default function EventQuestionario() {
                 ) : (
                   <Typography variant="body2" color="text.secondary">
                     Selecione uma pagina para editar.
+                  </Typography>
+                )}
+              </Paper>
+
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, width: { xs: "100%", md: 260 }, flexShrink: 0 }}
+              >
+                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    Estrutura
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={handleAddPagina}
+                    disabled={disableActions}
+                    aria-label="Adicionar pagina"
+                  >
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+
+                {paginas.length ? (
+                  <Stack spacing={1}>
+                    {paginas.map((pagina, index) => {
+                      const isSelected = pagina.id === selectedPaginaId;
+                      return (
+                        <Stack key={pagina.id ?? `ordem-${pagina.ordem}`} direction="row" alignItems="center" spacing={1}>
+                          <Button
+                            variant="text"
+                            color="inherit"
+                            onClick={() => setSelectedPaginaId(pagina.id)}
+                            disabled={disableActions}
+                            sx={{
+                              textTransform: "none",
+                              justifyContent: "flex-start",
+                              fontWeight: isSelected ? 800 : 500,
+                              flex: 1,
+                              backgroundColor: isSelected ? "action.selected" : "transparent",
+                            }}
+                          >
+                            {pagina.ordem} - {pagina.titulo}
+                          </Button>
+                          <Stack direction="row" spacing={0.5}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleMovePagina(pagina.id, "up")}
+                              disabled={disableActions || index === 0}
+                              aria-label="Mover pagina para cima"
+                            >
+                              <ArrowUpwardIcon fontSize="inherit" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleMovePagina(pagina.id, "down")}
+                              disabled={disableActions || index === paginas.length - 1}
+                              aria-label="Mover pagina para baixo"
+                            >
+                              <ArrowDownwardIcon fontSize="inherit" />
+                            </IconButton>
+                          </Stack>
+                        </Stack>
+                      );
+                    })}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Nenhuma pagina cadastrada.
                   </Typography>
                 )}
               </Paper>

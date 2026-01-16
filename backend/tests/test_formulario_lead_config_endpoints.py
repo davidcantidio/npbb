@@ -154,11 +154,36 @@ def test_form_config_get_retorna_default_quando_nao_existe(client, engine):
         {"nome_campo": "Email", "obrigatorio": True, "ordem": 4},
         {"nome_campo": "Data de nascimento", "obrigatorio": True, "ordem": 5},
     ]
-    assert payload["urls"]["url_landing"] == f"http://localhost:5173/landing/eventos/{evento_id}"
-    assert payload["urls"]["url_promotor"] == f"http://localhost:5173/promotor/eventos/{evento_id}"
-    assert payload["urls"]["url_questionario"] == f"http://localhost:5173/questionario/eventos/{evento_id}"
+    assert payload["urls"]["url_landing"] == f"http://testserver/landing/eventos/{evento_id}"
+    assert payload["urls"]["url_promotor"] == f"http://testserver/promotor/eventos/{evento_id}"
+    assert payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
     assert payload["urls"]["url_api"] == "http://testserver/docs"
     assert "url_landing" not in payload
+
+
+def test_form_config_get_respeita_public_api_doc_url(client, engine, monkeypatch):
+    monkeypatch.setenv("PUBLIC_API_DOC_URL", "https://docs.example.com")
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["urls"]["url_api"] == "https://docs.example.com"
 
 
 def test_form_config_put_cria_config(client, engine):

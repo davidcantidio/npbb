@@ -38,20 +38,37 @@ def get_public_app_base_url() -> str:
     return _normalize_base_url(_first_origin(frontend_origin, fallback="http://localhost:5173"))
 
 
+def get_public_landing_base_url(*, backend_base_url: str | None = None) -> str:
+    """URL base publica para as landings do backend.
+
+    Preferencia:
+    1) PUBLIC_LANDING_BASE_URL
+    2) backend_base_url (request.base_url)
+    3) PUBLIC_APP_BASE_URL (fallback)
+    """
+    base = os.getenv("PUBLIC_LANDING_BASE_URL")
+    if base:
+        return _normalize_base_url(base)
+    if backend_base_url:
+        return _normalize_base_url(backend_base_url)
+    return get_public_app_base_url()
+
+
 def build_evento_public_urls(evento_id: int, *, backend_base_url: str | None = None) -> dict[str, str]:
     """Gera URLs publicas relacionadas a um evento.
 
-    Padrões MVP:
-    - landing:      {PUBLIC_APP_BASE_URL}/landing/eventos/{evento_id}
-    - promotor:     {PUBLIC_APP_BASE_URL}/promotor/eventos/{evento_id}
-    - questionario: {PUBLIC_APP_BASE_URL}/questionario/eventos/{evento_id}
+    Padroes MVP:
+    - landing:      {PUBLIC_LANDING_BASE_URL}/landing/eventos/{evento_id}
+    - promotor:     {PUBLIC_LANDING_BASE_URL}/promotor/eventos/{evento_id}
+    - questionario: {PUBLIC_LANDING_BASE_URL}/questionario/eventos/{evento_id}
     - api-doc:      {backend_base_url}/docs (fallback: {PUBLIC_APP_BASE_URL}/docs)
     """
     app_base = get_public_app_base_url()
+    landing_base = get_public_landing_base_url(backend_base_url=backend_base_url)
 
-    url_landing = f"{app_base}/landing/eventos/{evento_id}"
-    url_promotor = f"{app_base}/promotor/eventos/{evento_id}"
-    url_questionario = f"{app_base}/questionario/eventos/{evento_id}"
+    url_landing = f"{landing_base}/landing/eventos/{evento_id}"
+    url_promotor = f"{landing_base}/promotor/eventos/{evento_id}"
+    url_questionario = f"{landing_base}/questionario/eventos/{evento_id}"
 
     api_doc_override = os.getenv("PUBLIC_API_DOC_URL")
     if api_doc_override:
@@ -66,4 +83,3 @@ def build_evento_public_urls(evento_id: int, *, backend_base_url: str | None = N
         "url_questionario": url_questionario,
         "url_api": url_api,
     }
-

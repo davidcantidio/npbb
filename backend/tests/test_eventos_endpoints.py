@@ -310,9 +310,9 @@ def test_evento_form_config_retorna_default_quando_nao_existe(client, engine):
         {"nome_campo": "Email", "obrigatorio": True, "ordem": 4},
         {"nome_campo": "Data de nascimento", "obrigatorio": True, "ordem": 5},
     ]
-    assert payload["urls"]["url_landing"] == f"http://localhost:5173/landing/eventos/{evento_id}"
-    assert payload["urls"]["url_promotor"] == f"http://localhost:5173/promotor/eventos/{evento_id}"
-    assert payload["urls"]["url_questionario"] == f"http://localhost:5173/questionario/eventos/{evento_id}"
+    assert payload["urls"]["url_landing"] == f"http://testserver/landing/eventos/{evento_id}"
+    assert payload["urls"]["url_promotor"] == f"http://testserver/promotor/eventos/{evento_id}"
+    assert payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
     assert payload["urls"]["url_api"] == "http://testserver/docs"
     assert "url_landing" not in payload
 

@@ -13,7 +13,7 @@ Status no novo sistema:
 Configurar a pagina de captura (landing) e os campos do formulario de lead por evento, incluindo:
 - tema/layout
 - campos ativos (checkbox)
-- URLs geradas (landing, promotor, questionario)
+- URLs geradas (landing, check-in sem QR, questionario)
 
 ---
 
@@ -29,7 +29,7 @@ Checkboxes (exemplo observado no sistema original):
 
 ### 3.3 URLs geradas
 - URL da landing
-- URL para promotor
+- URL para check-in sem QR
 - URL do questionario
 - URL da API (link para documentacao)
 
@@ -68,7 +68,7 @@ Padrao do modulo de eventos (`/evento`):
 - `GET /evento/all/formulario-templates`
 - `GET /evento/all/formulario-campos` (opcional)
 
-Observacao (MVP): as URLs (landing/promotor/questionario) sao geradas a partir de `evento.id`.
+Observacao (MVP): as URLs (landing/check-in sem QR/questionario) sao geradas a partir de `evento.id`.
 
 ---
 

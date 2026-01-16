@@ -33,7 +33,7 @@ class FormularioLeadCampoWrite(FormularioLeadCampoBase):
 
 class FormularioLeadUrls(BaseModel):
     url_landing: str | None = None
-    url_promotor: str | None = None
+    url_checkin_sem_qr: str | None = None
     url_questionario: str | None = None
     url_api: str | None = None
 
@@ -44,7 +44,7 @@ class FormularioLeadConfigRead(BaseModel):
 
     # Armazenamos no banco como colunas separadas; expomos como objeto `urls` no contrato.
     url_landing: str | None = Field(default=None, exclude=True)
-    url_promotor: str | None = Field(default=None, exclude=True)
+    url_checkin_sem_qr: str | None = Field(default=None, exclude=True)
     url_questionario: str | None = Field(default=None, exclude=True)
     url_api: str | None = Field(default=None, exclude=True)
 
@@ -57,7 +57,7 @@ class FormularioLeadConfigRead(BaseModel):
     def urls(self) -> FormularioLeadUrls:
         return FormularioLeadUrls(
             url_landing=self.url_landing,
-            url_promotor=self.url_promotor,
+            url_checkin_sem_qr=self.url_checkin_sem_qr,
             url_questionario=self.url_questionario,
             url_api=self.url_api,
         )
@@ -81,4 +81,3 @@ class FormularioLeadConfigUpsert(BaseModel):
         if duplicates:
             raise ValueError(f"Campos duplicados no payload: {', '.join(sorted(duplicates))}")
         return self
-

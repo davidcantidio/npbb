@@ -193,7 +193,7 @@ def upgrade() -> None:
     sa.Column('descricao', sqlmodel.sql.sqltypes.AutoString(length=240), nullable=True),
     sa.Column('template_id', sa.Integer(), nullable=True),
     sa.Column('url_landing', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
-    sa.Column('url_promotor', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
+    sa.Column('url_checkin_sem_qr', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
     sa.Column('url_questionario', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
     sa.Column('url_api', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
     sa.Column('criado_em', sa.DateTime(), nullable=False),

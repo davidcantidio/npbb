@@ -19,13 +19,13 @@ Objetivo do sprint (escopo)
 Entregar a “Configuração do Formulário de Lead” por evento (painel interno):
 - escolher 1 tema/template
 - selecionar campos ativos (checkbox) e marcar obrigatórios/opcionais
-- visualizar URLs geradas (landing, promotor, questionário, API)
+- visualizar URLs geradas (landing, check-in sem QR, questionário, API)
 - salvar e recarregar a configuração
 
 Fora do escopo deste sprint (vira backlog futuro)
 ------------------------------------------------
 - Landing page pública funcional capturando leads (POST /lead)
-- Fluxo do promotor / check-in
+- Fluxo do check-in sem QR
 - Questionário público
 - Integração Salesforce
 - Editor de HTML/CSS do template (no máximo preview)
@@ -95,14 +95,14 @@ Aceite:
 - Front consegue renderizar um formulário “em branco”.
 
 
-06) Backend: util para gerar URLs do evento (landing/promotor/questionário/API)
+06) Backend: util para gerar URLs do evento (landing/checkin-sem-qr/questionário/API)
 ------------------------------------------------------------------------------
 Descrição:
 - Criar helper (ex.: app/utils/urls.py) para gerar URLs.
 - Adicionar env var (ex.: PUBLIC_APP_BASE_URL) com fallback local.
 - Definir padrões (MVP):
   - landing:   {PUBLIC_APP_BASE_URL}/landing/eventos/{evento_id}
-  - promotor:  {PUBLIC_APP_BASE_URL}/promotor/eventos/{evento_id}
+  - check-in sem QR:  {PUBLIC_APP_BASE_URL}/checkin-sem-qr/eventos/{evento_id}
   - quest:     {PUBLIC_APP_BASE_URL}/questionario/eventos/{evento_id}
   - api-doc:   {PUBLIC_APP_BASE_URL}/docs (ou link do Swagger do backend)
 Aceite:
@@ -230,7 +230,7 @@ Aceite:
 ----------------------------------------------
 Descrição:
 - Mostrar 4 URLs retornadas pela API:
-  - landing, promotor, questionário, api
+  - landing, check-in sem QR, questionário, api
 - Incluir botão “copiar” por URL (Clipboard API).
 Aceite:
 - Copiar funciona e dá feedback visual.
@@ -276,4 +276,3 @@ Descrição:
 - Incluir exemplos de payload e erros.
 Aceite:
 - Documento publicado em npbb/docs (ou README) e linkado no README principal.
-

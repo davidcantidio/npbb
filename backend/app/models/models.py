@@ -567,7 +567,7 @@ class FormularioLeadConfig(SQLModel, table=True):
     template_id: Optional[int] = Field(default=None, foreign_key="formulario_landing_template.id")
 
     url_landing: Optional[str] = Field(default=None, max_length=500)
-    url_promotor: Optional[str] = Field(default=None, max_length=500)
+    url_checkin_sem_qr: Optional[str] = Field(default=None, max_length=500)
     url_questionario: Optional[str] = Field(default=None, max_length=500)
     url_api: Optional[str] = Field(default=None, max_length=500)
 

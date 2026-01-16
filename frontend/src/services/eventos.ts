@@ -408,7 +408,7 @@ export type FormularioCampo = {
 
 export type EventoFormConfigUrls = {
   url_landing: string;
-  url_promotor: string;
+  url_checkin_sem_qr: string;
   url_questionario: string;
   url_api: string;
 };

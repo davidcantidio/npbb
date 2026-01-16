@@ -12,6 +12,7 @@ from app.routers.ativacao import router as ativacao_router
 from app.routers.auth import router as auth_router
 from app.routers.eventos import router as eventos_router
 from app.routers.gamificacao import router as gamificacao_router
+from app.routers.landing_public import router as landing_public_router
 from app.routers.usuarios import router as usuarios_router
 
 app = FastAPI(title="NPBB API")
@@ -135,3 +136,4 @@ app.include_router(agencias_router)
 app.include_router(eventos_router)
 app.include_router(gamificacao_router)
 app.include_router(ativacao_router)
+app.include_router(landing_public_router)

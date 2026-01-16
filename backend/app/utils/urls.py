@@ -59,7 +59,7 @@ def build_evento_public_urls(evento_id: int, *, backend_base_url: str | None = N
 
     Padroes MVP:
     - landing:      {PUBLIC_LANDING_BASE_URL}/landing/eventos/{evento_id}
-    - promotor:     {PUBLIC_LANDING_BASE_URL}/promotor/eventos/{evento_id}
+    - check-in sem QR: {PUBLIC_LANDING_BASE_URL}/checkin-sem-qr/eventos/{evento_id}
     - questionario: {PUBLIC_LANDING_BASE_URL}/questionario/eventos/{evento_id}
     - api-doc:      {backend_base_url}/docs (fallback: {PUBLIC_APP_BASE_URL}/docs)
     """
@@ -67,7 +67,7 @@ def build_evento_public_urls(evento_id: int, *, backend_base_url: str | None = N
     landing_base = get_public_landing_base_url(backend_base_url=backend_base_url)
 
     url_landing = f"{landing_base}/landing/eventos/{evento_id}"
-    url_promotor = f"{landing_base}/promotor/eventos/{evento_id}"
+    url_checkin_sem_qr = f"{landing_base}/checkin-sem-qr/eventos/{evento_id}"
     url_questionario = f"{landing_base}/questionario/eventos/{evento_id}"
 
     api_doc_override = os.getenv("PUBLIC_API_DOC_URL")
@@ -79,7 +79,7 @@ def build_evento_public_urls(evento_id: int, *, backend_base_url: str | None = N
 
     return {
         "url_landing": url_landing,
-        "url_promotor": url_promotor,
+        "url_checkin_sem_qr": url_checkin_sem_qr,
         "url_questionario": url_questionario,
         "url_api": url_api,
     }

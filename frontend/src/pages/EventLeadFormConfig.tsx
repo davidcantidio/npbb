@@ -433,17 +433,19 @@ export default function EventLeadFormConfig() {
                   }}
                 />
                 <TextField
-                  label="Promotor"
-                  value={config.urls.url_promotor}
+                  label="Check-in sem QR"
+                  value={config.urls.url_checkin_sem_qr}
                   fullWidth
                   InputProps={{
                     readOnly: true,
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
-                          aria-label="Copiar URL do promotor"
+                          aria-label="Copiar URL do check-in sem QR"
                           size="small"
-                          onClick={() => copyToClipboard(config.urls.url_promotor, "Promotor")}
+                          onClick={() =>
+                            copyToClipboard(config.urls.url_checkin_sem_qr, "Check-in sem QR")
+                          }
                         >
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>

@@ -199,3 +199,38 @@ Padroes:
 
 Exemplo de landing publica (dev):
 - `http://localhost:8000/landing/eventos/123`
+
+---
+
+## Check-in sem QR (publico)
+Nao requer autenticacao. Retorna HTML nos endpoints GET/POST.
+
+### URLs publicas (dev)
+- `http://localhost:8000/checkin-sem-qr/eventos/123`
+- `http://localhost:8000/checkin-sem-qr/eventos/123?ativacao_id=10`
+
+### GET `/checkin-sem-qr/eventos/{evento_id}`
+Retorna HTML da etapa 1 (CPF) ou etapa 2 quando `etapa=2` for usado como query param.
+
+### POST `/checkin-sem-qr/eventos/{evento_id}`
+Recebe o submit do formulario e retorna HTML com confirmacao/erro.
+
+Campos esperados (form-data):
+- `cpf` (obrigatorio)
+- `ativacao_id` (obrigatorio)
+- `etapa` (opcional, usar `2` para etapa de cadastro completo)
+
+### POST `/checkin-sem-qr/eventos/{evento_id}/cpf`
+Consulta se o CPF ja existe no evento e retorna JSON.
+
+Exemplo (curl):
+```bash
+curl -X POST "http://localhost:8000/checkin-sem-qr/eventos/123/cpf" \
+  -H "Content-Type: application/json" \
+  -d '{"cpf":"529.982.247-25","ativacao_id":10}'
+```
+
+Resposta:
+```json
+{ "lead_existe": true }
+```

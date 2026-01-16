@@ -36,6 +36,7 @@ Principais:
 - `DIRECT_URL`: conexao direta para migrations/seed (no Supabase, recomendado para DDL/migrations)
 - `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`: JWT
 - `FRONTEND_ORIGIN`: CORS (ex.: `http://localhost:5173`)
+- `PUBLIC_LANDING_BASE_URL`: base publica do backend para URLs de landing (ex.: `http://localhost:8000`)
 
 Recuperacao de senha / email:
 - `EMAIL_BACKEND=console|smtp`

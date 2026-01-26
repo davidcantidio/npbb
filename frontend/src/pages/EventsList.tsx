@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   Alert,
   Autocomplete,
@@ -164,6 +165,7 @@ export default function EventsList() {
   const { token } = useAuth();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [filtersContainer, setFiltersContainer] = useState<HTMLElement | null>(null);
 
   const [items, setItems] = useState<EventoListItem[]>([]);
   const [total, setTotal] = useState<number | null>(null);
@@ -237,6 +239,10 @@ export default function EventsList() {
   useEffect(() => {
     loadDomains();
   }, [loadDomains]);
+
+  useEffect(() => {
+    setFiltersContainer(document.getElementById("events-filters-slot"));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,8 +406,176 @@ export default function EventsList() {
     [load, token],
   );
 
+  const filtersPanel = (
+    <Box sx={{ pt: 1 }}>
+      <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 1, display: "block" }}>
+        Filtros
+      </Typography>
+      <Stack spacing={1.5}>
+        <Autocomplete
+          freeSolo
+          options={eventoOptions}
+          inputValue={filtersDraft.search}
+          onInputChange={(_, value) =>
+            setFiltersDraft((prev) => ({
+              ...prev,
+              search: String(value || ""),
+            }))
+          }
+          onChange={(_, value) =>
+            setFiltersDraft((prev) => ({
+              ...prev,
+              search: typeof value === "string" ? value : "",
+            }))
+          }
+          fullWidth
+          renderInput={(params) => (
+            <TextField {...params} label="Evento" placeholder="Todos" fullWidth />
+          )}
+        />
+
+        <Autocomplete
+          options={UF_OPTIONS}
+          value={filtersDraft.estado ? filtersDraft.estado.toUpperCase() : null}
+          onChange={(_, value) =>
+            setFiltersDraft((prev) => ({
+              ...prev,
+              estado: value ? String(value) : "",
+              cidade: "",
+            }))
+          }
+          fullWidth
+          renderInput={(params) => (
+            <TextField {...params} label="Estado" placeholder="Todos" fullWidth />
+          )}
+        />
+
+        <Autocomplete
+          freeSolo
+          options={cidades}
+          inputValue={filtersDraft.cidade}
+          onInputChange={(_, value) =>
+            setFiltersDraft((prev) => ({
+              ...prev,
+              cidade: String(value || ""),
+            }))
+          }
+          onChange={(_, value) =>
+            setFiltersDraft((prev) => ({
+              ...prev,
+              cidade: typeof value === "string" ? value : "",
+            }))
+          }
+          loading={cidadesLoading}
+          fullWidth
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Local"
+              placeholder="Todos"
+              fullWidth
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {cidadesLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+
+        <Autocomplete
+          options={diretorias}
+          value={
+            filtersDraft.diretoriaId
+              ? diretorias.find((d) => String(d.id) === filtersDraft.diretoriaId) ?? null
+              : null
+          }
+          onChange={(_, value) =>
+            setFiltersDraft((prev) => ({
+              ...prev,
+              diretoriaId: value ? String(value.id) : "",
+            }))
+          }
+          getOptionLabel={(option) => option.nome}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          disabled={domainsLoading}
+          fullWidth
+          renderInput={(params) => (
+            <TextField {...params} label="Diretoria" placeholder="Todas" fullWidth />
+          )}
+        />
+
+        <Stack direction="row" spacing={1}>
+          <TextField
+            label="De"
+            type="date"
+            value={filtersDraft.dataInicio}
+            onChange={(e) =>
+              setFiltersDraft((prev) => ({ ...prev, dataInicio: e.target.value }))
+            }
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Ate"
+            type="date"
+            value={filtersDraft.dataFim}
+            onChange={(e) => setFiltersDraft((prev) => ({ ...prev, dataFim: e.target.value }))}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+        </Stack>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            type="button"
+            variant="outlined"
+            onClick={() => {
+              setFiltersDraft(EMPTY_FILTERS);
+              setFiltersApplied(EMPTY_FILTERS);
+              setPage(1);
+            }}
+            sx={{ textTransform: "none" }}
+            fullWidth
+          >
+            Limpar
+          </Button>
+          <Button
+            type="button"
+            variant="contained"
+            onClick={() => {
+              const normalized = normalizeFilters(filtersDraft);
+              if (normalized.dataInicio && normalized.dataFim) {
+                const start = new Date(normalized.dataInicio);
+                const end = new Date(normalized.dataFim);
+                if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end < start) {
+                  setError("Intervalo de datas invalido: 'Ate' deve ser maior/igual a 'De'.");
+                  return;
+                }
+              }
+
+              setFiltersApplied(normalized);
+              setPage(1);
+            }}
+            sx={{ textTransform: "none", fontWeight: 800 }}
+            fullWidth
+          >
+            Aplicar
+          </Button>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+
+  const filtersPortal = filtersContainer ? createPortal(filtersPanel, filtersContainer) : null;
+
   return (
     <Box sx={{ width: "100%" }}>
+      {filtersPortal}
       <input
         ref={fileInputRef}
         type="file"
@@ -448,164 +622,6 @@ export default function EventsList() {
           </Button>
         </Box>
       </Box>
-
-      <Paper elevation={2} sx={{ borderRadius: 1, p: 2, mb: 2 }}>
-        <Stack spacing={2} direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }}>
-          <Autocomplete
-            freeSolo
-            options={eventoOptions}
-            inputValue={filtersDraft.search}
-            onInputChange={(_, value) =>
-              setFiltersDraft((prev) => ({
-                ...prev,
-                search: String(value || ""),
-              }))
-            }
-            onChange={(_, value) =>
-              setFiltersDraft((prev) => ({
-                ...prev,
-                search: typeof value === "string" ? value : "",
-              }))
-            }
-            fullWidth
-            renderInput={(params) => (
-              <TextField {...params} label="Evento" placeholder="Todos" fullWidth />
-            )}
-          />
-
-          <Autocomplete
-            options={UF_OPTIONS}
-            value={filtersDraft.estado ? filtersDraft.estado.toUpperCase() : null}
-            onChange={(_, value) =>
-              setFiltersDraft((prev) => ({
-                ...prev,
-                estado: value ? String(value) : "",
-                cidade: "",
-              }))
-            }
-            fullWidth
-            renderInput={(params) => (
-              <TextField {...params} label="Estado" placeholder="Todos" fullWidth />
-            )}
-          />
-
-          <Autocomplete
-            freeSolo
-            options={cidades}
-            inputValue={filtersDraft.cidade}
-            onInputChange={(_, value) =>
-              setFiltersDraft((prev) => ({
-                ...prev,
-                cidade: String(value || ""),
-              }))
-            }
-            onChange={(_, value) =>
-              setFiltersDraft((prev) => ({
-                ...prev,
-                cidade: typeof value === "string" ? value : "",
-              }))
-            }
-            loading={cidadesLoading}
-            fullWidth
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Local"
-                placeholder="Todos"
-                fullWidth
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {cidadesLoading ? <CircularProgress color="inherit" size={18} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
-
-          <Autocomplete
-            options={diretorias}
-            value={
-              filtersDraft.diretoriaId
-                ? diretorias.find((d) => String(d.id) === filtersDraft.diretoriaId) ?? null
-                : null
-            }
-            onChange={(_, value) =>
-              setFiltersDraft((prev) => ({
-                ...prev,
-                diretoriaId: value ? String(value.id) : "",
-              }))
-            }
-            getOptionLabel={(option) => option.nome}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            disabled={domainsLoading}
-            fullWidth
-            renderInput={(params) => (
-              <TextField {...params} label="Diretoria" placeholder="Todas" fullWidth />
-            )}
-          />
-
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flex={1} minWidth={220}>
-            <TextField
-              label="De"
-              type="date"
-              value={filtersDraft.dataInicio}
-              onChange={(e) =>
-                setFiltersDraft((prev) => ({ ...prev, dataInicio: e.target.value }))
-              }
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Ate"
-              type="date"
-              value={filtersDraft.dataFim}
-              onChange={(e) => setFiltersDraft((prev) => ({ ...prev, dataFim: e.target.value }))}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-          </Stack>
-
-          <Stack direction="row" spacing={1}>
-            <Button
-              type="button"
-              variant="outlined"
-              onClick={() => {
-                setFiltersDraft(EMPTY_FILTERS);
-                setFiltersApplied(EMPTY_FILTERS);
-                setPage(1);
-              }}
-              sx={{ textTransform: "none" }}
-            >
-              Limpar filtros
-            </Button>
-            <Button
-              type="button"
-              variant="contained"
-              onClick={() => {
-                const normalized = normalizeFilters(filtersDraft);
-                if (normalized.dataInicio && normalized.dataFim) {
-                  const start = new Date(normalized.dataInicio);
-                  const end = new Date(normalized.dataFim);
-                  if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end < start) {
-                    setError("Intervalo de datas invalido: 'Ate' deve ser maior/igual a 'De'.");
-                    return;
-                  }
-                }
-
-                setFiltersApplied(normalized);
-                setPage(1);
-              }}
-              sx={{ textTransform: "none", fontWeight: 800 }}
-            >
-              Aplicar
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
 
       {error && (
         <Alert severity="error" variant="filled" sx={{ mb: 2 }}>

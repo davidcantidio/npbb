@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   AppBar,
@@ -6,6 +6,7 @@ import {
   Button,
   Divider,
   Drawer,
+  Collapse,
   IconButton,
   List,
   ListItemButton,
@@ -24,6 +25,8 @@ import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -45,6 +48,13 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const [eventsMenuOpen, setEventsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/eventos")) {
+      setEventsMenuOpen(true);
+    }
+  }, [location.pathname]);
 
   const navItems: NavItem[] = useMemo(
     () => [
@@ -72,6 +82,41 @@ export default function AppLayout() {
             item.to === "/success"
               ? location.pathname === "/success" || location.pathname === "/dashboard"
               : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+
+          if (item.to === "/eventos") {
+            return (
+              <Box key={item.to}>
+                <ListItemButton
+                  selected={selected}
+                  onClick={() => {
+                    setEventsMenuOpen((prev) => !prev);
+                    navigate(item.to);
+                    setMobileOpen(false);
+                  }}
+                  sx={{
+                    mx: 1,
+                    borderRadius: 1,
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ fontWeight: selected ? 800 : 600, fontSize: 13 }}
+                  />
+                  <Box sx={{ color: "text.secondary" }}>
+                    {eventsMenuOpen ? (
+                      <ExpandLessRoundedIcon fontSize="small" />
+                    ) : (
+                      <ExpandMoreRoundedIcon fontSize="small" />
+                    )}
+                  </Box>
+                </ListItemButton>
+                <Collapse in={eventsMenuOpen} timeout="auto">
+                  <Box id="events-filters-slot" sx={{ px: 2, pb: 1 }} />
+                </Collapse>
+              </Box>
+            );
+          }
 
           return (
             <ListItemButton

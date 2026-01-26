@@ -60,6 +60,20 @@ curl "http://localhost:8000/evento?search=teste&estado=SE&diretoria_id=15&skip=0
   -H "Authorization: Bearer <token>"
 ```
 
+## Saude dos dados (score)
+
+A regra de pontuacao e documentada em:
+
+```
+npbb/docs/eventos_saude_dados.md
+```
+
+O arquivo de configuracao editavel (pesos, urgencia e excecoes) fica em:
+
+```
+npbb/docs/eventos_saude_dados_config.json
+```
+
 ## GET `/evento/{id}`
 Retorna detalhe do evento.
 

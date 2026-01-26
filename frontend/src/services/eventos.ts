@@ -14,7 +14,7 @@ export type EventoListItem = {
   cidade: string;
   estado: string;
   diretoria_id?: number | null;
-  agencia_id: number;
+  agencia_id?: number | null;
   status_id: number;
 
   created_at: string;
@@ -27,7 +27,7 @@ export type EventoRead = {
   divisao_demandante_id?: number | null;
   qr_code_url?: string | null;
   nome: string;
-  descricao: string;
+  descricao?: string | null;
   investimento?: string | number | null;
 
   data_inicio_prevista?: string | null;
@@ -42,10 +42,10 @@ export type EventoRead = {
   cidade: string;
   estado: string;
 
-  agencia_id: number;
+  agencia_id?: number | null;
   diretoria_id?: number | null;
   gestor_id?: number | null;
-  tipo_id: number;
+  tipo_id?: number | null;
   subtipo_id?: number | null;
 
   tag_ids: number[];
@@ -59,7 +59,7 @@ export type EventoRead = {
 
 export type EventoCreate = {
   nome: string;
-  descricao: string;
+  descricao?: string | null;
   investimento?: string | number | null;
   concorrencia?: boolean;
   cidade: string;
@@ -69,7 +69,7 @@ export type EventoCreate = {
   diretoria_id?: number;
   gestor_id?: number;
 
-  tipo_id: number;
+  tipo_id?: number;
   subtipo_id?: number;
 
   tag_ids?: number[];
@@ -81,8 +81,10 @@ export type EventoCreate = {
   divisao_demandante_id?: number | null;
   qr_code_url?: string | null;
 
-  data_inicio_prevista?: string | null;
+  data_inicio_prevista: string;
   data_fim_prevista?: string | null;
+  data_inicio_realizada?: string | null;
+  data_fim_realizada?: string | null;
 
   publico_projetado?: number | null;
   publico_realizado?: number | null;
@@ -91,6 +93,20 @@ export type EventoCreate = {
 export type EventoUpdate = Partial<EventoCreate> & {
   tag_ids?: number[] | null;
   territorio_ids?: number[] | null;
+};
+
+export type ImportEventosCsvError = {
+  line: number;
+  field: string;
+  message: string;
+  value?: string | null;
+};
+
+export type ImportEventosCsvResult = {
+  total: number;
+  success: number;
+  failed: number;
+  errors: ImportEventosCsvError[];
 };
 
 export type TipoEvento = {
@@ -225,6 +241,21 @@ export async function exportEventosCsv(
     parseFilenameFromContentDisposition(res.headers.get("content-disposition")) || "eventos.csv";
 
   return { blob, filename };
+}
+
+export async function importEventosCsv(
+  token: string,
+  file: File,
+): Promise<ImportEventosCsvResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_BASE_URL}/evento/import/csv`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse<ImportEventosCsvResult>(res);
 }
 
 export async function getEvento(token: string, id: number): Promise<EventoRead> {

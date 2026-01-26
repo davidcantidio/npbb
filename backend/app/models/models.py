@@ -181,7 +181,7 @@ class Evento(SQLModel, table=True):
     qr_code_url: Optional[str] = Field(default=None, max_length=500)
 
     nome: str = Field(max_length=100)
-    descricao: str = Field(max_length=240)
+    descricao: Optional[str] = Field(default=None, max_length=240)
     investimento: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2)))
 
     data_inicio_prevista: Optional[date] = None
@@ -196,11 +196,11 @@ class Evento(SQLModel, table=True):
     cidade: str = Field(max_length=40)
     estado: str = Field(max_length=40)
 
-    agencia_id: int = Field(foreign_key="agencia.id")
+    agencia_id: Optional[int] = Field(default=None, foreign_key="agencia.id")
     diretoria_id: Optional[int] = Field(default=None, foreign_key="diretoria.id")
     gestor_id: Optional[int] = Field(default=None, foreign_key="funcionario.id")
 
-    tipo_id: int = Field(foreign_key="tipo_evento.id")
+    tipo_id: Optional[int] = Field(default=None, foreign_key="tipo_evento.id")
     subtipo_id: Optional[int] = Field(default=None, foreign_key="subtipo_evento.id")
 
     status_id: int = Field(foreign_key="status_evento.id")

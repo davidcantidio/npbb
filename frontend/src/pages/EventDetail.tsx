@@ -184,7 +184,7 @@ export default function EventDetail() {
   }, [token, evento?.tipo_id]);
 
   const agenciaLabel = useMemo(() => {
-    if (!evento) return "-";
+    if (!evento?.agencia_id) return "-";
     const a = agencias.find((ag) => ag.id === evento.agencia_id);
     return a ? `${a.nome}` : `#${evento.agencia_id}`;
   }, [agencias, evento]);
@@ -202,7 +202,7 @@ export default function EventDetail() {
   }, [divisoes, evento?.divisao_demandante_id]);
 
   const tipoLabel = useMemo(() => {
-    if (!evento) return "-";
+    if (!evento?.tipo_id) return "-";
     const t = tipos.find((tipo) => tipo.id === evento.tipo_id);
     return t ? t.nome : `#${evento.tipo_id}`;
   }, [tipos, evento]);
@@ -384,7 +384,7 @@ export default function EventDetail() {
                 Descrição
               </Typography>
               <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                {evento.descricao}
+                {evento.descricao || "-"}
               </Typography>
             </Box>
 

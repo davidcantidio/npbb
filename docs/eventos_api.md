@@ -111,16 +111,17 @@ Cria um novo evento.
 ### Body (JSON) - `EventoCreate`
 Campos principais:
 - `nome` (string, obrigatorio)
-- `descricao` (string, obrigatorio; recomendado <= 240)
-- `investimento` (decimal/number, opcional)
 - `cidade` (string, obrigatorio)
 - `estado` (string, obrigatorio; normalizado para uppercase)
-- `tipo_id` (int, obrigatorio)
+- `data_inicio_prevista` (date `YYYY-MM-DD`, obrigatorio)
 
 Campos opcionais:
-- `agencia_id` (int) - obrigatorio para usuarios nao-agencia; para usuario agencia o backend usa `current_user.agencia_id`
+- `descricao` (string; recomendado <= 240)
+- `investimento` (decimal/number)
+- `agencia_id` (int) - se informado, deve existir em `agencia`
 - `diretoria_id` (int)
 - `gestor_id` (int)
+- `tipo_id` (int) - se informado, deve existir em `tipo_evento`
 - `subtipo_id` (int) - se informado, deve pertencer ao `tipo_id`
 - `status_id` (int, opcional) - FK para `status_evento` (ver dicionarios). Se omitido, o backend infere:
   - se `data_inicio_prevista` > hoje -> `Previsto`
@@ -133,7 +134,8 @@ Campos adicionais:
 - `thumbnail` (string URL)
 - `qr_code_url` (string URL)
 - Datas (ISO `YYYY-MM-DD`):
-  - `data_inicio_prevista`, `data_fim_prevista`
+  - `data_inicio_prevista` (obrigatoria)
+  - `data_fim_prevista` (opcional)
 - Publico:
   - `publico_projetado`, `publico_realizado`
 
@@ -146,13 +148,13 @@ Relacionamentos (N:N):
 
 ### Erros comuns
 - `400` com `detail.code`:
-  - `AGENCIA_REQUIRED` (quando `agencia_id` nao foi informado e o usuario nao e agencia)
   - `AGENCIA_NOT_FOUND`, `DIRETORIA_NOT_FOUND`, `DIVISAO_DEMANDANTE_NOT_FOUND`, `TIPO_EVENTO_NOT_FOUND`, `SUBTIPO_EVENTO_NOT_FOUND`
+  - `TIPO_EVENTO_REQUIRED` (quando `subtipo_id` foi informado sem `tipo_id`)
   - `SUBTIPO_EVENTO_INVALID` (subtipo nao pertence ao tipo)
   - `STATUS_NOT_FOUND`, `STATUS_REQUIRED`
   - `TAG_NOT_FOUND`, `TERRITORIO_NOT_FOUND`
   - `TAG_ID_INVALID`, `TERRITORIO_ID_INVALID` (ids invalidos)
-- `403` com `detail.code=FORBIDDEN` (ex.: usuario agencia sem `agencia_id`)
+- `403` com `detail.code=FORBIDDEN` (ex.: usuario agencia tentando alterar `agencia_id`)
 
 ## PUT `/evento/{id}`
 Atualiza um evento existente (PUT parcial).

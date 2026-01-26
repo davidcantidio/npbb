@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Alert,
   Autocomplete,
@@ -27,10 +27,12 @@ import {
   EventoListItem,
   StatusEvento,
   exportEventosCsv,
+  importEventosCsv,
   listDiretorias,
   listEventos,
   listStatusEvento,
   updateEvento,
+  type ImportEventosCsvError,
 } from "../services/eventos";
 import { EventoRow } from "../components/eventos/EventoRow";
 
@@ -49,6 +51,19 @@ function formatPeriodo(item: EventoListItem) {
   if (!startText && !endText) return "-";
   if (startText && endText) return `${startText} - ${endText}`;
   return startText || endText;
+}
+
+type ImportSummary = {
+  total: number;
+  success: number;
+  failed: number;
+};
+
+function formatImportError(error: ImportEventosCsvError): string {
+  const line = Number.isFinite(error.line) ? error.line : "-";
+  const field = error.field ? String(error.field) : "geral";
+  const reason = error.message ? String(error.message) : "Erro ao importar linha";
+  return `Linha ${line}: campo "${field}" - ${reason}.`;
 }
 
 type Filters = {
@@ -148,10 +163,15 @@ async function getCidadesData(): Promise<{ map: Record<string, string[]>; all: s
 export default function EventsList() {
   const { token } = useAuth();
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [items, setItems] = useState<EventoListItem[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   const [filtersDraft, setFiltersDraft] = useState<Filters>(EMPTY_FILTERS);
   const [filtersApplied, setFiltersApplied] = useState<Filters>(EMPTY_FILTERS);
@@ -340,8 +360,55 @@ export default function EventsList() {
     }
   }, [filtersApplied, token]);
 
+  const handleImportCsvClick = useCallback(() => {
+    if (!token || importing) return;
+    setImportSummary(null);
+    setImportErrors([]);
+    fileInputRef.current?.click();
+  }, [token, importing]);
+
+  const handleImportCsvChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file || !token) return;
+
+      setImporting(true);
+      setError(null);
+      setImportSummary(null);
+      setImportErrors([]);
+
+      try {
+        const result = await importEventosCsv(token, file);
+        const errors = Array.isArray(result.errors) ? result.errors : [];
+        setImportSummary({
+          total: result.total ?? result.success + result.failed,
+          success: result.success ?? 0,
+          failed: result.failed ?? errors.length,
+        });
+        setImportErrors(errors.map(formatImportError));
+
+        if (result.success > 0) {
+          await load();
+        }
+      } catch (err: any) {
+        setError(err?.message || "Erro ao importar CSV");
+      } finally {
+        setImporting(false);
+      }
+    },
+    [load, token],
+  );
+
   return (
     <Box sx={{ width: "100%" }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        onChange={handleImportCsvChange}
+        style={{ display: "none" }}
+      />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Typography variant="h4" fontWeight={800}>
@@ -356,9 +423,17 @@ export default function EventsList() {
             Atualizar
           </Button>
           <Button
+            onClick={handleImportCsvClick}
+            variant="outlined"
+            disabled={loading || exporting || importing || !token}
+            sx={{ textTransform: "none" }}
+          >
+            {importing ? "Importando..." : "Importar CSV"}
+          </Button>
+          <Button
             onClick={handleExportCsv}
             variant="outlined"
-            disabled={loading || exporting || !token}
+            disabled={loading || exporting || importing || !token}
             sx={{ textTransform: "none" }}
           >
             {exporting ? "Exportando..." : "Exportar CSV"}
@@ -541,6 +616,30 @@ export default function EventsList() {
       {domainsError && (
         <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
           {domainsError}
+        </Alert>
+      )}
+
+      {importSummary && (
+        <Alert
+          severity={importSummary.failed > 0 ? "warning" : "success"}
+          variant="outlined"
+          sx={{ mb: 2 }}
+        >
+          {`Importacao concluida: ${importSummary.success} sucesso(s), ${importSummary.failed} erro(s).`}
+          {importErrors.length > 0 && (
+            <Box mt={1}>
+              {importErrors.slice(0, 6).map((detail, index) => (
+                <Typography key={`${detail}-${index}`} variant="body2" color="text.secondary">
+                  {detail}
+                </Typography>
+              ))}
+              {importErrors.length > 6 && (
+                <Typography variant="body2" color="text.secondary">
+                  {`...e mais ${importErrors.length - 6} erro(s).`}
+                </Typography>
+              )}
+            </Box>
+          )}
         </Alert>
       )}
 

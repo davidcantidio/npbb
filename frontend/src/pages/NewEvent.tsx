@@ -268,8 +268,7 @@ export default function NewEvent() {
     if (!nome) next.nome = "Informe o nome do evento";
 
     const descricao = normalizeText(form.descricao);
-    if (!descricao) next.descricao = "Informe a descricao";
-    else if (descricao.length > 240) next.descricao = "Maximo 240 caracteres";
+    if (descricao && descricao.length > 240) next.descricao = "Maximo 240 caracteres";
 
     const cidade = normalizeText(form.cidade);
     if (!cidade) next.cidade = "Informe a cidade";
@@ -279,13 +278,6 @@ export default function NewEvent() {
     if (!estado) next.estado = "Selecione a UF";
     else if (!UF_OPTIONS.includes(estado)) next.estado = "UF invalida";
 
-    if (canPickAgencia) {
-      if (!parseId(form.agencia_id)) next.agencia_id = "Selecione a agencia";
-    }
-
-    if (!parseId(form.diretoria_id)) next.diretoria_id = "Selecione a diretoria";
-    if (!parseId(form.tipo_id)) next.tipo_id = "Selecione o tipo do evento";
-
     if (form.subtipo_id) {
       const subtipoId = parseId(form.subtipo_id);
       if (!subtipoId) next.subtipo_id = "Subtipo invalido";
@@ -294,8 +286,7 @@ export default function NewEvent() {
 
     const inicioPrev = form.data_inicio_prevista || "";
     const fimPrev = form.data_fim_prevista || "";
-    if (!inicioPrev) next.data_inicio_prevista = "Informe a data de inicio prevista";
-    if (!fimPrev) next.data_fim_prevista = "Informe a data de fim prevista";
+    if (!inicioPrev) next.data_inicio_prevista = "Informe a data do evento";
     if (inicioPrev && fimPrev && fimPrev < inicioPrev) {
       next.data_fim_prevista = "Fim previsto deve ser maior/igual ao inicio previsto";
     }
@@ -311,13 +302,13 @@ export default function NewEvent() {
     }
 
     return next;
-  }, [form, canPickAgencia, subtipos]);
+  }, [form, subtipos]);
 
   const canSubmit = useMemo(() => Object.keys(errors).length === 0, [errors]);
 
   const eventStepFields = useMemo(() => {
     const steps: Array<Array<keyof FormState>> = [
-      canPickAgencia ? ["agencia_id"] : [],
+      [],
       [
         "nome",
         "descricao",
@@ -327,11 +318,11 @@ export default function NewEvent() {
         "data_fim_prevista",
         "investimento",
       ],
-      ["diretoria_id", "divisao_demandante_id", "tipo_id", "subtipo_id"],
+      ["divisao_demandante_id", "subtipo_id"],
     ];
 
     return steps;
-  }, [canPickAgencia]);
+  }, []);
 
   const currentStepHasErrors = useMemo(() => {
     const keys = eventStepFields[eventSubStep] ?? [];
@@ -497,21 +488,27 @@ export default function NewEvent() {
         tagIds = Array.from(new Set([...tagIds, ...createdIds]));
       }
 
+      const descricao = normalizeText(form.descricao);
       const payload: EventoCreate = {
         nome: normalizeText(form.nome),
-        descricao: normalizeText(form.descricao),
         investimento: normalizeText(form.investimento) || undefined,
         concorrencia: Boolean(form.concorrencia),
         cidade: normalizeText(form.cidade),
         estado: normalizeText(form.estado).toUpperCase(),
-        tipo_id: Number(form.tipo_id),
-        diretoria_id: Number(form.diretoria_id),
         divisao_demandante_id: parseId(form.divisao_demandante_id) || undefined,
         data_inicio_prevista: form.data_inicio_prevista,
-        data_fim_prevista: form.data_fim_prevista,
+        data_fim_prevista: form.data_fim_prevista || undefined,
         tag_ids: tagIds,
         territorio_ids: form.territorio_ids.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0),
       };
+
+      if (descricao) payload.descricao = descricao;
+
+      const tipoId = parseId(form.tipo_id);
+      if (tipoId) payload.tipo_id = tipoId;
+
+      const diretoriaId = parseId(form.diretoria_id);
+      if (diretoriaId) payload.diretoria_id = diretoriaId;
 
       const subtipoId = parseId(form.subtipo_id);
       if (subtipoId) payload.subtipo_id = subtipoId;
@@ -611,10 +608,8 @@ export default function NewEvent() {
                         <TextField
                           {...params}
                           label="Agência"
-                          required
                           fullWidth
-                          error={Boolean(errors.agencia_id)}
-                          helperText={errors.agencia_id}
+                          helperText="Opcional"
                         />
                       )}
                     />
@@ -664,12 +659,11 @@ export default function NewEvent() {
                   label="Descrição"
                   value={form.descricao}
                   onChange={handleChange("descricao")}
-                  required
                   fullWidth
                   multiline
                   minRows={3}
                   error={Boolean(errors.descricao)}
-                  helperText={errors.descricao ?? "Máximo 240 caracteres"}
+                  helperText={errors.descricao ?? "Opcional (máximo 240 caracteres)"}
                 />
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -740,11 +734,10 @@ export default function NewEvent() {
                     type="date"
                     value={form.data_fim_prevista}
                     onChange={handleChange("data_fim_prevista")}
-                    required
                     fullWidth
                     InputLabelProps={{ shrink: true }}
                     error={Boolean(errors.data_fim_prevista)}
-                    helperText={errors.data_fim_prevista}
+                    helperText={errors.data_fim_prevista ?? "Opcional"}
                   />
                   <TextField
                     label="Investimento"
@@ -786,10 +779,8 @@ export default function NewEvent() {
                     <TextField
                       {...params}
                       label="Diretoria"
-                      required
                       fullWidth
-                      error={Boolean(errors.diretoria_id)}
-                      helperText={errors.diretoria_id}
+                      helperText="Opcional"
                     />
                   )}
                 />
@@ -833,10 +824,8 @@ export default function NewEvent() {
                         {...params}
                         label="Tipo de evento"
                         placeholder="Selecione um Tipo de Evento"
-                        required
                         fullWidth
-                        error={Boolean(errors.tipo_id)}
-                        helperText={errors.tipo_id}
+                        helperText="Opcional"
                       />
                     )}
                   />
@@ -988,6 +977,20 @@ export default function NewEvent() {
                 >
                   Voltar
                 </Button>
+
+                {eventSubStep === 0 && canPickAgencia ? (
+                  <Button
+                    variant="text"
+                    onClick={() => {
+                      setSubmitAttempted(false);
+                      setEventSubStep(1);
+                    }}
+                    disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
+                    sx={{ textTransform: "none", fontWeight: 700 }}
+                  >
+                    Pular
+                  </Button>
+                ) : null}
 
                 {eventSubStep < EVENT_SUBSTEPS.length - 1 ? (
                   <Button

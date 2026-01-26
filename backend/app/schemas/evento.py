@@ -25,7 +25,7 @@ class EventoListItem(BaseModel):
     estado: str
 
     diretoria_id: Optional[int] = None
-    agencia_id: int
+    agencia_id: Optional[int] = None
     status_id: int
 
     created_at: datetime
@@ -41,7 +41,7 @@ class EventoRead(BaseModel):
     qr_code_url: Optional[str] = None
 
     nome: str
-    descricao: str
+    descricao: Optional[str] = None
     investimento: Optional[Decimal] = None
 
     data_inicio_prevista: Optional[date] = None
@@ -56,10 +56,10 @@ class EventoRead(BaseModel):
     cidade: str
     estado: str
 
-    agencia_id: int
+    agencia_id: Optional[int] = None
     diretoria_id: Optional[int] = None
     gestor_id: Optional[int] = None
-    tipo_id: int
+    tipo_id: Optional[int] = None
     subtipo_id: Optional[int] = None
 
     tag_ids: list[int] = Field(default_factory=list)
@@ -75,7 +75,7 @@ class EventoRead(BaseModel):
 
 class EventoCreate(BaseModel):
     nome: str
-    descricao: str
+    descricao: Optional[str] = None
     investimento: Decimal | None = None
     concorrencia: bool = False
     cidade: str
@@ -85,7 +85,7 @@ class EventoCreate(BaseModel):
     diretoria_id: int | None = None
     gestor_id: int | None = None
 
-    tipo_id: int
+    tipo_id: int | None = None
     subtipo_id: int | None = None
 
     tag_ids: list[int] = Field(default_factory=list)
@@ -97,7 +97,7 @@ class EventoCreate(BaseModel):
     divisao_demandante_id: int | None = None
     qr_code_url: Optional[str] = None
 
-    data_inicio_prevista: Optional[date] = None
+    data_inicio_prevista: date
     data_fim_prevista: Optional[date] = None
     data_inicio_realizada: Optional[date] = None
     data_fim_realizada: Optional[date] = None

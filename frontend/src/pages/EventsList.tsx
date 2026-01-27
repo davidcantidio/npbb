@@ -34,25 +34,11 @@ import {
   listStatusEvento,
   updateEvento,
   type ImportEventosCsvError,
+  type EventoUpdate,
 } from "../services/eventos";
+import { Agencia, listAgencias } from "../services/agencias";
 import { EventoRow } from "../components/eventos/EventoRow";
 
-function formatDate(value?: string | null) {
-  if (!value) return "";
-  const [y, m, d] = value.split("-");
-  if (!y || !m || !d) return value;
-  return `${d}/${m}/${y}`;
-}
-
-function formatPeriodo(item: EventoListItem) {
-  const start = item.data_inicio_prevista;
-  const end = item.data_fim_prevista;
-  const startText = formatDate(start);
-  const endText = formatDate(end);
-  if (!startText && !endText) return "-";
-  if (startText && endText) return `${startText} - ${endText}`;
-  return startText || endText;
-}
 
 type ImportSummary = {
   total: number;
@@ -184,18 +170,26 @@ export default function EventsList() {
   const [cidades, setCidades] = useState<string[]>([]);
   const [cidadesLoading, setCidadesLoading] = useState(false);
   const [diretorias, setDiretorias] = useState<Diretoria[]>([]);
+  const [agencias, setAgencias] = useState<Agencia[]>([]);
   const [statuses, setStatuses] = useState<StatusEvento[]>([]);
   const [domainsLoading, setDomainsLoading] = useState(false);
   const [domainsError, setDomainsError] = useState<string | null>(null);
 
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [inlineUpdating, setInlineUpdating] = useState<Record<number, boolean>>({});
 
   const diretoriaById = useMemo(() => {
     const map = new Map<number, string>();
     for (const d of diretorias) map.set(d.id, d.nome);
     return map;
   }, [diretorias]);
+
+  const agenciaById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const a of agencias) map.set(a.id, a.nome);
+    return map;
+  }, [agencias]);
 
   const eventoOptions = useMemo(() => {
     const names = new Set<string>();
@@ -216,12 +210,16 @@ export default function EventsList() {
     setDomainsLoading(true);
     setDomainsError(null);
     try {
-      const [dirsRes, statusRes] = await Promise.allSettled([
+      const [agenciasRes, dirsRes, statusRes] = await Promise.allSettled([
+        listAgencias({ limit: 200 }),
         listDiretorias(token),
         listStatusEvento(token),
       ]);
 
       const failures: string[] = [];
+      if (agenciasRes.status === "fulfilled") setAgencias(agenciasRes.value);
+      else failures.push("agencias");
+
       if (dirsRes.status === "fulfilled") setDiretorias(dirsRes.value);
       else failures.push("diretorias");
 
@@ -229,7 +227,7 @@ export default function EventsList() {
       else failures.push("status");
 
       if (failures.length) {
-        setDomainsError(`Falha ao carregar domínios: ${failures.join(", ")}`);
+        setDomainsError(`Falha ao carregar dom?nios: ${failures.join(", ")}`);
       }
     } finally {
       setDomainsLoading(false);
@@ -265,34 +263,42 @@ export default function EventsList() {
     };
   }, [filtersDraft.estado]);
 
+  const fetchItems = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!token) return;
+      const silent = Boolean(options?.silent);
+      if (!silent) setLoading(true);
+      setError(null);
+      try {
+        const applied = normalizeFilters(filtersApplied);
+        const diretoriaIdNum = applied.diretoriaId ? Number(applied.diretoriaId) : null;
+        const res = await listEventos(token, {
+          skip: (page - 1) * limit,
+          limit,
+          search: applied.search || undefined,
+          estado: applied.estado || undefined,
+          cidade: applied.cidade || undefined,
+          data_inicio: applied.dataInicio || undefined,
+          data_fim: applied.dataFim || undefined,
+          diretoria_id:
+            typeof diretoriaIdNum === "number" && Number.isFinite(diretoriaIdNum)
+              ? diretoriaIdNum
+              : undefined,
+        });
+        setItems(res.items);
+        setTotal(res.total);
+      } catch (err: any) {
+        if (!silent) setError(err?.message || "Erro ao carregar eventos");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [token, page, limit, filtersApplied],
+  );
+
   const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const applied = normalizeFilters(filtersApplied);
-      const diretoriaIdNum = applied.diretoriaId ? Number(applied.diretoriaId) : null;
-      const res = await listEventos(token, {
-        skip: (page - 1) * limit,
-        limit,
-        search: applied.search || undefined,
-        estado: applied.estado || undefined,
-        cidade: applied.cidade || undefined,
-        data_inicio: applied.dataInicio || undefined,
-        data_fim: applied.dataFim || undefined,
-        diretoria_id:
-          typeof diretoriaIdNum === "number" && Number.isFinite(diretoriaIdNum)
-            ? diretoriaIdNum
-            : undefined,
-      });
-      setItems(res.items);
-      setTotal(res.total);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao carregar eventos");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, page, limit, filtersApplied]);
+    await fetchItems();
+  }, [fetchItems]);
 
   useEffect(() => {
     load();
@@ -327,6 +333,32 @@ export default function EventsList() {
       }
     },
     [items, token],
+  );
+
+  const handleInlineUpdate = useCallback(
+    async (eventoId: number, patch: EventoUpdate) => {
+      if (!token) throw new Error("Usuário não autenticado");
+      setInlineUpdating((prev) => ({ ...prev, [eventoId]: true }));
+      setError(null);
+      try {
+        const updated = await updateEvento(token, eventoId, patch);
+        setItems((prev) =>
+          prev.map((item) => (item.id === eventoId ? { ...item, ...updated } : item)),
+        );
+        fetchItems({ silent: true });
+        return updated;
+      } catch (err: any) {
+        setError(err?.message || "Erro ao atualizar evento");
+        throw err;
+      } finally {
+        setInlineUpdating((prev) => {
+          const next = { ...prev };
+          delete next[eventoId];
+          return next;
+        });
+      }
+    },
+    [fetchItems, token],
   );
 
   const handleExportCsv = useCallback(async () => {
@@ -521,7 +553,7 @@ export default function EventsList() {
             InputLabelProps={{ shrink: true }}
           />
           <TextField
-            label="Ate"
+            label="Até"
             type="date"
             value={filtersDraft.dataFim}
             onChange={(e) => setFiltersDraft((prev) => ({ ...prev, dataFim: e.target.value }))}
@@ -553,7 +585,7 @@ export default function EventsList() {
                 const start = new Date(normalized.dataInicio);
                 const end = new Date(normalized.dataFim);
                 if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end < start) {
-                  setError("Intervalo de datas invalido: 'Ate' deve ser maior/igual a 'De'.");
+                  setError("Intervalo de datas inválido: 'Até' deve ser maior/igual a 'De'.");
                   return;
                 }
               }
@@ -641,7 +673,7 @@ export default function EventsList() {
           variant="outlined"
           sx={{ mb: 2 }}
         >
-          {`Importacao concluida: ${importSummary.success} sucesso(s), ${importSummary.failed} erro(s).`}
+          {`Importação concluída: ${importSummary.success} sucesso(s), ${importSummary.failed} erro(s).`}
           {importErrors.length > 0 && (
             <Box mt={1}>
               {importErrors.slice(0, 6).map((detail, index) => (
@@ -679,17 +711,20 @@ export default function EventsList() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell width={90}>QRCode</TableCell>
-                <TableCell>Nome</TableCell>
-                <TableCell width={320}>Período</TableCell>
-                <TableCell width={200}>Local</TableCell>
-                <TableCell width={220}>Diretoria</TableCell>
-                <TableCell width={170}>Investimento</TableCell>
+                <TableCell width={180}>Ag?ncia</TableCell>
+                <TableCell width={260}>Nome</TableCell>
+                <TableCell width={224}>Per?odo</TableCell>
+                <TableCell width={175}>Local</TableCell>
+                <TableCell width={160}>Diretoria</TableCell>
+                <TableCell width={136}>Investimento</TableCell>
                 <TableCell width={140}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {items.map((item) => {
+                const agenciaLabel = item.agencia_id
+                  ? agenciaById.get(item.agencia_id) || `#${item.agencia_id}`
+                  : "-";
                 const diretoriaLabel = item.diretoria_id
                   ? diretoriaById.get(item.diretoria_id) || `#${item.diretoria_id}`
                   : "-";
@@ -697,10 +732,15 @@ export default function EventsList() {
                   <EventoRow
                     key={item.id}
                     item={item}
+                    agenciaLabel={agenciaLabel}
+                    agencias={agencias}
                     diretoriaLabel={diretoriaLabel}
+                    diretorias={diretorias}
                     statuses={statuses}
                     statusUpdating={statusUpdatingId === item.id}
                     onStatusChange={handleStatusChange}
+                    inlineUpdating={Boolean(inlineUpdating[item.id])}
+                    onInlineUpdate={handleInlineUpdate}
                   />
                 );
               })}

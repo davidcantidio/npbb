@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "base_fields": {
+    "nome": 8,
+    "cidade": 6,
+    "estado": 4,
+    "data_inicio_prevista": 10,
+    "data_fim_prevista": 6,
+    "descricao": 6,
+    "diretoria_id": 6,
+    "gestor_id": 6,
+    "tipo_id": 5,
+    "status_id": 4,
+    "divisao_demandante_id": 4,
+    "investimento": 12,
+    "concorrencia": 2,
+    "publico_projetado": 6,
+    "agencia_id": 10,
+    "territorio_ids": 3,
+    "tag_ids": 3,
+    "thumbnail": 4,
+    "qr_code_url": 2
+  },
+  "conditional_fields": {
+    "subtipo_id": {
+      "weight": 3,
+      "applies_when": "tipo_id_present"
+    }
+  },
+  "post_event_fields": {
+    "data_inicio_realizada": 4,
+    "data_fim_realizada": 4,
+    "publico_realizado": 6
+  },
+  "urgency": {
+    "date_field": "data_inicio_prevista",
+    "tiers": [
+      { "max_days": 7, "factor": 0.7 },
+      { "max_days": 30, "factor": 0.85 },
+      { "max_days": 90, "factor": 0.95 },
+      { "max_days": null, "factor": 1.0 }
+    ],
+    "no_date_factor": 1.0,
+    "past_event_factor": 1.0,
+    "complete_score_factor_override": 1.0
+  },
+  "exceptions": {
+    "status_cancelado": "N/A",
+    "status_arquivado": "N/A"
+  },
+  "formula": "score_base = filled_weight / total_weight; score_final = clamp(0, 100, round(score_base * urgency_factor * 100))"
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -17,7 +17,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { Agencia, listAgencias } from "../services/agencias";
 import {
@@ -127,11 +127,130 @@ function parseId(value: string) {
 export default function NewEvent() {
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
   const eventoId = Number(params.id);
   const isEdit = Number.isFinite(eventoId);
   const { token, user } = useAuth();
   const isAgencia = String(user?.tipo_usuario || "").toLowerCase() === "agencia";
   const canPickAgencia = !isAgencia;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const missingFieldsFromQuery = useMemo(() => {
+    const raw = searchParams.get("missing") ?? "";
+    const items = raw
+      .split(",")
+      .map((value) => normalizeText(value))
+      .filter(Boolean);
+    return Array.from(new Set(items));
+  }, [searchParams]);
+  const focusFieldParam = useMemo(
+    () => normalizeText(searchParams.get("focus") ?? ""),
+    [searchParams],
+  );
+  const [manualFocusField, setManualFocusField] = useState("");
+  const [eventSubStep, setEventSubStep] = useState(0);
+  const fieldStepMap = useMemo<Record<string, number>>(
+    () => ({
+      agencia_id: 0,
+      nome: 1,
+      descricao: 1,
+      estado: 1,
+      cidade: 1,
+      data_inicio_prevista: 1,
+      data_fim_prevista: 1,
+      investimento: 1,
+      diretoria_id: 2,
+      divisao_demandante_id: 2,
+      tipo_id: 2,
+      subtipo_id: 2,
+      territorio_ids: 2,
+      tag_ids: 2,
+    }),
+    [],
+  );
+  const missingFieldsSet = useMemo(() => new Set(missingFieldsFromQuery), [missingFieldsFromQuery]);
+  const focusFieldIdFromQuery = useMemo(() => {
+    if (focusFieldParam && fieldStepMap[focusFieldParam] !== undefined) return focusFieldParam;
+    const fallback = missingFieldsFromQuery.find((fieldId) => fieldStepMap[fieldId] !== undefined);
+    return fallback ?? "";
+  }, [focusFieldParam, missingFieldsFromQuery, fieldStepMap]);
+  const activeFocusField = manualFocusField || focusFieldIdFromQuery;
+  const focusFieldStep = activeFocusField ? fieldStepMap[activeFocusField] : null;
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastFocusedFieldRef = useRef<string | null>(null);
+  const setFieldRef = useCallback(
+    (fieldId: string) => (node: HTMLDivElement | null) => {
+      fieldRefs.current[fieldId] = node;
+    },
+    [],
+  );
+  const missingFieldHighlightSx = useMemo(
+    () => ({
+      borderRadius: 2,
+      boxShadow: "0 0 0 2px rgba(255, 167, 38, 0.7)",
+      "& .MuiOutlinedInput-root": {
+        backgroundColor: "rgba(255, 167, 38, 0.08)",
+      },
+    }),
+    [],
+  );
+  const getFieldSx = useCallback(
+    (fieldId: string, base?: any) => {
+      const highlight = missingFieldsSet.has(fieldId) ? missingFieldHighlightSx : undefined;
+      if (highlight && base) return [highlight, base];
+      return highlight ?? base;
+    },
+    [missingFieldsSet, missingFieldHighlightSx],
+  );
+  const focusFieldInView = useCallback((fieldId: string) => {
+    const node = fieldRefs.current[fieldId];
+    if (!node) return false;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    const input = node.querySelector("input, textarea") as HTMLInputElement | HTMLTextAreaElement | null;
+    if (input) input.focus();
+    return true;
+  }, []);
+  const handlePendingFieldClick = useCallback(
+    (fieldId: string) => {
+      if (!fieldId) return;
+      const step = fieldStepMap[fieldId];
+      if (step === undefined) return;
+      lastFocusedFieldRef.current = null;
+      setManualFocusField(fieldId);
+      if (eventSubStep !== step) {
+        setEventSubStep(step);
+        return;
+      }
+      focusFieldInView(fieldId);
+    },
+    [eventSubStep, fieldStepMap, focusFieldInView],
+  );
+  const fieldLabelMap = useMemo<Record<string, string>>(
+    () => ({
+      agencia_id: "Agência",
+      nome: "Nome",
+      descricao: "Descrição",
+      estado: "UF",
+      cidade: "Cidade",
+      data_inicio_prevista: "Data de início",
+      data_fim_prevista: "Data de fim",
+      investimento: "Investimento",
+      diretoria_id: "Diretoria",
+      divisao_demandante_id: "Divisão demandante",
+      tipo_id: "Tipo de evento",
+      subtipo_id: "Subtipo",
+      territorio_ids: "Territórios",
+      tag_ids: "Tags",
+    }),
+    [],
+  );
+  const missingFieldsForList = useMemo(
+    () => missingFieldsFromQuery.filter((fieldId) => fieldStepMap[fieldId] !== undefined),
+    [missingFieldsFromQuery, fieldStepMap],
+  );
+  const getFieldLabel = useCallback(
+    (fieldId: string) => fieldLabelMap[fieldId] ?? fieldId,
+    [fieldLabelMap],
+  );
 
   const [form, setForm] = useState<FormState>({
     agencia_id: user?.agencia_id ? String(user.agencia_id) : "",
@@ -151,8 +270,6 @@ export default function NewEvent() {
     tag_names: [],
     territorio_ids: [],
   });
-
-  const [eventSubStep, setEventSubStep] = useState(0);
 
   const [agencias, setAgencias] = useState<Agencia[]>([]);
   const [diretorias, setDiretorias] = useState<Diretoria[]>([]);
@@ -304,6 +421,20 @@ export default function NewEvent() {
     return next;
   }, [form, subtipos]);
 
+  const getFieldHelperText = useCallback(
+    (field: keyof FormState, base?: string) => {
+      const error = errors[field];
+      const isMissing = missingFieldsSet.has(field);
+      if (isMissing) {
+        if (error) return `${error} - Pendente`;
+        if (base) return `${base} - Pendente`;
+        return "Pendente";
+      }
+      return error ?? base;
+    },
+    [errors, missingFieldsSet],
+  );
+
   const canSubmit = useMemo(() => Object.keys(errors).length === 0, [errors]);
 
   const eventStepFields = useMemo(() => {
@@ -338,6 +469,25 @@ export default function NewEvent() {
       }
     }
   }, [errors, eventStepFields]);
+
+  useEffect(() => {
+    if (!activeFocusField || focusFieldStep == null) return;
+    if (lastFocusedFieldRef.current === activeFocusField) return;
+    if (eventSubStep !== focusFieldStep) {
+      setEventSubStep(focusFieldStep);
+    }
+  }, [eventSubStep, activeFocusField, focusFieldStep]);
+
+  useEffect(() => {
+    if (!activeFocusField || focusFieldStep == null) return;
+    if (eventSubStep !== focusFieldStep) return;
+    if (loadingEvento || loadingDomains) return;
+    if (lastFocusedFieldRef.current === activeFocusField) return;
+
+    if (focusFieldInView(activeFocusField)) {
+      lastFocusedFieldRef.current = activeFocusField;
+    }
+  }, [eventSubStep, activeFocusField, focusFieldStep, loadingEvento, loadingDomains, focusFieldInView]);
 
   const handleBackStep = () => {
     setSubmitAttempted(false);
@@ -586,6 +736,37 @@ export default function NewEvent() {
               ))}
             </Stepper>
 
+            {missingFieldsForList.length ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  borderColor: "rgba(255, 167, 38, 0.6)",
+                  bgcolor: "rgba(255, 243, 224, 0.6)",
+                }}
+              >
+                <Stack spacing={1}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Campos pendentes ({missingFieldsForList.length})
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {missingFieldsForList.map((fieldId) => (
+                      <Button
+                        key={fieldId}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handlePendingFieldClick(fieldId)}
+                        sx={{ textTransform: "none", borderRadius: 999, fontWeight: 600 }}
+                      >
+                        {getFieldLabel(fieldId)}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Stack>
+              </Paper>
+            ) : null}
+
             {eventSubStep === 0 ? (
               <Box>
                 <Typography variant="h6" fontWeight={800}>
@@ -594,7 +775,8 @@ export default function NewEvent() {
 
                 <Stack spacing={2} sx={{ pt: 1 }}>
                   {canPickAgencia ? (
-                    <Autocomplete
+                    <Box ref={setFieldRef("agencia_id")} sx={getFieldSx("agencia_id")}>
+                      <Autocomplete
                       options={agencias}
                       value={agencias.find((a) => a.id === parseId(form.agencia_id)) ?? null}
                       onChange={(_, value) =>
@@ -609,18 +791,21 @@ export default function NewEvent() {
                           {...params}
                           label="Agência"
                           fullWidth
-                          helperText="Opcional"
+                          helperText={getFieldHelperText("agencia_id", "Opcional")}
                         />
                       )}
-                    />
+                      />
+                    </Box>
                   ) : (
-                    <TextField
+                    <Box ref={setFieldRef("agencia_id")} sx={getFieldSx("agencia_id")}>
+                      <TextField
                       label="Agência"
                       value={form.agencia_id ? `#${form.agencia_id}` : ""}
                       disabled
                       fullWidth
-                      helperText="Agência definida pelo seu usuário"
-                    />
+                      helperText={getFieldHelperText("agencia_id", "Agência definida pelo seu usuário")}
+                      />
+                    </Box>
                   )}
 
                   <Box display="flex" justifyContent={{ xs: "flex-start", sm: "flex-end" }}>
@@ -645,114 +830,140 @@ export default function NewEvent() {
               </Typography>
 
               <Stack spacing={2} sx={{ pt: 1 }}>
-                <TextField
-                  label="Nome"
-                  value={form.nome}
-                  onChange={handleChange("nome")}
-                  required
-                  fullWidth
-                  error={Boolean(errors.nome)}
-                  helperText={errors.nome}
-                />
+                <Box ref={setFieldRef("nome")} sx={getFieldSx("nome")}>
+                  <TextField
+                    label="Nome"
+                    value={form.nome}
+                    onChange={handleChange("nome")}
+                    required
+                    fullWidth
+                    error={Boolean(errors.nome)}
+                    helperText={getFieldHelperText("nome")}
+                  />
+                </Box>
 
-                <TextField
-                  label="Descrição"
-                  value={form.descricao}
-                  onChange={handleChange("descricao")}
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  error={Boolean(errors.descricao)}
-                  helperText={errors.descricao ?? "Opcional (máximo 240 caracteres)"}
-                />
+                <Box ref={setFieldRef("descricao")} sx={getFieldSx("descricao")}>
+                  <TextField
+                    label="Descrição"
+                    value={form.descricao}
+                    onChange={handleChange("descricao")}
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    error={Boolean(errors.descricao)}
+                    helperText={getFieldHelperText("descricao", "Opcional (máximo 240 caracteres)")}
+                  />
+                </Box>
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                  <Autocomplete
-                    options={UF_OPTIONS}
-                    value={form.estado ? form.estado : null}
-                    onChange={handleEstadoChange}
-                    disabled={loadingDomains}
-                    sx={{ width: { xs: "100%", sm: 120 }, flex: { sm: "0 0 120px" } }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="UF"
-                        required
-                        error={Boolean(errors.estado)}
-                        helperText={errors.estado}
-                      />
-                    )}
-                  />
+                  <Box
+                    ref={setFieldRef("estado")}
+                    sx={getFieldSx("estado", { width: { xs: "100%", sm: 120 }, flex: { sm: "0 0 120px" } })}
+                  >
+                    <Autocomplete
+                      options={UF_OPTIONS}
+                      value={form.estado ? form.estado : null}
+                      onChange={handleEstadoChange}
+                      disabled={loadingDomains}
+                      sx={{ width: "100%" }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="UF"
+                          required
+                          error={Boolean(errors.estado)}
+                          helperText={getFieldHelperText("estado")}
+                        />
+                      )}
+                    />
+                  </Box>
 
-                  <Autocomplete
-                    freeSolo
-                    options={cidades}
-                    sx={{ flex: 1, width: "100%" }}
-                    inputValue={form.cidade}
-                    onInputChange={(_, value) => setForm((prev) => ({ ...prev, cidade: value }))}
-                    onChange={(_, value) =>
-                      setForm((prev) => ({ ...prev, cidade: typeof value === "string" ? value : "" }))
-                    }
-                    loading={loadingCidades}
-                    disabled={!normalizeText(form.estado) || loadingDomains}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Cidade"
-                        required
-                        fullWidth
-                        error={Boolean(errors.cidade)}
-                        helperText={errors.cidade}
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {loadingCidades ? <CircularProgress color="inherit" size={18} /> : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        }}
-                      />
-                    )}
-                  />
+                  <Box ref={setFieldRef("cidade")} sx={getFieldSx("cidade", { flex: 1, width: "100%" })}>
+                    <Autocomplete
+                      freeSolo
+                      options={cidades}
+                      sx={{ flex: 1, width: "100%" }}
+                      inputValue={form.cidade}
+                      onInputChange={(_, value) => setForm((prev) => ({ ...prev, cidade: value }))}
+                      onChange={(_, value) =>
+                        setForm((prev) => ({ ...prev, cidade: typeof value === "string" ? value : "" }))
+                      }
+                      loading={loadingCidades}
+                      disabled={!normalizeText(form.estado) || loadingDomains}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Cidade"
+                          required
+                          fullWidth
+                          error={Boolean(errors.cidade)}
+                          helperText={getFieldHelperText("cidade")}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {loadingCidades ? <CircularProgress color="inherit" size={18} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  </Box>
                 </Stack>
 
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                  <TextField
-                    label="Data de início"
-                    type="date"
-                    value={form.data_inicio_prevista}
-                    onChange={handleChange("data_inicio_prevista")}
-                    required
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    error={Boolean(errors.data_inicio_prevista)}
-                    helperText={errors.data_inicio_prevista}
-                  />
-                  <TextField
-                    label="Data de fim"
-                    type="date"
-                    value={form.data_fim_prevista}
-                    onChange={handleChange("data_fim_prevista")}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    error={Boolean(errors.data_fim_prevista)}
-                    helperText={errors.data_fim_prevista ?? "Opcional"}
-                  />
-                  <TextField
-                    label="Investimento"
-                    value={form.investimento}
-                    onChange={handleChange("investimento")}
-                    fullWidth
-                    type="number"
-                    inputMode="decimal"
-                    inputProps={{ step: "0.01", min: 0 }}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">R$</InputAdornment>,
-                    }}
-                    error={Boolean(errors.investimento)}
-                    helperText={errors.investimento ?? "Opcional"}
-                  />
+                  <Box
+                    ref={setFieldRef("data_inicio_prevista")}
+                    sx={getFieldSx("data_inicio_prevista", { flex: 1, width: "100%" })}
+                  >
+                    <TextField
+                      label="Data de início"
+                      type="date"
+                      value={form.data_inicio_prevista}
+                      onChange={handleChange("data_inicio_prevista")}
+                      required
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      error={Boolean(errors.data_inicio_prevista)}
+                      helperText={getFieldHelperText("data_inicio_prevista")}
+                    />
+                  </Box>
+                  <Box
+                    ref={setFieldRef("data_fim_prevista")}
+                    sx={getFieldSx("data_fim_prevista", { flex: 1, width: "100%" })}
+                  >
+                    <TextField
+                      label="Data de fim"
+                      type="date"
+                      value={form.data_fim_prevista}
+                      onChange={handleChange("data_fim_prevista")}
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      error={Boolean(errors.data_fim_prevista)}
+                      helperText={getFieldHelperText("data_fim_prevista", "Opcional")}
+                    />
+                  </Box>
+                  <Box
+                    ref={setFieldRef("investimento")}
+                    sx={getFieldSx("investimento", { flex: 1, width: "100%" })}
+                  >
+                    <TextField
+                      label="Investimento"
+                      value={form.investimento}
+                      onChange={handleChange("investimento")}
+                      fullWidth
+                      type="number"
+                      inputMode="decimal"
+                      inputProps={{ step: "0.01", min: 0 }}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">R$</InputAdornment>,
+                      }}
+                      error={Boolean(errors.investimento)}
+                      helperText={getFieldHelperText("investimento", "Opcional")}
+                    />
+                  </Box>
                 </Stack>
               </Stack>
             </Box>
@@ -765,196 +976,210 @@ export default function NewEvent() {
                 </Typography>
 
               <Stack spacing={2} sx={{ pt: 1 }}>
-                <Autocomplete
-                  options={diretorias}
-                  value={selectedDiretoria}
-                  onChange={(_, value) =>
-                    setForm((prev) => ({ ...prev, diretoria_id: value ? String(value.id) : "" }))
-                  }
-                  getOptionLabel={(option) => option.nome}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  disabled={loadingDomains}
-                  fullWidth
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Diretoria"
-                      fullWidth
-                      helperText="Opcional"
-                    />
-                  )}
-                />
-
-                <Autocomplete
-                  options={divisoesDemandantes}
-                  value={selectedDivisaoDemandante}
-                  onChange={(_, value) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      divisao_demandante_id: value ? String(value.id) : "",
-                    }))
-                  }
-                  getOptionLabel={(option) => option.nome}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  disabled={loadingDomains}
-                  fullWidth
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Divisão demandante"
-                      placeholder="Selecione uma Divisão demandante"
-                      fullWidth
-                      error={Boolean(errors.divisao_demandante_id)}
-                      helperText={errors.divisao_demandante_id}
-                    />
-                  )}
-                />
-
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Box ref={setFieldRef("diretoria_id")} sx={getFieldSx("diretoria_id")}>
                   <Autocomplete
-                    options={tipos}
-                    value={selectedTipo}
-                    onChange={handleTipoChange}
+                    options={diretorias}
+                    value={selectedDiretoria}
+                    onChange={(_, value) =>
+                      setForm((prev) => ({ ...prev, diretoria_id: value ? String(value.id) : "" }))
+                    }
                     getOptionLabel={(option) => option.nome}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     disabled={loadingDomains}
-                    sx={{ flex: 1 }}
+                    fullWidth
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="Tipo de evento"
-                        placeholder="Selecione um Tipo de Evento"
+                        label="Diretoria"
                         fullWidth
-                        helperText="Opcional"
+                        helperText={getFieldHelperText("diretoria_id", "Opcional")}
                       />
                     )}
                   />
+                </Box>
 
+                <Box ref={setFieldRef("divisao_demandante_id")} sx={getFieldSx("divisao_demandante_id")}>
                   <Autocomplete
-                    options={subtipos}
-                    value={selectedSubtipo}
+                    options={divisoesDemandantes}
+                    value={selectedDivisaoDemandante}
                     onChange={(_, value) =>
-                      setForm((prev) => ({ ...prev, subtipo_id: value ? String(value.id) : "" }))
+                      setForm((prev) => ({
+                        ...prev,
+                        divisao_demandante_id: value ? String(value.id) : "",
+                      }))
                     }
                     getOptionLabel={(option) => option.nome}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
-                    disabled={!selectedTipoId || loadingSubtipos || loadingDomains}
-                    loading={loadingSubtipos}
-                    sx={{ flex: 1 }}
+                    disabled={loadingDomains}
+                    fullWidth
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="Subtipo"
-                        placeholder="Selecione um Subtipo"
+                        label="Divisão demandante"
+                        placeholder="Selecione uma Divisão demandante"
                         fullWidth
-                        error={Boolean(errors.subtipo_id)}
-                        helperText={errors.subtipo_id}
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {loadingSubtipos ? <CircularProgress color="inherit" size={18} /> : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        }}
+                        error={Boolean(errors.divisao_demandante_id)}
+                        helperText={getFieldHelperText("divisao_demandante_id")}
                       />
                     )}
                   />
+                </Box>
+
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <Box ref={setFieldRef("tipo_id")} sx={getFieldSx("tipo_id", { flex: 1 })}>
+                    <Autocomplete
+                      options={tipos}
+                      value={selectedTipo}
+                      onChange={handleTipoChange}
+                      getOptionLabel={(option) => option.nome}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      disabled={loadingDomains}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Tipo de evento"
+                          placeholder="Selecione um Tipo de Evento"
+                          fullWidth
+                          helperText={getFieldHelperText("tipo_id", "Opcional")}
+                        />
+                      )}
+                    />
+                  </Box>
+
+                  <Box ref={setFieldRef("subtipo_id")} sx={getFieldSx("subtipo_id", { flex: 1 })}>
+                    <Autocomplete
+                      options={subtipos}
+                      value={selectedSubtipo}
+                      onChange={(_, value) =>
+                        setForm((prev) => ({ ...prev, subtipo_id: value ? String(value.id) : "" }))
+                      }
+                      getOptionLabel={(option) => option.nome}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      disabled={!selectedTipoId || loadingSubtipos || loadingDomains}
+                      loading={loadingSubtipos}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Subtipo"
+                          placeholder="Selecione um Subtipo"
+                          fullWidth
+                          error={Boolean(errors.subtipo_id)}
+                          helperText={getFieldHelperText("subtipo_id")}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {loadingSubtipos ? <CircularProgress color="inherit" size={18} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  </Box>
                 </Stack>
 
-                <Autocomplete
-                  multiple
-                  options={territorios}
-                  value={selectedTerritorios}
-                  onChange={(_, values) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      territorio_ids: values.map((v) => String(v.id)),
-                    }))
-                  }
-                  disableCloseOnSelect
-                  getOptionLabel={(option) => option.nome}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  disabled={loadingDomains}
-                  fullWidth
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip {...getTagProps({ index })} key={option.id} label={option.nome} size="small" />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Territórios"
-                      placeholder={selectedTerritorios.length ? "" : "Selecione os territórios"}
-                      fullWidth
-                    />
-                  )}
-                />
+                <Box ref={setFieldRef("territorio_ids")} sx={getFieldSx("territorio_ids")}>
+                  <Autocomplete
+                    multiple
+                    options={territorios}
+                    value={selectedTerritorios}
+                    onChange={(_, values) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        territorio_ids: values.map((v) => String(v.id)),
+                      }))
+                    }
+                    disableCloseOnSelect
+                    getOptionLabel={(option) => option.nome}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    disabled={loadingDomains}
+                    fullWidth
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip {...getTagProps({ index })} key={option.id} label={option.nome} size="small" />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Territórios"
+                        placeholder={selectedTerritorios.length ? "" : "Selecione os territórios"}
+                        fullWidth
+                        helperText={getFieldHelperText("territorio_ids")}
+                      />
+                    )}
+                  />
+                </Box>
 
-                <Autocomplete<Tag, true, false, true>
-                  multiple
-                  freeSolo
-                  options={tags}
-                  value={selectedTagValues}
-                  onChange={(_, values) => {
-                    const ids: string[] = [];
-                    const names: string[] = [];
-                    const seenIds = new Set<string>();
-                    const seenNames = new Set<string>();
+                <Box ref={setFieldRef("tag_ids")} sx={getFieldSx("tag_ids")}>
+                  <Autocomplete<Tag, true, false, true>
+                    multiple
+                    freeSolo
+                    options={tags}
+                    value={selectedTagValues}
+                    onChange={(_, values) => {
+                      const ids: string[] = [];
+                      const names: string[] = [];
+                      const seenIds = new Set<string>();
+                      const seenNames = new Set<string>();
 
-                    for (const value of values) {
-                      if (typeof value === "string") {
-                        const name = normalizeText(value);
-                        if (!name) continue;
-                        const existing = tagsByLowerName.get(name.toLowerCase());
-                        if (existing) {
-                          const id = String(existing.id);
-                          if (!seenIds.has(id)) {
-                            seenIds.add(id);
-                            ids.push(id);
+                      for (const value of values) {
+                        if (typeof value === "string") {
+                          const name = normalizeText(value);
+                          if (!name) continue;
+                          const existing = tagsByLowerName.get(name.toLowerCase());
+                          if (existing) {
+                            const id = String(existing.id);
+                            if (!seenIds.has(id)) {
+                              seenIds.add(id);
+                              ids.push(id);
+                            }
+                            continue;
+                          }
+                          const key = name.toLowerCase();
+                          if (!seenNames.has(key)) {
+                            seenNames.add(key);
+                            names.push(name);
                           }
                           continue;
                         }
-                        const key = name.toLowerCase();
-                        if (!seenNames.has(key)) {
-                          seenNames.add(key);
-                          names.push(name);
+
+                        const id = String(value.id);
+                        if (!seenIds.has(id)) {
+                          seenIds.add(id);
+                          ids.push(id);
                         }
-                        continue;
                       }
 
-                      const id = String(value.id);
-                      if (!seenIds.has(id)) {
-                        seenIds.add(id);
-                        ids.push(id);
-                      }
+                      setForm((prev) => ({ ...prev, tag_ids: ids, tag_names: names }));
+                    }}
+                    disableCloseOnSelect
+                    getOptionLabel={(option) => (typeof option === "string" ? option : option.nome)}
+                    isOptionEqualToValue={(option, value) => typeof value !== "string" && option.id === value.id}
+                    disabled={loadingDomains}
+                    fullWidth
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const label = typeof option === "string" ? option : option.nome;
+                        const key = typeof option === "string" ? option : String(option.id);
+                        return <Chip {...getTagProps({ index })} key={key} label={label} size="small" />;
+                      })
                     }
-
-                    setForm((prev) => ({ ...prev, tag_ids: ids, tag_names: names }));
-                  }}
-                  disableCloseOnSelect
-                  getOptionLabel={(option) => (typeof option === "string" ? option : option.nome)}
-                  isOptionEqualToValue={(option, value) => typeof value !== "string" && option.id === value.id}
-                  disabled={loadingDomains}
-                  fullWidth
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => {
-                      const label = typeof option === "string" ? option : option.nome;
-                      const key = typeof option === "string" ? option : String(option.id);
-                      return <Chip {...getTagProps({ index })} key={key} label={label} size="small" />;
-                    })
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tags"
-                      fullWidth
-                      placeholder={selectedTagValues.length ? "" : "Selecione ou digite uma nova tag"}
-                    />
-                  )}
-                />
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tags"
+                        fullWidth
+                        placeholder={selectedTagValues.length ? "" : "Selecione ou digite uma nova tag"}
+                        helperText={getFieldHelperText("tag_ids")}
+                      />
+                    )}
+                  />
+                </Box>
               </Stack>
             </Box>
             ) : null}

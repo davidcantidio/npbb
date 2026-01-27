@@ -8,6 +8,8 @@ import re
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
+from types import SimpleNamespace
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi import File, UploadFile
@@ -69,10 +71,12 @@ from app.schemas.questionario import (
     QuestionarioPaginaRead,
 )
 from app.services.questionario import load_questionario_estrutura, replace_questionario_estrutura
+from app.services.data_health import compute_event_data_health, compute_event_missing_fields_details
 from app.utils.http_errors import raise_http_error
 from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
+telemetry_logger = logging.getLogger("app.telemetry")
 
 FORMULARIO_CAMPOS_CATALOGO = [
     "CPF",
@@ -194,8 +198,64 @@ def listar_eventos(
         count_query = count_query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
 
     total = session.exec(count_query).one()
-    items = session.exec(query.order_by(Evento.id.desc()).offset(skip).limit(limit)).all()
+    eventos = session.exec(query.order_by(Evento.id.desc()).offset(skip).limit(limit)).all()
     response.headers["X-Total-Count"] = str(total)
+
+    if not eventos:
+        return []
+
+    evento_ids = [e.id for e in eventos if e.id is not None]
+    status_ids = {e.status_id for e in eventos if e.status_id is not None}
+
+    status_nome_by_id: dict[int, str] = {}
+    if status_ids:
+        rows = session.exec(
+            select(StatusEvento.id, StatusEvento.nome).where(StatusEvento.id.in_(sorted(status_ids)))
+        ).all()
+        status_nome_by_id = {
+            int(row_id): str(nome)
+            for row_id, nome in rows
+            if row_id is not None and nome is not None
+        }
+
+    tag_ids_by_evento: dict[int, list[int]] = {}
+    territorio_ids_by_evento: dict[int, list[int]] = {}
+    if evento_ids:
+        tag_rows = session.exec(
+            select(EventoTag.evento_id, EventoTag.tag_id)
+            .where(EventoTag.evento_id.in_(evento_ids))
+            .order_by(EventoTag.evento_id, EventoTag.tag_id)
+        ).all()
+        for evento_id, tag_id in tag_rows:
+            if evento_id is None or tag_id is None:
+                continue
+            tag_ids_by_evento.setdefault(int(evento_id), []).append(int(tag_id))
+
+        territorio_rows = session.exec(
+            select(EventoTerritorio.evento_id, EventoTerritorio.territorio_id)
+            .where(EventoTerritorio.evento_id.in_(evento_ids))
+            .order_by(EventoTerritorio.evento_id, EventoTerritorio.territorio_id)
+        ).all()
+        for evento_id, territorio_id in territorio_rows:
+            if evento_id is None or territorio_id is None:
+                continue
+            territorio_ids_by_evento.setdefault(int(evento_id), []).append(int(territorio_id))
+
+    items: list[EventoListItem] = []
+    for evento in eventos:
+        eid = int(evento.id) if evento.id is not None else None
+        proxy_data = evento.model_dump()
+        proxy_data["tag_ids"] = tag_ids_by_evento.get(eid, []) if eid else []
+        proxy_data["territorio_ids"] = territorio_ids_by_evento.get(eid, []) if eid else []
+
+        data_health = compute_event_data_health(
+            SimpleNamespace(**proxy_data),
+            status_name=status_nome_by_id.get(evento.status_id),
+        )
+
+        item = EventoListItem.model_validate(evento, from_attributes=True)
+        items.append(item.model_copy(update={"data_health": data_health}))
+
     return items
 
 
@@ -1040,6 +1100,30 @@ def atualizar_evento(
     tag_ids_update = data.pop("tag_ids", None)
     territorio_ids_update = data.pop("territorio_ids", None)
 
+    before_tag_ids = session.exec(
+        select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)
+    ).all()
+    before_territorio_ids = session.exec(
+        select(EventoTerritorio.territorio_id)
+        .where(EventoTerritorio.evento_id == evento_id)
+        .order_by(EventoTerritorio.territorio_id)
+    ).all()
+
+    before_status_name = None
+    if evento.status_id:
+        status_before = session.get(StatusEvento, evento.status_id)
+        if status_before:
+            before_status_name = status_before.nome
+
+    before_proxy = SimpleNamespace(
+        **evento.model_dump(),
+        tag_ids=list(before_tag_ids),
+        territorio_ids=list(before_territorio_ids),
+    )
+    before_missing = compute_event_data_health(
+        before_proxy, status_name=before_status_name
+    )["missing_fields"]
+
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
         if "agencia_id" in data and data["agencia_id"] != evento.agencia_id:
             _raise_http(
@@ -1157,6 +1241,33 @@ def atualizar_evento(
         .where(EventoTerritorio.evento_id == evento_id)
         .order_by(EventoTerritorio.territorio_id)
     ).all()
+
+    status_after_name = before_status_name
+    if "status_id" in data:
+        status_after = session.get(StatusEvento, data.get("status_id"))
+        if status_after:
+            status_after_name = status_after.nome
+
+    after_proxy = SimpleNamespace(
+        **evento.model_dump(),
+        tag_ids=list(tag_ids_final),
+        territorio_ids=list(territorio_ids_final),
+    )
+    after_missing = compute_event_data_health(
+        after_proxy, status_name=status_after_name
+    )["missing_fields"]
+
+    completed_fields = [field for field in before_missing if field not in after_missing]
+    for field in completed_fields:
+        telemetry_logger.info(
+            "completed_missing_field",
+            extra={
+                "event_id": evento_id,
+                "evento_id": evento_id,
+                "field_id": field,
+                "user_id": getattr(current_user, "id", None),
+            },
+        )
 
     read = EventoRead.model_validate(evento, from_attributes=True)
     return read.model_copy(update={"tag_ids": list(tag_ids_final), "territorio_ids": list(territorio_ids_final)})
@@ -1720,3 +1831,61 @@ def obter_evento(
 
     read = EventoRead.model_validate(evento, from_attributes=True)
     return read.model_copy(update={"tag_ids": list(tag_ids), "territorio_ids": list(territorio_ids)})
+
+
+@router.get("/{evento_id}/missing-fields")
+@router.get("/{evento_id}/missing-fields/")
+def obter_campos_pendentes(
+    evento_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Retorna campos pendentes (com prioridade) para o evento."""
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+
+    tag_ids = session.exec(
+        select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)
+    ).all()
+    territorio_ids = session.exec(
+        select(EventoTerritorio.territorio_id)
+        .where(EventoTerritorio.evento_id == evento_id)
+        .order_by(EventoTerritorio.territorio_id)
+    ).all()
+
+    status_nome = None
+    if evento.status_id:
+        status = session.get(StatusEvento, evento.status_id)
+        if status:
+            status_nome = status.nome
+
+    proxy_data = evento.model_dump()
+    proxy_data["tag_ids"] = list(tag_ids)
+    proxy_data["territorio_ids"] = list(territorio_ids)
+
+    missing_details = compute_event_missing_fields_details(
+        SimpleNamespace(**proxy_data),
+        status_name=status_nome,
+    )
+
+    telemetry_logger.info(
+        "clicked_data_health",
+        extra={
+            "event_id": evento_id,
+            "evento_id": evento_id,
+            "field_id": "data_health",
+            "user_id": getattr(current_user, "id", None),
+        },
+    )
+
+    return {
+        "evento_id": evento_id,
+        "missing_fields": missing_details,
+        "total_missing": len(missing_details),
+        "last_calculated_at": now_utc(),
+    }

@@ -27,6 +27,8 @@ from app.models.models import (
     Usuario,
 )
 from app.utils.security import hash_password
+from app.services.data_health import compute_event_data_health
+from types import SimpleNamespace
 
 
 def make_engine():
@@ -1016,3 +1018,36 @@ def test_evento_export_csv_respeita_visibilidade_agencia(client, engine):
     assert e1_id is not None
     assert all(int(row["agencia_id"]) == ag1_id for row in rows)
     assert any(int(row["id"]) == e1_id for row in rows)
+
+
+def test_evento_missing_fields_endpoint_consistente(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento A1",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get(f"/evento/{evento.id}/missing-fields", headers=headers)
+    assert resp.status_code == 200
+    payload = resp.json()
+    returned_fields = [item["field"] for item in payload["missing_fields"]]
+
+    with Session(engine) as session:
+        fresh = session.get(Evento, evento.id)
+        status = session.get(StatusEvento, fresh.status_id)
+        proxy = SimpleNamespace(**fresh.model_dump(), tag_ids=[], territorio_ids=[])
+        expected = compute_event_data_health(proxy, status_name=status.nome)["missing_fields"]
+
+    assert returned_fields == expected

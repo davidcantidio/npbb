@@ -10,6 +10,19 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic import model_validator
 
 
+class DataHealthRead(BaseModel):
+    version: int
+    score: int | None
+    band: str
+    missing_fields: list[str] = Field(default_factory=list)
+    filled_weight: int
+    total_weight: int
+    urgency_factor: float
+    last_calculated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class EventoListItem(BaseModel):
     id: int
     qr_code_url: Optional[str] = None
@@ -27,6 +40,7 @@ class EventoListItem(BaseModel):
     diretoria_id: Optional[int] = None
     agencia_id: Optional[int] = None
     status_id: int
+    data_health: DataHealthRead | None = None
 
     created_at: datetime
     updated_at: datetime

@@ -711,9 +711,9 @@ export default function EventsList() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell width={180}>Ag?ncia</TableCell>
+                <TableCell width={180}>Agência</TableCell>
                 <TableCell width={260}>Nome</TableCell>
-                <TableCell width={224}>Per?odo</TableCell>
+                <TableCell width={224}>Período</TableCell>
                 <TableCell width={175}>Local</TableCell>
                 <TableCell width={160}>Diretoria</TableCell>
                 <TableCell width={136}>Investimento</TableCell>

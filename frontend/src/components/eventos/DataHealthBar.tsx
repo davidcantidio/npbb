@@ -1,7 +1,7 @@
 import { Box, Button, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStethoscope } from "@fortawesome/free-solid-svg-icons";
+import { faHeartPulse } from "@fortawesome/free-solid-svg-icons";
 import { useMemo } from "react";
 
 export type DataHealthBand = "critical" | "low" | "medium" | "high" | "excellent" | "na";
@@ -33,7 +33,7 @@ export function DataHealthBar({
 
   const bandColor = useMemo(() => {
     if (safeScore == null) return theme.palette.grey[400];
-    if (safeScore <= 25) return theme.palette.error.main;
+    if (safeScore <= 33) return theme.palette.error.main;
     if (safeScore <= 50) return theme.palette.warning.main;
     if (safeScore <= 75) return theme.palette.warning.light;
     return theme.palette.success.main;
@@ -135,13 +135,13 @@ export function DataHealthBar({
           <Box
             component="span"
             sx={{
-              color: theme.palette.text.primary,
+              color: safeScore == null ? theme.palette.grey[400] : bandColor,
               display: "inline-flex",
               alignItems: "center",
               fontSize: badgeHeight,
             }}
           >
-            <FontAwesomeIcon icon={faStethoscope} />
+            <FontAwesomeIcon icon={faHeartPulse} />
           </Box>
           <Box
             sx={{

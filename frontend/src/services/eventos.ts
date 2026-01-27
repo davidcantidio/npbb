@@ -16,9 +16,21 @@ export type EventoListItem = {
   diretoria_id?: number | null;
   agencia_id?: number | null;
   status_id: number;
+  data_health?: DataHealth | null;
 
   created_at: string;
   updated_at: string;
+};
+
+export type DataHealth = {
+  version: number;
+  score: number | null;
+  band: string;
+  missing_fields: string[];
+  filled_weight: number;
+  total_weight: number;
+  urgency_factor: number;
+  last_calculated_at: string;
 };
 
 export type EventoRead = {

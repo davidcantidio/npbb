@@ -7,15 +7,17 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlmodel import Session, select
 
+from app.core.auth import get_current_user
 from app.db.database import get_session
-from app.models.models import Agencia, Funcionario, Usuario
+from app.models.models import Agencia, Diretoria, Funcionario, Usuario
+from app.schemas.dominios import DiretoriaRead
 from app.schemas.password_reset import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
 )
-from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioTipo
+from app.schemas.usuario import UsuarioCreate, UsuarioDiretoriaUpdate, UsuarioRead, UsuarioTipo
 from app.services.password_reset import PasswordResetError, request_password_reset, reset_password
 from app.utils.security import hash_password
 
@@ -23,6 +25,18 @@ router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{6,}$")
 MATRICULA_RE = re.compile(r"^[A-Za-z][0-9]{1,16}$")
+
+
+def _generate_chave_c(session: Session, seed: str) -> str:
+    base_key = "".join(ch for ch in seed if ch.isalnum()).upper() or "BBUSER"
+    base_key = base_key[:16]
+    chave_c = base_key
+    suffix = 1
+    while session.exec(select(Funcionario).where(Funcionario.chave_c == chave_c)).first():
+        suffix_str = str(suffix)
+        chave_c = f"{base_key[: max(1, 16 - len(suffix_str))]}{suffix_str}"
+        suffix += 1
+    return chave_c
 
 
 def _raise_http(status_code: int, code: str, message: str, field: str | None = None) -> None:
@@ -79,19 +93,41 @@ def criar_usuario(
                 message="Para BB, use email @bb.com.br",
                 field="email",
             )
-        matricula = (usuario_in.matricula or "").strip()
-        if not MATRICULA_RE.match(matricula):
-            _raise_http(
-                status.HTTP_400_BAD_REQUEST,
-                code="MATRICULA_INVALID",
-                message="Matricula invalida (ex.: A123)",
-                field="matricula",
+        if usuario_in.matricula:
+            matricula = (usuario_in.matricula or "").strip()
+            if not MATRICULA_RE.match(matricula):
+                _raise_http(
+                    status.HTTP_400_BAD_REQUEST,
+                    code="MATRICULA_INVALID",
+                    message="Matricula invalida (ex.: A123)",
+                    field="matricula",
+                )
+            matricula_value = matricula.lower()
+            funcionario = session.exec(
+                select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_value)
+            ).first()
+            if funcionario:
+                funcionario_id = funcionario.id
+        elif usuario_in.diretoria_id is not None:
+            diretoria = session.get(Diretoria, usuario_in.diretoria_id)
+            if not diretoria:
+                _raise_http(
+                    status.HTTP_400_BAD_REQUEST,
+                    code="DIRETORIA_NOT_FOUND",
+                    message="Diretoria nao encontrada",
+                    field="diretoria_id",
+                )
+            email_local = email.split("@")[0]
+            chave_c = _generate_chave_c(session, email_local)
+            funcionario = Funcionario(
+                nome=email_local or email,
+                chave_c=chave_c,
+                diretoria_id=int(diretoria.id),
+                email=email,
             )
-        matricula_value = matricula.lower()
-        funcionario = session.exec(
-            select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_value)
-        ).first()
-        if funcionario:
+            session.add(funcionario)
+            session.commit()
+            session.refresh(funcionario)
             funcionario_id = funcionario.id
 
     elif usuario_in.tipo_usuario == UsuarioTipo.NPBB:
@@ -211,6 +247,64 @@ def criar_usuario(
         )
 
     return usuario
+
+
+@router.post("/diretoria", response_model=UsuarioRead)
+def atualizar_diretoria(
+    payload: UsuarioDiretoriaUpdate,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.tipo_usuario != UsuarioTipo.BB:
+        _raise_http(
+            status.HTTP_403_FORBIDDEN,
+            code="FORBIDDEN",
+            message="Acesso restrito",
+        )
+
+    diretoria = session.get(Diretoria, payload.diretoria_id)
+    if not diretoria:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="DIRETORIA_NOT_FOUND",
+            message="Diretoria nao encontrada",
+            field="diretoria_id",
+        )
+
+    funcionario_id: int | None = None
+    if current_user.funcionario_id:
+        funcionario = session.get(Funcionario, current_user.funcionario_id)
+        if funcionario:
+            funcionario.diretoria_id = int(diretoria.id)
+            session.add(funcionario)
+            session.commit()
+            funcionario_id = funcionario.id
+
+    if not funcionario_id:
+        email = str(current_user.email or "").strip().lower()
+        email_local = email.split("@")[0]
+        chave_c = _generate_chave_c(session, email_local)
+        funcionario = Funcionario(
+            nome=email_local or email,
+            chave_c=chave_c,
+            diretoria_id=int(diretoria.id),
+            email=email,
+        )
+        session.add(funcionario)
+        session.commit()
+        session.refresh(funcionario)
+        current_user.funcionario_id = funcionario.id
+        session.add(current_user)
+        session.commit()
+
+    session.refresh(current_user)
+    return UsuarioRead.model_validate(current_user, from_attributes=True)
+
+
+@router.get("/diretorias", response_model=list[DiretoriaRead])
+def listar_diretorias_publicas(session: Session = Depends(get_session)):
+    """Lista diretorias para cadastro BB (rota publica)."""
+    return session.exec(select(Diretoria).order_by(Diretoria.nome)).all()
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)

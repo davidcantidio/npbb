@@ -10,12 +10,18 @@ export type UsuarioRead = {
   agencia_id?: number | null;
 };
 
+export type Diretoria = {
+  id: number;
+  nome: string;
+};
+
 export type UsuarioCreate = {
   email: string;
   password: string;
   tipo_usuario: UsuarioTipo;
   matricula?: string;
   agencia_id?: number;
+  diretoria_id?: number;
 };
 
 export type ApiErrorDetail =
@@ -66,6 +72,36 @@ export async function createUsuario(payload: UsuarioCreate): Promise<UsuarioRead
     throw new ApiError(res.status, detail);
   }
 
+  return data as UsuarioRead;
+}
+
+export async function listDiretoriasPublic(): Promise<Diretoria[]> {
+  const res = await fetch(`${API_BASE_URL}/usuarios/diretorias`);
+  const text = await res.text();
+  const data = await parseJsonSafe(text);
+  if (!res.ok) {
+    const detail = (data as any)?.detail ?? res.statusText;
+    throw new ApiError(res.status, detail);
+  }
+  return data as Diretoria[];
+}
+
+export async function setDiretoriaForUser(
+  token: string,
+  diretoria_id: number,
+): Promise<UsuarioRead> {
+  const res = await fetch(`${API_BASE_URL}/usuarios/diretoria`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ diretoria_id }),
+  });
+
+  const text = await res.text();
+  const data = await parseJsonSafe(text);
+  if (!res.ok) {
+    const detail = (data as any)?.detail ?? res.statusText;
+    throw new ApiError(res.status, detail);
+  }
   return data as UsuarioRead;
 }
 

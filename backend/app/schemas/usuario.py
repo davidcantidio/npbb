@@ -20,6 +20,7 @@ class UsuarioCreate(BaseModel):
     tipo_usuario: UsuarioTipo
     matricula: Optional[str] = None
     agencia_id: Optional[int] = None
+    diretoria_id: Optional[int] = None
 
     @model_validator(mode="after")
     def validate_por_tipo(self):
@@ -28,14 +29,20 @@ class UsuarioCreate(BaseModel):
                 raise ValueError("Usuario do tipo 'agencia' deve ter agencia_id preenchido")
             if self.matricula:
                 raise ValueError("Usuario do tipo 'agencia' nao deve ter matricula")
+            if self.diretoria_id is not None:
+                raise ValueError("Usuario do tipo 'agencia' nao deve ter diretoria_id")
         elif self.tipo_usuario == UsuarioTipo.BB:
-            if not self.matricula:
-                raise ValueError("Usuario do tipo 'bb' deve ter matricula preenchida")
+            if not self.matricula and self.diretoria_id is None:
+                raise ValueError("Usuario do tipo 'bb' deve informar matricula ou diretoria")
+            if self.matricula and self.diretoria_id is not None:
+                raise ValueError("Usuario do tipo 'bb' deve informar apenas matricula ou diretoria")
             if self.agencia_id is not None:
                 raise ValueError("Usuario do tipo 'bb' nao deve ter agencia_id")
         else:  # NPBB
             if self.agencia_id is not None:
                 raise ValueError("Usuario do tipo 'npbb' nao deve ter agencia_id")
+            if self.diretoria_id is not None:
+                raise ValueError("Usuario do tipo 'npbb' nao deve ter diretoria_id")
         return self
 
 
@@ -50,3 +57,7 @@ class UsuarioRead(BaseModel):
     agencia_id: Optional[int]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UsuarioDiretoriaUpdate(BaseModel):
+    diretoria_id: int

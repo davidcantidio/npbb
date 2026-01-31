@@ -22,7 +22,12 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { Agencia, listAgencias } from "../services/agencias";
-import { ApiError, createUsuario } from "../services/usuarios";
+import {
+  ApiError,
+  createUsuario,
+  listDiretoriasPublic,
+  type Diretoria,
+} from "../services/usuarios";
 import { useAuth } from "../store/auth";
 
 type UserType = "bb" | "npbb" | "agencia";
@@ -39,6 +44,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [matriculaBB, setMatriculaBB] = useState("");
+  const [diretoriaId, setDiretoriaId] = useState<string>("");
   const [agenciaId, setAgenciaId] = useState<string>("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -50,6 +56,9 @@ export default function Register() {
   const [agencias, setAgencias] = useState<Agencia[]>([]);
   const [agenciasLoading, setAgenciasLoading] = useState(false);
   const [agenciasError, setAgenciasError] = useState<string | null>(null);
+  const [diretorias, setDiretorias] = useState<Diretoria[]>([]);
+  const [diretoriasLoading, setDiretoriasLoading] = useState(false);
+  const [diretoriasError, setDiretoriasError] = useState<string | null>(null);
 
   const isAgency = userType === "agencia";
   const isStepOptional = (step: number) => step === 1 && !isAgency;
@@ -67,6 +76,20 @@ export default function Register() {
       .then((items) => setAgencias(items))
       .catch((err: any) => setAgenciasError(err?.message || "Erro ao carregar agencias"))
       .finally(() => setAgenciasLoading(false));
+  }, [userType]);
+
+  useEffect(() => {
+    if (userType !== "bb") {
+      setDiretoriasError(null);
+      return;
+    }
+
+    setDiretoriasLoading(true);
+    setDiretoriasError(null);
+    listDiretoriasPublic()
+      .then((items) => setDiretorias(items))
+      .catch((err: any) => setDiretoriasError(err?.message || "Erro ao carregar diretorias"))
+      .finally(() => setDiretoriasLoading(false));
   }, [userType]);
 
   const errors = useMemo(() => {
@@ -100,15 +123,17 @@ export default function Register() {
     else if (confirmPassword !== password) next.confirmPassword = "As senhas nao coincidem";
 
     if (userType === "bb") {
-      if (!matriculaBB) next.matriculaBB = "Informe a matricula BB";
-      else if (!/^[A-Za-z][0-9]{1,16}$/.test(matriculaBB))
-        next.matriculaBB = "Formato invalido (ex.: A123)";
+      if (!diretoriaId) next.diretoriaId = "Selecione sua diretoria";
+      // Matricula BB desativada (Jan/2026). Para reativar, use o bloco abaixo.
+      // if (!matriculaBB) next.matriculaBB = "Informe a matricula BB";
+      // else if (!/^[A-Za-z][0-9]{1,16}$/.test(matriculaBB))
+      //   next.matriculaBB = "Formato invalido (ex.: A123)";
     }
 
     if (userType === "agencia" && !agenciaId) next.agenciaId = "Selecione uma agencia";
 
     return next;
-  }, [userType, email, password, confirmPassword, matriculaBB, agenciaId]);
+  }, [userType, email, password, confirmPassword, matriculaBB, agenciaId, diretoriaId]);
 
   const canSubmit = Object.keys(errors).length === 0;
   const canContinueFromType = Boolean(userType);
@@ -161,7 +186,7 @@ export default function Register() {
         email: email.trim(),
         password,
         tipo_usuario: userType,
-        ...(userType === "bb" ? { matricula: matriculaBB.trim() } : {}),
+        ...(userType === "bb" ? { diretoria_id: Number(diretoriaId) } : {}),
         ...(userType === "agencia" ? { agencia_id: Number(agenciaId) } : {}),
       });
 
@@ -177,7 +202,13 @@ export default function Register() {
         setSubmitError(message);
         if (field) {
           const mappedField =
-            field === "agencia_id" ? "agenciaId" : field === "matricula" ? "matriculaBB" : field;
+            field === "agencia_id"
+              ? "agenciaId"
+              : field === "matricula"
+                ? "matriculaBB"
+                : field === "diretoria_id"
+                  ? "diretoriaId"
+                  : field;
           setServerFieldErrors((prev) => ({ ...prev, [mappedField]: message }));
         }
       } else {
@@ -251,6 +282,7 @@ export default function Register() {
                       const next = e.target.value as UserType;
                       setUserType(next);
                       if (next !== "bb") setMatriculaBB("");
+                      if (next !== "bb") setDiretoriaId("");
                       if (next !== "agencia") setAgenciaId("");
                       setSubmitAttempted(false);
                       setSubmitError(null);
@@ -435,23 +467,82 @@ export default function Register() {
                 />
 
                 {userType === "bb" && (
-                  <TextField
-                    label="Matricula BB"
-                    value={matriculaBB}
-                    onChange={(e) => {
-                      setMatriculaBB(e.target.value);
-                      setSubmitError(null);
-                      setServerFieldErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.matriculaBB;
-                        return next;
-                      });
-                    }}
-                    required
-                    fullWidth
-                    error={Boolean(errors.matriculaBB || serverFieldErrors.matriculaBB)}
-                    helperText={serverFieldErrors.matriculaBB ?? errors.matriculaBB}
-                  />
+                  <>
+                    <Autocomplete
+                      options={diretorias}
+                      loading={diretoriasLoading}
+                      value={
+                        diretorias.find((d) => d.id === (diretoriaId ? Number(diretoriaId) : -1)) ??
+                        null
+                      }
+                      onChange={(_, value) => {
+                        setDiretoriaId(value ? String(value.id) : "");
+                        setSubmitError(null);
+                        setServerFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.diretoriaId;
+                          return next;
+                        });
+                      }}
+                      getOptionLabel={(option) => option.nome}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      fullWidth
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Diretoria"
+                          placeholder="Selecione sua diretoria"
+                          error={Boolean(errors.diretoriaId || serverFieldErrors.diretoriaId)}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {diretoriasLoading ? (
+                                  <CircularProgress color="inherit" size={18} />
+                                ) : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                    {errors.diretoriaId && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                        {errors.diretoriaId}
+                      </Typography>
+                    )}
+                    {serverFieldErrors.diretoriaId && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                        {serverFieldErrors.diretoriaId}
+                      </Typography>
+                    )}
+                    {diretoriasError && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                        {diretoriasError}
+                      </Typography>
+                    )}
+                    {/* Matricula BB desativada (Jan/2026). Para reativar, descomentar. */}
+                    {/*
+                    <TextField
+                      label="Matricula BB"
+                      value={matriculaBB}
+                      onChange={(e) => {
+                        setMatriculaBB(e.target.value);
+                        setSubmitError(null);
+                        setServerFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.matriculaBB;
+                          return next;
+                        });
+                      }}
+                      required
+                      fullWidth
+                      error={Boolean(errors.matriculaBB || serverFieldErrors.matriculaBB)}
+                      helperText={serverFieldErrors.matriculaBB ?? errors.matriculaBB}
+                    />
+                    */}
+                  </>
                 )}
 
                 <Box display="flex" justifyContent="space-between" gap={2}>

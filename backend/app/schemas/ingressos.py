@@ -39,3 +39,18 @@ class IngressoAtivoListItem(BaseModel):
     data_fim: date | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SolicitacaoIngressoAdminListItem(BaseModel):
+    id: int
+    evento_id: int
+    evento_nome: str
+    diretoria_id: int
+    diretoria_nome: str
+    solicitante_email: str
+    indicado_email: str | None
+    tipo: SolicitacaoIngressoTipo
+    status: SolicitacaoIngressoStatus
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

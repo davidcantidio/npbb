@@ -18,19 +18,19 @@ Print do sistema original:
 ---
 
 ## 3. Estrutura da Tela
-### 3.1 Menu lateral
+### 3.1 Menu principal no cabecalho
 - Dashboard (pagina atual)
 - Eventos
 - Ativos (cotas de ingressos)
 - Leads (na nova versao pode ser removido ou virar submenu)
 - Cupons
 - Convidadores / Convidados (opcional - pode virar link externo na area de Ativos)
-
-### 3.2 Barra superior
-- Botao tela cheia
-- Botao atualizar
-- Botao modo escuro
 - Perfil do usuario (nome + permissao)
+- Acoes gerais (tela cheia, atualizar, modo escuro), quando aplicavel
+
+### 3.2 Painel lateral (filtros e funcionalidades)
+- Espaco reservado para filtros e acoes contextuais da tela atual.
+- Itens do painel variam por tela e refletem o conteudo principal.
 
 ### 3.3 Filtros
 | Filtro | Tipo | Observacao |

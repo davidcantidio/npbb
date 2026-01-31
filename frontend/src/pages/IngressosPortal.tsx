@@ -144,7 +144,7 @@ export default function IngressosPortal() {
   }, [needsDiretoria, loadDiretorias]);
 
   const showSkeletons = loading && items.length === 0;
-  const isValidEmail = (value: string) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value);
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   const isTerceiro = tipo === "TERCEIRO";
   const isEmailValid =
     !isTerceiro || (emailTerceiro.trim() !== "" && isValidEmail(emailTerceiro.trim()));

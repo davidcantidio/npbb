@@ -20,12 +20,14 @@ Print do sistema original:
 
 ## 3. Estrutura da Tela
 
-### 3.1 Header Superior
+### 3.1 Cabecalho da pagina
+- Menu principal no cabecalho (Dashboard, Eventos, Ativos, Leads, Cupons).
 - Titulo: **Eventos**
 - Botao **+ Novo** (navega para `/eventos/novo`)
 - Botao **Atualizar**
 
-### 3.2 Filtros
+### 3.2 Painel lateral de filtros
+Os filtros ficam no painel lateral, refletindo o conteudo da listagem principal.
 Filtros disponiveis (com botao **Aplicar** e **Limpar filtros**):
 - Evento (texto -> `search`)
 - Estado (UF -> `estado`)

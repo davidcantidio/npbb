@@ -15,6 +15,8 @@ import EventAtivacoes from "./pages/EventAtivacoes";
 import EventQuestionario from "./pages/EventQuestionario";
 import NewEvent from "./pages/NewEvent";
 import ComingSoon from "./pages/ComingSoon";
+import AtivosList from "./pages/AtivosList";
+import IngressosPortal from "./pages/IngressosPortal";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
@@ -78,7 +80,8 @@ function AppRoutes() {
         <Route path="/eventos/:id/questionario" element={<EventQuestionario />} />
         <Route path="/eventos/:id" element={<EventDetail />} />
 
-        <Route path="/ativos" element={<ComingSoon title="Ativos" />} />
+        <Route path="/ativos" element={<AtivosList />} />
+        <Route path="/ingressos" element={<IngressosPortal />} />
         <Route path="/leads" element={<ComingSoon title="Leads" />} />
         <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
       </Route>

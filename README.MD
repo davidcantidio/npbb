@@ -116,6 +116,7 @@ npx playwright test
 Não versione segredos em `.env`. Use `.env.example` como template e mantenha credenciais apenas localmente (ou via secrets do deploy).
 
 ## Mudanças recentes (Eventos)
+- Layout: menu principal movido para o cabecalho; barra lateral reservada para filtros e funcionalidades da tela.
 - Lista de eventos: coluna **Agência** substitui QRCode, com dropdown inline (mesmo comportamento da Diretoria).
 - Padronização visual: Agência/Diretoria/Status/Investimento com mesma altura, borda e fonte do botão **Adicionar**.
 - Período: linha do tempo centralizada com linha pontilhada e pontos diários; em andamento = verde, encerrado = azul.

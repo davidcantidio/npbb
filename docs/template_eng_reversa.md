@@ -25,7 +25,8 @@ Exemplos:
 Liste, de cima para baixo, todos os elementos que o usuario ve.
 
 Exemplos:
-- Menu lateral
+- Menu principal no cabecalho
+- Painel lateral de filtros/funcionalidades
 - Header com acoes
 - Filtros superiores
 - Tabela / cards / graficos

@@ -84,6 +84,16 @@ class TipoPergunta(str, Enum):
     NUMERICA = "numerica"
 
 
+class SolicitacaoIngressoStatus(str, Enum):
+    SOLICITADO = "SOLICITADO"
+    CANCELADO = "CANCELADO"
+
+
+class SolicitacaoIngressoTipo(str, Enum):
+    SELF = "SELF"
+    TERCEIRO = "TERCEIRO"
+
+
 # =========================
 # TABELAS BÁSICAS
 # =========================
@@ -415,10 +425,37 @@ class CotaCortesia(SQLModel, table=True):
     diretoria_id: int = Field(foreign_key="diretoria.id")
 
     quantidade: int
+    alterado_por: Optional[int] = Field(default=None, foreign_key="usuario.id")
+    alterado_em: Optional[datetime] = None
+    valor_anterior: Optional[int] = None
+    valor_novo: Optional[int] = None
 
     evento: Optional[Evento] = Relationship(back_populates="cotas")
     diretoria: Optional[Diretoria] = Relationship(back_populates="cotas")
     convites: List["Convite"] = Relationship(back_populates="cota")
+
+
+class SolicitacaoIngresso(SQLModel, table=True):
+    __tablename__ = "solicitacao_ingresso"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    cota_id: int = Field(foreign_key="cota_cortesia.id")
+    evento_id: int = Field(foreign_key="evento.id")
+    diretoria_id: int = Field(foreign_key="diretoria.id")
+
+    solicitante_usuario_id: int = Field(foreign_key="usuario.id")
+    solicitante_email: str = Field(max_length=120)
+    tipo: SolicitacaoIngressoTipo
+    indicado_email: Optional[str] = Field(default=None, max_length=120)
+    status: SolicitacaoIngressoStatus
+
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
+
+    cota: Optional[CotaCortesia] = Relationship()
+    evento: Optional[Evento] = Relationship()
+    diretoria: Optional[Diretoria] = Relationship()
+    solicitante_usuario: Optional[Usuario] = Relationship()
 
 
 class Convidado(SQLModel, table=True):

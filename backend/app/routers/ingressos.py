@@ -144,7 +144,7 @@ def listar_solicitacoes(
     current_user: Usuario = Depends(get_current_user),
     evento_id: int | None = Query(None, ge=1),
     diretoria_id: int | None = Query(None, ge=1),
-    status: SolicitacaoIngressoStatus | None = Query(None),
+    status_filter: SolicitacaoIngressoStatus | None = Query(None, alias="status"),
     data: date | None = Query(None),
 ):
     if current_user.tipo_usuario == UsuarioTipo.BB:
@@ -174,8 +174,8 @@ def listar_solicitacoes(
         query = query.where(SolicitacaoIngresso.evento_id == evento_id)
     if diretoria_id is not None:
         query = query.where(SolicitacaoIngresso.diretoria_id == diretoria_id)
-    if status is not None:
-        query = query.where(SolicitacaoIngresso.status == status)
+    if status_filter is not None:
+        query = query.where(SolicitacaoIngresso.status == status_filter)
     if data:
         query = query.where(func.date(SolicitacaoIngresso.created_at) == data)
 

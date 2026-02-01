@@ -22,7 +22,6 @@ import {
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   atribuirCota,
@@ -114,10 +113,10 @@ type AtivoCardProps = {
   item: AtivoListItem;
   onAssign: (item: AtivoListItem) => void;
   onDelete: (item: AtivoListItem) => void;
-  onCopyLink: (item: AtivoListItem) => void;
+  onOpenIngressos: (item: AtivoListItem) => void;
 };
 
-const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onCopyLink }: AtivoCardProps) {
+const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onOpenIngressos }: AtivoCardProps) {
   const disponiveis =
     typeof item.disponiveis === "number" ? item.disponiveis : Math.max(item.total - item.usados, 0);
   const rawPercentual =
@@ -133,7 +132,20 @@ const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onCopyLink
   return (
     <Paper
       elevation={2}
-      sx={{ p: 2.5, borderRadius: 2, display: "flex", flexDirection: "column", gap: 2 }}
+      sx={{
+        p: 2.5,
+        borderRadius: 2,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        cursor: "pointer",
+        transition: "transform 0.15s ease, box-shadow 0.15s ease",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: 6,
+        },
+      }}
+      onClick={() => onOpenIngressos(item)}
     >
       <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
         <Box>
@@ -147,16 +159,11 @@ const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onCopyLink
         <Box display="flex" alignItems="center" gap={0.5}>
           <IconButton
             size="small"
-            aria-label="Copiar link"
-            onClick={() => onCopyLink(item)}
-            sx={{ color: "text.secondary" }}
-          >
-            <ContentCopyOutlinedIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
             aria-label="Editar cota"
-            onClick={() => onAssign(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAssign(item);
+            }}
             sx={{ color: "text.secondary" }}
           >
             <EditOutlinedIcon fontSize="small" />
@@ -164,7 +171,10 @@ const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onCopyLink
           <IconButton
             size="small"
             aria-label="Excluir cota"
-            onClick={() => onDelete(item)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(item);
+            }}
             disabled={item.usados > 0}
             sx={{
               color: item.usados > 0 ? "action.disabled" : "error.main",
@@ -356,24 +366,17 @@ export default function AtivosList() {
     setModalError(null);
   }, []);
 
-  const handleCopyLink = useCallback((item: AtivoListItem) => {
-    const url = `${window.location.origin}/ingressos?cota_id=${item.id}`;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        setSnackbarMessage("Link copiado para a area de transferencia.");
-        setSnackbarOpen(true);
-      })
-      .catch(() => {
-        setSnackbarMessage("Nao foi possivel copiar o link.");
-        setSnackbarOpen(true);
-      });
-  }, []);
-
   const handleOpenDelete = useCallback((item: AtivoListItem) => {
     setDeleteTarget(item);
     setDeleteError(null);
   }, []);
+
+  const handleOpenIngressos = useCallback(
+    (item: AtivoListItem) => {
+      navigate(`/ingressos?evento_id=${item.evento_id}`);
+    },
+    [navigate],
+  );
 
   const handleOpenCreate = () => {
     setCreateOpen(true);
@@ -708,10 +711,10 @@ export default function AtivosList() {
         item={item}
         onAssign={handleOpenModal}
         onDelete={handleOpenDelete}
-        onCopyLink={handleCopyLink}
+        onOpenIngressos={handleOpenIngressos}
       />
     ));
-  }, [handleCopyLink, handleOpenDelete, handleOpenModal, items, showSkeletons]);
+  }, [handleOpenDelete, handleOpenModal, handleOpenIngressos, items, showSkeletons]);
 
   return (
     <Box sx={{ width: "100%" }}>

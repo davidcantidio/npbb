@@ -14,12 +14,6 @@ import {
   IconButton,
   Link,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
   Stack,
   Typography,
 } from "@mui/material";
@@ -50,10 +44,6 @@ import {
   listTerritorios,
   listTiposEvento,
 } from "../services/eventos";
-import {
-  listSolicitacoesIngressos,
-  type SolicitacaoIngressoAdminListItem,
-} from "../services/ingressos_admin";
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -62,12 +52,6 @@ function formatDate(value?: string | null) {
   return `${d}/${m}/${y}`;
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("pt-BR");
-}
 
 function formatCurrency(value?: string | number | null) {
   if (value == null || value === "") return "-";
@@ -144,11 +128,6 @@ export default function EventDetail() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoIngressoAdminListItem[]>([]);
-  const [solicitacoesLoading, setSolicitacoesLoading] = useState(false);
-  const [solicitacoesError, setSolicitacoesError] = useState<string | null>(null);
-  const [solicitacaoStatus, setSolicitacaoStatus] = useState<string>("");
-  const [solicitacaoData, setSolicitacaoData] = useState<string>("");
 
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(eventoId)) return;
@@ -164,31 +143,11 @@ export default function EventDetail() {
     }
   }, [token, eventoId]);
 
-  const loadSolicitacoes = useCallback(async () => {
-    if (!token || !Number.isFinite(eventoId)) return;
-    setSolicitacoesLoading(true);
-    setSolicitacoesError(null);
-    try {
-      const data = await listSolicitacoesIngressos(token, {
-        evento_id: eventoId,
-        status: solicitacaoStatus ? (solicitacaoStatus as "SOLICITADO" | "CANCELADO") : undefined,
-        data: solicitacaoData || undefined,
-      });
-      setSolicitacoes(data);
-    } catch (err: any) {
-      setSolicitacoesError(getFriendlyErrorMessage(err, "Erro ao carregar solicitacoes"));
-    } finally {
-      setSolicitacoesLoading(false);
-    }
-  }, [token, eventoId, solicitacaoStatus, solicitacaoData]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  useEffect(() => {
-    loadSolicitacoes();
-  }, [loadSolicitacoes]);
 
   const loadDomains = useCallback(async () => {
     if (!token) return;
@@ -508,106 +467,6 @@ export default function EventDetail() {
         )}
       </Paper>
 
-      <Paper elevation={2} sx={{ p: 3, borderRadius: 3, mt: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2}>
-          <Typography variant="h6" fontWeight={800}>
-            Solicitacoes de ingressos
-          </Typography>
-          <Button
-            variant="outlined"
-            sx={{ textTransform: "none" }}
-            onClick={loadSolicitacoes}
-            disabled={solicitacoesLoading}
-          >
-            Atualizar
-          </Button>
-        </Box>
-
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} mb={2}>
-          <TextField
-            select
-            label="Status"
-            size="small"
-            value={solicitacaoStatus}
-            onChange={(event) => setSolicitacaoStatus(event.target.value)}
-            sx={{ minWidth: 160 }}
-            SelectProps={{ native: true }}
-          >
-            <option value="">Todos</option>
-            <option value="SOLICITADO">Solicitado</option>
-            <option value="CANCELADO">Cancelado</option>
-          </TextField>
-          <TextField
-            label="Data"
-            type="date"
-            size="small"
-            value={solicitacaoData}
-            onChange={(event) => setSolicitacaoData(event.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <Button
-            variant="contained"
-            sx={{ textTransform: "none", fontWeight: 700 }}
-            onClick={loadSolicitacoes}
-            disabled={solicitacoesLoading}
-          >
-            Aplicar filtros
-          </Button>
-          <Button
-            variant="outlined"
-            sx={{ textTransform: "none", fontWeight: 700 }}
-            onClick={() => {
-              setSolicitacaoStatus("");
-              setSolicitacaoData("");
-            }}
-            disabled={!solicitacaoStatus && !solicitacaoData}
-          >
-            Limpar
-          </Button>
-        </Stack>
-
-        {solicitacoesError ? (
-          <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
-            {solicitacoesError}
-          </Alert>
-        ) : null}
-
-        {solicitacoesLoading ? (
-          <Stack direction="row" spacing={1} alignItems="center">
-            <CircularProgress size={20} />
-            <Typography variant="body2" color="text.secondary">
-              Carregando solicitacoes...
-            </Typography>
-          </Stack>
-        ) : solicitacoes.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            Nenhuma solicitacao registrada para este evento.
-          </Typography>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Data</TableCell>
-                <TableCell>Solicitante</TableCell>
-                <TableCell>Indicado</TableCell>
-                <TableCell>Diretoria</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {solicitacoes.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{formatDateTime(item.created_at)}</TableCell>
-                  <TableCell>{item.solicitante_email}</TableCell>
-                  <TableCell>{item.indicado_email || "-"}</TableCell>
-                  <TableCell>{item.diretoria_nome}</TableCell>
-                  <TableCell>{item.status}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Paper>
 
       <Dialog open={deleteOpen} onClose={() => (deleting ? null : setDeleteOpen(false))}>
         <DialogTitle>Excluir evento</DialogTitle>

@@ -16,6 +16,7 @@ Campos:
 - `acao_nome` (string, opcional) — **obrigatorio** quando `tipo=ACAO_EVENTO`
 - `fonte_origem` (string, opcional) — ex.: `EVENTIM`
 - `evento_id` (FK -> evento.id, opcional)
+- `data_conversao_evento` (datetime, opcional) — data/hora especifica durante o evento
 - `created_at` (datetime)
 
 Relacionamento:
@@ -63,6 +64,31 @@ Relatorios e analises devem considerar:
 - Cada coluna pode ser marcada como:
   - **Ignorar**
   - **Mapear para campo existente**
+- **Confianca**: exibida como *sugestao*, nunca como verdade absoluta. Deve evitar 100% quando houver ambiguidade ou baixa amostra.
+
+### 7.3.1 Campos com correspondencia por alias (nome/cidade/estado/genero)
+- Campos: **Nome do evento**, **Cidade**, **Estado**, **Genero**.
+- Ao mapear um valor para um campo de referencia (ex.: Nome do evento), a UI deve abrir
+  um **dropdown secundario** com as opcoes existentes no banco.
+- Se o valor da planilha **combina exatamente** com o registro do banco, o dropdown vem **pre-selecionado**.
+- Se nao combinar exatamente, o sistema tenta:
+  - **Correspondencia por similaridade** (fuzzy match, ex.: distancia de Levenshtein).
+  - **Remocao de acentos e normalizacao** (maiusculas/minusculas, espacos).
+- Em ultimo caso, o usuario seleciona manualmente o valor correto.
+
+### 7.3.2 Aliases persistidos
+- Quando o usuario confirma o valor correto para um campo de referencia,
+  o texto original da planilha passa a ser salvo como **alias** daquele registro.
+- Em importacoes futuras, o alias deve ser reconhecido automaticamente.
+- Campos suportados: **Nome do evento**, **Cidade**, **Estado**, **Genero**.
+
+### 7.3.3 DateTime com separacao de data/hora
+- Se a coluna chegar como **data + hora**, o sistema deve:
+  - **Detectar o formato** (ex.: `DD/MM/YYYY HH:mm` ou `YYYY-MM-DD HH:mm:ss`).
+  - **Separar em data e hora**, armazenando em colunas distintas quando aplicavel.
+- Decisao default:
+  - Data vai para o campo principal (ex.: `data_compra` -> data).
+  - Hora vai para um campo de apoio (ex.: `hora_compra`) quando existir no schema.
 
 ### 7.4 Confirmacao e importacao
 - Usuario confirma o mapeamento.
@@ -82,3 +108,8 @@ Relatorios e analises devem considerar:
 - Mapeamento **obrigatorio** para campos essenciais (email ou CPF).
 - Campos opcionais podem ficar vazios.
 - Dados incompletos nao bloqueiam o import (quando possivel).
+
+## 8. UX/visual (importacao)
+- Interface deve permitir **ignorar** colunas sem correspondencia.
+- Mensagens de confianca devem ser **conservadoras** (evitar 100% quando houver risco de erro).
+- Visual deve ser **mais leve e organizado** (grid/colunas, espaçamento consistente, destaque claro para o dropdown ativo).

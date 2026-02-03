@@ -70,6 +70,11 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
 - Datetime:
   - Mantem `data_compra` (datetime).
   - Separa em `data_compra_data` e `data_compra_hora` quando aplicavel.
+- Indices recomendados (performance):
+  - `(email, cpf, evento_nome, sessao)`: acelera dedupe/upsert.
+  - `data_compra`: acelera filtros por periodo.
+  - `estado`, `cidade`: acelera rankings e filtros geograficos.
+  - `fonte_origem`: acelera filtros por origem.
 
 ## Fluxo esperado
 1) Usuario envia arquivo.

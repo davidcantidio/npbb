@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.routers.agencias import router as agencias_router
 from app.routers.ativacao import router as ativacao_router
 from app.routers.auth import router as auth_router
+from app.routers.dashboard_leads import router as dashboard_leads_router
 from app.routers.eventos import router as eventos_router
 from app.routers.gamificacao import router as gamificacao_router
 from app.routers.checkin_sem_qr_public import router as checkin_sem_qr_public_router
@@ -142,6 +143,7 @@ def novo_usuario_page():
 
 
 app.include_router(auth_router)
+app.include_router(dashboard_leads_router)
 app.include_router(usuarios_router)
 app.include_router(agencias_router)
 app.include_router(eventos_router)

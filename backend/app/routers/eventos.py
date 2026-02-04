@@ -73,6 +73,7 @@ from app.schemas.questionario import (
 from app.services.questionario import load_questionario_estrutura, replace_questionario_estrutura
 from app.services.data_health import compute_event_data_health, compute_event_missing_fields_details
 from app.utils.http_errors import raise_http_error
+from app.utils.log_sanitize import sanitize_exception
 from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
@@ -773,6 +774,28 @@ def importar_eventos_csv(
     success_count = 0
     failed_count = 0
     errors: list[dict[str, Any]] = []
+    file_name = getattr(file, "filename", None)
+
+    def _log_row_error(
+        exc: Exception,
+        *,
+        row_number: int,
+        field: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        telemetry_logger.warning(
+            "evento_import_row_error",
+            extra={
+                "row_number": row_number,
+                "line_number": row_number,
+                "file_name": file_name,
+                "field": field,
+                "error_type": type(exc).__name__,
+                "error_code": error_code,
+                "detail": sanitize_exception(exc),
+                "user_id": getattr(current_user, "id", None),
+            },
+        )
 
     for row_index, row in enumerate(rows[1:], start=2):
         if not any(cell.strip() for cell in row):
@@ -810,6 +833,12 @@ def importar_eventos_csv(
                     "value": exc.value,
                 }
             )
+            _log_row_error(
+                exc,
+                row_number=row_index,
+                field=exc.field,
+                error_code="CSV_ROW_ISSUE",
+            )
         except ValidationError as exc:
             failed_count += 1
             err = exc.errors()[0] if exc.errors() else {}
@@ -823,14 +852,22 @@ def importar_eventos_csv(
                     "message": message,
                 }
             )
+            _log_row_error(
+                exc,
+                row_number=row_index,
+                field=field,
+                error_code="VALIDATION_ERROR",
+            )
         except HTTPException as exc:
             failed_count += 1
             field = "geral"
             message = "Erro ao importar linha"
             detail = exc.detail
+            error_code: str | None = None
             if isinstance(detail, dict):
                 field = detail.get("field") or field
                 message = detail.get("message") or detail.get("detail") or message
+                error_code = detail.get("code") or detail.get("error_code")
             elif isinstance(detail, str):
                 message = detail
             errors.append(
@@ -840,7 +877,13 @@ def importar_eventos_csv(
                     "message": message,
                 }
             )
-        except Exception:
+            _log_row_error(
+                exc,
+                row_number=row_index,
+                field=field,
+                error_code=error_code or "HTTP_EXCEPTION",
+            )
+        except Exception as exc:
             failed_count += 1
             errors.append(
                 {
@@ -848,6 +891,12 @@ def importar_eventos_csv(
                     "field": "geral",
                     "message": "Erro ao importar linha",
                 }
+            )
+            _log_row_error(
+                exc,
+                row_number=row_index,
+                field="geral",
+                error_code="UNEXPECTED_ERROR",
             )
 
     return {

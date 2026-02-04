@@ -276,6 +276,14 @@ def _csv_filename() -> str:
     return "eventos.csv"
 
 
+def _raise_csv_empty() -> None:
+    _raise_http(
+        status.HTTP_400_BAD_REQUEST,
+        code="CSV_EMPTY",
+        message="Arquivo CSV vazio",
+    )
+
+
 class CsvRowIssue(Exception):
     def __init__(self, field: str, message: str, value: str | None = None) -> None:
         super().__init__(message)
@@ -748,11 +756,7 @@ def importar_eventos_csv(
     """Importa eventos via CSV e faz upsert quando houver sobreposicao de periodo."""
     content = file.file.read()
     if not content:
-        _raise_http(
-            status.HTTP_400_BAD_REQUEST,
-            code="CSV_EMPTY",
-            message="Arquivo CSV vazio",
-        )
+        _raise_csv_empty()
 
     try:
         text = content.decode("utf-8-sig")
@@ -760,20 +764,12 @@ def importar_eventos_csv(
         text = content.decode("latin-1")
 
     if not text.strip():
-        _raise_http(
-            status.HTTP_400_BAD_REQUEST,
-            code="CSV_EMPTY",
-            message="Arquivo CSV vazio",
-        )
+        _raise_csv_empty()
 
     delimiter = _detect_csv_delimiter(text)
     rows = list(csv.reader(io.StringIO(text), delimiter=delimiter))
     if not rows:
-        _raise_http(
-            status.HTTP_400_BAD_REQUEST,
-            code="CSV_EMPTY",
-            message="Arquivo CSV vazio",
-        )
+        _raise_csv_empty()
 
     headers = [_normalize_csv_header(h) for h in rows[0]]
     header_index = {h: idx for idx, h in enumerate(headers) if h}

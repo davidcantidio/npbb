@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Usuario, UsuarioTipo
+from app.models.models import StatusEvento, Usuario, UsuarioTipo
 from app.utils.security import hash_password
 from app.routers import eventos as eventos_router
 
@@ -85,3 +85,30 @@ def test_import_logs_sanitized_error(client, monkeypatch, caplog):
     assert "11999998888" not in detail
     assert record.error_code == "UNEXPECTED_ERROR"
     assert record.row_number == 2
+
+
+def test_import_csv_empty_file_returns_error(client):
+    resp = client.post(
+        "/evento/import/csv",
+        files={"file": ("eventos.csv", "", "text/csv")},
+    )
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "CSV_EMPTY"
+    assert detail["message"] == "Arquivo CSV vazio"
+
+
+def test_import_csv_success_minimal_payload(client, engine):
+    with Session(engine) as session:
+        session.add(StatusEvento(nome="Confirmado"))
+        session.commit()
+
+    csv_content = "nome,cidade,estado,data_inicio_prevista\nEvento,Sao Paulo,SP,2025-01-01\n"
+    resp = client.post(
+        "/evento/import/csv",
+        files={"file": ("eventos.csv", csv_content, "text/csv")},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["success"] == 1
+    assert payload["failed"] == 0

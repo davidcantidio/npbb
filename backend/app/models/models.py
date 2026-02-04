@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, Numeric
+from sqlalchemy import Column, Numeric, UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship
 
 
@@ -278,6 +278,7 @@ class EventoTag(SQLModel, table=True):
 
 class Lead(SQLModel, table=True):
     __tablename__ = "lead"
+    __table_args__ = (UniqueConstraint("cpf", name="uq_lead_cpf"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     id_salesforce: Optional[str] = Field(default=None, max_length=200, unique=True)
@@ -287,7 +288,8 @@ class Lead(SQLModel, table=True):
     email: Optional[str] = Field(default=None, max_length=100)
     telefone: Optional[str] = Field(default=None, max_length=100)
 
-    cpf: str = Field(max_length=11, unique=True)
+    # CPF e o identificador global do lead (regra de dedupe vigente).
+    cpf: str = Field(max_length=11)
     data_nascimento: date
     data_criacao: datetime = Field(default_factory=now_utc)
 

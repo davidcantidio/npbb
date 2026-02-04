@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, Numeric, UniqueConstraint
+from sqlalchemy import Column, DateTime, Numeric, UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship
 
 
@@ -41,7 +41,9 @@ class Usuario(SQLModel, table=True):
     ativo: bool = Field(default=True)
 
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
     funcionario: Optional["Funcionario"] = Relationship(back_populates="usuario")
     agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
@@ -207,7 +209,9 @@ class Evento(SQLModel, table=True):
     status_id: int = Field(foreign_key="status_evento.id")
 
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
     agencia: Optional[Agencia] = Relationship(back_populates="eventos")
     diretoria: Optional[Diretoria] = Relationship(back_populates="eventos")
@@ -322,7 +326,9 @@ class Ativacao(SQLModel, table=True):
     gera_cupom: bool = Field(default=False)
 
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
     evento: Optional[Evento] = Relationship(back_populates="ativacoes")
     gamificacao: Optional["Gamificacao"] = Relationship(back_populates="ativacoes")

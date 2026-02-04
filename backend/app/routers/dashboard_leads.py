@@ -19,6 +19,11 @@ from app.schemas.dashboard_leads import (
     DashboardLeadsSeries,
     DashboardLeadsSeriesItem,
 )
+from app.schemas.dashboard_leads_report import (
+    DashboardLeadsReportQuery,
+    DashboardLeadsReportResponse,
+)
+from app.services.dashboard_leads_report import build_dashboard_leads_report
 from app.utils.dashboard_rankings import get_dashboard_rankings
 from app.utils.http_errors import raise_http_error
 
@@ -174,3 +179,12 @@ def dashboard_leads(
         ),
         rankings=rankings,
     )
+
+
+@router.get("/leads/relatorio", response_model=DashboardLeadsReportResponse)
+def dashboard_leads_relatorio(
+    params: DashboardLeadsReportQuery = Depends(),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return build_dashboard_leads_report(session, params, current_user=current_user)

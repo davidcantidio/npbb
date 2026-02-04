@@ -33,6 +33,7 @@ class Usuario(SQLModel, table=True):
     password_hash: str = Field(max_length=255)
 
     tipo_usuario: UsuarioTipo
+    status_aprovacao: Optional[str] = Field(default=None, max_length=20)
 
     funcionario_id: Optional[int] = Field(default=None, foreign_key="funcionario.id")
     agencia_id: Optional[int] = Field(default=None, foreign_key="agencia.id")

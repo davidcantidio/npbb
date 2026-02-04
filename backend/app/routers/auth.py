@@ -14,6 +14,23 @@ from app.utils.security import verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+STATUS_APROVADO = "APROVADO"  # TODO: centralizar status_aprovacao quando houver enum/constante global.
+
+
+def is_bb_user(usuario: Usuario) -> bool:
+    """
+    Retorna True se for usuario BB:
+    - email termina com '@bb.com.br' (case-insensitive)
+    - matricula valida (nao None / nao vazia / nao so espacos)
+    """
+    email = (usuario.email or "").strip().lower()
+    if not email.endswith("@bb.com.br"):
+        return False
+    matricula = usuario.matricula
+    if matricula is None:
+        return False
+    return bool(str(matricula).strip())
+
 
 def _authenticate(session: Session, email: str, password: str) -> Usuario | None:
     email_norm = (email or "").strip().lower()
@@ -22,6 +39,11 @@ def _authenticate(session: Session, email: str, password: str) -> Usuario | None
         return None
     if not verify_password(password, usuario.password_hash):
         return None
+    if is_bb_user(usuario) and usuario.status_aprovacao != STATUS_APROVADO:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário BB pendente de aprovação",
+        )
     return usuario
 
 
@@ -51,4 +73,3 @@ def login(
 def me(current_user: Usuario = Depends(get_current_user)):
     """Retorna dados publicos do usuario autenticado."""
     return UsuarioRead.model_validate(current_user, from_attributes=True)
-

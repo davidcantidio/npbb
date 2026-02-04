@@ -46,13 +46,23 @@ async def questionario_validation_exception_handler(request, exc: RequestValidat
     if not body_errors:
         return await request_validation_exception_handler(request, exc)
 
+    safe_errors = []
+    for error in body_errors:
+        ctx = error.get("ctx")
+        if isinstance(ctx, dict) and "error" in ctx:
+            safe_ctx = dict(ctx)
+            if isinstance(safe_ctx.get("error"), Exception):
+                safe_ctx["error"] = str(safe_ctx["error"])
+            error = {**error, "ctx": safe_ctx}
+        safe_errors.append(error)
+
     return JSONResponse(
         status_code=400,
         content={
             "detail": {
                 "code": "QUESTIONARIO_INVALID_STRUCTURE",
                 "message": "Estrutura de questionario invalida",
-                "extra": {"errors": body_errors},
+                "extra": {"errors": safe_errors},
             }
         },
     )

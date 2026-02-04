@@ -194,8 +194,8 @@ class Evento(SQLModel, table=True):
     publico_realizado: Optional[int] = None
 
     concorrencia: bool = Field(default=False)
-    cidade: str = Field(max_length=40)
-    estado: str = Field(max_length=40)
+    cidade: str = Field(max_length=40, index=True)
+    estado: str = Field(max_length=40, index=True)
 
     agencia_id: Optional[int] = Field(default=None, foreign_key="agencia.id")
     diretoria_id: Optional[int] = Field(default=None, foreign_key="diretoria.id")
@@ -291,7 +291,7 @@ class Lead(SQLModel, table=True):
     # CPF e o identificador global do lead (regra de dedupe vigente).
     cpf: str = Field(max_length=11)
     data_nascimento: date
-    data_criacao: datetime = Field(default_factory=now_utc)
+    data_criacao: datetime = Field(default_factory=now_utc, index=True)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
     cupons: List["Cupom"] = Relationship(back_populates="lead")
@@ -380,7 +380,7 @@ class AtivacaoLead(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     ativacao_id: int = Field(foreign_key="ativacao.id")
-    lead_id: int = Field(foreign_key="lead.id")
+    lead_id: int = Field(foreign_key="lead.id", index=True)
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")

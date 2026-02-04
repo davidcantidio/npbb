@@ -130,7 +130,9 @@ def _urgency_factor(event_date: date | None, config: dict[str, Any]) -> float:
     return 1.0
 
 
-def _collect_missing_fields(evento: Any, status_name: str | None, config: dict[str, Any]) -> list[tuple[str, int]]:
+def _collect_missing_fields(
+    evento: Any, status_name: str | None, config: dict[str, Any]
+) -> list[tuple[str, int]]:
     missing: list[tuple[str, int]] = []
 
     for field, weight in config.get("base_fields", {}).items():
@@ -213,7 +215,9 @@ def compute_event_data_health(evento: Any, status_name: str | None = None) -> di
             event_date = raw_date if isinstance(raw_date, date) else None
         urgency_factor = _urgency_factor(event_date, config)
         if base_score >= 1:
-            urgency_factor = float(config.get("urgency", {}).get("complete_score_factor_override", urgency_factor))
+            urgency_factor = float(
+                config.get("urgency", {}).get("complete_score_factor_override", urgency_factor)
+            )
         score = int(max(0, min(100, round(base_score * urgency_factor * 100))))
 
     return {
@@ -228,7 +232,9 @@ def compute_event_data_health(evento: Any, status_name: str | None = None) -> di
     }
 
 
-def compute_event_missing_fields_details(evento: Any, status_name: str | None = None) -> list[dict[str, Any]]:
+def compute_event_missing_fields_details(
+    evento: Any, status_name: str | None = None
+) -> list[dict[str, Any]]:
     config = _load_config()
     missing = _collect_missing_fields(evento, status_name, config)
     details: list[dict[str, Any]] = []

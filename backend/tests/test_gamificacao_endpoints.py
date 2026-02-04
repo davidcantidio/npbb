@@ -64,7 +64,9 @@ def seed_tipo(session: Session, nome: str = "Congresso") -> TipoEvento:
     return tipo
 
 
-def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
+def seed_user(
+    session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None
+) -> Usuario:
     user = Usuario(
         email=email,
         password_hash=hash_password(password),
@@ -134,7 +136,9 @@ def test_evento_gamificacoes_get_retorna_lista_vazia(client, engine):
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     assert resp.json() == []
 
@@ -186,7 +190,9 @@ def test_evento_gamificacoes_post_cria_e_get_retorna_ordenado(client, engine):
     assert resp_create_1.status_code == 201
     assert resp_create_1.json()["evento_id"] == evento_id
 
-    resp_list = client.get(f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"})
+    resp_list = client.get(
+        f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_list.status_code == 200
     payload = resp_list.json()
     assert len(payload) == 2
@@ -214,7 +220,9 @@ def test_evento_gamificacoes_aplica_visibilidade_agencia(client, engine):
 
     token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
 
-    resp_get = client.get(f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"})
+    resp_get = client.get(
+        f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_get.status_code == 404
     assert resp_get.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
 
@@ -281,7 +289,9 @@ def test_gamificacao_put_atualiza_e_delete_remove(client, engine):
     )
     assert resp_delete.status_code == 204
 
-    resp_list = client.get(f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"})
+    resp_list = client.get(
+        f"/evento/{evento_id}/gamificacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_list.status_code == 200
     assert resp_list.json() == []
 

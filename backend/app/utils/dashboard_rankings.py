@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.models import Ativacao, AtivacaoLead, Evento, Lead
+from app.models.models import Evento, Lead
 from app.schemas.dashboard_leads import (
     DashboardLeadsRankCidade,
     DashboardLeadsRankEstado,

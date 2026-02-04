@@ -134,7 +134,9 @@ def listar_ativos_para_ingressos(
     return items
 
 
-@router.post("/solicitacoes", response_model=SolicitacaoIngressoRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/solicitacoes", response_model=SolicitacaoIngressoRead, status_code=status.HTTP_201_CREATED
+)
 def criar_solicitacao(
     payload: SolicitacaoIngressoCreate,
     session: Session = Depends(get_session),

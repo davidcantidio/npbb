@@ -137,6 +137,7 @@ def test_reset_password_rejects_used_token(client, engine):
     detail = resp.json()["detail"]
     assert detail["code"] == "TOKEN_USED"
 
+
 def test_reset_password_rejects_weak_password(client, engine):
     user = seed_user(engine, password="Senha123!")
 

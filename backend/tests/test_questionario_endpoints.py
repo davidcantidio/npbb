@@ -75,7 +75,9 @@ def seed_tipo(session: Session, nome: str = "Congresso") -> TipoEvento:
     return tipo
 
 
-def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
+def seed_user(
+    session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None
+) -> Usuario:
     user = Usuario(
         email=email,
         password_hash=hash_password(password),
@@ -146,7 +148,9 @@ def test_questionario_get_retorna_vazio(client, engine):
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
-    resp = client.get(f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["evento_id"] == evento_id
@@ -170,8 +174,12 @@ def test_questionario_get_retorna_ordenado(client, engine):
         )
         evento_id = evento.id
 
-        pagina_b = QuestionarioPagina(evento_id=evento_id, ordem=2, titulo="Pagina 2", descricao=None)
-        pagina_a = QuestionarioPagina(evento_id=evento_id, ordem=1, titulo="Pagina 1", descricao=None)
+        pagina_b = QuestionarioPagina(
+            evento_id=evento_id, ordem=2, titulo="Pagina 2", descricao=None
+        )
+        pagina_a = QuestionarioPagina(
+            evento_id=evento_id, ordem=1, titulo="Pagina 1", descricao=None
+        )
         session.add(pagina_b)
         session.add(pagina_a)
         session.commit()
@@ -206,7 +214,9 @@ def test_questionario_get_retorna_ordenado(client, engine):
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
-    resp = client.get(f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     payload = resp.json()
     assert [pagina["ordem"] for pagina in payload["paginas"]] == [1, 2]
@@ -400,7 +410,9 @@ def test_questionario_aplica_visibilidade_agencia(client, engine):
 
     token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
 
-    resp_get = client.get(f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"})
+    resp_get = client.get(
+        f"/evento/{evento_id}/questionario", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_get.status_code == 404
     assert resp_get.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
 

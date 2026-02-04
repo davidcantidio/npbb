@@ -61,4 +61,3 @@ def send_email(to: str, subject: str, body: str) -> None:
         if user and password:
             server.login(user, password)
         server.send_message(msg)
-

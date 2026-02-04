@@ -14,7 +14,9 @@ from app.utils.security import verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-STATUS_APROVADO = "APROVADO"  # TODO: centralizar status_aprovacao quando houver enum/constante global.
+STATUS_APROVADO = (
+    "APROVADO"  # TODO: centralizar status_aprovacao quando houver enum/constante global.
+)
 
 
 def is_bb_user(usuario: Usuario) -> bool:

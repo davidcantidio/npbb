@@ -134,7 +134,9 @@ def criar_usuario(
             if funcionario:
                 funcionario_id = funcionario.id
         else:
-            funcionario = session.exec(select(Funcionario).where(Funcionario.email == email)).first()
+            funcionario = session.exec(
+                select(Funcionario).where(Funcionario.email == email)
+            ).first()
             if funcionario:
                 funcionario_id = funcionario.id
 
@@ -181,7 +183,9 @@ def criar_usuario(
             constraint_name = None
 
         error_message = str(getattr(e, "orig", e))
-        is_unique = "duplicate key value" in error_message or "UNIQUE constraint failed" in error_message
+        is_unique = (
+            "duplicate key value" in error_message or "UNIQUE constraint failed" in error_message
+        )
         if is_unique:
             if (
                 constraint_name in {"usuario_email_key"}

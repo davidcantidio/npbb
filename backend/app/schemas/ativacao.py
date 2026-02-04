@@ -90,4 +90,3 @@ class AtivacaoUpdate(BaseModel):
             update["mensagem_qrcode"] = _normalize_optional(self.mensagem_qrcode)
 
         return self.model_copy(update=update)
-

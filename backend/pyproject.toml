@@ -1,0 +1,17 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+  ".venv",
+  "node_modules",
+  ".pytest_cache",
+  "__pycache__",
+  "test-results",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"

@@ -73,8 +73,7 @@ def _resolve_granularity(params: DashboardLeadsQuery) -> str:
 
 def _from_clause():
     return (
-        Lead.__table__
-        .join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
+        Lead.__table__.join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
         .join(Ativacao, Ativacao.id == AtivacaoLead.ativacao_id)
         .join(Evento, Evento.id == Ativacao.evento_id)
     )

@@ -92,7 +92,9 @@ FORMULARIO_CAMPOS_CATALOGO = [
     "Area de atuacao",
 ]
 
-FORMULARIO_CAMPOS_ORDEM_BY_LOWER = {nome.lower(): index for index, nome in enumerate(FORMULARIO_CAMPOS_CATALOGO)}
+FORMULARIO_CAMPOS_ORDEM_BY_LOWER = {
+    nome.lower(): index for index, nome in enumerate(FORMULARIO_CAMPOS_CATALOGO)
+}
 
 # Defaults (MVP) quando ainda nao existe config persistida para o evento.
 # Screenshot/UX: CPF, Nome, Sobrenome, Email e Data de nascimento ativos; Sobrenome opcional.
@@ -196,7 +198,9 @@ def listar_eventos(
         inicio = func.coalesce(Evento.data_inicio_prevista, Evento.data_inicio_realizada)
         fim = func.coalesce(Evento.data_fim_prevista, Evento.data_fim_realizada, inicio)
         query = query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
-        count_query = count_query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
+        count_query = (
+            count_query.where(inicio.is_not(None)).where(inicio <= data).where(fim >= data)
+        )
 
     total = session.exec(count_query).one()
     eventos = session.exec(query.order_by(Evento.id.desc()).offset(skip).limit(limit)).all()
@@ -211,7 +215,9 @@ def listar_eventos(
     status_nome_by_id: dict[int, str] = {}
     if status_ids:
         rows = session.exec(
-            select(StatusEvento.id, StatusEvento.nome).where(StatusEvento.id.in_(sorted(status_ids)))
+            select(StatusEvento.id, StatusEvento.nome).where(
+                StatusEvento.id.in_(sorted(status_ids))
+            )
         ).all()
         status_nome_by_id = {
             int(row_id): str(nome)
@@ -353,7 +359,9 @@ def _parse_csv_date(value: str, field: str) -> date:
             return date.fromisoformat(text)
         return datetime.strptime(text, "%d/%m/%Y").date()
     except Exception:
-        raise CsvRowIssue(field, "formato invalido (use AAAA-MM-DD ou DD/MM/AAAA)", value=value) from None
+        raise CsvRowIssue(
+            field, "formato invalido (use AAAA-MM-DD ou DD/MM/AAAA)", value=value
+        ) from None
 
 
 def _parse_csv_date_optional(value: str, field: str) -> date | None:
@@ -375,7 +383,9 @@ def _parse_csv_id_list(value: str, field: str) -> list[int] | None:
         try:
             num = int(token)
         except ValueError:
-            raise CsvRowIssue(field, "lista deve conter somente inteiros >= 1", value=value) from None
+            raise CsvRowIssue(
+                field, "lista deve conter somente inteiros >= 1", value=value
+            ) from None
         if num < 1:
             raise CsvRowIssue(field, "lista deve conter somente inteiros >= 1", value=value)
         parsed.append(num)
@@ -432,7 +442,15 @@ def _build_evento_payload_from_row(row: list[str], header_index: dict[str, int])
     if concorrencia_raw:
         data["concorrencia"] = _parse_csv_bool(concorrencia_raw, "concorrencia")
 
-    for key in ("agencia_id", "diretoria_id", "gestor_id", "tipo_id", "subtipo_id", "status_id", "divisao_demandante_id"):
+    for key in (
+        "agencia_id",
+        "diretoria_id",
+        "gestor_id",
+        "tipo_id",
+        "subtipo_id",
+        "status_id",
+        "divisao_demandante_id",
+    ):
         raw = _get_csv_value(row, header_index, key)
         parsed = _parse_csv_int_optional(raw, key)
         if parsed is not None:
@@ -681,9 +699,7 @@ def exportar_eventos_csv(
     for e in eventos:
         eid = int(e.id) if e.id is not None else None
         tags = ", ".join(tags_by_evento.get(eid or -1, [])) if eid is not None else ""
-        territorios = (
-            ", ".join(territorios_by_evento.get(eid or -1, [])) if eid is not None else ""
-        )
+        territorios = ", ".join(territorios_by_evento.get(eid or -1, [])) if eid is not None else ""
         writer.writerow(
             [
                 eid or "",
@@ -955,7 +971,9 @@ def _infer_status_nome(data_inicio_prevista: date | None, data_fim_prevista: dat
 
 
 def _get_status_id_by_nome(session: Session, nome: str) -> int:
-    row = session.exec(select(StatusEvento).where(func.lower(StatusEvento.nome) == nome.lower())).first()
+    row = session.exec(
+        select(StatusEvento).where(func.lower(StatusEvento.nome) == nome.lower())
+    ).first()
     if not row or row.id is None:
         _raise_http(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -999,7 +1017,11 @@ def criar_evento(
     _validate_fk(session, Agencia, agencia_id, "AGENCIA_NOT_FOUND", "Agencia nao encontrada")
     if payload.tipo_id is not None:
         _validate_fk(
-            session, TipoEvento, payload.tipo_id, "TIPO_EVENTO_NOT_FOUND", "Tipo de evento nao encontrado"
+            session,
+            TipoEvento,
+            payload.tipo_id,
+            "TIPO_EVENTO_NOT_FOUND",
+            "Tipo de evento nao encontrado",
         )
     if payload.subtipo_id is not None:
         if payload.tipo_id is None:
@@ -1021,7 +1043,9 @@ def criar_evento(
                 code="SUBTIPO_EVENTO_INVALID",
                 message="Subtipo nao pertence ao tipo informado",
             )
-    _validate_fk(session, Diretoria, payload.diretoria_id, "DIRETORIA_NOT_FOUND", "Diretoria nao encontrada")
+    _validate_fk(
+        session, Diretoria, payload.diretoria_id, "DIRETORIA_NOT_FOUND", "Diretoria nao encontrada"
+    )
     _validate_fk(
         session,
         DivisaoDemandante,
@@ -1029,7 +1053,9 @@ def criar_evento(
         "DIVISAO_DEMANDANTE_NOT_FOUND",
         "Divisao demandante nao encontrada",
     )
-    _validate_fk(session, Funcionario, payload.gestor_id, "GESTOR_NOT_FOUND", "Gestor nao encontrado")
+    _validate_fk(
+        session, Funcionario, payload.gestor_id, "GESTOR_NOT_FOUND", "Gestor nao encontrado"
+    )
 
     tag_ids = _normalize_unique_ids(
         payload.tag_ids, code="TAG_ID_INVALID", message="tag_ids invalidos"
@@ -1040,7 +1066,9 @@ def criar_evento(
     for tag_id in tag_ids:
         _validate_fk(session, Tag, tag_id, "TAG_NOT_FOUND", "Tag nao encontrada")
     for territorio_id in territorio_ids:
-        _validate_fk(session, Territorio, territorio_id, "TERRITORIO_NOT_FOUND", "Territorio nao encontrado")
+        _validate_fk(
+            session, Territorio, territorio_id, "TERRITORIO_NOT_FOUND", "Territorio nao encontrado"
+        )
 
     status_id = payload.status_id
     if status_id is not None:
@@ -1076,7 +1104,11 @@ def criar_evento(
     session.flush()
 
     if evento.id is None:
-        _raise_http(status.HTTP_500_INTERNAL_SERVER_ERROR, code="EVENTO_CREATE_FAILED", message="Falha ao criar evento")
+        _raise_http(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            code="EVENTO_CREATE_FAILED",
+            message="Falha ao criar evento",
+        )
 
     for territorio_id in territorio_ids:
         session.add(EventoTerritorio(evento_id=evento.id, territorio_id=territorio_id))
@@ -1098,7 +1130,9 @@ def criar_tag(
 ):
     nome = _normalize_str(payload.nome)
     if not nome:
-        _raise_http(status.HTTP_400_BAD_REQUEST, code="TAG_NAME_REQUIRED", message="nome obrigatorio")
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST, code="TAG_NAME_REQUIRED", message="nome obrigatorio"
+        )
 
     existing = session.exec(select(Tag).where(func.lower(Tag.nome) == nome.lower())).first()
     if existing:
@@ -1132,11 +1166,15 @@ def atualizar_evento(
     """Atualiza um evento existente (PUT)."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     data = payload.model_dump(exclude_unset=True)
     if not data:
@@ -1169,9 +1207,9 @@ def atualizar_evento(
         tag_ids=list(before_tag_ids),
         territorio_ids=list(before_territorio_ids),
     )
-    before_missing = compute_event_data_health(
-        before_proxy, status_name=before_status_name
-    )["missing_fields"]
+    before_missing = compute_event_data_health(before_proxy, status_name=before_status_name)[
+        "missing_fields"
+    ]
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
         if "agencia_id" in data and data["agencia_id"] != evento.agencia_id:
@@ -1182,13 +1220,19 @@ def atualizar_evento(
             )
 
     if "agencia_id" in data and data["agencia_id"] is not None:
-        _validate_fk(session, Agencia, data["agencia_id"], "AGENCIA_NOT_FOUND", "Agencia nao encontrada")
+        _validate_fk(
+            session, Agencia, data["agencia_id"], "AGENCIA_NOT_FOUND", "Agencia nao encontrada"
+        )
 
     tipo_id = data.get("tipo_id", evento.tipo_id)
     if "tipo_id" in data:
         if data["tipo_id"] is not None:
             _validate_fk(
-                session, TipoEvento, data["tipo_id"], "TIPO_EVENTO_NOT_FOUND", "Tipo de evento nao encontrado"
+                session,
+                TipoEvento,
+                data["tipo_id"],
+                "TIPO_EVENTO_NOT_FOUND",
+                "Tipo de evento nao encontrado",
             )
             tipo_id = data["tipo_id"]
         else:
@@ -1216,9 +1260,17 @@ def atualizar_evento(
             )
 
     if "diretoria_id" in data:
-        _validate_fk(session, Diretoria, data.get("diretoria_id"), "DIRETORIA_NOT_FOUND", "Diretoria nao encontrada")
+        _validate_fk(
+            session,
+            Diretoria,
+            data.get("diretoria_id"),
+            "DIRETORIA_NOT_FOUND",
+            "Diretoria nao encontrada",
+        )
     if "gestor_id" in data:
-        _validate_fk(session, Funcionario, data.get("gestor_id"), "GESTOR_NOT_FOUND", "Gestor nao encontrado")
+        _validate_fk(
+            session, Funcionario, data.get("gestor_id"), "GESTOR_NOT_FOUND", "Gestor nao encontrado"
+        )
     if "divisao_demandante_id" in data:
         _validate_fk(
             session,
@@ -1262,7 +1314,9 @@ def atualizar_evento(
     session.add(evento)
 
     if tag_ids_update is not None:
-        tag_ids = _normalize_unique_ids(tag_ids_update, code="TAG_ID_INVALID", message="tag_ids invalidos")
+        tag_ids = _normalize_unique_ids(
+            tag_ids_update, code="TAG_ID_INVALID", message="tag_ids invalidos"
+        )
         for tag_id in tag_ids:
             _validate_fk(session, Tag, tag_id, "TAG_NOT_FOUND", "Tag nao encontrada")
         session.exec(sa_delete(EventoTag).where(EventoTag.evento_id == evento_id))
@@ -1274,7 +1328,13 @@ def atualizar_evento(
             territorio_ids_update, code="TERRITORIO_ID_INVALID", message="territorio_ids invalidos"
         )
         for territorio_id in territorio_ids:
-            _validate_fk(session, Territorio, territorio_id, "TERRITORIO_NOT_FOUND", "Territorio nao encontrado")
+            _validate_fk(
+                session,
+                Territorio,
+                territorio_id,
+                "TERRITORIO_NOT_FOUND",
+                "Territorio nao encontrado",
+            )
         session.exec(sa_delete(EventoTerritorio).where(EventoTerritorio.evento_id == evento_id))
         for territorio_id in territorio_ids:
             session.add(EventoTerritorio(evento_id=evento_id, territorio_id=territorio_id))
@@ -1302,9 +1362,9 @@ def atualizar_evento(
         tag_ids=list(tag_ids_final),
         territorio_ids=list(territorio_ids_final),
     )
-    after_missing = compute_event_data_health(
-        after_proxy, status_name=status_after_name
-    )["missing_fields"]
+    after_missing = compute_event_data_health(after_proxy, status_name=status_after_name)[
+        "missing_fields"
+    ]
 
     completed_fields = [field for field in before_missing if field not in after_missing]
     for field in completed_fields:
@@ -1319,7 +1379,9 @@ def atualizar_evento(
         )
 
     read = EventoRead.model_validate(evento, from_attributes=True)
-    return read.model_copy(update={"tag_ids": list(tag_ids_final), "territorio_ids": list(territorio_ids_final)})
+    return read.model_copy(
+        update={"tag_ids": list(tag_ids_final), "territorio_ids": list(territorio_ids_final)}
+    )
 
 
 @router.delete("/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1332,11 +1394,15 @@ def excluir_evento(
     """Exclui evento, bloqueando quando houver dependencias."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     ativacoes = session.exec(
         select(func.count()).select_from(Ativacao).where(Ativacao.evento_id == evento_id)
@@ -1423,7 +1489,10 @@ def listar_status_evento(
         STATUS_CANCELADO,
     ]
     order_case = case(
-        *[(func.lower(StatusEvento.nome) == nome.lower(), idx) for idx, nome in enumerate(desired, start=1)],
+        *[
+            (func.lower(StatusEvento.nome) == nome.lower(), idx)
+            for idx, nome in enumerate(desired, start=1)
+        ],
         else_=99,
     )
     return session.exec(query.order_by(order_case, StatusEvento.nome)).all()
@@ -1549,15 +1618,21 @@ def obter_formulario_lead_config(
     """
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     computed_urls = build_evento_public_urls(evento_id, backend_base_url=str(request.base_url))
 
-    config = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).first()
+    config = session.exec(
+        select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+    ).first()
     if not config:
         default_campos = [
             FormularioLeadCampoRead(
@@ -1581,7 +1656,9 @@ def obter_formulario_lead_config(
     url_updates = {key: value for key, value in computed_urls.items() if getattr(read, key) is None}
     return read.model_copy(
         update={
-            "campos": [FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos],
+            "campos": [
+                FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos
+            ],
             **url_updates,
         }
     )
@@ -1599,11 +1676,15 @@ def upsert_formulario_lead_config(
     """Cria/atualiza config do Formulário de Lead (MVP: template + campos)."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     update_template = "template_id" in payload.model_fields_set
     if update_template and payload.template_id is not None:
@@ -1615,7 +1696,9 @@ def upsert_formulario_lead_config(
             "Template nao encontrado",
         )
 
-    config = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).first()
+    config = session.exec(
+        select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+    ).first()
     if not config:
         config = FormularioLeadConfig(
             evento_id=evento_id,
@@ -1633,7 +1716,9 @@ def upsert_formulario_lead_config(
         session.flush()  # garante config.id para FK sem commitar
 
         if replace_campos:
-            session.exec(sa_delete(FormularioLeadCampo).where(FormularioLeadCampo.config_id == config.id))
+            session.exec(
+                sa_delete(FormularioLeadCampo).where(FormularioLeadCampo.config_id == config.id)
+            )
             for campo in payload.campos:
                 session.add(
                     FormularioLeadCampo(
@@ -1662,7 +1747,9 @@ def upsert_formulario_lead_config(
     url_updates = {key: value for key, value in computed_urls.items() if getattr(read, key) is None}
     return read.model_copy(
         update={
-            "campos": [FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos],
+            "campos": [
+                FormularioLeadCampoRead.model_validate(c, from_attributes=True) for c in campos
+            ],
             **url_updates,
         }
     )
@@ -1677,11 +1764,15 @@ def obter_questionario(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     paginas = load_questionario_estrutura(session, evento_id=evento_id)
     paginas_read = [QuestionarioPaginaRead.model_validate(p, from_attributes=True) for p in paginas]
@@ -1698,11 +1789,15 @@ def salvar_questionario(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     respostas = session.exec(
         select(func.count())
@@ -1731,11 +1826,15 @@ def listar_gamificacoes(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     gamificacoes = session.exec(
         select(Gamificacao).where(Gamificacao.evento_id == evento_id).order_by(Gamificacao.id)
@@ -1761,11 +1860,15 @@ def criar_gamificacao(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     gamificacao = Gamificacao(
         evento_id=evento_id,
@@ -1791,13 +1894,19 @@ def listar_ativacoes(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
-    ativacoes = session.exec(select(Ativacao).where(Ativacao.evento_id == evento_id).order_by(Ativacao.id)).all()
+    ativacoes = session.exec(
+        select(Ativacao).where(Ativacao.evento_id == evento_id).order_by(Ativacao.id)
+    ).all()
     return [AtivacaoRead.model_validate(a, from_attributes=True) for a in ativacoes]
 
 
@@ -1819,11 +1928,15 @@ def criar_ativacao(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     if payload.gamificacao_id is not None:
         gamificacao = session.get(Gamificacao, payload.gamificacao_id)
@@ -1863,11 +1976,15 @@ def obter_evento(
 ):
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     tag_ids = session.exec(
         select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)
@@ -1879,7 +1996,9 @@ def obter_evento(
     ).all()
 
     read = EventoRead.model_validate(evento, from_attributes=True)
-    return read.model_copy(update={"tag_ids": list(tag_ids), "territorio_ids": list(territorio_ids)})
+    return read.model_copy(
+        update={"tag_ids": list(tag_ids), "territorio_ids": list(territorio_ids)}
+    )
 
 
 @router.get("/{evento_id}/missing-fields")
@@ -1892,11 +2011,15 @@ def obter_campos_pendentes(
     """Retorna campos pendentes (com prioridade) para o evento."""
     evento = session.get(Evento, evento_id)
     if not evento:
-        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
 
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
         if evento.agencia_id != current_user.agencia_id:
-            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
 
     tag_ids = session.exec(
         select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)
@@ -1909,9 +2032,9 @@ def obter_campos_pendentes(
 
     status_nome = None
     if evento.status_id:
-        status = session.get(StatusEvento, evento.status_id)
-        if status:
-            status_nome = status.nome
+        status_evento = session.get(StatusEvento, evento.status_id)
+        if status_evento:
+            status_nome = status_evento.nome
 
     proxy_data = evento.model_dump()
     proxy_data["tag_ids"] = list(tag_ids)

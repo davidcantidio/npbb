@@ -149,7 +149,6 @@ class Funcionario(SQLModel, table=True):
     usuario: Optional["Usuario"] = Relationship(back_populates="funcionario")
 
 
-
 # =========================
 # EVENTO / TIPO / SUBTIPO
 # =========================
@@ -442,7 +441,9 @@ class Convidado(SQLModel, table=True):
     email: str = Field(max_length=100, unique=True)
     externo: bool
 
-    funcionario_associado: Optional[Funcionario] = Relationship(back_populates="convidados_associados")
+    funcionario_associado: Optional[Funcionario] = Relationship(
+        back_populates="convidados_associados"
+    )
     convites: List["Convite"] = Relationship(back_populates="convidado")
 
 
@@ -521,7 +522,9 @@ class QuestionarioResposta(SQLModel, table=True):
     ativacao: Optional[Ativacao] = Relationship(back_populates="respostas_questionario")
     lead: Optional[Lead] = Relationship(back_populates="respostas_questionario")
 
-    respostas_pergunta: List["QuestionarioRespostaPergunta"] = Relationship(back_populates="resposta")
+    respostas_pergunta: List["QuestionarioRespostaPergunta"] = Relationship(
+        back_populates="resposta"
+    )
 
 
 class QuestionarioRespostaPergunta(SQLModel, table=True):
@@ -537,7 +540,9 @@ class QuestionarioRespostaPergunta(SQLModel, table=True):
 
     resposta: Optional[QuestionarioResposta] = Relationship(back_populates="respostas_pergunta")
     pergunta: Optional[QuestionarioPergunta] = Relationship(back_populates="respostas")
-    opcoes_marcadas: List["QuestionarioRespostaOpcao"] = Relationship(back_populates="resposta_pergunta")
+    opcoes_marcadas: List["QuestionarioRespostaOpcao"] = Relationship(
+        back_populates="resposta_pergunta"
+    )
 
 
 class QuestionarioRespostaOpcao(SQLModel, table=True):
@@ -547,7 +552,9 @@ class QuestionarioRespostaOpcao(SQLModel, table=True):
     resposta_pergunta_id: int = Field(foreign_key="questionario_resposta_pergunta.id")
     opcao_id: int = Field(foreign_key="questionario_opcao.id")
 
-    resposta_pergunta: Optional[QuestionarioRespostaPergunta] = Relationship(back_populates="opcoes_marcadas")
+    resposta_pergunta: Optional[QuestionarioRespostaPergunta] = Relationship(
+        back_populates="opcoes_marcadas"
+    )
     opcao: Optional[QuestionarioOpcao] = Relationship(back_populates="respostas_opcao")
 
 

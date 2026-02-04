@@ -16,6 +16,7 @@ import EventQuestionario from "./pages/EventQuestionario";
 import NewEvent from "./pages/NewEvent";
 import ComingSoon from "./pages/ComingSoon";
 import LeadsImport from "./pages/LeadsImport";
+import DashboardLeads from "./pages/DashboardLeads";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
@@ -68,7 +69,8 @@ function AppRoutes() {
         }
       >
         <Route path="/success" element={<Success />} />
-        <Route path="/dashboard" element={<Navigate to="/success" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/dashboard/leads" replace />} />
+        <Route path="/dashboard/leads" element={<DashboardLeads />} />
 
         <Route path="/eventos" element={<EventsList />} />
         <Route path="/eventos/novo" element={<NewEvent />} />

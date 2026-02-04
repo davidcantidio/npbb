@@ -67,10 +67,10 @@ describe("usuarios service - password recovery", () => {
     };
     mockFetchSequence([mockRes]);
 
-    await expect(forgotPassword("missing@example.com")).rejects.toMatchObject<ApiError>({
+    await expect(forgotPassword("missing@example.com")).rejects.toMatchObject({
       status: 404,
       detail: { code: "USER_NOT_FOUND", field: "email" },
-    });
+    } as ApiError);
   });
 
   it("resetPassword success retorna message", async () => {
@@ -104,10 +104,9 @@ describe("usuarios service - password recovery", () => {
     };
     mockFetchSequence([mockRes]);
 
-    await expect(resetPassword("token123", "Nova123")).rejects.toMatchObject<ApiError>({
+    await expect(resetPassword("token123", "Nova123")).rejects.toMatchObject({
       status: 400,
       detail: { code: "TOKEN_EXPIRED" },
-    });
+    } as ApiError);
   });
 });
-

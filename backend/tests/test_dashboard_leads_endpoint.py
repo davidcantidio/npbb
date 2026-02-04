@@ -128,6 +128,8 @@ def seed_dashboard_data(session: Session):
     return {
         "evento_sp_id": evento_sp.id,
         "evento_rj_id": evento_rj.id,
+        "ativacao_sp_id": ativacao_sp.id,
+        "ativacao_rj_id": ativacao_rj.id,
     }
 
 
@@ -174,6 +176,37 @@ def test_dashboard_leads_filter_evento_id(client, engine):
     assert response.status_code == 200
     data = response.json()
     assert data["kpis"]["leads_total"] == 1
+
+
+def test_dashboard_leads_rankings_order(client, engine):
+    with Session(engine) as session:
+        ids = seed_dashboard_data(session)
+        lead_extra = Lead(
+            nome="Pedro",
+            sobrenome="Souza",
+            cpf="00000000003",
+            data_nascimento=date(1992, 3, 3),
+            data_criacao=datetime(2026, 1, 12, tzinfo=timezone.utc),
+        )
+        session.add(lead_extra)
+        session.commit()
+        session.refresh(lead_extra)
+        session.add(
+            AtivacaoLead(
+                ativacao_id=ids["ativacao_sp_id"],
+                lead_id=lead_extra.id,
+            )
+        )
+        session.commit()
+        headers = get_auth_header(client, session)
+
+    response = client.get("/dashboard/leads", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    ranking = data["rankings"]["por_estado"]
+    assert ranking[0]["estado"] == "SP"
+    assert ranking[0]["total"] == 2
+    assert ranking[1]["estado"] == "RJ"
 
 
 def test_dashboard_leads_requires_auth(client, engine):

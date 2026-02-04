@@ -15,14 +15,11 @@ from app.schemas.dashboard_leads import (
     DashboardLeadsFilters,
     DashboardLeadsKpis,
     DashboardLeadsQuery,
-    DashboardLeadsRankCidade,
-    DashboardLeadsRankEstado,
-    DashboardLeadsRankEvento,
-    DashboardLeadsRankings,
     DashboardLeadsResponse,
     DashboardLeadsSeries,
     DashboardLeadsSeriesItem,
 )
+from app.utils.dashboard_rankings import get_dashboard_rankings
 from app.utils.http_errors import raise_http_error
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -144,63 +141,7 @@ def dashboard_leads(
             label = str(periodo)
         series_items.append(DashboardLeadsSeriesItem(periodo=label, total=int(total or 0)))
 
-    count_distinct_leads = func.count(func.distinct(Lead.id))
-
-    estados_rows = session.exec(
-        select(
-            func.upper(Evento.estado).label("estado"),
-            count_distinct_leads.label("total"),
-        )
-        .select_from(from_clause)
-        .where(*filters)
-        .group_by(func.upper(Evento.estado))
-        .order_by(count_distinct_leads.desc(), func.upper(Evento.estado))
-        .limit(params.limit)
-    ).all()
-    estados = [
-        DashboardLeadsRankEstado(estado=str(estado), total=int(total or 0))
-        for estado, total in estados_rows
-        if estado is not None
-    ]
-
-    cidades_rows = session.exec(
-        select(
-            func.min(Evento.cidade).label("cidade"),
-            count_distinct_leads.label("total"),
-        )
-        .select_from(from_clause)
-        .where(*filters)
-        .group_by(func.lower(Evento.cidade))
-        .order_by(count_distinct_leads.desc(), func.min(Evento.cidade))
-        .limit(params.limit)
-    ).all()
-    cidades = [
-        DashboardLeadsRankCidade(cidade=str(cidade), total=int(total or 0))
-        for cidade, total in cidades_rows
-        if cidade is not None
-    ]
-
-    eventos_rows = session.exec(
-        select(
-            Evento.id.label("evento_id"),
-            Evento.nome.label("evento_nome"),
-            count_distinct_leads.label("total"),
-        )
-        .select_from(from_clause)
-        .where(*filters)
-        .group_by(Evento.id, Evento.nome)
-        .order_by(count_distinct_leads.desc(), Evento.id)
-        .limit(params.limit)
-    ).all()
-    eventos = [
-        DashboardLeadsRankEvento(
-            evento_id=int(evento_id),
-            evento_nome=str(evento_nome),
-            total=int(total or 0),
-        )
-        for evento_id, evento_nome, total in eventos_rows
-        if evento_id is not None and evento_nome is not None
-    ]
+    rankings = get_dashboard_rankings(session, from_clause, filters, params.limit)
 
     return DashboardLeadsResponse(
         generated_at=now_utc(),
@@ -222,9 +163,5 @@ def dashboard_leads(
             granularity=granularity,
             leads=series_items,
         ),
-        rankings=DashboardLeadsRankings(
-            por_estado=estados,
-            por_cidade=cidades,
-            por_evento=eventos,
-        ),
+        rankings=rankings,
     )

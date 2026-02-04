@@ -178,6 +178,17 @@ def test_dashboard_leads_filter_evento_id(client, engine):
     assert data["kpis"]["leads_total"] == 1
 
 
+def test_dashboard_leads_filter_evento_nome(client, engine):
+    with Session(engine) as session:
+        seed_dashboard_data(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/dashboard/leads?evento_nome=Evento SP", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["kpis"]["leads_total"] == 1
+
+
 def test_dashboard_leads_rankings_order(client, engine):
     with Session(engine) as session:
         ids = seed_dashboard_data(session)

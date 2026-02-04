@@ -37,6 +37,12 @@ def _normalize_city(value: str | None) -> str | None:
     return value.strip().lower()
 
 
+def _normalize_event_name(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.strip().lower()
+
+
 def _apply_visibility(filters: list, current_user: Usuario) -> None:
     if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
         if not current_user.agencia_id:
@@ -82,6 +88,7 @@ def dashboard_leads(
 ):
     estado_norm = _normalize_state(params.estado)
     cidade_norm = _normalize_city(params.cidade)
+    evento_nome_norm = _normalize_event_name(params.evento_nome)
 
     filters: list = []
     _apply_visibility(filters, current_user)
@@ -89,6 +96,8 @@ def dashboard_leads(
 
     if params.evento_id is not None:
         filters.append(Evento.id == params.evento_id)
+    elif evento_nome_norm:
+        filters.append(func.lower(Evento.nome) == evento_nome_norm)
     if estado_norm:
         filters.append(func.upper(Evento.estado) == estado_norm)
     if cidade_norm:
@@ -149,6 +158,7 @@ def dashboard_leads(
             data_inicio=params.data_inicio,
             data_fim=params.data_fim,
             evento_id=params.evento_id,
+            evento_nome=evento_nome_norm,
             estado=estado_norm,
             cidade=cidade_norm,
             limit=params.limit,

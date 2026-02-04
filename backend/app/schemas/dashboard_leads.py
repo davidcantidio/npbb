@@ -12,6 +12,8 @@ class DashboardLeadsQuery(BaseModel):
     data_inicio: date | None = None
     data_fim: date | None = None
     evento_id: int | None = Field(default=None, ge=1)
+    # Deprecated: usar evento_id quando disponivel.
+    evento_nome: str | None = Field(default=None, min_length=1, max_length=100)
     estado: str | None = Field(default=None, min_length=1, max_length=40)
     cidade: str | None = Field(default=None, min_length=1, max_length=100)
     limit: int = Field(default=10, ge=1, le=100)
@@ -28,6 +30,7 @@ class DashboardLeadsFilters(BaseModel):
     data_inicio: date | None
     data_fim: date | None
     evento_id: int | None
+    evento_nome: str | None
     estado: str | None
     cidade: str | None
     limit: int

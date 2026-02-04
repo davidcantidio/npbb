@@ -14,6 +14,7 @@ Status: backend MVP implementado.
 | data_inicio | date (YYYY-MM-DD) | nao | Filtra por Lead.data_criacao >= data_inicio |
 | data_fim | date (YYYY-MM-DD) | nao | Filtra por Lead.data_criacao <= data_fim |
 | evento_id | int | nao | Filtra por Evento.id (via Ativacao -> AtivacaoLead) |
+| evento_nome | string | nao | **Deprecated**: fallback temporario para filtrar por Evento.nome (case-insensitive) |
 | estado | string | nao | UF (case-insensitive) do Evento |
 | cidade | string | nao | Cidade (case-insensitive) do Evento |
 | limit | int | nao | Top N para rankings (default=10, max=100) |
@@ -33,6 +34,7 @@ Status: backend MVP implementado.
     "data_inicio": "2026-01-01",
     "data_fim": "2026-01-31",
     "evento_id": 123,
+    "evento_nome": null,
     "estado": "SP",
     "cidade": "sao paulo",
     "limit": 10,

@@ -1,0 +1,1211 @@
+"""Rotas de conversoes de lead."""
+
+from __future__ import annotations
+
+import csv
+import json
+import logging
+import os
+import re
+import tracemalloc
+from datetime import datetime
+from pathlib import Path
+from collections.abc import Iterator
+
+import httpx
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from pydantic import TypeAdapter, ValidationError
+from openpyxl import load_workbook
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
+
+from app.core.auth import get_current_user
+from app.db.database import get_session
+from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
+from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
+from app.schemas.lead_import import LeadImportMapping
+from app.utils.http_errors import raise_http_error
+from app.utils.log_sanitize import sanitize_exception
+from app.utils.lead_import_normalize import coerce_field
+from app.utils.text_normalize import normalize_text
+from app.utils.fuzzy_match import best_match
+
+router = APIRouter(prefix="/leads", tags=["leads"])
+logger = logging.getLogger(__name__)
+
+ALLOWED_IMPORT_EXTENSIONS = {".csv", ".xlsx"}
+BATCH_SIZE = 500
+DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024
+DEFAULT_BATCH_SUMMARY_LIMIT = 200
+DEFAULT_LOG_MEMORY = "0"
+
+CEP_CACHE: dict[str, dict[str, str]] = {}
+CEP_CACHE_MAX = 500
+
+
+def _fetch_cep_data(cep: str) -> dict[str, str] | None:
+    if not cep or len(cep) != 8:
+        return None
+    cached = CEP_CACHE.get(cep)
+    if cached is not None:
+        return cached or None
+    try:
+        resp = httpx.get(f"https://viacep.com.br/ws/{cep}/json/", timeout=2.0)
+        if resp.status_code != 200:
+            CEP_CACHE[cep] = {}
+            return None
+        data = resp.json()
+        if data.get("erro"):
+            CEP_CACHE[cep] = {}
+            return None
+        result = {
+            "endereco_rua": (data.get("logradouro") or "").strip(),
+            "bairro": (data.get("bairro") or "").strip(),
+            "cidade": (data.get("localidade") or "").strip(),
+            "estado": (data.get("uf") or "").strip(),
+        }
+        CEP_CACHE[cep] = result
+        if len(CEP_CACHE) > CEP_CACHE_MAX:
+            CEP_CACHE.clear()
+        return result
+    except Exception:
+        return None
+
+
+def _find_existing_lead(session: Session, payload: dict[str, object]) -> Lead | None:
+    email = payload.get("email")
+    cpf = payload.get("cpf")
+    if not email and not cpf:
+        return None
+
+    filters = []
+    if email and cpf:
+        filters.append(Lead.email == email)
+        filters.append(Lead.cpf == cpf)
+    elif email:
+        filters.append(Lead.email == email)
+    else:
+        filters.append(Lead.cpf == cpf)
+
+    evento_nome = payload.get("evento_nome")
+    sessao = payload.get("sessao")
+    if evento_nome is not None:
+        filters.append(Lead.evento_nome == evento_nome)
+    if sessao is not None:
+        filters.append(Lead.sessao == sessao)
+
+    return session.exec(select(Lead).where(*filters)).first()
+
+
+def _dedupe_key(payload: dict[str, object]) -> str | None:
+    email = payload.get("email") or ""
+    cpf = payload.get("cpf") or ""
+    if not email and not cpf:
+        return None
+    evento_nome = payload.get("evento_nome") or ""
+    sessao = payload.get("sessao") or ""
+    return f"{email}|{cpf}|{evento_nome}|{sessao}"
+
+
+def _merge_lead(existing: Lead, payload: dict[str, object]) -> None:
+    for key, value in payload.items():
+        if value is None:
+            continue
+        if key in {"email", "cpf"}:
+            if getattr(existing, key):
+                continue
+            setattr(existing, key, value)
+            continue
+        if key == "fonte_origem":
+            if getattr(existing, key):
+                continue
+            setattr(existing, key, value)
+            continue
+        setattr(existing, key, value)
+
+
+def _process_batch(
+    session: Session,
+    batch: list[tuple[dict[str, object], int] | None],
+) -> tuple[int, int, int, bool]:
+    created = 0
+    updated = 0
+    skipped = 0
+    has_errors = False
+    new_objects: list[Lead] = []
+    update_objects: list[Lead] = []
+    lead_cache: dict[str, Lead] = {}
+
+    for item in batch:
+        if not item:
+            continue
+        payload, row_number = item
+        key = _dedupe_key(payload)
+        existing = lead_cache.get(key) if key else None
+        if existing is None:
+            existing = _find_existing_lead(session, payload)
+            if existing and key:
+                lead_cache[key] = existing
+        if existing:
+            _merge_lead(existing, payload)
+            update_objects.append(existing)
+            continue
+        new_objects.append(Lead(**payload))
+
+    try:
+        if new_objects:
+            session.bulk_save_objects(new_objects)
+            created += len(new_objects)
+        if update_objects:
+            session.add_all(update_objects)
+            updated += len(update_objects)
+        session.commit()
+        return created, updated, skipped, has_errors
+    except IntegrityError:
+        session.rollback()
+
+    for item in batch:
+        if not item:
+            continue
+        payload, row_number = item
+        key = _dedupe_key(payload)
+        existing = lead_cache.get(key) if key else None
+        if existing is None:
+            existing = _find_existing_lead(session, payload)
+            if existing and key:
+                lead_cache[key] = existing
+        if existing:
+            _merge_lead(existing, payload)
+            session.add(existing)
+            updated += 1
+            continue
+
+        lead = Lead(**payload)
+        try:
+            session.add(lead)
+            created += 1
+        except IntegrityError as exc:
+            session.rollback()
+            existing = _find_existing_lead(session, payload)
+            if not existing:
+                skipped += 1
+                has_errors = True
+                logger.warning(
+                    "Lead import error row=%s error=INTEGRITY_ERROR detail=%s",
+                    row_number,
+                    sanitize_exception(exc),
+                )
+                continue
+            _merge_lead(existing, payload)
+            session.add(existing)
+            updated += 1
+        except Exception as exc:
+            session.rollback()
+            skipped += 1
+            has_errors = True
+            logger.warning(
+                "Lead import error row=%s error=UNKNOWN detail=%s",
+                row_number,
+                sanitize_exception(exc),
+            )
+    session.commit()
+    return created, updated, skipped, has_errors
+
+
+def _get_env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+MAX_IMPORT_FILE_BYTES = _get_env_int("LEADS_IMPORT_MAX_BYTES", DEFAULT_IMPORT_MAX_BYTES)
+BATCH_SUMMARY_LIMIT = _get_env_int("LEADS_IMPORT_BATCH_SUMMARY_LIMIT", DEFAULT_BATCH_SUMMARY_LIMIT)
+LOG_MEMORY = os.getenv("LEADS_IMPORT_LOG_MEMORY", DEFAULT_LOG_MEMORY).strip().lower() in {"1", "true", "yes"}
+
+
+def _log_memory_usage(stage: str, batch_index: int | None = None) -> None:
+    if not LOG_MEMORY:
+        return
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
+    current, peak = tracemalloc.get_traced_memory()
+    logger.info(
+        "Lead import memory stage=%s batch=%s current_mb=%.2f peak_mb=%.2f",
+        stage,
+        batch_index,
+        current / (1024 * 1024),
+        peak / (1024 * 1024),
+    )
+
+
+def _get_lead_or_404(*, session: Session, lead_id: int) -> Lead:
+    lead = session.get(Lead, lead_id)
+    if not lead:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="LEAD_NOT_FOUND",
+            message="Lead nao encontrado",
+        )
+    return lead
+
+
+@router.post("/{lead_id}/conversoes", response_model=LeadConversaoRead, status_code=status.HTTP_201_CREATED)
+@router.post("/{lead_id}/conversoes/", response_model=LeadConversaoRead, status_code=status.HTTP_201_CREATED)
+def criar_conversao(
+    lead_id: int,
+    payload: LeadConversaoCreate,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    lead = _get_lead_or_404(session=session, lead_id=lead_id)
+
+    conversao = LeadConversao(
+        lead_id=lead.id,
+        tipo=payload.tipo,
+        acao_nome=payload.acao_nome,
+        fonte_origem=payload.fonte_origem,
+        evento_id=payload.evento_id,
+        data_conversao_evento=payload.data_conversao_evento,
+        created_at=now_utc(),
+    )
+    session.add(conversao)
+    session.commit()
+    session.refresh(conversao)
+    return LeadConversaoRead.model_validate(conversao, from_attributes=True)
+
+
+@router.get("/{lead_id}/conversoes", response_model=list[LeadConversaoRead])
+@router.get("/{lead_id}/conversoes/", response_model=list[LeadConversaoRead])
+def listar_conversoes(
+    lead_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    _get_lead_or_404(session=session, lead_id=lead_id)
+    conversoes = session.exec(
+        select(LeadConversao).where(LeadConversao.lead_id == lead_id).order_by(LeadConversao.created_at.desc())
+    ).all()
+    return [LeadConversaoRead.model_validate(item, from_attributes=True) for item in conversoes]
+
+
+@router.post("/import/upload")
+@router.post("/import/upload/")
+def validar_upload_import(
+    file: UploadFile = File(...),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    filename = file.filename or ""
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_FILE_TYPE",
+            message="Formato de arquivo invalido (use .csv ou .xlsx)",
+            field="file",
+        )
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size > MAX_IMPORT_FILE_BYTES:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="FILE_TOO_LARGE",
+            message="Arquivo excede o tamanho maximo permitido",
+            field="file",
+            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
+        )
+    if size == 0:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Arquivo vazio",
+            field="file",
+        )
+
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > MAX_IMPORT_FILE_BYTES:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="FILE_TOO_LARGE",
+            message="Arquivo excede o tamanho maximo permitido",
+            field="file",
+            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
+        )
+    if size == 0:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Arquivo vazio",
+            field="file",
+        )
+
+    return {"filename": filename, "size_bytes": size}
+
+
+@router.get("/referencias/eventos")
+@router.get("/referencias/eventos/")
+def listar_referencia_eventos(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    eventos = session.exec(select(Evento.id, Evento.nome).order_by(Evento.nome)).all()
+    return [{"id": int(eid), "nome": nome} for eid, nome in eventos if eid is not None and nome]
+
+
+@router.get("/referencias/cidades")
+@router.get("/referencias/cidades/")
+def listar_referencia_cidades(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    rows = session.exec(select(Evento.cidade).where(Evento.cidade.is_not(None)).distinct()).all()
+    return sorted({str(c).strip() for c in rows if c})
+
+
+@router.get("/referencias/estados")
+@router.get("/referencias/estados/")
+def listar_referencia_estados(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    rows = session.exec(select(Evento.estado).where(Evento.estado.is_not(None)).distinct()).all()
+    return sorted({str(c).strip() for c in rows if c})
+
+
+@router.get("/referencias/generos")
+@router.get("/referencias/generos/")
+def listar_referencia_generos(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    rows = session.exec(select(Lead.genero).where(Lead.genero.is_not(None)).distinct()).all()
+    return sorted({str(c).strip() for c in rows if c})
+
+
+REFERENCE_THRESHOLDS = {
+    LeadAliasTipo.EVENTO: 0.82,
+    LeadAliasTipo.CIDADE: 0.85,
+    LeadAliasTipo.ESTADO: 0.9,
+    LeadAliasTipo.GENERO: 0.85,
+}
+
+
+@router.get("/referencias/suggest")
+@router.get("/referencias/suggest/")
+def sugerir_referencia(
+    tipo: LeadAliasTipo,
+    valor: str,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    threshold = REFERENCE_THRESHOLDS.get(tipo, 0.85)
+    if tipo == LeadAliasTipo.EVENTO:
+        candidates = [row[0] for row in session.exec(select(Evento.nome)).all() if row and row[0]]
+    elif tipo == LeadAliasTipo.CIDADE:
+        candidates = [row[0] for row in session.exec(select(Evento.cidade)).all() if row and row[0]]
+    elif tipo == LeadAliasTipo.ESTADO:
+        candidates = [row[0] for row in session.exec(select(Evento.estado)).all() if row and row[0]]
+    else:
+        candidates = [row[0] for row in session.exec(select(Lead.genero)).all() if row and row[0]]
+
+    suggestion, score = best_match(valor, candidates, threshold=threshold)
+    return {"suggested": suggestion, "score": score, "threshold": threshold}
+
+
+def _normalize_alias_value(value: str) -> str:
+    return normalize_text(value)
+
+
+@router.get("/aliases")
+@router.get("/aliases/")
+def buscar_alias(
+    tipo: LeadAliasTipo,
+    valor_origem: str,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    normalized = _normalize_alias_value(valor_origem)
+    alias = session.exec(
+        select(LeadAlias).where(
+            LeadAlias.tipo == tipo,
+            LeadAlias.valor_normalizado == normalized,
+        )
+    ).first()
+    if not alias:
+        return None
+    return {
+        "id": alias.id,
+        "tipo": alias.tipo,
+        "valor_origem": alias.valor_origem,
+        "valor_normalizado": alias.valor_normalizado,
+        "canonical_value": alias.canonical_value,
+        "evento_id": alias.evento_id,
+    }
+
+
+@router.post("/aliases", status_code=status.HTTP_201_CREATED)
+@router.post("/aliases/", status_code=status.HTTP_201_CREATED)
+def criar_alias(
+    payload: dict,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        tipo = LeadAliasTipo(payload.get("tipo"))
+    except Exception:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_ALIAS_TYPE",
+            message="Tipo de alias invalido",
+            field="tipo",
+        )
+    valor_origem = (payload.get("valor_origem") or "").strip()
+    if not valor_origem:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_ALIAS_VALUE",
+            message="valor_origem obrigatorio",
+            field="valor_origem",
+        )
+    canonical_value = (payload.get("canonical_value") or "").strip() or None
+    evento_id = payload.get("evento_id")
+    normalized = _normalize_alias_value(valor_origem)
+
+    existing = session.exec(
+        select(LeadAlias).where(
+            LeadAlias.tipo == tipo,
+            LeadAlias.valor_normalizado == normalized,
+        )
+    ).first()
+    if existing:
+        updated = False
+        if canonical_value and existing.canonical_value != canonical_value:
+            existing.canonical_value = canonical_value
+            updated = True
+        if evento_id and existing.evento_id != evento_id:
+            existing.evento_id = evento_id
+            updated = True
+        if updated:
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
+        return {
+            "id": existing.id,
+            "tipo": existing.tipo,
+            "valor_origem": existing.valor_origem,
+            "valor_normalizado": existing.valor_normalizado,
+            "canonical_value": existing.canonical_value,
+            "evento_id": existing.evento_id,
+        }
+
+    alias = LeadAlias(
+        tipo=tipo,
+        valor_origem=valor_origem,
+        valor_normalizado=normalized,
+        canonical_value=canonical_value,
+        evento_id=evento_id,
+        created_at=now_utc(),
+    )
+    session.add(alias)
+    session.commit()
+    session.refresh(alias)
+    return {
+        "id": alias.id,
+        "tipo": alias.tipo,
+        "valor_origem": alias.valor_origem,
+        "valor_normalizado": alias.valor_normalizado,
+        "canonical_value": alias.canonical_value,
+        "evento_id": alias.evento_id,
+    }
+
+
+def _detect_csv_delimiter(sample_text: str) -> str:
+    first_line = sample_text.splitlines()[0] if sample_text else ""
+    comma_count = first_line.count(",")
+    semi_count = first_line.count(";")
+    return ";" if semi_count > comma_count else ","
+
+
+def _score_row_tabular(row: list[str]) -> int:
+    non_empty = [cell for cell in row if cell.strip()]
+    if not row:
+        return 0
+    fill_ratio = len(non_empty) / max(len(row), 1)
+    if len(non_empty) >= 2 and fill_ratio >= 0.5:
+        return int(fill_ratio * 100)
+    return 0
+
+
+def _detect_data_start_index(rows: list[list[str]]) -> int:
+    best_idx = 0
+    best_score = -1
+    for idx, row in enumerate(rows[:50]):
+        score = _score_row_tabular(row)
+        if score > best_score:
+            best_score = score
+            best_idx = idx
+    return best_idx
+
+
+def _read_csv_sample(file: UploadFile, max_rows: int) -> dict:
+    file.file.seek(0)
+    sample_bytes = file.file.read(4096)
+    try:
+        sample_text = sample_bytes.decode("utf-8-sig", errors="ignore")
+    except Exception:
+        sample_text = ""
+    delimiter = _detect_csv_delimiter(sample_text)
+
+    file.file.seek(0)
+    reader = csv.reader(file.file, delimiter=delimiter)
+    rows: list[list[str]] = []
+    for row in reader:
+        if row is None:
+            continue
+        rows.append([cell.strip() for cell in row])
+        if len(rows) >= max_rows + 1:
+            break
+
+    start_index = _detect_data_start_index(rows)
+    headers = rows[start_index] if rows else []
+    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
+    return {
+        "headers": headers,
+        "rows": data_rows,
+        "delimiter": delimiter,
+        "start_index": start_index,
+    }
+
+
+def _read_xlsx_sample(file: UploadFile, max_rows: int) -> dict:
+    file.file.seek(0)
+    wb = load_workbook(file.file, read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    rows: list[list[str]] = []
+    for row in ws.iter_rows(max_row=max_rows + 1, values_only=True):
+        rows.append([("" if v is None else str(v)).strip() for v in row])
+        if len(rows) >= max_rows + 1:
+            break
+    start_index = _detect_data_start_index(rows)
+    headers = rows[start_index] if rows else []
+    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
+    return {
+        "headers": headers,
+        "rows": data_rows,
+        "delimiter": None,
+        "start_index": start_index,
+    }
+
+
+def _read_xlsx_rows(file: UploadFile) -> list[list[str]]:
+    file.file.seek(0)
+    wb = load_workbook(file.file, read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    rows: list[list[str]] = []
+    for row in ws.iter_rows(values_only=True):
+        rows.append([("" if v is None else str(v)).strip() for v in row])
+    return rows
+
+
+def _iter_csv_data_rows(file: UploadFile, delimiter: str, start_index: int) -> Iterator[list[str]]:
+    file.file.seek(0)
+    reader = csv.reader(file.file, delimiter=delimiter)
+    for idx, row in enumerate(reader):
+        if idx <= start_index:
+            continue
+        yield [cell.strip() for cell in row]
+
+
+def _iter_xlsx_data_rows(file: UploadFile, start_index: int) -> Iterator[list[str]]:
+    file.file.seek(0)
+    wb = load_workbook(file.file, read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    for idx, row in enumerate(ws.iter_rows(values_only=True)):
+        if idx <= start_index:
+            continue
+        yield [("" if v is None else str(v)).strip() for v in row]
+
+
+def _ensure_mapping_has_essential(mappings: list[LeadImportMapping]) -> None:
+    essential = {"email", "cpf"}
+    mapped_fields = {m.campo for m in mappings if m.campo}
+    if not (mapped_fields & essential):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="MAPPING_MISSING_ESSENTIAL",
+            message="Informe email ou CPF",
+        )
+
+
+def _column_samples(rows: list[list[str]], col_index: int, max_samples: int = 5) -> list[str]:
+    samples: list[str] = []
+    for row in rows:
+        if col_index >= len(row):
+            continue
+        value = row[col_index].strip()
+        if not value:
+            continue
+        samples.append(value)
+        if len(samples) >= max_samples:
+            break
+    return samples
+
+
+def _score_email(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    hits = sum(1 for v in values if pattern.match(v.lower()))
+    return hits / len(values)
+
+
+def _score_cpf(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    pattern = re.compile(r"^\d{11}$")
+    hits = 0
+    for v in values:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if pattern.match(digits):
+            hits += 1
+    return hits / len(values)
+
+
+def _score_phone_br(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    # DDDs validos (Brasil)
+    valid_ddds = {
+        "11", "12", "13", "14", "15", "16", "17", "18", "19",
+        "21", "22", "24", "27", "28",
+        "31", "32", "33", "34", "35", "37", "38",
+        "41", "42", "43", "44", "45", "46",
+        "47", "48", "49",
+        "51", "53", "54", "55",
+        "61", "62", "63", "64", "65", "66", "67", "68", "69",
+        "71", "73", "74", "75", "77",
+        "79",
+        "81", "82", "83", "84", "85", "86", "87", "88", "89",
+        "91", "92", "93", "94", "95", "96", "97", "98", "99",
+    }
+    hits = 0
+    for v in values:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if digits.startswith("55"):
+            digits = digits[2:]
+        if len(digits) != 11:
+            continue
+        ddd = digits[:2]
+        numero = digits[2:]
+        if ddd not in valid_ddds:
+            continue
+        if not numero.startswith("9"):
+            continue
+        hits += 1
+    return hits / len(values)
+
+
+def _score_cep(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    hits = 0
+    for v in values:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) == 8:
+            hits += 1
+    return hits / len(values)
+
+
+def _score_uf(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    ufs = {
+        "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+        "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+        "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+    }
+    hits = sum(1 for v in values if v.strip().upper() in ufs)
+    return hits / len(values)
+
+
+def _score_date(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    patterns = [
+        re.compile(r"^\d{2}/\d{2}/\d{4}$"),
+        re.compile(r"^\d{4}-\d{2}-\d{2}$"),
+    ]
+    hits = sum(1 for v in values if any(p.match(v.strip()) for p in patterns))
+    return hits / len(values)
+
+
+def _score_number(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    hits = 0
+    for v in values:
+        text = v.strip().replace(".", "").replace(",", ".")
+        try:
+            float(text)
+            hits += 1
+        except ValueError:
+            continue
+    return hits / len(values)
+
+
+def _score_datetime(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    patterns = [
+        re.compile(r"^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}(:\d{2})?$"),
+        re.compile(r"^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$"),
+    ]
+    hits = sum(1 for v in values if any(p.match(v.strip()) for p in patterns))
+    return hits / len(values)
+
+
+def _score_address(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    keywords = ("rua", "avenida", "av", "travessa", "alameda", "rodovia", "praca", "praça")
+    hits = 0
+    for v in values:
+        text = v.strip().lower()
+        if any(k in text for k in keywords):
+            hits += 1
+    return hits / len(values)
+
+
+def _score_genero(values: list[str]) -> float:
+    if not values:
+        return 0.0
+    vocab = {
+        "masculino",
+        "feminino",
+        "homem",
+        "mulher",
+        "m",
+        "f",
+    }
+    hits = 0
+    for v in values:
+        text = v.strip().lower()
+        if text in vocab:
+            hits += 1
+    return hits / len(values)
+
+
+def _apply_sample_penalty(score: float, sample_size: int) -> float:
+    if sample_size <= 0:
+        return 0.0
+    if sample_size < 3:
+        return score * (sample_size / 3)
+    return score
+
+
+def _infer_column_mapping(header: str, samples: list[str]) -> LeadImportMapping:
+    header_lc = header.lower().strip()
+    sample_size = len(samples)
+    thresholds = {
+        "email": 0.8,
+        "cpf": 0.8,
+        "telefone": 0.85,
+        "cep": 0.85,
+        "uf": 0.85,
+        "datetime": 0.85,
+        "data": 0.75,
+        "numero": 0.85,
+        "endereco": 0.7,
+        "genero": 0.7,
+    }
+    scores = {
+        "email": _apply_sample_penalty(_score_email(samples), sample_size),
+        "cpf": _apply_sample_penalty(_score_cpf(samples), sample_size),
+        "telefone": _apply_sample_penalty(_score_phone_br(samples), sample_size),
+        "cep": _apply_sample_penalty(_score_cep(samples), sample_size),
+        "uf": _apply_sample_penalty(_score_uf(samples), sample_size),
+        "data": _apply_sample_penalty(_score_date(samples), sample_size),
+        "datetime": _apply_sample_penalty(_score_datetime(samples), sample_size),
+        "numero": _apply_sample_penalty(_score_number(samples), sample_size),
+        "endereco": _apply_sample_penalty(_score_address(samples), sample_size),
+        "genero": _apply_sample_penalty(_score_genero(samples), sample_size),
+    }
+
+    campo = None
+    confianca = None
+    allow_auto = sample_size >= 3
+
+    if allow_auto and scores["email"] >= thresholds["email"]:
+        campo = "email"
+        confianca = scores["email"]
+    elif allow_auto and scores["cpf"] >= thresholds["cpf"]:
+        campo = "cpf"
+        confianca = scores["cpf"]
+    elif allow_auto and scores["telefone"] >= thresholds["telefone"]:
+        campo = "telefone"
+        confianca = scores["telefone"]
+    elif allow_auto and scores["cep"] >= thresholds["cep"]:
+        campo = "cep"
+        confianca = scores["cep"]
+    elif allow_auto and scores["uf"] >= thresholds["uf"]:
+        campo = "estado"
+        confianca = scores["uf"]
+    elif allow_auto and scores["datetime"] >= thresholds["datetime"]:
+        campo = "data_compra"
+        confianca = scores["datetime"]
+    elif "email" in header_lc:
+        campo = "email"
+        confianca = max(scores["email"], 0.6)
+    elif "cpf" in header_lc:
+        campo = "cpf"
+        confianca = max(scores["cpf"], 0.6)
+    elif "telefone" in header_lc or "fone" in header_lc or "cel" in header_lc:
+        campo = "telefone"
+        confianca = max(scores["telefone"], 0.6)
+    elif "cep" in header_lc:
+        campo = "cep"
+        confianca = max(scores["cep"], 0.6)
+    elif "uf" in header_lc or "estado" in header_lc:
+        campo = "estado"
+        confianca = max(scores["uf"], 0.6)
+    elif "compra" in header_lc and "hora" in header_lc:
+        campo = "data_compra"
+        confianca = max(scores["datetime"], 0.6)
+    elif "endereco" in header_lc or "rua" in header_lc or header_lc.startswith("av"):
+        campo = "endereco_rua"
+        confianca = max(scores["endereco"], 0.55)
+    elif "genero" in header_lc or "gênero" in header_lc:
+        campo = "genero"
+        confianca = max(scores["genero"], 0.55)
+    elif "data" in header_lc or "nasc" in header_lc:
+        campo = "data_nascimento"
+        confianca = max(scores["data"], 0.5)
+    elif allow_auto and scores["data"] >= thresholds["data"]:
+        campo = "data_nascimento"
+        confianca = scores["data"]
+    elif allow_auto and scores["numero"] >= thresholds["numero"]:
+        campo = "ingresso_qtd"
+        confianca = scores["numero"]
+    elif allow_auto and scores["endereco"] >= thresholds["endereco"]:
+        campo = "endereco_rua"
+        confianca = scores["endereco"]
+    elif allow_auto and scores["genero"] >= thresholds["genero"]:
+        campo = "genero"
+        confianca = scores["genero"]
+
+    if confianca is not None:
+        confianca = min(confianca, 0.9)
+    return LeadImportMapping(coluna=header or "", campo=campo, confianca=confianca)
+
+
+ 
+
+
+@router.post("/import/sample")
+@router.post("/import/sample/")
+def preview_import_sample(
+    file: UploadFile = File(...),
+    sample_rows: int = 10,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    filename = file.filename or ""
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_FILE_TYPE",
+            message="Formato de arquivo invalido (use .csv ou .xlsx)",
+            field="file",
+        )
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size > MAX_IMPORT_FILE_BYTES:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="FILE_TOO_LARGE",
+            message="Arquivo excede o tamanho maximo permitido",
+            field="file",
+            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
+        )
+    if size == 0:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Arquivo vazio",
+            field="file",
+        )
+    if sample_rows < 1 or sample_rows > 50:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_SAMPLE_SIZE",
+            message="sample_rows deve ser entre 1 e 50",
+            field="sample_rows",
+        )
+
+    if ext == ".xlsx":
+        preview = _read_xlsx_sample(file, max_rows=sample_rows)
+    else:
+        preview = _read_csv_sample(file, max_rows=sample_rows)
+    if not preview["rows"] and not preview["headers"]:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Arquivo vazio",
+            field="file",
+        )
+    headers = preview["headers"]
+    rows = preview["rows"]
+    suggestions: list[LeadImportMapping] = []
+    samples_by_column: list[list[str]] = []
+    alias_hits: list[dict | None] = []
+    for idx, header in enumerate(headers):
+        samples = _column_samples(rows, idx)
+        samples_by_column.append(samples)
+        suggestion = _infer_column_mapping(header, samples)
+        suggestions.append(suggestion)
+
+        hit = None
+        if suggestion.campo in {"evento_nome", "cidade", "estado", "genero"} and samples:
+            alias_tipo = {
+                "evento_nome": LeadAliasTipo.EVENTO,
+                "cidade": LeadAliasTipo.CIDADE,
+                "estado": LeadAliasTipo.ESTADO,
+                "genero": LeadAliasTipo.GENERO,
+            }[suggestion.campo]
+            normalized = _normalize_alias_value(samples[0])
+            alias = session.exec(
+                select(LeadAlias).where(
+                    LeadAlias.tipo == alias_tipo,
+                    LeadAlias.valor_normalizado == normalized,
+                )
+            ).first()
+            if alias:
+                hit = {
+                    "tipo": alias.tipo,
+                    "valor_origem": alias.valor_origem,
+                    "canonical_value": alias.canonical_value,
+                    "evento_id": alias.evento_id,
+                }
+        alias_hits.append(hit)
+
+    return {
+        "filename": filename,
+        **preview,
+        "suggestions": [s.model_dump() for s in suggestions],
+        "samples_by_column": samples_by_column,
+        "alias_hits": alias_hits,
+    }
+
+
+@router.post("/import/validate")
+@router.post("/import/validate/")
+def validar_mapeamento(
+    mappings: list[LeadImportMapping],
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    _ensure_mapping_has_essential(mappings)
+    return {"ok": True}
+
+
+@router.post("/import")
+@router.post("/import/")
+def importar_leads(
+    file: UploadFile = File(...),
+    mappings_json: str = Form(...),
+    fonte_origem: str | None = Form(None),
+    enriquecer_cep: bool = Form(False),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    filename = file.filename or ""
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_FILE_TYPE",
+            message="Formato de arquivo invalido (use .csv ou .xlsx)",
+            field="file",
+        )
+
+    try:
+        raw = json.loads(mappings_json)
+        mappings = TypeAdapter(list[LeadImportMapping]).validate_python(raw)
+    except (json.JSONDecodeError, ValidationError):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_MAPPING",
+            message="Mapeamento invalido",
+            field="mappings",
+        )
+
+    _ensure_mapping_has_essential(mappings)
+
+    if ext == ".xlsx":
+        preview = _read_xlsx_sample(file, max_rows=20)
+        start_index = preview["start_index"]
+        row_iter = _iter_xlsx_data_rows(file, start_index)
+    else:
+        preview = _read_csv_sample(file, max_rows=20)
+        start_index = preview["start_index"]
+        delimiter = preview["delimiter"]
+        row_iter = _iter_csv_data_rows(file, delimiter, start_index)
+
+    mapping_by_index: dict[int, str] = {}
+    for idx, m in enumerate(mappings):
+        if m.campo:
+            mapping_by_index[idx] = m.campo
+
+    created = 0
+    updated = 0
+    skipped = 0
+    total = 0
+    batch_stats: list[dict[str, int]] = []
+    batch_index = 0
+
+    with Session(get_session().__next__().bind) as session:
+        _log_memory_usage("start")
+        batch: list[tuple[dict[str, object], int] | None] = []
+        key_to_index: dict[str, int] = {}
+        for offset, row in enumerate(row_iter):
+            if not row:
+                continue
+            payload: dict[str, object] = {}
+            for idx, field in mapping_by_index.items():
+                if idx >= len(row):
+                    continue
+                payload[field] = coerce_field(field, row[idx])
+
+            if enriquecer_cep:
+                cep = payload.get("cep")
+                if isinstance(cep, str) and cep:
+                    cep_data = _fetch_cep_data(cep)
+                    if cep_data:
+                        for key, value in cep_data.items():
+                            if value and not payload.get(key):
+                                payload[key] = value
+
+            if "fonte_origem" in Lead.model_fields and fonte_origem:
+                payload["fonte_origem"] = fonte_origem
+            if isinstance(payload.get("data_compra"), datetime):
+                payload["data_compra_data"] = payload["data_compra"].date()
+                payload["data_compra_hora"] = payload["data_compra"].time()
+
+            row_number = start_index + 2 + offset
+            key = _dedupe_key(payload)
+            if key:
+                prev_idx = key_to_index.get(key)
+                if prev_idx is not None:
+                    batch[prev_idx] = None
+                key_to_index[key] = len(batch)
+            batch.append((payload, row_number))
+            if len(batch) < BATCH_SIZE:
+                continue
+
+            batch_total = sum(1 for item in batch if item)
+            batch_created, batch_updated, batch_skipped, batch_has_errors = _process_batch(session, batch)
+            created += batch_created
+            updated += batch_updated
+            skipped += batch_skipped
+            total += batch_total
+            batch_stats.append(
+                {
+                    "batch": batch_index,
+                    "created": batch_created,
+                    "updated": batch_updated,
+                    "skipped": batch_skipped,
+                    "has_errors": batch_has_errors,
+                }
+            )
+            _log_memory_usage("batch", batch_index)
+            batch_index += 1
+            batch = []
+            key_to_index = {}
+
+        if batch:
+            batch_total = sum(1 for item in batch if item)
+            batch_created, batch_updated, batch_skipped, batch_has_errors = _process_batch(session, batch)
+            created += batch_created
+            updated += batch_updated
+            skipped += batch_skipped
+            total += batch_total
+            batch_stats.append(
+                {
+                    "batch": batch_index,
+                    "created": batch_created,
+                    "updated": batch_updated,
+                    "skipped": batch_skipped,
+                    "has_errors": batch_has_errors,
+                }
+            )
+            _log_memory_usage("batch", batch_index)
+
+        _log_memory_usage("end")
+
+    batch_stats.sort(key=lambda item: item["batch"])
+    batches_total = len(batch_stats)
+    batches_truncated = False
+    batches = batch_stats
+    if batches_total > BATCH_SUMMARY_LIMIT:
+        batches = batch_stats[:BATCH_SUMMARY_LIMIT]
+        batches_truncated = True
+
+    errors = skipped
+    summary = {
+        "filename": filename,
+        "total": total,
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+    }
+
+    return {
+        "filename": filename,
+        "total": total,
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+        "summary": summary,
+        "batches": batches,
+        "batches_total": batches_total,
+        "batches_truncated": batches_truncated,
+    }
+
+
+@router.post("/import/preview")
+@router.post("/import/preview/")
+def preview_import(
+    file: UploadFile = File(...),
+    sample_rows: int = 10,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return preview_import_sample(
+        file=file,
+        sample_rows=sample_rows,
+        session=session,
+        current_user=current_user,
+    )

@@ -1,6 +1,6 @@
 # app/models/models.py
 
-from datetime import datetime, date, timezone
+from datetime import datetime, date, time, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
@@ -87,6 +87,18 @@ class TipoPergunta(str, Enum):
     DATA = "data"
     AVALIACAO = "avaliacao"
     NUMERICA = "numerica"
+
+
+class LeadConversaoTipo(str, Enum):
+    COMPRA_INGRESSO = "COMPRA_INGRESSO"
+    ACAO_EVENTO = "ACAO_EVENTO"
+
+
+class LeadAliasTipo(str, Enum):
+    EVENTO = "EVENTO"
+    CIDADE = "CIDADE"
+    ESTADO = "ESTADO"
+    GENERO = "GENERO"
 
 
 # =========================
@@ -283,24 +295,84 @@ class EventoTag(SQLModel, table=True):
 
 class Lead(SQLModel, table=True):
     __tablename__ = "lead"
-    __table_args__ = (UniqueConstraint("cpf", name="uq_lead_cpf"),)
+    __table_args__ = (
+        UniqueConstraint("email", "cpf", "evento_nome", "sessao", name="uq_lead_ticketing_dedupe"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     id_salesforce: Optional[str] = Field(default=None, max_length=200, unique=True)
 
-    nome: str = Field(max_length=100)
-    sobrenome: str = Field(max_length=100)
+    nome: Optional[str] = Field(default=None, max_length=100)
+    sobrenome: Optional[str] = Field(default=None, max_length=100)
     email: Optional[str] = Field(default=None, max_length=100)
     telefone: Optional[str] = Field(default=None, max_length=100)
 
-    # CPF e o identificador global do lead (regra de dedupe vigente).
-    cpf: str = Field(max_length=11)
-    data_nascimento: date
+    # CPF pode repetir entre eventos/sessoes; dedupe e composto.
+    cpf: Optional[str] = Field(default=None, max_length=11)
+    data_nascimento: Optional[date] = None
     data_criacao: datetime = Field(default_factory=now_utc, index=True)
+
+    evento_nome: Optional[str] = Field(default=None, max_length=150)
+    sessao: Optional[str] = Field(default=None, max_length=80)
+    data_compra: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    data_compra_data: Optional[date] = None
+    data_compra_hora: Optional[time] = None
+    opt_in: Optional[str] = Field(default=None, max_length=80)
+    opt_in_id: Optional[str] = Field(default=None, max_length=80)
+    opt_in_flag: Optional[bool] = None
+    metodo_entrega: Optional[str] = Field(default=None, max_length=160)
+    endereco_rua: Optional[str] = Field(default=None, max_length=200)
+    endereco_numero: Optional[str] = Field(default=None, max_length=120)
+    bairro: Optional[str] = Field(default=None, max_length=160)
+    cep: Optional[str] = Field(default=None, max_length=20)
+    cidade: Optional[str] = Field(default=None, max_length=120)
+    estado: Optional[str] = Field(default=None, max_length=40)
+    genero: Optional[str] = Field(default=None, max_length=40)
+    codigo_promocional: Optional[str] = Field(default=None, max_length=80)
+    ingresso_tipo: Optional[str] = Field(default=None, max_length=160)
+    ingresso_qtd: Optional[int] = None
+    fonte_origem: Optional[str] = Field(default=None, max_length=80)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
     cupons: List["Cupom"] = Relationship(back_populates="lead")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="lead")
+    conversoes: List["LeadConversao"] = Relationship(back_populates="lead")
+
+
+class LeadConversao(SQLModel, table=True):
+    __tablename__ = "lead_conversao"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    lead_id: int = Field(foreign_key="lead.id")
+    tipo: LeadConversaoTipo
+    acao_nome: Optional[str] = Field(default=None, max_length=120)
+    fonte_origem: Optional[str] = Field(default=None, max_length=80)
+    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id")
+    data_conversao_evento: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=now_utc)
+
+    lead: Optional["Lead"] = Relationship(back_populates="conversoes")
+    evento: Optional["Evento"] = Relationship()
+
+
+class LeadAlias(SQLModel, table=True):
+    __tablename__ = "lead_alias"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tipo: LeadAliasTipo
+    valor_origem: str = Field(max_length=200)
+    valor_normalizado: str = Field(max_length=200)
+    canonical_value: Optional[str] = Field(default=None, max_length=200)
+    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id")
+    created_at: datetime = Field(default_factory=now_utc)
+
+    __table_args__ = (
+        UniqueConstraint("tipo", "valor_normalizado", name="uq_lead_alias_tipo_valor_normalizado"),
+    )
+
+    evento: Optional["Evento"] = Relationship()
 
 
 # =========================

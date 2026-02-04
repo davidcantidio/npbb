@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Avatar,
   AppBar,
@@ -6,10 +6,7 @@ import {
   Button,
   Divider,
   Drawer,
-  Collapse,
   IconButton,
-  List,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -25,8 +22,7 @@ import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -43,22 +39,16 @@ type NavItem = {
 export default function AppLayout() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
-  const [eventsMenuOpen, setEventsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (location.pathname.startsWith("/eventos")) {
-      setEventsMenuOpen(true);
-    }
-  }, [location.pathname]);
+  const [navMenuAnchor, setNavMenuAnchor] = useState<null | HTMLElement>(null);
 
   const navItems: NavItem[] = useMemo(
     () => [
-      { label: "Dashboard", to: "/success", icon: <DashboardRoundedIcon /> },
+      { label: "Dashboard", to: "/dashboard", icon: <DashboardRoundedIcon /> },
       { label: "Eventos", to: "/eventos", icon: <EventRoundedIcon /> },
       { label: "Ativos", to: "/ativos", icon: <ConfirmationNumberRoundedIcon /> },
       { label: "Leads", to: "/leads", icon: <PeopleAltRoundedIcon /> },
@@ -67,88 +57,27 @@ export default function AppLayout() {
     [],
   );
 
+  const isNavItemActive = (item: NavItem) => {
+    if (item.to.startsWith("/dashboard")) {
+      return (
+        location.pathname === "/dashboard" ||
+        location.pathname.startsWith("/dashboard/") ||
+        location.pathname === "/success"
+      );
+    }
+    return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+  };
+
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Toolbar sx={{ px: 2 }}>
-        <Typography variant="subtitle1" fontWeight={900} letterSpacing={0.3}>
-          Banco do Brasil
+        <Typography variant="subtitle2" fontWeight={900} letterSpacing={0.2}>
+          Filtros e funcionalidades
         </Typography>
       </Toolbar>
       <Divider />
-
-      <List sx={{ flex: 1, py: 1 }}>
-        {navItems.map((item) => {
-          const selected =
-            item.to === "/success"
-              ? location.pathname === "/success" || location.pathname === "/dashboard"
-              : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-
-          if (item.to === "/eventos") {
-            return (
-              <Box key={item.to}>
-                <ListItemButton
-                  selected={selected}
-                  onClick={() => {
-                    setEventsMenuOpen((prev) => !prev);
-                    navigate(item.to);
-                    setMobileOpen(false);
-                  }}
-                  sx={{
-                    mx: 1,
-                    borderRadius: 1,
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                  <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{ fontWeight: selected ? 800 : 600, fontSize: 13 }}
-                  />
-                  <Box sx={{ color: "text.secondary" }}>
-                    {eventsMenuOpen ? (
-                      <ExpandLessRoundedIcon fontSize="small" />
-                    ) : (
-                      <ExpandMoreRoundedIcon fontSize="small" />
-                    )}
-                  </Box>
-                </ListItemButton>
-                <Collapse in={eventsMenuOpen} timeout="auto">
-                  <Box id="events-filters-slot" sx={{ px: 2, pb: 1 }} />
-                </Collapse>
-              </Box>
-            );
-          }
-
-          return (
-            <ListItemButton
-              key={item.to}
-              selected={selected}
-              onClick={() => {
-                navigate(item.to);
-                setMobileOpen(false);
-              }}
-              sx={{
-                mx: 1,
-                borderRadius: 1,
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{ fontWeight: selected ? 800 : 600, fontSize: 13 }}
-              />
-            </ListItemButton>
-          );
-        })}
-      </List>
-
-      <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="caption" color="text.secondary" display="block">
-          Logado como
-        </Typography>
-        <Typography variant="body2" fontWeight={800} noWrap>
-          {user?.email || "-"}
-        </Typography>
+      <Box sx={{ flex: 1, px: 2, py: 2, overflowY: "auto" }}>
+        <Box id="app-sidebar-slot" />
       </Box>
     </Box>
   );
@@ -172,17 +101,65 @@ export default function AppLayout() {
         <Toolbar sx={{ gap: 1 }}>
           {!isDesktop && (
             <IconButton
-              aria-label="Abrir menu"
+              aria-label="Abrir filtros"
               edge="start"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => setFiltersOpen(true)}
               size="small"
             >
-              <MenuRoundedIcon />
+              <TuneRoundedIcon />
             </IconButton>
           )}
-          <Typography variant="subtitle1" fontWeight={900} sx={{ flex: 1 }}>
-            NPBB
-          </Typography>
+          {isDesktop ? (
+            <Box
+              component="nav"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                flex: 1,
+                minWidth: 0,
+                overflowX: "auto",
+                "&::-webkit-scrollbar": { height: 4 },
+              }}
+            >
+              {navItems.map((item) => {
+                const active = isNavItemActive(item);
+                return (
+                  <Button
+                    key={item.to}
+                    onClick={() => navigate(item.to)}
+                    startIcon={item.icon}
+                    color={active ? "primary" : "inherit"}
+                    size="small"
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: active ? 800 : 600,
+                      borderRadius: 2,
+                      whiteSpace: "nowrap",
+                      px: 1.5,
+                      backgroundColor: active ? "action.selected" : "transparent",
+                      "&:hover": {
+                        backgroundColor: active ? "action.selected" : "action.hover",
+                      },
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </Box>
+          ) : (
+            <>
+              <IconButton
+                aria-label="Abrir menu principal"
+                onClick={(e) => setNavMenuAnchor(e.currentTarget)}
+                size="small"
+              >
+                <MenuRoundedIcon />
+              </IconButton>
+              <Box sx={{ flex: 1 }} />
+            </>
+          )}
           <Button
             onClick={(e) => setUserMenuAnchor(e.currentTarget)}
             sx={{ textTransform: "none", fontWeight: 800, borderRadius: 2 }}
@@ -205,7 +182,7 @@ export default function AppLayout() {
           >
             <Box sx={{ textAlign: "left", lineHeight: 1.1 }}>
               <Typography variant="body2" fontWeight={900} noWrap>
-                {user?.email || "Usuário"}
+                {user?.email || "Usuario"}
               </Typography>
               {user?.tipo_usuario ? (
                 <Typography variant="caption" color="text.secondary" noWrap>
@@ -214,6 +191,27 @@ export default function AppLayout() {
               ) : null}
             </Box>
           </Button>
+          <Menu
+            anchorEl={navMenuAnchor}
+            open={Boolean(navMenuAnchor)}
+            onClose={() => setNavMenuAnchor(null)}
+            anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+            transformOrigin={{ vertical: "top", horizontal: "left" }}
+          >
+            {navItems.map((item) => (
+              <MenuItem
+                key={item.to}
+                selected={isNavItemActive(item)}
+                onClick={() => {
+                  setNavMenuAnchor(null);
+                  navigate(item.to);
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </MenuItem>
+            ))}
+          </Menu>
           <Menu
             anchorEl={userMenuAnchor}
             open={Boolean(userMenuAnchor)}
@@ -238,8 +236,8 @@ export default function AppLayout() {
 
       <Drawer
         variant={isDesktop ? "permanent" : "temporary"}
-        open={isDesktop ? true : mobileOpen}
-        onClose={() => setMobileOpen(false)}
+        open={isDesktop ? true : filtersOpen}
+        onClose={() => setFiltersOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
           width: DRAWER_WIDTH,

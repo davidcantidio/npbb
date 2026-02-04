@@ -1034,18 +1034,19 @@ def test_evento_missing_fields_endpoint_consistente(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
+        evento_id = evento.id
         seed_user(session, "user@example.com", "Senha123!", "npbb")
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = client.get(f"/evento/{evento.id}/missing-fields", headers=headers)
+    resp = client.get(f"/evento/{evento_id}/missing-fields", headers=headers)
     assert resp.status_code == 200
     payload = resp.json()
     returned_fields = [item["field"] for item in payload["missing_fields"]]
 
     with Session(engine) as session:
-        fresh = session.get(Evento, evento.id)
+        fresh = session.get(Evento, evento_id)
         status = session.get(StatusEvento, fresh.status_id)
         proxy = SimpleNamespace(**fresh.model_dump(), tag_ids=[], territorio_ids=[])
         expected = compute_event_data_health(proxy, status_name=status.nome)["missing_fields"]

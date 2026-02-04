@@ -3,7 +3,9 @@
 import os
 from pathlib import Path
 
-from sqlmodel import create_engine, SQLModel, Session
+from sqlmodel import create_engine, Session
+
+from app.db.metadata import SQLModel
 from dotenv import load_dotenv
 
 

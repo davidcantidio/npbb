@@ -6,7 +6,9 @@ from enum import Enum
 from typing import Optional, List
 
 from sqlalchemy import Column, DateTime, Numeric, UniqueConstraint
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Field, Relationship
+
+from app.db.metadata import SQLModel
 
 
 def now_utc() -> datetime:

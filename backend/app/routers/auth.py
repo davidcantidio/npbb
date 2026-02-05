@@ -41,11 +41,6 @@ def _authenticate(session: Session, email: str, password: str) -> Usuario | None
         return None
     if not verify_password(password, usuario.password_hash):
         return None
-    if is_bb_user(usuario) and usuario.status_aprovacao != STATUS_APROVADO:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário BB pendente de aprovação",
-        )
     return usuario
 
 

@@ -66,10 +66,13 @@ def seed_user_with_diretoria(
     email: str,
     password: str,
     diretoria_id: int,
+    matricula: str | None = None,
+    status_aprovacao: str | None = "APROVADO",
 ) -> Usuario:
+    matricula_value = matricula or f"c{abs(hash(email)) % 100000}"
     funcionario = Funcionario(
         nome="Funcionario",
-        chave_c=f"CHV{email}",
+        chave_c=matricula_value,
         diretoria_id=diretoria_id,
         email=email,
     )
@@ -82,6 +85,8 @@ def seed_user_with_diretoria(
         password_hash=hash_password(password),
         tipo_usuario="bb",
         funcionario_id=int(funcionario.id),
+        matricula=matricula_value,
+        status_aprovacao=status_aprovacao,
         ativo=True,
     )
     session.add(user)
@@ -113,6 +118,27 @@ def login_and_get_token(client: TestClient, email: str, password: str) -> str:
     resp = client.post("/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200
     return resp.json()["access_token"]
+
+
+def test_ingressos_bb_pendente_bloqueia(client, engine):
+    with Session(engine) as session:
+        diretoria = seed_diretoria(session, nome="pendente")
+        user = seed_user_with_diretoria(
+            session,
+            email="pendente@bb.com.br",
+            password="Senha123!",
+            diretoria_id=int(diretoria.id),
+            status_aprovacao="PENDENTE",
+        )
+        token = login_and_get_token(client, user.email, "Senha123!")
+
+    resp = client.get(
+        "/ingressos/ativos",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 403
+    detail = resp.json().get("detail", {})
+    assert detail.get("code") == "USER_NOT_APPROVED"
 
 
 def test_solicitacao_disponibilidade_bloqueia(client, engine):

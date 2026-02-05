@@ -31,6 +31,8 @@ from app.utils.http_errors import raise_http_error
 
 router = APIRouter(prefix="/ingressos", tags=["ingressos"])
 
+STATUS_APROVADO = "APROVADO"
+
 
 def _normalize_email(value: str) -> str:
     return value.strip().lower()
@@ -48,6 +50,40 @@ def _get_user_diretoria_id(session: Session, user: Usuario) -> int | None:
     return None
 
 
+def _ensure_bb_profile(session: Session, user: Usuario) -> int:
+    solicitante_email = _normalize_email(user.email or "")
+    if not solicitante_email.endswith("@bb.com.br"):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_EMAIL",
+            message="Email deve ser @bb.com.br",
+        )
+
+    matricula = user.matricula
+    if matricula is None or not str(matricula).strip():
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="MISSING_MATRICULA",
+            message="Usuario sem matricula definida",
+        )
+
+    if user.status_aprovacao != STATUS_APROVADO:
+        raise_http_error(
+            status.HTTP_403_FORBIDDEN,
+            code="USER_NOT_APPROVED",
+            message="Perfil pendente de aprovacao",
+        )
+
+    diretoria_id = _get_user_diretoria_id(session, user)
+    if not diretoria_id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="MISSING_DIRETORIA",
+            message="Usuario sem diretoria definida",
+        )
+    return int(diretoria_id)
+
+
 def _count_solicitacoes_ativas(session: Session, cota_id: int) -> int:
     result = session.exec(
         select(func.count(SolicitacaoIngresso.id)).where(
@@ -63,21 +99,7 @@ def listar_ativos_para_ingressos(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
-    solicitante_email = _normalize_email(current_user.email or "")
-    if not solicitante_email.endswith("@bb.com.br"):
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="INVALID_EMAIL",
-            message="Email deve ser @bb.com.br",
-        )
-
-    diretoria_id = _get_user_diretoria_id(session, current_user)
-    if not diretoria_id:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="MISSING_DIRETORIA",
-            message="Usuario sem diretoria definida",
-        )
+    diretoria_id = _ensure_bb_profile(session, current_user)
 
     rows = session.exec(
         select(CotaCortesia, Evento, Diretoria)
@@ -208,20 +230,7 @@ def criar_solicitacao(
     current_user: Usuario = Depends(get_current_user),
 ):
     solicitante_email = _normalize_email(current_user.email or "")
-    if not solicitante_email.endswith("@bb.com.br"):
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="INVALID_EMAIL",
-            message="Email deve ser @bb.com.br",
-        )
-
-    diretoria_id = _get_user_diretoria_id(session, current_user)
-    if not diretoria_id:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="MISSING_DIRETORIA",
-            message="Usuario sem diretoria definida",
-        )
+    diretoria_id = _ensure_bb_profile(session, current_user)
 
     cota = session.get(CotaCortesia, payload.cota_id)
     if not cota:

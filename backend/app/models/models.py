@@ -60,6 +60,12 @@ class Usuario(SQLModel, table=True):
     funcionario: Optional["Funcionario"] = Relationship(back_populates="usuario")
     agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
 
+    @property
+    def diretoria_id(self) -> Optional[int]:
+        if self.funcionario and self.funcionario.diretoria_id:
+            return int(self.funcionario.diretoria_id)
+        return None
+
 
 class PasswordResetToken(SQLModel, table=True):
     __tablename__ = "password_reset_token"

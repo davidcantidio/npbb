@@ -54,7 +54,9 @@ def get_public_landing_base_url(*, backend_base_url: str | None = None) -> str:
     return get_public_app_base_url()
 
 
-def build_evento_public_urls(evento_id: int, *, backend_base_url: str | None = None) -> dict[str, str]:
+def build_evento_public_urls(
+    evento_id: int, *, backend_base_url: str | None = None
+) -> dict[str, str]:
     """Gera URLs publicas relacionadas a um evento.
 
     Padroes MVP:

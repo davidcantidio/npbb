@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
-
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 from sqlalchemy import func
 
@@ -19,11 +17,9 @@ from app.models.models import (
     SolicitacaoIngressoStatus,
     SolicitacaoIngressoTipo,
     Usuario,
-    UsuarioTipo,
 )
 from app.schemas.ingressos import (
     IngressoAtivoListItem,
-    SolicitacaoIngressoAdminListItem,
     SolicitacaoIngressoCreate,
     SolicitacaoIngressoRead,
 )
@@ -138,69 +134,9 @@ def listar_ativos_para_ingressos(
     return items
 
 
-@router.get("/solicitacoes", response_model=list[SolicitacaoIngressoAdminListItem])
-def listar_solicitacoes(
-    session: Session = Depends(get_session),
-    current_user: Usuario = Depends(get_current_user),
-    evento_id: int | None = Query(None, ge=1),
-    diretoria_id: int | None = Query(None, ge=1),
-    status_filter: SolicitacaoIngressoStatus | None = Query(None, alias="status"),
-    data: date | None = Query(None),
-):
-    if current_user.tipo_usuario == UsuarioTipo.BB:
-        raise_http_error(
-            status.HTTP_403_FORBIDDEN,
-            code="FORBIDDEN",
-            message="Acesso restrito",
-        )
-
-    query = (
-        select(SolicitacaoIngresso, Evento, Diretoria)
-        .join(Evento, SolicitacaoIngresso.evento_id == Evento.id)
-        .join(Diretoria, SolicitacaoIngresso.diretoria_id == Diretoria.id)
-    )
-
-    if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
-        if not current_user.agencia_id:
-            raise_http_error(
-                status.HTTP_403_FORBIDDEN,
-                code="FORBIDDEN",
-                message="Usuario agencia sem agencia_id",
-                field="agencia_id",
-            )
-        query = query.where(Evento.agencia_id == current_user.agencia_id)
-
-    if evento_id is not None:
-        query = query.where(SolicitacaoIngresso.evento_id == evento_id)
-    if diretoria_id is not None:
-        query = query.where(SolicitacaoIngresso.diretoria_id == diretoria_id)
-    if status_filter is not None:
-        query = query.where(SolicitacaoIngresso.status == status_filter)
-    if data:
-        query = query.where(func.date(SolicitacaoIngresso.created_at) == data)
-
-    rows = session.exec(
-        query.order_by(SolicitacaoIngresso.created_at.desc(), SolicitacaoIngresso.id.desc())
-    ).all()
-
-    return [
-        SolicitacaoIngressoAdminListItem(
-            id=int(solicitacao.id) if solicitacao.id is not None else 0,
-            evento_id=int(evento.id),
-            evento_nome=str(evento.nome),
-            diretoria_id=int(diretoria.id),
-            diretoria_nome=str(diretoria.nome),
-            solicitante_email=str(solicitacao.solicitante_email),
-            indicado_email=solicitacao.indicado_email,
-            tipo=solicitacao.tipo,
-            status=solicitacao.status,
-            created_at=solicitacao.created_at,
-        )
-        for solicitacao, evento, diretoria in rows
-    ]
-
-
-@router.post("/solicitacoes", response_model=SolicitacaoIngressoRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/solicitacoes", response_model=SolicitacaoIngressoRead, status_code=status.HTTP_201_CREATED
+)
 def criar_solicitacao(
     payload: SolicitacaoIngressoCreate,
     session: Session = Depends(get_session),

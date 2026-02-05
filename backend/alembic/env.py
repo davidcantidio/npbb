@@ -7,7 +7,6 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.exc import OperationalError
-from sqlmodel import SQLModel
 from dotenv import load_dotenv
 
 from alembic import context
@@ -20,6 +19,9 @@ if env_path.exists():
 
 # Ajusta path para importar app.*
 sys.path.append(str(BASE_DIR))
+
+# Importa metadata com naming_convention antes dos modelos
+from app.db.metadata import SQLModel  # noqa: F401
 
 # Importa os modelos para autogenerate
 from app.models import models  # noqa: F401

@@ -131,11 +131,15 @@ def deletar_ativacao(
     dependencies = {
         "ativacao_leads": int(
             session.exec(
-                select(func.count()).select_from(AtivacaoLead).where(AtivacaoLead.ativacao_id == ativacao_id)
+                select(func.count())
+                .select_from(AtivacaoLead)
+                .where(AtivacaoLead.ativacao_id == ativacao_id)
             ).one()
         ),
         "cupons": int(
-            session.exec(select(func.count()).select_from(Cupom).where(Cupom.ativacao_id == ativacao_id)).one()
+            session.exec(
+                select(func.count()).select_from(Cupom).where(Cupom.ativacao_id == ativacao_id)
+            ).one()
         ),
         "respostas_questionario": int(
             session.exec(
@@ -146,7 +150,9 @@ def deletar_ativacao(
         ),
         "investimentos": int(
             session.exec(
-                select(func.count()).select_from(Investimento).where(Investimento.ativacao_id == ativacao_id)
+                select(func.count())
+                .select_from(Investimento)
+                .where(Investimento.ativacao_id == ativacao_id)
             ).one()
         ),
     }
@@ -160,7 +166,9 @@ def deletar_ativacao(
         )
 
     # Objetos 1:1 de configuracao (nao entram na lista de bloqueio do MVP).
-    termo = session.exec(select(TermoUsoAtivacao).where(TermoUsoAtivacao.ativacao_id == ativacao_id)).first()
+    termo = session.exec(
+        select(TermoUsoAtivacao).where(TermoUsoAtivacao.ativacao_id == ativacao_id)
+    ).first()
     if termo:
         session.delete(termo)
 

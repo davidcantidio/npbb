@@ -8,6 +8,7 @@ from app.db.database import get_session
 from app.main import app
 from app.models.models import PasswordResetToken, Usuario
 from app.utils.security import hash_password
+from app.services.password_reset import request_password_reset
 
 
 def make_engine():
@@ -54,29 +55,24 @@ def seed_user(engine, email="user@example.com", password="senha123", ativo=True)
         return user
 
 
-def test_forgot_password_returns_debug_token_and_allows_reset(client, engine):
+def test_forgot_password_returns_generic_message(client, engine):
     user = seed_user(engine, password="Senha123!")
 
     forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
     assert forgot_resp.status_code == 200
     data = forgot_resp.json()
     assert data["message"]
-    assert data["token"]
 
-    token = data["token"]
-    new_password = "Nova123"
+    missing_resp = client.post("/usuarios/forgot-password", json={"email": "missing@example.com"})
+    assert missing_resp.status_code == 200
+    missing_data = missing_resp.json()
+    assert data["message"] == missing_data["message"]
 
-    reset_resp = client.post(
-        "/usuarios/reset-password",
-        json={"token": token, "password": new_password},
-    )
-    assert reset_resp.status_code == 200
-
-    login_resp = client.post(
-        "/auth/login",
-        json={"email": user.email, "password": new_password},
-    )
-    assert login_resp.status_code == 200
+    with Session(engine) as session:
+        record = session.exec(
+            select(PasswordResetToken).where(PasswordResetToken.usuario_id == user.id)
+        ).first()
+        assert record is not None
 
 
 def test_reset_password_rejects_invalid_token(client):
@@ -89,19 +85,20 @@ def test_reset_password_rejects_invalid_token(client):
     assert detail["code"] == "TOKEN_INVALID"
 
 
-def test_forgot_password_returns_404_when_email_not_found(client):
+def test_forgot_password_returns_generic_message_when_email_not_found(client):
     resp = client.post("/usuarios/forgot-password", json={"email": "missing@example.com"})
-    assert resp.status_code == 404
-    detail = resp.json()["detail"]
-    assert detail["code"] == "USER_NOT_FOUND"
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["message"]
 
 
 def test_reset_password_rejects_expired_token(client, engine):
     user = seed_user(engine, password="Senha123!")
 
-    forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
-    assert forgot_resp.status_code == 200
-    token = forgot_resp.json()["token"]
+    with Session(engine) as session:
+        result = request_password_reset(session, user.email)
+        token = result.debug_token
+        assert token
 
     with Session(engine) as session:
         record = session.exec(
@@ -121,9 +118,10 @@ def test_reset_password_rejects_expired_token(client, engine):
 def test_reset_password_rejects_used_token(client, engine):
     user = seed_user(engine, password="Senha123!")
 
-    forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
-    assert forgot_resp.status_code == 200
-    token = forgot_resp.json()["token"]
+    with Session(engine) as session:
+        result = request_password_reset(session, user.email)
+        token = result.debug_token
+        assert token
 
     with Session(engine) as session:
         record = session.exec(
@@ -139,13 +137,36 @@ def test_reset_password_rejects_used_token(client, engine):
     detail = resp.json()["detail"]
     assert detail["code"] == "TOKEN_USED"
 
+
 def test_reset_password_rejects_weak_password(client, engine):
     user = seed_user(engine, password="Senha123!")
 
-    forgot_resp = client.post("/usuarios/forgot-password", json={"email": user.email})
-    token = forgot_resp.json()["token"]
+    with Session(engine) as session:
+        result = request_password_reset(session, user.email)
+        token = result.debug_token
 
     resp = client.post("/usuarios/reset-password", json={"token": token, "password": "abc"})
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert detail["code"] == "PASSWORD_POLICY"
+
+
+def test_reset_password_allows_with_service_token(client, engine):
+    user = seed_user(engine, password="Senha123!")
+    with Session(engine) as session:
+        result = request_password_reset(session, user.email)
+        token = result.debug_token
+        assert token
+
+    new_password = "Nova123"
+    reset_resp = client.post(
+        "/usuarios/reset-password",
+        json={"token": token, "password": new_password},
+    )
+    assert reset_resp.status_code == 200
+
+    login_resp = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": new_password},
+    )
+    assert login_resp.status_code == 200

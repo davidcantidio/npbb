@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import tracemalloc
 from datetime import datetime
 from pathlib import Path
 from collections.abc import Iterator
@@ -25,6 +26,7 @@ from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConver
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
 from app.utils.http_errors import raise_http_error
+from app.utils.log_sanitize import sanitize_exception
 from app.utils.lead_import_normalize import coerce_field
 from app.utils.text_normalize import normalize_text
 from app.utils.fuzzy_match import best_match
@@ -36,6 +38,7 @@ ALLOWED_IMPORT_EXTENSIONS = {".csv", ".xlsx"}
 BATCH_SIZE = 500
 DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024
 DEFAULT_BATCH_SUMMARY_LIMIT = 200
+DEFAULT_LOG_MEMORY = "0"
 
 CEP_CACHE: dict[str, dict[str, str]] = {}
 CEP_CACHE_MAX = 500
@@ -191,7 +194,7 @@ def _process_batch(
                 logger.warning(
                     "Lead import error row=%s error=INTEGRITY_ERROR detail=%s",
                     row_number,
-                    str(exc),
+                    sanitize_exception(exc),
                 )
                 continue
             _merge_lead(existing, payload)
@@ -204,7 +207,7 @@ def _process_batch(
             logger.warning(
                 "Lead import error row=%s error=UNKNOWN detail=%s",
                 row_number,
-                str(exc),
+                sanitize_exception(exc),
             )
     session.commit()
     return created, updated, skipped, has_errors
@@ -222,6 +225,22 @@ def _get_env_int(name: str, default: int) -> int:
 
 MAX_IMPORT_FILE_BYTES = _get_env_int("LEADS_IMPORT_MAX_BYTES", DEFAULT_IMPORT_MAX_BYTES)
 BATCH_SUMMARY_LIMIT = _get_env_int("LEADS_IMPORT_BATCH_SUMMARY_LIMIT", DEFAULT_BATCH_SUMMARY_LIMIT)
+LOG_MEMORY = os.getenv("LEADS_IMPORT_LOG_MEMORY", DEFAULT_LOG_MEMORY).strip().lower() in {"1", "true", "yes"}
+
+
+def _log_memory_usage(stage: str, batch_index: int | None = None) -> None:
+    if not LOG_MEMORY:
+        return
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
+    current, peak = tracemalloc.get_traced_memory()
+    logger.info(
+        "Lead import memory stage=%s batch=%s current_mb=%.2f peak_mb=%.2f",
+        stage,
+        batch_index,
+        current / (1024 * 1024),
+        peak / (1024 * 1024),
+    )
 
 
 def _get_lead_or_404(*, session: Session, lead_id: int) -> Lead:
@@ -1066,6 +1085,7 @@ def importar_leads(
     batch_index = 0
 
     with Session(get_session().__next__().bind) as session:
+        _log_memory_usage("start")
         batch: list[tuple[dict[str, object], int] | None] = []
         key_to_index: dict[str, int] = {}
         for offset, row in enumerate(row_iter):
@@ -1118,6 +1138,7 @@ def importar_leads(
                     "has_errors": batch_has_errors,
                 }
             )
+            _log_memory_usage("batch", batch_index)
             batch_index += 1
             batch = []
             key_to_index = {}
@@ -1138,6 +1159,9 @@ def importar_leads(
                     "has_errors": batch_has_errors,
                 }
             )
+            _log_memory_usage("batch", batch_index)
+
+        _log_memory_usage("end")
 
     batch_stats.sort(key=lambda item: item["batch"])
     batches_total = len(batch_stats)

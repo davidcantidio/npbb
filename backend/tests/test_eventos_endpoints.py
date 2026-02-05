@@ -12,7 +12,6 @@ from app.main import app
 from app.models.models import (
     Agencia,
     Ativacao,
-    CotaCortesia,
     DivisaoDemandante,
     Diretoria,
     Evento,
@@ -115,7 +114,9 @@ def seed_divisao(session: Session, nome: str = "Esportes") -> DivisaoDemandante:
     return divisao
 
 
-def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
+def seed_user(
+    session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None
+) -> Usuario:
     user = Usuario(
         email=email,
         password_hash=hash_password(password),
@@ -185,7 +186,7 @@ def test_evento_list_paginado_e_filtros(client, engine):
         dir_b = seed_diretoria(session, "audit")
         dir_a_id = dir_a.id
         dir_b_id = dir_b.id
-        user = seed_user(session, "user@example.com", "Senha123!", "npbb")
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
 
         seed_evento(
             session,
@@ -231,7 +232,9 @@ def test_evento_list_paginado_e_filtros(client, engine):
     assert resp_sp.status_code == 200
     assert resp_sp.headers.get("X-Total-Count") == "2"
 
-    resp_city = client.get("/evento?cidade=sao%20paulo", headers={"Authorization": f"Bearer {token}"})
+    resp_city = client.get(
+        "/evento?cidade=sao%20paulo", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_city.status_code == 200
     assert resp_city.headers.get("X-Total-Count") == "2"
 
@@ -261,7 +264,9 @@ def test_evento_list_paginado_e_filtros(client, engine):
     detail = resp_bad_range.json()["detail"]
     assert detail["code"] == "DATE_RANGE_INVALID"
 
-    resp_dir = client.get(f"/evento?diretoria_id={dir_a_id}", headers={"Authorization": f"Bearer {token}"})
+    resp_dir = client.get(
+        f"/evento?diretoria_id={dir_a_id}", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_dir.status_code == 200
     assert resp_dir.headers.get("X-Total-Count") == "1"
     assert resp_dir.json()[0]["nome"] == "Evento Alpha"
@@ -272,11 +277,13 @@ def test_list_formulario_templates_ordenado(client, engine):
         session.add(FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>"))
         session.add(FormularioLandingTemplate(nome="BB Seguros", html_conteudo="<html></html>"))
         session.add(FormularioLandingTemplate(nome="Padrao", html_conteudo="<html></html>"))
-        user = seed_user(session, "user2@example.com", "Senha123!", "npbb")
+        seed_user(session, "user2@example.com", "Senha123!", "npbb")
         session.commit()
 
     token = login_and_get_token(client, "user2@example.com", "Senha123!")
-    resp = client.get("/evento/all/formulario-templates", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        "/evento/all/formulario-templates", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     nomes = [item["nome"] for item in resp.json()]
     assert nomes == sorted(nomes)
@@ -300,7 +307,9 @@ def test_evento_form_config_retorna_default_quando_nao_existe(client, engine):
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["evento_id"] == evento_id
@@ -313,8 +322,13 @@ def test_evento_form_config_retorna_default_quando_nao_existe(client, engine):
         {"nome_campo": "Data de nascimento", "obrigatorio": True, "ordem": 5},
     ]
     assert payload["urls"]["url_landing"] == f"http://testserver/landing/eventos/{evento_id}"
-    assert payload["urls"]["url_checkin_sem_qr"] == f"http://testserver/checkin-sem-qr/eventos/{evento_id}"
-    assert payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
+    assert (
+        payload["urls"]["url_checkin_sem_qr"]
+        == f"http://testserver/checkin-sem-qr/eventos/{evento_id}"
+    )
+    assert (
+        payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
+    )
     assert payload["urls"]["url_api"] == "http://testserver/docs"
     assert "url_landing" not in payload
 
@@ -371,7 +385,9 @@ def test_evento_form_config_retorna_config_e_campos_ordenados(client, engine):
         session.commit()
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["evento_id"] == evento_id
@@ -400,7 +416,9 @@ def test_evento_form_config_aplica_visibilidade_agencia(client, engine):
         evento_id = evento.id
 
     token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 404
 
 
@@ -443,7 +461,9 @@ def test_evento_put_form_config_cria_e_atualiza_template_id(client, engine):
     assert resp_create.json()["template_id"] == template_a_id
 
     with Session(engine) as session:
-        configs = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).all()
+        configs = session.exec(
+            select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+        ).all()
         assert len(configs) == 1
 
     resp_update = client.put(
@@ -455,7 +475,9 @@ def test_evento_put_form_config_cria_e_atualiza_template_id(client, engine):
     assert resp_update.json()["template_id"] == template_b_id
 
     with Session(engine) as session:
-        configs = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).all()
+        configs = session.exec(
+            select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+        ).all()
         assert len(configs) == 1
         assert configs[0].template_id == template_b_id
 
@@ -526,7 +548,9 @@ def test_evento_put_form_config_replace_campos(client, engine):
     )
     assert resp.status_code == 200
 
-    get_resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    get_resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert get_resp.status_code == 200
     assert get_resp.json()["template_id"] == template_id
     assert get_resp.json()["campos"] == payload["campos"]
@@ -543,7 +567,9 @@ def test_evento_put_form_config_replace_campos(client, engine):
     )
     assert resp2.status_code == 200
 
-    get_resp2 = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    get_resp2 = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert get_resp2.status_code == 200
     assert get_resp2.json()["campos"] == payload2["campos"]
 
@@ -616,7 +642,9 @@ def test_evento_put_form_config_nao_apaga_campos_quando_omitido(client, engine):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp_create.status_code == 200
-    assert resp_create.json()["campos"] == [{"nome_campo": "Email", "obrigatorio": True, "ordem": 0}]
+    assert resp_create.json()["campos"] == [
+        {"nome_campo": "Email", "obrigatorio": True, "ordem": 0}
+    ]
 
     # Atualiza somente template_id (campos omitido) e preserva lista.
     resp_update = client.put(
@@ -626,7 +654,9 @@ def test_evento_put_form_config_nao_apaga_campos_quando_omitido(client, engine):
     )
     assert resp_update.status_code == 200
     assert resp_update.json()["template_id"] == template_b_id
-    assert resp_update.json()["campos"] == [{"nome_campo": "Email", "obrigatorio": True, "ordem": 0}]
+    assert resp_update.json()["campos"] == [
+        {"nome_campo": "Email", "obrigatorio": True, "ordem": 0}
+    ]
 
     # Envia campos vazio explicitamente: limpa lista.
     resp_clear = client.put(
@@ -715,7 +745,9 @@ def test_evento_dicionarios_cidades_estados(client, engine):
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
     cities = client.get("/evento/all/cidades", headers={"Authorization": f"Bearer {token}"}).json()
-    cities_sp = client.get("/evento/all/cidades?estado=sp", headers={"Authorization": f"Bearer {token}"}).json()
+    cities_sp = client.get(
+        "/evento/all/cidades?estado=sp", headers={"Authorization": f"Bearer {token}"}
+    ).json()
     states = client.get("/evento/all/estados", headers={"Authorization": f"Bearer {token}"}).json()
     assert "Sao Paulo" in cities
     assert "Rio de Janeiro" in cities
@@ -776,8 +808,12 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
         terr_a = seed_territorio(session, "Territorio A")
         terr_b = seed_territorio(session, "Territorio B")
         seed_user(session, "user@example.com", "Senha123!", "npbb")
-        status_previsto = session.exec(select(StatusEvento).where(StatusEvento.nome == "Previsto")).first()
-        status_cancelado = session.exec(select(StatusEvento).where(StatusEvento.nome == "Cancelado")).first()
+        status_previsto = session.exec(
+            select(StatusEvento).where(StatusEvento.nome == "Previsto")
+        ).first()
+        status_cancelado = session.exec(
+            select(StatusEvento).where(StatusEvento.nome == "Cancelado")
+        ).first()
         assert status_previsto and status_previsto.id
         assert status_cancelado and status_cancelado.id
         ag1_id = ag1.id
@@ -934,7 +970,9 @@ def test_evento_all_dominios(client, engine):
     assert any(t["id"] == tipo_a_id for t in tipos)
     assert any(t["id"] == tipo_b_id for t in tipos)
 
-    subtipos = client.get(f"/evento/all/subtipos-evento?tipo_id={tipo_a_id}", headers=headers).json()
+    subtipos = client.get(
+        f"/evento/all/subtipos-evento?tipo_id={tipo_a_id}", headers=headers
+    ).json()
     assert any(s["id"] == subtipo_a1_id for s in subtipos)
     assert all(s["tipo_id"] == tipo_a_id for s in subtipos)
     assert not any(s["id"] == subtipo_b1_id for s in subtipos)
@@ -1034,18 +1072,19 @@ def test_evento_missing_fields_endpoint_consistente(client, engine):
             inicio=date(2025, 1, 1),
             fim=date(2025, 1, 1),
         )
+        evento_id = evento.id
         seed_user(session, "user@example.com", "Senha123!", "npbb")
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = client.get(f"/evento/{evento.id}/missing-fields", headers=headers)
+    resp = client.get(f"/evento/{evento_id}/missing-fields", headers=headers)
     assert resp.status_code == 200
     payload = resp.json()
     returned_fields = [item["field"] for item in payload["missing_fields"]]
 
     with Session(engine) as session:
-        fresh = session.get(Evento, evento.id)
+        fresh = session.get(Evento, evento_id)
         status = session.get(StatusEvento, fresh.status_id)
         proxy = SimpleNamespace(**fresh.model_dump(), tag_ids=[], territorio_ids=[])
         expected = compute_event_data_health(proxy, status_name=status.nome)["missing_fields"]

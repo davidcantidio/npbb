@@ -6,6 +6,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.database import get_session
 from app.main import app
 from app.models.models import Usuario
+from app.routers.auth import STATUS_APROVADO
 from app.utils.security import hash_password
 
 
@@ -37,13 +38,23 @@ def client(engine):
     app.dependency_overrides.clear()
 
 
-def seed_user(engine, email="user@example.com", password="senha123", ativo=True):
+def seed_user(
+    engine,
+    email="user@example.com",
+    password="senha123",
+    ativo=True,
+    matricula=None,
+    status_aprovacao=None,
+    tipo_usuario="bb",
+):
     with Session(engine) as session:
         user = Usuario(
             email=email,
             password_hash=hash_password(password),
-            tipo_usuario="bb",
+            tipo_usuario=tipo_usuario,
             ativo=ativo,
+            matricula=matricula,
+            status_aprovacao=status_aprovacao,
         )
         session.add(user)
         session.commit()
@@ -81,6 +92,64 @@ def test_login_inactive_user(client, engine):
         json={"email": user.email, "password": "senha123"},
     )
     assert response.status_code == 401
+
+
+def test_login_bb_pendente_retorna_403(client, engine):
+    user = seed_user(
+        engine,
+        email="bb@bb.com.br",
+        matricula="123",
+        status_aprovacao="PENDENTE",
+    )
+    response = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Usuário BB pendente de aprovação"
+
+
+def test_login_bb_aprovado_ok(client, engine):
+    user = seed_user(
+        engine,
+        email="bb_aprovado@bb.com.br",
+        matricula="456",
+        status_aprovacao=STATUS_APROVADO,
+    )
+    response = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    assert response.status_code == 200
+
+
+def test_login_nao_bb_pendente_ok(client, engine):
+    user = seed_user(
+        engine,
+        email="user@npbb.com.br",
+        matricula="999",
+        status_aprovacao="PENDENTE",
+        tipo_usuario="npbb",
+    )
+    response = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    assert response.status_code == 200
+
+
+def test_login_bb_sem_matricula_valida_ok(client, engine):
+    user = seed_user(
+        engine,
+        email="bb_sem_matricula@bb.com.br",
+        matricula="   ",
+        status_aprovacao="PENDENTE",
+    )
+    response = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    assert response.status_code == 200
 
 
 def test_me_with_valid_token(client, engine):

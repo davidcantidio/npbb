@@ -85,8 +85,12 @@ def replace_questionario_estrutura(
         ).all()
         pergunta_ids = [pid for pid in pergunta_ids if pid is not None]
         if pergunta_ids:
-            session.exec(sa_delete(QuestionarioOpcao).where(QuestionarioOpcao.pergunta_id.in_(pergunta_ids)))
-            session.exec(sa_delete(QuestionarioPergunta).where(QuestionarioPergunta.id.in_(pergunta_ids)))
+            session.exec(
+                sa_delete(QuestionarioOpcao).where(QuestionarioOpcao.pergunta_id.in_(pergunta_ids))
+            )
+            session.exec(
+                sa_delete(QuestionarioPergunta).where(QuestionarioPergunta.id.in_(pergunta_ids))
+            )
         session.exec(sa_delete(QuestionarioPagina).where(QuestionarioPagina.id.in_(pagina_ids)))
 
     try:

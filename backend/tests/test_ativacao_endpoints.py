@@ -8,7 +8,16 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Ativacao, Cupom, Evento, Gamificacao, StatusEvento, TipoEvento, Usuario
+from app.models.models import (
+    Agencia,
+    Ativacao,
+    Cupom,
+    Evento,
+    Gamificacao,
+    StatusEvento,
+    TipoEvento,
+    Usuario,
+)
 from app.utils.security import hash_password
 
 
@@ -65,7 +74,9 @@ def seed_tipo(session: Session, nome: str = "Congresso") -> TipoEvento:
     return tipo
 
 
-def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
+def seed_user(
+    session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None
+) -> Usuario:
     user = Usuario(
         email=email,
         password_hash=hash_password(password),
@@ -187,7 +198,9 @@ def test_evento_ativacoes_get_retorna_lista_vazia(client, engine):
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     assert resp.json() == []
 
@@ -236,7 +249,9 @@ def test_evento_ativacoes_post_cria_e_get_retorna(client, engine):
     assert created["termo_uso"] is False
     assert created["gera_cupom"] is False
 
-    resp_list = client.get(f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"})
+    resp_list = client.get(
+        f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_list.status_code == 200
     payload = resp_list.json()
     assert len(payload) == 1
@@ -261,7 +276,9 @@ def test_ativacao_put_atualiza_campos_e_switches(client, engine):
             fim=date(2025, 1, 1),
         )
         evento_id = evento.id
-        ativacao = seed_ativacao(session, evento_id=evento_id, nome="Ativacao", created_at=old_dt, updated_at=old_dt)
+        ativacao = seed_ativacao(
+            session, evento_id=evento_id, nome="Ativacao", created_at=old_dt, updated_at=old_dt
+        )
         ativacao_id = ativacao.id
         gamificacao = seed_gamificacao(session, evento_id=evento_id, nome="G2")
         gamificacao_id = gamificacao.id
@@ -322,10 +339,14 @@ def test_ativacao_delete_remove(client, engine):
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
-    resp_delete = client.delete(f"/ativacao/{ativacao_id}", headers={"Authorization": f"Bearer {token}"})
+    resp_delete = client.delete(
+        f"/ativacao/{ativacao_id}", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_delete.status_code == 204
 
-    resp_list = client.get(f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"})
+    resp_list = client.get(
+        f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_list.status_code == 200
     assert resp_list.json() == []
 
@@ -380,7 +401,9 @@ def test_ativacoes_aplica_visibilidade_agencia(client, engine):
 
     token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
 
-    resp_list = client.get(f"/evento/{evento_out_id}/ativacoes", headers={"Authorization": f"Bearer {token}"})
+    resp_list = client.get(
+        f"/evento/{evento_out_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp_list.status_code == 404
     assert resp_list.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
 

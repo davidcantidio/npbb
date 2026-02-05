@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
@@ -61,7 +63,8 @@ def test_preview_xlsx_detects_start_index(client, engine):
     user = seed_user(engine)
     token = login_and_get_token(client, user.email, "senha123")
 
-    with open("npbb/backend/tests/fixtures/lead_import_sample.xlsx", "rb") as fh:
+    fixture_path = Path(__file__).parent / "fixtures" / "lead_import_sample.xlsx"
+    with fixture_path.open("rb") as fh:
         res = client.post(
             "/leads/import/preview",
             headers={"Authorization": f"Bearer {token}"},

@@ -1,8 +1,11 @@
 """Rotas de usuarios: criacao com validacao e hashing de senha."""
 
+import hashlib
+import logging
 import re
+import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlmodel import Session, select
@@ -19,12 +22,18 @@ from app.schemas.password_reset import (
 )
 from app.schemas.usuario import UsuarioCreate, UsuarioDiretoriaUpdate, UsuarioRead, UsuarioTipo
 from app.services.password_reset import PasswordResetError, request_password_reset, reset_password
+from app.utils.log_sanitize import sanitize_exception, sanitize_text
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{6,}$")
 MATRICULA_RE = re.compile(r"^[A-Za-z][0-9]{1,16}$")
+FORGOT_PASSWORD_MESSAGE = (
+    "Se o email estiver cadastrado, você receberá instruções para redefinir a senha."
+)
+PASSWORD_RESET_DELAY_SEC = 0.3
+telemetry_logger = logging.getLogger("app.telemetry")
 
 
 def _generate_chave_c(session: Session, seed: str) -> str:
@@ -44,6 +53,13 @@ def _raise_http(status_code: int, code: str, message: str, field: str | None = N
     if field:
         detail["field"] = field
     raise HTTPException(status_code=status_code, detail=detail)
+
+
+def _hash_email(email: str | None) -> str:
+    if not email:
+        return ""
+    normalized = email.strip().lower()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 @router.post(
@@ -154,7 +170,9 @@ def criar_usuario(
             if funcionario:
                 funcionario_id = funcionario.id
         else:
-            funcionario = session.exec(select(Funcionario).where(Funcionario.email == email)).first()
+            funcionario = session.exec(
+                select(Funcionario).where(Funcionario.email == email)
+            ).first()
             if funcionario:
                 funcionario_id = funcionario.id
 
@@ -201,7 +219,9 @@ def criar_usuario(
             constraint_name = None
 
         error_message = str(getattr(e, "orig", e))
-        is_unique = "duplicate key value" in error_message or "UNIQUE constraint failed" in error_message
+        is_unique = (
+            "duplicate key value" in error_message or "UNIQUE constraint failed" in error_message
+        )
         if is_unique:
             if (
                 constraint_name in {"usuario_email_key"}
@@ -310,37 +330,45 @@ def listar_diretorias_publicas(session: Session = Depends(get_session)):
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 def forgot_password(
     payload: ForgotPasswordRequest,
+    request: Request,
     session: Session = Depends(get_session),
 ):
     """Solicita recuperacao de senha via email.
 
-    Retorna 404 se o email nao for encontrado (requisito do fluxo de UI).
+    Resposta sempre generica para evitar enumeracao.
     """
+    result = None
+    error_detail: str | None = None
+    email_value = str(payload.email or "")
+    email_hash = _hash_email(email_value)
     try:
-        result = request_password_reset(session, str(payload.email))
-    except Exception:
-        _raise_http(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            code="EMAIL_SEND_FAILED",
-            message="Erro ao enviar email de recuperacao",
-        )
+        result = request_password_reset(session, email_value)
+    except Exception as exc:
+        error_detail = sanitize_exception(exc)
 
-    if not result.user_found:
-        _raise_http(
-            status.HTTP_404_NOT_FOUND,
-            code="USER_NOT_FOUND",
-            message="Email nao encontrado",
-            field="email",
-        )
+    ip_address = None
+    user_agent = None
+    request_id = None
+    if request is not None:
+        request_id = request.headers.get("x-request-id")
+        user_agent = request.headers.get("user-agent")
+        if request.client:
+            ip_address = request.client.host
 
-    response = ForgotPasswordResponse(
-        message="Email de recuperacao enviado",
+    telemetry_logger.info(
+        "password_reset_requested",
+        extra={
+            "request_id": request_id,
+            "ip": ip_address,
+            "user_agent": sanitize_text(user_agent or ""),
+            "email_hash": email_hash,
+            "result": "FOUND" if getattr(result, "user_found", False) else "NOT_FOUND",
+            "error_detail": error_detail,
+        },
     )
-    if result.debug_token:
-        response.token = result.debug_token
-        response.expires_at = result.debug_expires_at
-        response.reset_url = result.debug_reset_url
-    return response
+
+    time.sleep(PASSWORD_RESET_DELAY_SEC)
+    return ForgotPasswordResponse(message=FORGOT_PASSWORD_MESSAGE)
 
 
 @router.post("/reset-password", response_model=ResetPasswordResponse)

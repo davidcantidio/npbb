@@ -14,6 +14,12 @@ export type LeadImportPreview = {
   start_index: number;
   suggestions: LeadImportSuggestion[];
   samples_by_column: string[][];
+  alias_hits?: Array<{
+    tipo: string;
+    valor_origem: string;
+    canonical_value?: string | null;
+    evento_id?: number | null;
+  } | null>;
 };
 
 async function parseJsonSafe(text: string) {
@@ -64,6 +70,56 @@ export async function validateLeadMapping(
     body: JSON.stringify(mappings),
   });
   return handleResponse<{ ok: boolean }>(res);
+}
+
+export async function listReferenciaEventos(token: string): Promise<Array<{ id: number; nome: string }>> {
+  const res = await fetch(`${API_BASE_URL}/leads/referencias/eventos`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<Array<{ id: number; nome: string }>>(res);
+}
+
+export async function listReferenciaCidades(token: string): Promise<string[]> {
+  const res = await fetch(`${API_BASE_URL}/leads/referencias/cidades`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<string[]>(res);
+}
+
+export async function listReferenciaEstados(token: string): Promise<string[]> {
+  const res = await fetch(`${API_BASE_URL}/leads/referencias/estados`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<string[]>(res);
+}
+
+export async function listReferenciaGeneros(token: string): Promise<string[]> {
+  const res = await fetch(`${API_BASE_URL}/leads/referencias/generos`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<string[]>(res);
+}
+
+export async function createLeadAlias(
+  token: string,
+  payload: { tipo: string; valor_origem: string; canonical_value?: string | null; evento_id?: number | null },
+): Promise<{
+  id: number;
+  tipo: string;
+  valor_origem: string;
+  valor_normalizado: string;
+  canonical_value?: string | null;
+  evento_id?: number | null;
+}> {
+  const res = await fetch(`${API_BASE_URL}/leads/aliases`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
 }
 
 export async function runLeadImport(

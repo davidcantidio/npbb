@@ -25,4 +25,3 @@ def test_is_valid_cpf_false_for_known_placeholder_sequence():
 
 def test_validate_and_normalize_cpf_returns_digits():
     assert validate_and_normalize_cpf("529.982.247-25") == "52998224725"
-

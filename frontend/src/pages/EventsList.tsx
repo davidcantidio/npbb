@@ -239,7 +239,10 @@ export default function EventsList() {
   }, [loadDomains]);
 
   useEffect(() => {
-    setFiltersContainer(document.getElementById("app-sidebar-slot"));
+    setFiltersContainer(
+      document.getElementById("app-sidebar-slot") ||
+        document.getElementById("events-filters-slot"),
+    );
   }, []);
 
   useEffect(() => {

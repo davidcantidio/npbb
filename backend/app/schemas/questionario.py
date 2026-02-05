@@ -67,7 +67,10 @@ class QuestionarioPerguntaWrite(BaseModel):
 
     @model_validator(mode="after")
     def validate_opcoes_objetivas(self):
-        if self.tipo in {TipoPergunta.OBJETIVA_UNICA, TipoPergunta.OBJETIVA_MULTIPLA} and not self.opcoes:
+        if (
+            self.tipo in {TipoPergunta.OBJETIVA_UNICA, TipoPergunta.OBJETIVA_MULTIPLA}
+            and not self.opcoes
+        ):
             raise ValueError("opcoes obrigatorias para perguntas objetivas")
         return self
 

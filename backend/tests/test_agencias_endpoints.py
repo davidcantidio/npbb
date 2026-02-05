@@ -66,4 +66,3 @@ def test_agencias_list_paginado_e_search(client, engine):
 def test_agencias_rejeita_limit_maior_que_maximo(client):
     resp = client.get("/agencias/?limit=500")
     assert resp.status_code == 422
-

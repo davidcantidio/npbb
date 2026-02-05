@@ -1,12 +1,14 @@
 # app/models/models.py
 
-from datetime import datetime, date, timezone
+from datetime import datetime, date, time, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, Numeric
-from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, DateTime, Numeric, UniqueConstraint
+from sqlmodel import Field, Relationship
+
+from app.db.metadata import SQLModel
 
 
 def now_utc() -> datetime:
@@ -33,6 +35,7 @@ class Usuario(SQLModel, table=True):
     password_hash: str = Field(max_length=255)
 
     tipo_usuario: UsuarioTipo
+    status_aprovacao: Optional[str] = Field(default=None, max_length=20)
 
     funcionario_id: Optional[int] = Field(default=None, foreign_key="funcionario.id")
     agencia_id: Optional[int] = Field(default=None, foreign_key="agencia.id")
@@ -40,7 +43,9 @@ class Usuario(SQLModel, table=True):
     ativo: bool = Field(default=True)
 
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
     funcionario: Optional["Funcionario"] = Relationship(back_populates="usuario")
     agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
@@ -84,14 +89,16 @@ class TipoPergunta(str, Enum):
     NUMERICA = "numerica"
 
 
-class SolicitacaoIngressoStatus(str, Enum):
-    SOLICITADO = "SOLICITADO"
-    CANCELADO = "CANCELADO"
+class LeadConversaoTipo(str, Enum):
+    COMPRA_INGRESSO = "COMPRA_INGRESSO"
+    ACAO_EVENTO = "ACAO_EVENTO"
 
 
-class SolicitacaoIngressoTipo(str, Enum):
-    SELF = "SELF"
-    TERCEIRO = "TERCEIRO"
+class LeadAliasTipo(str, Enum):
+    EVENTO = "EVENTO"
+    CIDADE = "CIDADE"
+    ESTADO = "ESTADO"
+    GENERO = "GENERO"
 
 
 # =========================
@@ -154,7 +161,6 @@ class Funcionario(SQLModel, table=True):
     usuario: Optional["Usuario"] = Relationship(back_populates="funcionario")
 
 
-
 # =========================
 # EVENTO / TIPO / SUBTIPO
 # =========================
@@ -203,8 +209,8 @@ class Evento(SQLModel, table=True):
     publico_realizado: Optional[int] = None
 
     concorrencia: bool = Field(default=False)
-    cidade: str = Field(max_length=40)
-    estado: str = Field(max_length=40)
+    cidade: str = Field(max_length=40, index=True)
+    estado: str = Field(max_length=40, index=True)
 
     agencia_id: Optional[int] = Field(default=None, foreign_key="agencia.id")
     diretoria_id: Optional[int] = Field(default=None, foreign_key="diretoria.id")
@@ -216,7 +222,9 @@ class Evento(SQLModel, table=True):
     status_id: int = Field(foreign_key="status_evento.id")
 
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
     agencia: Optional[Agencia] = Relationship(back_populates="eventos")
     diretoria: Optional[Diretoria] = Relationship(back_populates="eventos")
@@ -287,22 +295,84 @@ class EventoTag(SQLModel, table=True):
 
 class Lead(SQLModel, table=True):
     __tablename__ = "lead"
+    __table_args__ = (
+        UniqueConstraint("email", "cpf", "evento_nome", "sessao", name="uq_lead_ticketing_dedupe"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     id_salesforce: Optional[str] = Field(default=None, max_length=200, unique=True)
 
-    nome: str = Field(max_length=100)
-    sobrenome: str = Field(max_length=100)
+    nome: Optional[str] = Field(default=None, max_length=100)
+    sobrenome: Optional[str] = Field(default=None, max_length=100)
     email: Optional[str] = Field(default=None, max_length=100)
     telefone: Optional[str] = Field(default=None, max_length=100)
 
-    cpf: str = Field(max_length=11, unique=True)
-    data_nascimento: date
-    data_criacao: datetime = Field(default_factory=now_utc)
+    # CPF pode repetir entre eventos/sessoes; dedupe e composto.
+    cpf: Optional[str] = Field(default=None, max_length=11)
+    data_nascimento: Optional[date] = None
+    data_criacao: datetime = Field(default_factory=now_utc, index=True)
+
+    evento_nome: Optional[str] = Field(default=None, max_length=150)
+    sessao: Optional[str] = Field(default=None, max_length=80)
+    data_compra: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    data_compra_data: Optional[date] = None
+    data_compra_hora: Optional[time] = None
+    opt_in: Optional[str] = Field(default=None, max_length=80)
+    opt_in_id: Optional[str] = Field(default=None, max_length=80)
+    opt_in_flag: Optional[bool] = None
+    metodo_entrega: Optional[str] = Field(default=None, max_length=160)
+    endereco_rua: Optional[str] = Field(default=None, max_length=200)
+    endereco_numero: Optional[str] = Field(default=None, max_length=120)
+    bairro: Optional[str] = Field(default=None, max_length=160)
+    cep: Optional[str] = Field(default=None, max_length=20)
+    cidade: Optional[str] = Field(default=None, max_length=120)
+    estado: Optional[str] = Field(default=None, max_length=40)
+    genero: Optional[str] = Field(default=None, max_length=40)
+    codigo_promocional: Optional[str] = Field(default=None, max_length=80)
+    ingresso_tipo: Optional[str] = Field(default=None, max_length=160)
+    ingresso_qtd: Optional[int] = None
+    fonte_origem: Optional[str] = Field(default=None, max_length=80)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
     cupons: List["Cupom"] = Relationship(back_populates="lead")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="lead")
+    conversoes: List["LeadConversao"] = Relationship(back_populates="lead")
+
+
+class LeadConversao(SQLModel, table=True):
+    __tablename__ = "lead_conversao"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    lead_id: int = Field(foreign_key="lead.id")
+    tipo: LeadConversaoTipo
+    acao_nome: Optional[str] = Field(default=None, max_length=120)
+    fonte_origem: Optional[str] = Field(default=None, max_length=80)
+    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id")
+    data_conversao_evento: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=now_utc)
+
+    lead: Optional["Lead"] = Relationship(back_populates="conversoes")
+    evento: Optional["Evento"] = Relationship()
+
+
+class LeadAlias(SQLModel, table=True):
+    __tablename__ = "lead_alias"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tipo: LeadAliasTipo
+    valor_origem: str = Field(max_length=200)
+    valor_normalizado: str = Field(max_length=200)
+    canonical_value: Optional[str] = Field(default=None, max_length=200)
+    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id")
+    created_at: datetime = Field(default_factory=now_utc)
+
+    __table_args__ = (
+        UniqueConstraint("tipo", "valor_normalizado", name="uq_lead_alias_tipo_valor_normalizado"),
+    )
+
+    evento: Optional["Evento"] = Relationship()
 
 
 # =========================
@@ -329,7 +399,9 @@ class Ativacao(SQLModel, table=True):
     gera_cupom: bool = Field(default=False)
 
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
     evento: Optional[Evento] = Relationship(back_populates="ativacoes")
     gamificacao: Optional["Gamificacao"] = Relationship(back_populates="ativacoes")
@@ -387,7 +459,7 @@ class AtivacaoLead(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     ativacao_id: int = Field(foreign_key="ativacao.id")
-    lead_id: int = Field(foreign_key="lead.id")
+    lead_id: int = Field(foreign_key="lead.id", index=True)
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")
@@ -425,37 +497,10 @@ class CotaCortesia(SQLModel, table=True):
     diretoria_id: int = Field(foreign_key="diretoria.id")
 
     quantidade: int
-    alterado_por: Optional[int] = Field(default=None, foreign_key="usuario.id")
-    alterado_em: Optional[datetime] = None
-    valor_anterior: Optional[int] = None
-    valor_novo: Optional[int] = None
 
     evento: Optional[Evento] = Relationship(back_populates="cotas")
     diretoria: Optional[Diretoria] = Relationship(back_populates="cotas")
     convites: List["Convite"] = Relationship(back_populates="cota")
-
-
-class SolicitacaoIngresso(SQLModel, table=True):
-    __tablename__ = "solicitacao_ingresso"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    cota_id: int = Field(foreign_key="cota_cortesia.id")
-    evento_id: int = Field(foreign_key="evento.id")
-    diretoria_id: int = Field(foreign_key="diretoria.id")
-
-    solicitante_usuario_id: int = Field(foreign_key="usuario.id")
-    solicitante_email: str = Field(max_length=120)
-    tipo: SolicitacaoIngressoTipo
-    indicado_email: Optional[str] = Field(default=None, max_length=120)
-    status: SolicitacaoIngressoStatus
-
-    created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
-
-    cota: Optional[CotaCortesia] = Relationship()
-    evento: Optional[Evento] = Relationship()
-    diretoria: Optional[Diretoria] = Relationship()
-    solicitante_usuario: Optional[Usuario] = Relationship()
 
 
 class Convidado(SQLModel, table=True):
@@ -468,7 +513,9 @@ class Convidado(SQLModel, table=True):
     email: str = Field(max_length=100, unique=True)
     externo: bool
 
-    funcionario_associado: Optional[Funcionario] = Relationship(back_populates="convidados_associados")
+    funcionario_associado: Optional[Funcionario] = Relationship(
+        back_populates="convidados_associados"
+    )
     convites: List["Convite"] = Relationship(back_populates="convidado")
 
 
@@ -547,7 +594,9 @@ class QuestionarioResposta(SQLModel, table=True):
     ativacao: Optional[Ativacao] = Relationship(back_populates="respostas_questionario")
     lead: Optional[Lead] = Relationship(back_populates="respostas_questionario")
 
-    respostas_pergunta: List["QuestionarioRespostaPergunta"] = Relationship(back_populates="resposta")
+    respostas_pergunta: List["QuestionarioRespostaPergunta"] = Relationship(
+        back_populates="resposta"
+    )
 
 
 class QuestionarioRespostaPergunta(SQLModel, table=True):
@@ -563,7 +612,9 @@ class QuestionarioRespostaPergunta(SQLModel, table=True):
 
     resposta: Optional[QuestionarioResposta] = Relationship(back_populates="respostas_pergunta")
     pergunta: Optional[QuestionarioPergunta] = Relationship(back_populates="respostas")
-    opcoes_marcadas: List["QuestionarioRespostaOpcao"] = Relationship(back_populates="resposta_pergunta")
+    opcoes_marcadas: List["QuestionarioRespostaOpcao"] = Relationship(
+        back_populates="resposta_pergunta"
+    )
 
 
 class QuestionarioRespostaOpcao(SQLModel, table=True):
@@ -573,7 +624,9 @@ class QuestionarioRespostaOpcao(SQLModel, table=True):
     resposta_pergunta_id: int = Field(foreign_key="questionario_resposta_pergunta.id")
     opcao_id: int = Field(foreign_key="questionario_opcao.id")
 
-    resposta_pergunta: Optional[QuestionarioRespostaPergunta] = Relationship(back_populates="opcoes_marcadas")
+    resposta_pergunta: Optional[QuestionarioRespostaPergunta] = Relationship(
+        back_populates="opcoes_marcadas"
+    )
     opcao: Optional[QuestionarioOpcao] = Relationship(back_populates="respostas_opcao")
 
 

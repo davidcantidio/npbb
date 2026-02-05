@@ -72,7 +72,9 @@ def seed_tipo(session: Session, nome: str = "Congresso") -> TipoEvento:
     return tipo
 
 
-def seed_user(session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None) -> Usuario:
+def seed_user(
+    session: Session, email: str, password: str, tipo: str, agencia_id: int | None = None
+) -> Usuario:
     user = Usuario(
         email=email,
         password_hash=hash_password(password),
@@ -142,7 +144,9 @@ def test_form_config_get_retorna_default_quando_nao_existe(client, engine):
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["evento_id"] == evento_id
@@ -155,8 +159,13 @@ def test_form_config_get_retorna_default_quando_nao_existe(client, engine):
         {"nome_campo": "Data de nascimento", "obrigatorio": True, "ordem": 5},
     ]
     assert payload["urls"]["url_landing"] == f"http://testserver/landing/eventos/{evento_id}"
-    assert payload["urls"]["url_checkin_sem_qr"] == f"http://testserver/checkin-sem-qr/eventos/{evento_id}"
-    assert payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
+    assert (
+        payload["urls"]["url_checkin_sem_qr"]
+        == f"http://testserver/checkin-sem-qr/eventos/{evento_id}"
+    )
+    assert (
+        payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
+    )
     assert payload["urls"]["url_api"] == "http://testserver/docs"
     assert "url_landing" not in payload
 
@@ -180,7 +189,9 @@ def test_form_config_get_respeita_public_api_doc_url(client, engine, monkeypatch
         evento_id = evento.id
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
-    resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["urls"]["url_api"] == "https://docs.example.com"
@@ -219,7 +230,9 @@ def test_form_config_put_cria_config(client, engine):
     assert resp.json()["template_id"] == template_id
 
     with Session(engine) as session:
-        configs = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).all()
+        configs = session.exec(
+            select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+        ).all()
         assert len(configs) == 1
 
 
@@ -269,7 +282,9 @@ def test_form_config_put_atualiza_template_id(client, engine):
     assert resp_update.json()["template_id"] == template_b_id
 
     with Session(engine) as session:
-        configs = session.exec(select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)).all()
+        configs = session.exec(
+            select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+        ).all()
         assert len(configs) == 1
         assert configs[0].template_id == template_b_id
 
@@ -304,7 +319,9 @@ def test_form_config_put_omitir_template_id_mantem_template(client, engine):
         "template_id": template_id,
         "campos": [{"nome_campo": "Nome", "obrigatorio": True, "ordem": 0}],
     }
-    resp_create = client.put(f"/evento/{evento_id}/form-config", json=payload_inicial, headers=headers)
+    resp_create = client.put(
+        f"/evento/{evento_id}/form-config", json=payload_inicial, headers=headers
+    )
     assert resp_create.status_code == 200
     assert resp_create.json()["template_id"] == template_id
 
@@ -314,7 +331,9 @@ def test_form_config_put_omitir_template_id_mantem_template(client, engine):
             {"nome_campo": "Email", "obrigatorio": True, "ordem": 1},
         ]
     }
-    resp_update = client.put(f"/evento/{evento_id}/form-config", json=payload_campos, headers=headers)
+    resp_update = client.put(
+        f"/evento/{evento_id}/form-config", json=payload_campos, headers=headers
+    )
     assert resp_update.status_code == 200
     assert resp_update.json()["template_id"] == template_id
     assert resp_update.json()["campos"] == payload_campos["campos"]
@@ -359,7 +378,9 @@ def test_form_config_put_salva_campos_e_get_retorna_igual(client, engine):
     )
     assert resp.status_code == 200
 
-    get_resp = client.get(f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"})
+    get_resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
     assert get_resp.status_code == 200
     assert get_resp.json()["template_id"] == template_id
     assert get_resp.json()["campos"] == payload["campos"]

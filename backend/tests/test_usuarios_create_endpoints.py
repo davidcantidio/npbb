@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine
 from sqlalchemy.pool import StaticPool
 
 from app.db.database import get_session
@@ -233,4 +233,3 @@ def test_usuarios_create_rejeita_matricula_duplicada(client, engine):
     assert resp_2.status_code == 409
     detail = resp_2.json()["detail"]
     assert detail["code"] == "MATRICULA_ALREADY_REGISTERED"
-

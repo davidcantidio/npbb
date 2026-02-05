@@ -15,8 +15,8 @@ import EventAtivacoes from "./pages/EventAtivacoes";
 import EventQuestionario from "./pages/EventQuestionario";
 import NewEvent from "./pages/NewEvent";
 import ComingSoon from "./pages/ComingSoon";
-import AtivosList from "./pages/AtivosList";
-import IngressosPortal from "./pages/IngressosPortal";
+import LeadsImport from "./pages/LeadsImport";
+import DashboardLeads from "./pages/DashboardLeads";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
@@ -69,7 +69,8 @@ function AppRoutes() {
         }
       >
         <Route path="/success" element={<Success />} />
-        <Route path="/dashboard" element={<Navigate to="/success" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/dashboard/leads" replace />} />
+        <Route path="/dashboard/leads" element={<DashboardLeads />} />
 
         <Route path="/eventos" element={<EventsList />} />
         <Route path="/eventos/novo" element={<NewEvent />} />
@@ -80,9 +81,8 @@ function AppRoutes() {
         <Route path="/eventos/:id/questionario" element={<EventQuestionario />} />
         <Route path="/eventos/:id" element={<EventDetail />} />
 
-        <Route path="/ativos" element={<AtivosList />} />
-        <Route path="/ingressos" element={<IngressosPortal />} />
-        <Route path="/leads" element={<ComingSoon title="Leads" />} />
+        <Route path="/ativos" element={<ComingSoon title="Ativos" />} />
+        <Route path="/leads" element={<LeadsImport />} />
         <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
       </Route>
 

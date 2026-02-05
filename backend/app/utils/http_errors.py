@@ -29,4 +29,3 @@ def raise_http_error(
     if extra:
         detail.update(extra)
     raise HTTPException(status_code=status_code, detail=detail)
-

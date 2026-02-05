@@ -67,4 +67,3 @@ def validate_and_normalize_cpf(value: str | None) -> str:
     if not is_valid_cpf(digits):
         raise ValueError("CPF invalido")
     return digits
-

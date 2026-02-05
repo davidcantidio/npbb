@@ -797,6 +797,9 @@ function IngressosPortalAdmin({ token }: PortalProps) {
 
 export default function IngressosPortal() {
   const { token, user, loading } = useAuth();
+  const isBb = user?.tipo_usuario === "bb";
+  const hasMatricula = Boolean(user?.matricula && user.matricula.trim());
+  const isApproved = user?.status_aprovacao === "APROVADO";
 
   if (loading) {
     return (
@@ -811,7 +814,37 @@ export default function IngressosPortal() {
     );
   }
 
-  if (user?.tipo_usuario === "bb") {
+  if (isBb && !hasMatricula) {
+    return (
+      <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="h6" fontWeight={700}>
+            Complete seu cadastro
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Para acessar os ingressos, informe sua matricula BB no cadastro.
+          </Typography>
+        </Stack>
+      </Paper>
+    );
+  }
+
+  if (isBb && !isApproved) {
+    return (
+      <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="h6" fontWeight={700}>
+            Perfil pendente de aprovacao
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Sua solicitacao esta em analise. Assim que for aprovada, voce podera solicitar ingressos.
+          </Typography>
+        </Stack>
+      </Paper>
+    );
+  }
+
+  if (isBb) {
     return <IngressosPortalBB token={token} />;
   }
 

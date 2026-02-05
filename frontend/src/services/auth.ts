@@ -8,6 +8,9 @@ export interface LoginRequest {
 export interface LoginUser {
   id: number;
   email: string;
+  matricula?: string | null;
+  diretoria_id?: number | null;
+  status_aprovacao?: string | null;
   tipo_usuario: string;
   funcionario_id?: number | null;
   agencia_id?: number | null;

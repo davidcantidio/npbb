@@ -1,4 +1,4 @@
-# Importacao de Leads (README curto)
+# Importacao de Leads (CSV/XLSX)
 
 ## Objetivo
 Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de datetime.
@@ -13,7 +13,7 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
 - `POST /leads/import`  
   Executa import com mapeamento confirmado.
 - `GET /leads/referencias/*`  
-  Opcoes canônicas (eventos, cidades, estados, generos).
+  Opcoes canonicas (eventos, cidades, estados, generos).
 - `GET/POST /leads/aliases`  
   Lookup e persistencia de alias.
 
@@ -35,34 +35,17 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
 - Upsert (politica):
   - Atualiza apenas **campos nao-nulos** do import.
   - Campos existentes nao sao sobrescritos por valores vazios.
-  - Se apenas **email** ou **CPF** existir, o dedupe usa o campo disponivel.
-- Politica de atualizacao por campo (baseline):
-  | Campo | Estrategia |
-  | --- | --- |
-  | Identificacao (`email`, `cpf`) | **Nao sobrescreve** se ja existe; preenche apenas quando o campo estiver vazio. |
-  | Nome/perfil (`nome`, `sobrenome`, `genero`, `data_nascimento`) | Atualiza se novo valor for nao-nulo. |
-  | Contato/endereco (`telefone`, `endereco_*`, `cidade`, `estado`, `cep`) | Atualiza se novo valor for nao-nulo. |
-  | Compra (`evento_nome`, `sessao`, `data_compra*`, `ingresso_*`, `codigo_promocional`, `metodo_entrega`) | Atualiza se novo valor for nao-nulo. |
-  | Fonte (`fonte_origem`) | Mantem a **primeira fonte registrada**; nao sobrescreve em imports futuros. |
 - Batch size:
   - Valor padrao: **500** registros por lote.
 - Limite de upload:
   - Tamanho maximo do arquivo controlado por `LEADS_IMPORT_MAX_BYTES` (padrao **50MB**).
   - Para uploads grandes em dev, recomenda-se iniciar o uvicorn com `--timeout-keep-alive 120`.
-- Resumo por lote:
-  - O retorno inclui `batches` com resultados por lote.
-  - Para evitar payload grande, o resumo e limitado por `LEADS_IMPORT_BATCH_SUMMARY_LIMIT` (padrao **200**).
 - Resumo final:
   - O retorno inclui `summary` com `filename`, `total`, `created`, `updated`, `skipped`, `errors`.
   - `errors` corresponde ao total de linhas ignoradas por erro durante o import.
-- Limites e truncamento:
-  - Valores de texto sao **truncados** automaticamente quando excedem o limite do banco.
-  - Ex.: `endereco_numero` e limitado a 120 caracteres.
-  - O import continua sem falhar, e o truncamento gera log interno.
 - Enriquecimento opcional por CEP:
   - Quando habilitado (`enriquecer_cep=true`), o sistema tenta preencher
     rua/bairro/cidade/estado a partir do CEP.
-  - Usa cache interno para reduzir chamadas externas.
   - Falhas na consulta nao bloqueiam o import.
 - Aliases:
   - Valores confirmados viram alias para imports futuros.
@@ -70,14 +53,10 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
 - Datetime:
   - Mantem `data_compra` (datetime).
   - Separa em `data_compra_data` e `data_compra_hora` quando aplicavel.
-- Indices recomendados (performance):
-  - `(email, cpf, evento_nome, sessao)`: acelera dedupe/upsert.
-  - `data_compra`: acelera filtros por periodo.
-  - `estado`, `cidade`: acelera rankings e filtros geograficos.
-  - `fonte_origem`: acelera filtros por origem.
 
 ## Fluxo esperado
 1) Usuario envia arquivo.
 2) Sistema detecta linha de dados e sugere mapeamento.
 3) Usuario confirma mapeamento e referencias.
 4) Import executa, retornando resumo (criadas/atualizadas/ignoradas).
+

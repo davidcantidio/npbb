@@ -40,8 +40,10 @@ Recuperacao de senha:
   }
   ```
 - 401 Unauthorized: `{"detail":"Credenciais invalidas"}`
+- 403 Forbidden: `{"detail":"Usuário BB pendente de aprovação"}`
 - Observacoes:
   - O login compara o email de forma case-insensitive.
+  - Usuarios BB (email `@bb.com.br` + matricula valida) exigem `status_aprovacao = APROVADO`.
   - O JWT usa HS256 e payload contem pelo menos:
     - `sub`: id do usuario
     - `exp`: timestamp de expiracao (UTC)
@@ -121,8 +123,7 @@ Para detalhes do fluxo e validacoes do formulario, veja `docs/login/new_user/log
 
 ### POST `/usuarios/forgot-password`
 - Body JSON: `{"email":"user@example.com"}`
-- 200 OK: `{"message":"Email de recuperacao enviado"}`
-- 404 Not Found: `{"detail":{"code":"USER_NOT_FOUND","message":"Email nao encontrado","field":"email"}}`
+- 200 OK: `{"message":"Se o email estiver cadastrado, você receberá instruções para redefinir a senha."}`
 - Observacoes:
   - Com `EMAIL_BACKEND=console` (padrao em dev), o "email" e impresso no terminal do `uvicorn`.
   - Em desenvolvimento, com `PASSWORD_RESET_DEBUG=true`, o backend retorna tambem `token`, `expires_at` e `reset_url`.

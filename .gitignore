@@ -16,6 +16,7 @@ yarn-error.log*
 # Ambiente / config local
 .env
 .env.*        # se tiver outros arquivos .env.local etc
+.venv/
 
 # Python cache
 __pycache__/

@@ -10,12 +10,14 @@ from fastapi.responses import JSONResponse
 from app.routers.agencias import router as agencias_router
 from app.routers.ativacao import router as ativacao_router
 from app.routers.auth import router as auth_router
+from app.routers.ativos import router as ativos_router
 from app.routers.dashboard_leads import router as dashboard_leads_router
 from app.routers.eventos import router as eventos_router
 from app.routers.gamificacao import router as gamificacao_router
 from app.routers.checkin_sem_qr_public import router as checkin_sem_qr_public_router
 from app.routers.landing_public import router as landing_public_router
 from app.routers.leads import router as leads_router
+from app.routers.ingressos import router as ingressos_router
 from app.routers.usuarios import router as usuarios_router
 
 app = FastAPI(title="NPBB API")
@@ -150,6 +152,8 @@ app.include_router(agencias_router)
 app.include_router(eventos_router)
 app.include_router(gamificacao_router)
 app.include_router(ativacao_router)
+app.include_router(ativos_router)
+app.include_router(ingressos_router)
 app.include_router(leads_router)
 app.include_router(landing_public_router)
 app.include_router(checkin_sem_qr_public_router)

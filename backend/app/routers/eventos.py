@@ -57,7 +57,7 @@ from app.schemas.dominios import (
     TerritorioRead,
     TipoEventoRead,
 )
-from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate
+from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate, DataHealthRead
 from app.schemas.formulario_lead import (
     FormularioLandingTemplateRead,
     FormularioLeadCampoRead,
@@ -259,9 +259,10 @@ def listar_eventos(
             SimpleNamespace(**proxy_data),
             status_name=status_nome_by_id.get(evento.status_id),
         )
+        data_health_model = DataHealthRead.model_validate(data_health)
 
         item = EventoListItem.model_validate(evento, from_attributes=True)
-        items.append(item.model_copy(update={"data_health": data_health}))
+        items.append(item.model_copy(update={"data_health": data_health_model}))
 
     return items
 

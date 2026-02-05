@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from sqlmodel import create_engine, Session
 
@@ -26,6 +27,41 @@ def _get_database_url() -> str:
     url = os.getenv("DATABASE_URL")
     if url:
         return url
+
+    user = (
+        os.getenv("DB_USER")
+        or os.getenv("USER")
+        or os.getenv("user")
+    )
+    password = (
+        os.getenv("DB_PASSWORD")
+        or os.getenv("PASSWORD")
+        or os.getenv("password")
+    )
+    host = (
+        os.getenv("DB_HOST")
+        or os.getenv("HOST")
+        or os.getenv("host")
+    )
+    port = (
+        os.getenv("DB_PORT")
+        or os.getenv("PORT")
+        or os.getenv("port")
+        or "5432"
+    )
+    dbname = (
+        os.getenv("DB_NAME")
+        or os.getenv("DBNAME")
+        or os.getenv("dbname")
+    )
+    if user and password and host and dbname:
+        sslmode = os.getenv("DB_SSLMODE", "require")
+        user_enc = quote_plus(user)
+        password_enc = quote_plus(password)
+        return (
+            f"postgresql+psycopg2://{user_enc}:{password_enc}"
+            f"@{host}:{port}/{dbname}?sslmode={sslmode}"
+        )
     # Permite SQLite apenas em execucoes de teste (ex.: pytest) ou se explicitamente marcado
     if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
         return "sqlite:///./app.db"

@@ -1,7 +1,7 @@
-"""Operational service for CONT Sprint 1 and Sprint 2 contract scaffolding.
+"""Operational service for CONT Sprint 1, Sprint 2, and Sprint 3 scaffolding.
 
-This module executes Sprint 1 and Sprint 2 scaffold contracts for canonical
-validation and emits structured operational logs with actionable errors.
+This module executes Sprint 1, Sprint 2, and Sprint 3 scaffold contracts for
+canonical validation and emits structured operational logs with actionable errors.
 """
 
 from __future__ import annotations
@@ -14,6 +14,11 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
+    from core.contracts.s3_scaffold import (
+        S3CanonicalContractScaffoldRequest,
+        S3ContractScaffoldError,
+        build_s3_contract_scaffold,
+    )
     from core.contracts.s2_core import (
         S2CanonicalContractCoreError,
         S2CanonicalContractCoreInput,
@@ -34,6 +39,11 @@ except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
+    from core.contracts.s3_scaffold import (
+        S3CanonicalContractScaffoldRequest,
+        S3ContractScaffoldError,
+        build_s3_contract_scaffold,
+    )
     from core.contracts.s2_core import (
         S2CanonicalContractCoreError,
         S2CanonicalContractCoreInput,
@@ -56,6 +66,7 @@ logger = logging.getLogger("app.services.contract_validation")
 
 SERVICE_CONTRACT_VERSION_S1 = "cont.s1.service.v1"
 SERVICE_CONTRACT_VERSION_S2 = "cont.s2.service.v1"
+SERVICE_CONTRACT_VERSION_S3 = "cont.s3.service.v1"
 
 
 class S1ContractValidationServiceError(RuntimeError):
@@ -96,6 +107,42 @@ class S1ContractValidationServiceError(RuntimeError):
 
 class S2ContractValidationServiceError(RuntimeError):
     """Raised when CONT Sprint 2 service flow fails."""
+
+    def __init__(
+        self,
+        *,
+        code: str,
+        message: str,
+        action: str,
+        correlation_id: str,
+        stage: str,
+        event_id: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.action = action
+        self.correlation_id = correlation_id
+        self.stage = stage
+        self.event_id = event_id
+
+    def to_dict(self) -> dict[str, str]:
+        """Return serializable diagnostics payload for API integration."""
+
+        payload = {
+            "code": self.code,
+            "message": self.message,
+            "action": self.action,
+            "correlation_id": self.correlation_id,
+            "stage": self.stage,
+        }
+        if self.event_id:
+            payload["event_id"] = self.event_id
+        return payload
+
+
+class S3ContractValidationServiceError(RuntimeError):
+    """Raised when CONT Sprint 3 service flow fails."""
 
     def __init__(
         self,
@@ -191,6 +238,34 @@ class S2ContractValidationServiceOutput:
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
             "scaffold": self.scaffold,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class S3ContractValidationServiceOutput:
+    """Output contract returned by CONT Sprint 3 service flow."""
+
+    contrato_versao: str
+    correlation_id: str
+    status: str
+    contract_id: str
+    dataset_name: str
+    lineage_profile: dict[str, Any]
+    pontos_integracao: dict[str, str]
+    observabilidade: dict[str, str]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return plain dictionary for API/CLI serialization."""
+
+        return {
+            "contrato_versao": self.contrato_versao,
+            "correlation_id": self.correlation_id,
+            "status": self.status,
+            "contract_id": self.contract_id,
+            "dataset_name": self.dataset_name,
+            "lineage_profile": self.lineage_profile,
+            "pontos_integracao": self.pontos_integracao,
+            "observabilidade": self.observabilidade,
         }
 
 
@@ -460,6 +535,144 @@ def execute_s2_contract_validation_service(
         ) from exc
 
 
+def execute_s3_contract_validation_service(
+    request: S3CanonicalContractScaffoldRequest,
+) -> S3ContractValidationServiceOutput:
+    """Execute CONT Sprint 3 scaffold service with actionable diagnostics.
+
+    Args:
+        request: CONT Sprint 3 input contract with lineage enforcement
+            requirements by field and metric.
+
+    Returns:
+        S3ContractValidationServiceOutput: Stable Sprint 3 service output with
+            lineage profile and observability identifiers.
+
+    Raises:
+        S3ContractValidationServiceError: If scaffold validation fails or an
+            unexpected service error happens.
+    """
+
+    correlation_id = request.correlation_id or f"cont-s3-{uuid4().hex[:12]}"
+    started_event_id = _new_s3_event_id()
+    logger.info(
+        "contract_validation_s3_flow_started",
+        extra={
+            "correlation_id": correlation_id,
+            "event_id": started_event_id,
+            "contract_id": request.contract_id,
+            "dataset_name": request.dataset_name,
+            "source_kind": request.source_kind,
+            "schema_version": request.schema_version,
+        },
+    )
+
+    try:
+        scaffold_output = build_s3_contract_scaffold(
+            S3CanonicalContractScaffoldRequest(
+                contract_id=request.contract_id,
+                dataset_name=request.dataset_name,
+                source_kind=request.source_kind,
+                schema_version=request.schema_version,
+                strict_validation=request.strict_validation,
+                lineage_required=request.lineage_required,
+                owner_team=request.owner_team,
+                schema_required_fields=request.schema_required_fields,
+                lineage_field_requirements=request.lineage_field_requirements,
+                metric_lineage_requirements=request.metric_lineage_requirements,
+                correlation_id=correlation_id,
+            )
+        )
+
+        lineage_plan_event_id = _new_s3_event_id()
+        logger.info(
+            "contract_validation_s3_lineage_profile_ready",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": lineage_plan_event_id,
+                "contract_id": scaffold_output.contract_id,
+                "dataset_name": scaffold_output.dataset_name,
+                "field_lineage_rules_count": scaffold_output.lineage_profile.get("field_lineage_rules_count"),
+                "metric_lineage_rules_count": scaffold_output.lineage_profile.get("metric_lineage_rules_count"),
+            },
+        )
+
+        completed_event_id = _new_s3_event_id()
+        logger.info(
+            "contract_validation_s3_flow_completed",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": completed_event_id,
+                "contract_id": scaffold_output.contract_id,
+                "dataset_name": scaffold_output.dataset_name,
+                "status": scaffold_output.status,
+            },
+        )
+
+        pontos_integracao = dict(scaffold_output.pontos_integracao)
+        pontos_integracao["contract_validation_service_module"] = (
+            "app.services.contract_validation_service.execute_s3_contract_validation_service"
+        )
+        pontos_integracao["contract_validation_service_telemetry_module"] = (
+            "app.services.contract_validation_service"
+        )
+
+        return S3ContractValidationServiceOutput(
+            contrato_versao=SERVICE_CONTRACT_VERSION_S3,
+            correlation_id=correlation_id,
+            status=scaffold_output.status,
+            contract_id=scaffold_output.contract_id,
+            dataset_name=scaffold_output.dataset_name,
+            lineage_profile=dict(scaffold_output.lineage_profile),
+            pontos_integracao=pontos_integracao,
+            observabilidade={
+                "flow_started_event_id": started_event_id,
+                "lineage_profile_ready_event_id": lineage_plan_event_id,
+                "flow_completed_event_id": completed_event_id,
+            },
+        )
+    except S3ContractScaffoldError as exc:
+        failed_event_id = _new_s3_event_id()
+        logger.warning(
+            "contract_validation_s3_scaffold_error",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": failed_event_id,
+                "error_code": exc.code,
+                "error_message": exc.message,
+                "recommended_action": exc.action,
+            },
+        )
+        raise S3ContractValidationServiceError(
+            code=exc.code,
+            message=exc.message,
+            action=exc.action,
+            correlation_id=correlation_id,
+            stage="scaffold",
+            event_id=failed_event_id,
+        ) from exc
+    except S3ContractValidationServiceError:
+        raise
+    except Exception as exc:
+        failed_event_id = _new_s3_event_id()
+        logger.error(
+            "contract_validation_s3_flow_unexpected_error",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": failed_event_id,
+                "error_type": type(exc).__name__,
+            },
+        )
+        raise S3ContractValidationServiceError(
+            code="CONTRACT_VALIDATION_S3_FLOW_FAILED",
+            message=f"Falha ao executar fluxo CONT S3: {type(exc).__name__}",
+            action="Revisar logs operacionais e validar contrato de entrada do CONT S3.",
+            correlation_id=correlation_id,
+            stage="service",
+            event_id=failed_event_id,
+        ) from exc
+
+
 def build_s1_contract_validation_error_detail(
     *,
     code: str,
@@ -502,6 +715,10 @@ def _new_s1_event_id() -> str:
 
 def _new_s2_event_id() -> str:
     return f"conts2evt-{uuid4().hex[:12]}"
+
+
+def _new_s3_event_id() -> str:
+    return f"conts3evt-{uuid4().hex[:12]}"
 
 
 def _to_s1_core_input(

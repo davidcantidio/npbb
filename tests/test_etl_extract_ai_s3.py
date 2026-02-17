@@ -19,6 +19,11 @@ from app.services.etl_extract_ai_service import (  # noqa: E402
     S3AIExtractServiceError,
     execute_s3_extract_ai_service,
 )
+from etl.extract.ai.s3_core import (  # noqa: E402
+    S3AIExtractCoreError,
+    S3AIExtractCoreInput,
+    execute_s3_ai_extract_main_flow,
+)
 from etl.extract.ai.s3_scaffold import (  # noqa: E402
     S3AIExtractScaffoldError,
     S3AIExtractScaffoldRequest,
@@ -70,6 +75,55 @@ def test_xia_s3_scaffold_rejects_invalid_chunk_strategy_for_pdf_scan() -> None:
     assert "chunk_strategy=page" in error.action
 
 
+def test_xia_s3_core_success_runs_main_flow() -> None:
+    flow_input = S3AIExtractCoreInput(
+        source_id="SRC_TMJ_PDFSCAN_2025",
+        source_kind="pdf_scan",
+        source_uri="file:///tmp/tmj_2025_scan.pdf",
+        document_profile_hint="pdf_scan_document",
+        image_preprocess_hint="ocr_enhanced",
+        ia_model_provider="openai",
+        ia_model_name="gpt-4.1-mini",
+        chunk_strategy="page",
+        max_tokens_output=2048,
+        temperature=0.0,
+        correlation_id="xia-s3-core-001",
+    )
+
+    output = execute_s3_ai_extract_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "xia.s3.core.v1"
+    assert output["correlation_id"] == "xia-s3-core-001"
+    assert output["status"] == "completed"
+    assert output["source_kind"] == "pdf_scan"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["observabilidade"]["flow_started_event_id"].startswith("xias3coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("xias3coreevt-")
+
+
+def test_xia_s3_core_raises_actionable_error_for_failed_extraction() -> None:
+    flow_input = S3AIExtractCoreInput(
+        source_id="SRC_TMJ_PNG_2025",
+        source_kind="png",
+        source_uri="file:///tmp/tmj_2025.png",
+        document_profile_hint="image_document",
+        image_preprocess_hint="denoise",
+        chunk_strategy="image",
+        correlation_id="xia-s3-core-failed",
+    )
+
+    def fail_extractor(context: dict[str, object]) -> dict[str, object]:
+        return {"status": "failed", "chunk_count": 1, "decision_reason": "provider_timeout", "ctx": context}
+
+    with pytest.raises(S3AIExtractCoreError) as exc:
+        execute_s3_ai_extract_main_flow(flow_input, execute_extraction=fail_extractor)
+
+    error = exc.value
+    assert error.code == "XIA_S3_EXTRACTION_FAILED"
+    assert error.stage == "extraction"
+    assert (error.event_id or "").startswith("xias3coreevt-")
+
+
 def test_xia_s3_service_success_returns_contract_and_observability() -> None:
     request = S3AIExtractScaffoldRequest(
         source_id="SRC_TMJ_JPG_2025",
@@ -89,12 +143,15 @@ def test_xia_s3_service_success_returns_contract_and_observability() -> None:
 
     assert output["contrato_versao"] == "xia.s3.service.v1"
     assert output["correlation_id"] == "xia-s3-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["source_kind"] == "jpg"
     assert output["extraction_plan"]["image_preprocess_hint"] == "denoise"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("xias3evt-")
     assert output["observabilidade"]["plan_ready_event_id"].startswith("xias3evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("xias3evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("xias3coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("xias3coreevt-")
 
 
 def test_xia_s3_service_raises_actionable_error_for_invalid_preprocess_hint() -> None:

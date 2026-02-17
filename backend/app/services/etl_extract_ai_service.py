@@ -31,6 +31,11 @@ try:  # pragma: no cover - import style depends on execution cwd
         S2AIExtractCoreInput,
         execute_s2_ai_extract_main_flow,
     )
+    from etl.extract.ai.s3_scaffold import (
+        S3AIExtractScaffoldError,
+        S3AIExtractScaffoldRequest,
+        build_s3_ai_extract_scaffold_contract,
+    )
 except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
@@ -51,12 +56,18 @@ except ModuleNotFoundError:  # pragma: no cover
         S2AIExtractCoreInput,
         execute_s2_ai_extract_main_flow,
     )
+    from etl.extract.ai.s3_scaffold import (
+        S3AIExtractScaffoldError,
+        S3AIExtractScaffoldRequest,
+        build_s3_ai_extract_scaffold_contract,
+    )
 
 
 logger = logging.getLogger("app.services.etl_extract_ai")
 
 SERVICE_CONTRACT_VERSION_S1 = "xia.s1.service.v1"
 SERVICE_CONTRACT_VERSION_S2 = "xia.s2.service.v1"
+SERVICE_CONTRACT_VERSION_S3 = "xia.s3.service.v1"
 
 
 class S1AIExtractServiceError(RuntimeError):
@@ -97,6 +108,42 @@ class S1AIExtractServiceError(RuntimeError):
 
 class S2AIExtractServiceError(RuntimeError):
     """Raised when XIA Sprint 2 service flow fails."""
+
+    def __init__(
+        self,
+        *,
+        code: str,
+        message: str,
+        action: str,
+        correlation_id: str,
+        stage: str,
+        event_id: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.action = action
+        self.correlation_id = correlation_id
+        self.stage = stage
+        self.event_id = event_id
+
+    def to_dict(self) -> dict[str, str]:
+        """Return serializable diagnostics payload for API integration."""
+
+        payload = {
+            "code": self.code,
+            "message": self.message,
+            "action": self.action,
+            "correlation_id": self.correlation_id,
+            "stage": self.stage,
+        }
+        if self.event_id:
+            payload["event_id"] = self.event_id
+        return payload
+
+
+class S3AIExtractServiceError(RuntimeError):
+    """Raised when XIA Sprint 3 service flow fails."""
 
     def __init__(
         self,
@@ -193,6 +240,38 @@ class S2AIExtractServiceOutput:
             "source_uri": self.source_uri,
             "extraction_plan": self.extraction_plan,
             "execucao": self.execucao,
+            "pontos_integracao": self.pontos_integracao,
+            "observabilidade": self.observabilidade,
+            "scaffold": self.scaffold,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class S3AIExtractServiceOutput:
+    """Output contract returned by XIA Sprint 3 service flow."""
+
+    contrato_versao: str
+    correlation_id: str
+    status: str
+    source_id: str
+    source_kind: str
+    source_uri: str
+    extraction_plan: dict[str, Any]
+    pontos_integracao: dict[str, str]
+    observabilidade: dict[str, str]
+    scaffold: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return plain dictionary for API/CLI serialization."""
+
+        return {
+            "contrato_versao": self.contrato_versao,
+            "correlation_id": self.correlation_id,
+            "status": self.status,
+            "source_id": self.source_id,
+            "source_kind": self.source_kind,
+            "source_uri": self.source_uri,
+            "extraction_plan": self.extraction_plan,
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
             "scaffold": self.scaffold,
@@ -506,12 +585,156 @@ def execute_s2_extract_ai_service(
         ) from exc
 
 
+def execute_s3_extract_ai_service(
+    request: S3AIExtractScaffoldRequest,
+) -> S3AIExtractServiceOutput:
+    """Execute XIA Sprint 3 scaffold service with actionable diagnostics.
+
+    Args:
+        request: XIA Sprint 3 input contract with source metadata and AI
+            extraction parameters for PDF scan and JPG/PNG documents.
+
+    Returns:
+        S3AIExtractServiceOutput: Stable Sprint 3 service output with
+            extraction plan and observability identifiers.
+
+    Raises:
+        S3AIExtractServiceError: If scaffold validation fails or an unexpected
+            service error happens.
+    """
+
+    correlation_id = request.correlation_id or f"xia-s3-{uuid4().hex[:12]}"
+    started_event_id = _new_s3_event_id()
+    logger.info(
+        "etl_extract_ai_s3_flow_started",
+        extra={
+            "correlation_id": correlation_id,
+            "event_id": started_event_id,
+            "source_id": request.source_id,
+            "source_kind": request.source_kind,
+            "ia_model_provider": request.ia_model_provider,
+            "chunk_strategy": request.chunk_strategy,
+        },
+    )
+
+    try:
+        scaffold = build_s3_ai_extract_scaffold_contract(
+            S3AIExtractScaffoldRequest(
+                source_id=request.source_id,
+                source_kind=request.source_kind,
+                source_uri=request.source_uri,
+                document_profile_hint=request.document_profile_hint,
+                image_preprocess_hint=request.image_preprocess_hint,
+                ia_model_provider=request.ia_model_provider,
+                ia_model_name=request.ia_model_name,
+                chunk_strategy=request.chunk_strategy,
+                max_tokens_output=request.max_tokens_output,
+                temperature=request.temperature,
+                correlation_id=correlation_id,
+            )
+        )
+
+        plan_event_id = _new_s3_event_id()
+        logger.info(
+            "etl_extract_ai_s3_plan_ready",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": plan_event_id,
+                "source_id": scaffold.source_id,
+                "source_kind": scaffold.source_kind,
+                "ia_model_provider": scaffold.extraction_plan.get("ia_model_provider"),
+                "chunk_strategy": scaffold.extraction_plan.get("chunk_strategy"),
+            },
+        )
+
+        completed_event_id = _new_s3_event_id()
+        logger.info(
+            "etl_extract_ai_s3_flow_completed",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": completed_event_id,
+                "source_id": scaffold.source_id,
+                "source_kind": scaffold.source_kind,
+                "status": scaffold.status,
+            },
+        )
+
+        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao["extract_ai_service_module"] = (
+            "app.services.etl_extract_ai_service.execute_s3_extract_ai_service"
+        )
+        pontos_integracao["extract_ai_service_telemetry_module"] = (
+            "app.services.etl_extract_ai_service"
+        )
+
+        return S3AIExtractServiceOutput(
+            contrato_versao=SERVICE_CONTRACT_VERSION_S3,
+            correlation_id=correlation_id,
+            status=scaffold.status,
+            source_id=scaffold.source_id,
+            source_kind=scaffold.source_kind,
+            source_uri=scaffold.source_uri,
+            extraction_plan=dict(scaffold.extraction_plan),
+            pontos_integracao=pontos_integracao,
+            observabilidade={
+                "flow_started_event_id": started_event_id,
+                "plan_ready_event_id": plan_event_id,
+                "flow_completed_event_id": completed_event_id,
+            },
+            scaffold=scaffold.to_dict(),
+        )
+    except S3AIExtractScaffoldError as exc:
+        failed_event_id = _new_s3_event_id()
+        logger.warning(
+            "etl_extract_ai_s3_scaffold_error",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": failed_event_id,
+                "error_code": exc.code,
+                "error_message": exc.message,
+                "recommended_action": exc.action,
+            },
+        )
+        raise S3AIExtractServiceError(
+            code=exc.code,
+            message=exc.message,
+            action=exc.action,
+            correlation_id=correlation_id,
+            stage="scaffold",
+            event_id=failed_event_id,
+        ) from exc
+    except S3AIExtractServiceError:
+        raise
+    except Exception as exc:
+        failed_event_id = _new_s3_event_id()
+        logger.error(
+            "etl_extract_ai_s3_flow_unexpected_error",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": failed_event_id,
+                "error_type": type(exc).__name__,
+            },
+        )
+        raise S3AIExtractServiceError(
+            code="ETL_EXTRACT_AI_S3_FLOW_FAILED",
+            message=f"Falha ao executar fluxo XIA S3: {type(exc).__name__}",
+            action="Revisar logs operacionais e validar contrato de entrada do XIA S3.",
+            correlation_id=correlation_id,
+            stage="service",
+            event_id=failed_event_id,
+        ) from exc
+
+
 def _new_s1_event_id() -> str:
     return f"xias1evt-{uuid4().hex[:12]}"
 
 
 def _new_s2_event_id() -> str:
     return f"xias2evt-{uuid4().hex[:12]}"
+
+
+def _new_s3_event_id() -> str:
+    return f"xias3evt-{uuid4().hex[:12]}"
 
 
 def _to_s1_core_input(

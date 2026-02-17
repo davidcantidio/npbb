@@ -20,6 +20,11 @@ from app.services.etl_extract_ai_service import (  # noqa: E402
     build_s1_extract_ai_error_detail,
     execute_s1_extract_ai_service,
 )
+from etl.extract.ai.s1_core import (  # noqa: E402
+    S1AIExtractCoreError,
+    S1AIExtractCoreInput,
+    execute_s1_ai_extract_main_flow,
+)
 from etl.extract.ai.s1_scaffold import (  # noqa: E402
     S1AIExtractScaffoldError,
     S1AIExtractScaffoldRequest,
@@ -68,6 +73,52 @@ def test_xia_s1_scaffold_rejects_invalid_source_kind() -> None:
     assert "pdf ou docx" in error.action
 
 
+def test_xia_s1_core_success_runs_main_flow() -> None:
+    flow_input = S1AIExtractCoreInput(
+        source_id="SRC_TMJ_DOCX_2025",
+        source_kind="docx",
+        source_uri="file:///tmp/tmj_2025.docx",
+        document_profile_hint="docx_textual",
+        ia_model_provider="openai",
+        ia_model_name="gpt-4.1-mini",
+        chunk_strategy="section",
+        max_tokens_output=1536,
+        temperature=0.0,
+        correlation_id="xia-s1-core-001",
+    )
+
+    output = execute_s1_ai_extract_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "xia.s1.core.v1"
+    assert output["correlation_id"] == "xia-s1-core-001"
+    assert output["status"] == "completed"
+    assert output["source_kind"] == "docx"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["observabilidade"]["flow_started_event_id"].startswith("xias1coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("xias1coreevt-")
+
+
+def test_xia_s1_core_raises_actionable_error_for_failed_extraction() -> None:
+    flow_input = S1AIExtractCoreInput(
+        source_id="SRC_TMJ_DOCX_2025",
+        source_kind="docx",
+        source_uri="file:///tmp/tmj_2025.docx",
+        document_profile_hint="docx_textual",
+        correlation_id="xia-s1-core-failed",
+    )
+
+    def fail_extractor(context: dict[str, object]) -> dict[str, object]:
+        return {"status": "failed", "chunk_count": 1, "decision_reason": "provider_timeout", "ctx": context}
+
+    with pytest.raises(S1AIExtractCoreError) as exc:
+        execute_s1_ai_extract_main_flow(flow_input, execute_extraction=fail_extractor)
+
+    error = exc.value
+    assert error.code == "XIA_S1_EXTRACTION_FAILED"
+    assert error.stage == "extraction"
+    assert (error.event_id or "").startswith("xias1coreevt-")
+
+
 def test_xia_s1_service_success_returns_contract_and_observability() -> None:
     request = S1AIExtractScaffoldRequest(
         source_id="SRC_TMJ_DOCX_2025",
@@ -86,12 +137,15 @@ def test_xia_s1_service_success_returns_contract_and_observability() -> None:
 
     assert output["contrato_versao"] == "xia.s1.service.v1"
     assert output["correlation_id"] == "xia-s1-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["source_kind"] == "docx"
     assert output["extraction_plan"]["ia_model_name"] == "gpt-4.1-mini"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("xias1evt-")
     assert output["observabilidade"]["plan_ready_event_id"].startswith("xias1evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("xias1evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("xias1coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("xias1coreevt-")
 
 
 def test_xia_s1_service_raises_actionable_error_for_invalid_temperature() -> None:

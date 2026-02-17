@@ -14,19 +14,25 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
+    from core.contracts.s1_core import (
+        S1CanonicalContractCoreError,
+        S1CanonicalContractCoreInput,
+        execute_s1_contract_validation_main_flow,
+    )
     from core.contracts.s1_scaffold import (
         S1CanonicalContractScaffoldRequest,
-        S1ContractScaffoldError,
-        build_s1_contract_scaffold,
     )
 except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
+    from core.contracts.s1_core import (
+        S1CanonicalContractCoreError,
+        S1CanonicalContractCoreInput,
+        execute_s1_contract_validation_main_flow,
+    )
     from core.contracts.s1_scaffold import (
         S1CanonicalContractScaffoldRequest,
-        S1ContractScaffoldError,
-        build_s1_contract_scaffold,
     )
 
 
@@ -106,7 +112,7 @@ class S1ContractValidationServiceOutput:
 def execute_s1_contract_validation_service(
     request: S1CanonicalContractScaffoldRequest,
 ) -> S1ContractValidationServiceOutput:
-    """Execute CONT Sprint 1 scaffold service with actionable diagnostics.
+    """Execute CONT Sprint 1 main-flow service with actionable diagnostics.
 
     Args:
         request: CONT Sprint 1 input contract with canonical metadata and
@@ -114,10 +120,10 @@ def execute_s1_contract_validation_service(
 
     Returns:
         S1ContractValidationServiceOutput: Stable Sprint 1 service output with
-            canonical scaffold and observability identifiers.
+            canonical contract metadata and observability identifiers.
 
     Raises:
-        S1ContractValidationServiceError: If scaffold validation fails or an
+        S1ContractValidationServiceError: If main-flow validation fails or an
             unexpected service error happens.
     """
 
@@ -136,17 +142,8 @@ def execute_s1_contract_validation_service(
     )
 
     try:
-        scaffold_output = build_s1_contract_scaffold(
-            S1CanonicalContractScaffoldRequest(
-                contract_id=request.contract_id,
-                dataset_name=request.dataset_name,
-                source_kind=request.source_kind,
-                schema_version=request.schema_version,
-                strict_validation=request.strict_validation,
-                lineage_required=request.lineage_required,
-                owner_team=request.owner_team,
-                correlation_id=correlation_id,
-            )
+        core_output = execute_s1_contract_validation_main_flow(
+            _to_s1_core_input(request=request, correlation_id=correlation_id)
         )
 
         plan_event_id = _new_s1_event_id()
@@ -155,10 +152,10 @@ def execute_s1_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": plan_event_id,
-                "contract_id": scaffold_output.contract_id,
-                "dataset_name": scaffold_output.dataset_name,
-                "schema_version": scaffold_output.canonical_contract.get("schema_version"),
-                "lineage_required": scaffold_output.canonical_contract.get("lineage_required"),
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "schema_version": core_output.canonical_contract.get("schema_version"),
+                "lineage_required": core_output.canonical_contract.get("lineage_required"),
             },
         )
 
@@ -168,13 +165,14 @@ def execute_s1_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "contract_id": scaffold_output.contract_id,
-                "dataset_name": scaffold_output.dataset_name,
-                "status": scaffold_output.status,
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
             },
         )
 
-        pontos_integracao = dict(scaffold_output.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["contract_validation_service_module"] = (
             "app.services.contract_validation_service.execute_s1_contract_validation_service"
         )
@@ -185,32 +183,33 @@ def execute_s1_contract_validation_service(
         return S1ContractValidationServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S1,
             correlation_id=correlation_id,
-            status=scaffold_output.status,
-            contract_id=scaffold_output.contract_id,
-            dataset_name=scaffold_output.dataset_name,
-            canonical_contract=dict(scaffold_output.canonical_contract),
-            execucao={
-                "status": "not_started",
-                "decision_reason": "s1_scaffold_ready_for_core_integration",
-            },
+            status=core_output.status,
+            contract_id=core_output.contract_id,
+            dataset_name=core_output.dataset_name,
+            canonical_contract=dict(core_output.canonical_contract),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "contract_ready_event_id": plan_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade["flow_completed_event_id"],
             },
-            scaffold=scaffold_output.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S1ContractScaffoldError as exc:
+    except S1CanonicalContractCoreError as exc:
         failed_event_id = _new_s1_event_id()
         logger.warning(
-            "contract_validation_s1_scaffold_error",
+            "contract_validation_s1_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S1ContractValidationServiceError(
@@ -218,7 +217,7 @@ def execute_s1_contract_validation_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S1ContractValidationServiceError:
@@ -281,3 +280,20 @@ def build_s1_contract_validation_error_detail(
 
 def _new_s1_event_id() -> str:
     return f"conts1evt-{uuid4().hex[:12]}"
+
+
+def _to_s1_core_input(
+    *,
+    request: S1CanonicalContractScaffoldRequest,
+    correlation_id: str,
+) -> S1CanonicalContractCoreInput:
+    return S1CanonicalContractCoreInput(
+        contract_id=request.contract_id,
+        dataset_name=request.dataset_name,
+        source_kind=request.source_kind,
+        schema_version=request.schema_version,
+        strict_validation=request.strict_validation,
+        lineage_required=request.lineage_required,
+        owner_team=request.owner_team,
+        correlation_id=correlation_id,
+    )

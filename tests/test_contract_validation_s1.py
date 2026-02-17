@@ -20,6 +20,11 @@ from app.services.contract_validation_service import (  # noqa: E402
     build_s1_contract_validation_error_detail,
     execute_s1_contract_validation_service,
 )
+from core.contracts.s1_core import (  # noqa: E402
+    S1CanonicalContractCoreError,
+    S1CanonicalContractCoreInput,
+    execute_s1_contract_validation_main_flow,
+)
 from core.contracts.s1_scaffold import (  # noqa: E402
     S1CanonicalContractScaffoldRequest,
     S1ContractScaffoldError,
@@ -82,13 +87,15 @@ def test_cont_s1_service_success_returns_contract_and_observability() -> None:
 
     assert output["contrato_versao"] == "cont.s1.service.v1"
     assert output["correlation_id"] == "cont-s1-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["contract_id"] == "CONT_FCT_TICKET_SALES_V1"
     assert output["canonical_contract"]["validation_mode"] == "strict"
-    assert output["execucao"]["status"] == "not_started"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("conts1evt-")
     assert output["observabilidade"]["contract_ready_event_id"].startswith("conts1evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("conts1evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("conts1coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("conts1coreevt-")
 
 
 def test_cont_s1_service_raises_actionable_error_for_invalid_source_kind() -> None:
@@ -107,6 +114,53 @@ def test_cont_s1_service_raises_actionable_error_for_invalid_source_kind() -> No
     assert "source_kind suportado" in error.action
     assert error.stage == "scaffold"
     assert (error.event_id or "").startswith("conts1evt-")
+
+
+def test_cont_s1_core_success_runs_main_flow() -> None:
+    flow_input = S1CanonicalContractCoreInput(
+        contract_id="CONT_STG_OPTIN_V1",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v1",
+        strict_validation=True,
+        lineage_required=True,
+        owner_team="etl",
+        correlation_id="cont-s1-core-001",
+    )
+
+    output = execute_s1_contract_validation_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "cont.s1.core.v1"
+    assert output["correlation_id"] == "cont-s1-core-001"
+    assert output["status"] == "completed"
+    assert output["contract_id"] == "CONT_STG_OPTIN_V1"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["observabilidade"]["flow_started_event_id"].startswith("conts1coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("conts1coreevt-")
+
+
+def test_cont_s1_core_raises_actionable_error_for_failed_validation() -> None:
+    flow_input = S1CanonicalContractCoreInput(
+        contract_id="CONT_STG_OPTIN_V1",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v1",
+        strict_validation=True,
+        lineage_required=True,
+        owner_team="etl",
+        correlation_id="cont-s1-core-failed",
+    )
+
+    def fail_validator(context: dict[str, object]) -> dict[str, object]:
+        return {"status": "failed", "decision_reason": "schema_violation", "ctx": context}
+
+    with pytest.raises(S1CanonicalContractCoreError) as exc:
+        execute_s1_contract_validation_main_flow(flow_input, execute_validation=fail_validator)
+
+    error = exc.value
+    assert error.code == "CONT_S1_VALIDATION_FAILED"
+    assert error.stage == "validation"
+    assert (error.event_id or "").startswith("conts1coreevt-")
 
 
 def test_cont_s1_error_detail_contract() -> None:

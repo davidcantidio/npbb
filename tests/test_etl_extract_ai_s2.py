@@ -19,6 +19,11 @@ from app.services.etl_extract_ai_service import (  # noqa: E402
     S2AIExtractServiceError,
     execute_s2_extract_ai_service,
 )
+from etl.extract.ai.s2_core import (  # noqa: E402
+    S2AIExtractCoreError,
+    S2AIExtractCoreInput,
+    execute_s2_ai_extract_main_flow,
+)
 from etl.extract.ai.s2_scaffold import (  # noqa: E402
     S2AIExtractScaffoldError,
     S2AIExtractScaffoldRequest,
@@ -68,6 +73,54 @@ def test_xia_s2_scaffold_rejects_invalid_chunk_strategy_for_pptx() -> None:
     assert "chunk_strategy=slide" in error.action
 
 
+def test_xia_s2_core_success_runs_main_flow() -> None:
+    flow_input = S2AIExtractCoreInput(
+        source_id="SRC_TMJ_XLSX_2025",
+        source_kind="xlsx",
+        source_uri="file:///tmp/tmj_2025.xlsx",
+        document_profile_hint="xlsx_non_standard",
+        tabular_layout_hint="header_shifted",
+        ia_model_provider="openai",
+        ia_model_name="gpt-4.1-mini",
+        chunk_strategy="sheet",
+        max_tokens_output=2048,
+        temperature=0.0,
+        correlation_id="xia-s2-core-001",
+    )
+
+    output = execute_s2_ai_extract_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "xia.s2.core.v1"
+    assert output["correlation_id"] == "xia-s2-core-001"
+    assert output["status"] == "completed"
+    assert output["source_kind"] == "xlsx"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["observabilidade"]["flow_started_event_id"].startswith("xias2coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("xias2coreevt-")
+
+
+def test_xia_s2_core_raises_actionable_error_for_failed_extraction() -> None:
+    flow_input = S2AIExtractCoreInput(
+        source_id="SRC_TMJ_PPTX_2025",
+        source_kind="pptx",
+        source_uri="file:///tmp/tmj_2025.pptx",
+        document_profile_hint="pptx_social_metrics",
+        chunk_strategy="slide",
+        correlation_id="xia-s2-core-failed",
+    )
+
+    def fail_extractor(context: dict[str, object]) -> dict[str, object]:
+        return {"status": "failed", "chunk_count": 1, "decision_reason": "provider_timeout", "ctx": context}
+
+    with pytest.raises(S2AIExtractCoreError) as exc:
+        execute_s2_ai_extract_main_flow(flow_input, execute_extraction=fail_extractor)
+
+    error = exc.value
+    assert error.code == "XIA_S2_EXTRACTION_FAILED"
+    assert error.stage == "extraction"
+    assert (error.event_id or "").startswith("xias2coreevt-")
+
+
 def test_xia_s2_service_success_returns_contract_and_observability() -> None:
     request = S2AIExtractScaffoldRequest(
         source_id="SRC_TMJ_XLSX_2025",
@@ -87,12 +140,15 @@ def test_xia_s2_service_success_returns_contract_and_observability() -> None:
 
     assert output["contrato_versao"] == "xia.s2.service.v1"
     assert output["correlation_id"] == "xia-s2-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["source_kind"] == "xlsx"
     assert output["extraction_plan"]["tabular_layout_hint"] == "header_shifted"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("xias2evt-")
     assert output["observabilidade"]["plan_ready_event_id"].startswith("xias2evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("xias2evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("xias2coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("xias2coreevt-")
 
 
 def test_xia_s2_service_raises_actionable_error_for_invalid_tabular_hint() -> None:

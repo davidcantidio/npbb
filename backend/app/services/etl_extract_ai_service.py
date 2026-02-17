@@ -24,9 +24,12 @@ try:  # pragma: no cover - import style depends on execution cwd
         S1AIExtractScaffoldRequest,
     )
     from etl.extract.ai.s2_scaffold import (
-        S2AIExtractScaffoldError,
         S2AIExtractScaffoldRequest,
-        build_s2_ai_extract_scaffold_contract,
+    )
+    from etl.extract.ai.s2_core import (
+        S2AIExtractCoreError,
+        S2AIExtractCoreInput,
+        execute_s2_ai_extract_main_flow,
     )
 except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
@@ -41,9 +44,12 @@ except ModuleNotFoundError:  # pragma: no cover
         S1AIExtractScaffoldRequest,
     )
     from etl.extract.ai.s2_scaffold import (
-        S2AIExtractScaffoldError,
         S2AIExtractScaffoldRequest,
-        build_s2_ai_extract_scaffold_contract,
+    )
+    from etl.extract.ai.s2_core import (
+        S2AIExtractCoreError,
+        S2AIExtractCoreInput,
+        execute_s2_ai_extract_main_flow,
     )
 
 
@@ -170,6 +176,7 @@ class S2AIExtractServiceOutput:
     source_kind: str
     source_uri: str
     extraction_plan: dict[str, Any]
+    execucao: dict[str, Any]
     pontos_integracao: dict[str, str]
     observabilidade: dict[str, str]
     scaffold: dict[str, Any]
@@ -185,6 +192,7 @@ class S2AIExtractServiceOutput:
             "source_kind": self.source_kind,
             "source_uri": self.source_uri,
             "extraction_plan": self.extraction_plan,
+            "execucao": self.execucao,
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
             "scaffold": self.scaffold,
@@ -396,20 +404,8 @@ def execute_s2_extract_ai_service(
     )
 
     try:
-        scaffold = build_s2_ai_extract_scaffold_contract(
-            S2AIExtractScaffoldRequest(
-                source_id=request.source_id,
-                source_kind=request.source_kind,
-                source_uri=request.source_uri,
-                document_profile_hint=request.document_profile_hint,
-                tabular_layout_hint=request.tabular_layout_hint,
-                ia_model_provider=request.ia_model_provider,
-                ia_model_name=request.ia_model_name,
-                chunk_strategy=request.chunk_strategy,
-                max_tokens_output=request.max_tokens_output,
-                temperature=request.temperature,
-                correlation_id=correlation_id,
-            )
+        core_output = execute_s2_ai_extract_main_flow(
+            _to_s2_core_input(request=request, correlation_id=correlation_id)
         )
 
         plan_event_id = _new_s2_event_id()
@@ -418,10 +414,11 @@ def execute_s2_extract_ai_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": plan_event_id,
-                "source_id": scaffold.source_id,
-                "source_kind": scaffold.source_kind,
-                "ia_model_provider": scaffold.extraction_plan.get("ia_model_provider"),
-                "chunk_strategy": scaffold.extraction_plan.get("chunk_strategy"),
+                "source_id": core_output.source_id,
+                "source_kind": core_output.source_kind,
+                "ia_model_provider": core_output.extraction_plan.get("ia_model_provider"),
+                "chunk_strategy": core_output.extraction_plan.get("chunk_strategy"),
+                "chunk_count": core_output.execucao.get("chunk_count"),
             },
         )
 
@@ -431,13 +428,14 @@ def execute_s2_extract_ai_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "source_id": scaffold.source_id,
-                "source_kind": scaffold.source_kind,
-                "status": scaffold.status,
+                "source_id": core_output.source_id,
+                "source_kind": core_output.source_kind,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
             },
         )
 
-        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["extract_ai_service_module"] = (
             "app.services.etl_extract_ai_service.execute_s2_extract_ai_service"
         )
@@ -448,29 +446,34 @@ def execute_s2_extract_ai_service(
         return S2AIExtractServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S2,
             correlation_id=correlation_id,
-            status=scaffold.status,
-            source_id=scaffold.source_id,
-            source_kind=scaffold.source_kind,
-            source_uri=scaffold.source_uri,
-            extraction_plan=dict(scaffold.extraction_plan),
+            status=core_output.status,
+            source_id=core_output.source_id,
+            source_kind=core_output.source_kind,
+            source_uri=core_output.source_uri,
+            extraction_plan=dict(core_output.extraction_plan),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "plan_ready_event_id": plan_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade["flow_completed_event_id"],
             },
-            scaffold=scaffold.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S2AIExtractScaffoldError as exc:
+    except S2AIExtractCoreError as exc:
         failed_event_id = _new_s2_event_id()
         logger.warning(
-            "etl_extract_ai_s2_scaffold_error",
+            "etl_extract_ai_s2_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S2AIExtractServiceError(
@@ -478,7 +481,7 @@ def execute_s2_extract_ai_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S2AIExtractServiceError:
@@ -521,6 +524,26 @@ def _to_s1_core_input(
         source_kind=request.source_kind,
         source_uri=request.source_uri,
         document_profile_hint=request.document_profile_hint,
+        ia_model_provider=request.ia_model_provider,
+        ia_model_name=request.ia_model_name,
+        chunk_strategy=request.chunk_strategy,
+        max_tokens_output=request.max_tokens_output,
+        temperature=request.temperature,
+        correlation_id=correlation_id,
+    )
+
+
+def _to_s2_core_input(
+    *,
+    request: S2AIExtractScaffoldRequest,
+    correlation_id: str,
+) -> S2AIExtractCoreInput:
+    return S2AIExtractCoreInput(
+        source_id=request.source_id,
+        source_kind=request.source_kind,
+        source_uri=request.source_uri,
+        document_profile_hint=request.document_profile_hint,
+        tabular_layout_hint=request.tabular_layout_hint,
         ia_model_provider=request.ia_model_provider,
         ia_model_name=request.ia_model_name,
         chunk_strategy=request.chunk_strategy,

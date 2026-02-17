@@ -14,10 +14,13 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
+    from core.contracts.s3_core import (
+        S3CanonicalContractCoreError,
+        S3CanonicalContractCoreInput,
+        execute_s3_contract_validation_main_flow,
+    )
     from core.contracts.s3_scaffold import (
         S3CanonicalContractScaffoldRequest,
-        S3ContractScaffoldError,
-        build_s3_contract_scaffold,
     )
     from core.contracts.s2_core import (
         S2CanonicalContractCoreError,
@@ -39,10 +42,13 @@ except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
+    from core.contracts.s3_core import (
+        S3CanonicalContractCoreError,
+        S3CanonicalContractCoreInput,
+        execute_s3_contract_validation_main_flow,
+    )
     from core.contracts.s3_scaffold import (
         S3CanonicalContractScaffoldRequest,
-        S3ContractScaffoldError,
-        build_s3_contract_scaffold,
     )
     from core.contracts.s2_core import (
         S2CanonicalContractCoreError,
@@ -251,8 +257,10 @@ class S3ContractValidationServiceOutput:
     contract_id: str
     dataset_name: str
     lineage_profile: dict[str, Any]
+    execucao: dict[str, Any]
     pontos_integracao: dict[str, str]
     observabilidade: dict[str, str]
+    scaffold: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         """Return plain dictionary for API/CLI serialization."""
@@ -264,8 +272,10 @@ class S3ContractValidationServiceOutput:
             "contract_id": self.contract_id,
             "dataset_name": self.dataset_name,
             "lineage_profile": self.lineage_profile,
+            "execucao": self.execucao,
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
+            "scaffold": self.scaffold,
         }
 
 
@@ -568,20 +578,8 @@ def execute_s3_contract_validation_service(
     )
 
     try:
-        scaffold_output = build_s3_contract_scaffold(
-            S3CanonicalContractScaffoldRequest(
-                contract_id=request.contract_id,
-                dataset_name=request.dataset_name,
-                source_kind=request.source_kind,
-                schema_version=request.schema_version,
-                strict_validation=request.strict_validation,
-                lineage_required=request.lineage_required,
-                owner_team=request.owner_team,
-                schema_required_fields=request.schema_required_fields,
-                lineage_field_requirements=request.lineage_field_requirements,
-                metric_lineage_requirements=request.metric_lineage_requirements,
-                correlation_id=correlation_id,
-            )
+        core_output = execute_s3_contract_validation_main_flow(
+            _to_s3_core_input(request=request, correlation_id=correlation_id)
         )
 
         lineage_plan_event_id = _new_s3_event_id()
@@ -590,10 +588,10 @@ def execute_s3_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": lineage_plan_event_id,
-                "contract_id": scaffold_output.contract_id,
-                "dataset_name": scaffold_output.dataset_name,
-                "field_lineage_rules_count": scaffold_output.lineage_profile.get("field_lineage_rules_count"),
-                "metric_lineage_rules_count": scaffold_output.lineage_profile.get("metric_lineage_rules_count"),
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "field_lineage_rules_count": core_output.lineage_profile.get("field_lineage_rules_count"),
+                "metric_lineage_rules_count": core_output.lineage_profile.get("metric_lineage_rules_count"),
             },
         )
 
@@ -603,13 +601,14 @@ def execute_s3_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "contract_id": scaffold_output.contract_id,
-                "dataset_name": scaffold_output.dataset_name,
-                "status": scaffold_output.status,
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
             },
         )
 
-        pontos_integracao = dict(scaffold_output.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["contract_validation_service_module"] = (
             "app.services.contract_validation_service.execute_s3_contract_validation_service"
         )
@@ -620,27 +619,33 @@ def execute_s3_contract_validation_service(
         return S3ContractValidationServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S3,
             correlation_id=correlation_id,
-            status=scaffold_output.status,
-            contract_id=scaffold_output.contract_id,
-            dataset_name=scaffold_output.dataset_name,
-            lineage_profile=dict(scaffold_output.lineage_profile),
+            status=core_output.status,
+            contract_id=core_output.contract_id,
+            dataset_name=core_output.dataset_name,
+            lineage_profile=dict(core_output.lineage_profile),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "lineage_profile_ready_event_id": lineage_plan_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade["flow_completed_event_id"],
             },
+            scaffold=dict(core_output.scaffold),
         )
-    except S3ContractScaffoldError as exc:
+    except S3CanonicalContractCoreError as exc:
         failed_event_id = _new_s3_event_id()
         logger.warning(
-            "contract_validation_s3_scaffold_error",
+            "contract_validation_s3_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S3ContractValidationServiceError(
@@ -648,7 +653,7 @@ def execute_s3_contract_validation_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S3ContractValidationServiceError:
@@ -753,5 +758,25 @@ def _to_s2_core_input(
         owner_team=request.owner_team,
         schema_required_fields=request.schema_required_fields,
         domain_constraints=request.domain_constraints,
+        correlation_id=correlation_id,
+    )
+
+
+def _to_s3_core_input(
+    *,
+    request: S3CanonicalContractScaffoldRequest,
+    correlation_id: str,
+) -> S3CanonicalContractCoreInput:
+    return S3CanonicalContractCoreInput(
+        contract_id=request.contract_id,
+        dataset_name=request.dataset_name,
+        source_kind=request.source_kind,
+        schema_version=request.schema_version,
+        strict_validation=request.strict_validation,
+        lineage_required=request.lineage_required,
+        owner_team=request.owner_team,
+        schema_required_fields=request.schema_required_fields,
+        lineage_field_requirements=request.lineage_field_requirements,
+        metric_lineage_requirements=request.metric_lineage_requirements,
         correlation_id=correlation_id,
     )

@@ -14,10 +14,13 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
+    from core.contracts.s2_core import (
+        S2CanonicalContractCoreError,
+        S2CanonicalContractCoreInput,
+        execute_s2_contract_validation_main_flow,
+    )
     from core.contracts.s2_scaffold import (
         S2CanonicalContractScaffoldRequest,
-        S2ContractScaffoldError,
-        build_s2_contract_scaffold,
     )
     from core.contracts.s1_core import (
         S1CanonicalContractCoreError,
@@ -31,10 +34,13 @@ except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
+    from core.contracts.s2_core import (
+        S2CanonicalContractCoreError,
+        S2CanonicalContractCoreInput,
+        execute_s2_contract_validation_main_flow,
+    )
     from core.contracts.s2_scaffold import (
         S2CanonicalContractScaffoldRequest,
-        S2ContractScaffoldError,
-        build_s2_contract_scaffold,
     )
     from core.contracts.s1_core import (
         S1CanonicalContractCoreError,
@@ -166,8 +172,10 @@ class S2ContractValidationServiceOutput:
     contract_id: str
     dataset_name: str
     validation_profile: dict[str, Any]
+    execucao: dict[str, Any]
     pontos_integracao: dict[str, str]
     observabilidade: dict[str, str]
+    scaffold: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         """Return plain dictionary for API/CLI serialization."""
@@ -179,8 +187,10 @@ class S2ContractValidationServiceOutput:
             "contract_id": self.contract_id,
             "dataset_name": self.dataset_name,
             "validation_profile": self.validation_profile,
+            "execucao": self.execucao,
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
+            "scaffold": self.scaffold,
         }
 
 
@@ -350,19 +360,8 @@ def execute_s2_contract_validation_service(
     )
 
     try:
-        scaffold_output = build_s2_contract_scaffold(
-            S2CanonicalContractScaffoldRequest(
-                contract_id=request.contract_id,
-                dataset_name=request.dataset_name,
-                source_kind=request.source_kind,
-                schema_version=request.schema_version,
-                strict_validation=request.strict_validation,
-                lineage_required=request.lineage_required,
-                owner_team=request.owner_team,
-                schema_required_fields=request.schema_required_fields,
-                domain_constraints=request.domain_constraints,
-                correlation_id=correlation_id,
-            )
+        core_output = execute_s2_contract_validation_main_flow(
+            _to_s2_core_input(request=request, correlation_id=correlation_id)
         )
 
         validation_profile_event_id = _new_s2_event_id()
@@ -371,10 +370,10 @@ def execute_s2_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": validation_profile_event_id,
-                "contract_id": scaffold_output.contract_id,
-                "dataset_name": scaffold_output.dataset_name,
-                "required_fields_count": scaffold_output.validation_profile.get("required_fields_count"),
-                "domain_rules_count": scaffold_output.validation_profile.get("domain_rules_count"),
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "required_fields_count": core_output.validation_profile.get("required_fields_count"),
+                "domain_rules_count": core_output.validation_profile.get("domain_rules_count"),
             },
         )
 
@@ -384,13 +383,14 @@ def execute_s2_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "contract_id": scaffold_output.contract_id,
-                "dataset_name": scaffold_output.dataset_name,
-                "status": scaffold_output.status,
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
             },
         )
 
-        pontos_integracao = dict(scaffold_output.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["contract_validation_service_module"] = (
             "app.services.contract_validation_service.execute_s2_contract_validation_service"
         )
@@ -401,27 +401,33 @@ def execute_s2_contract_validation_service(
         return S2ContractValidationServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S2,
             correlation_id=correlation_id,
-            status=scaffold_output.status,
-            contract_id=scaffold_output.contract_id,
-            dataset_name=scaffold_output.dataset_name,
-            validation_profile=dict(scaffold_output.validation_profile),
+            status=core_output.status,
+            contract_id=core_output.contract_id,
+            dataset_name=core_output.dataset_name,
+            validation_profile=dict(core_output.validation_profile),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "validation_profile_ready_event_id": validation_profile_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade["flow_completed_event_id"],
             },
+            scaffold=dict(core_output.scaffold),
         )
-    except S2ContractScaffoldError as exc:
+    except S2CanonicalContractCoreError as exc:
         failed_event_id = _new_s2_event_id()
         logger.warning(
-            "contract_validation_s2_scaffold_error",
+            "contract_validation_s2_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S2ContractValidationServiceError(
@@ -429,7 +435,7 @@ def execute_s2_contract_validation_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S2ContractValidationServiceError:
@@ -511,5 +517,24 @@ def _to_s1_core_input(
         strict_validation=request.strict_validation,
         lineage_required=request.lineage_required,
         owner_team=request.owner_team,
+        correlation_id=correlation_id,
+    )
+
+
+def _to_s2_core_input(
+    *,
+    request: S2CanonicalContractScaffoldRequest,
+    correlation_id: str,
+) -> S2CanonicalContractCoreInput:
+    return S2CanonicalContractCoreInput(
+        contract_id=request.contract_id,
+        dataset_name=request.dataset_name,
+        source_kind=request.source_kind,
+        schema_version=request.schema_version,
+        strict_validation=request.strict_validation,
+        lineage_required=request.lineage_required,
+        owner_team=request.owner_team,
+        schema_required_fields=request.schema_required_fields,
+        domain_constraints=request.domain_constraints,
         correlation_id=correlation_id,
     )

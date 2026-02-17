@@ -19,6 +19,11 @@ from app.services.contract_validation_service import (  # noqa: E402
     S2ContractValidationServiceError,
     execute_s2_contract_validation_service,
 )
+from core.contracts.s2_core import (  # noqa: E402
+    S2CanonicalContractCoreError,
+    S2CanonicalContractCoreInput,
+    execute_s2_contract_validation_main_flow,
+)
 from core.contracts.s2_scaffold import (  # noqa: E402
     S2CanonicalContractScaffoldRequest,
     S2ContractScaffoldError,
@@ -93,12 +98,16 @@ def test_cont_s2_service_success_returns_profile_and_observability() -> None:
 
     assert output["contrato_versao"] == "cont.s2.service.v1"
     assert output["correlation_id"] == "cont-s2-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["contract_id"] == "CONT_FCT_TICKET_SALES_V2"
     assert output["validation_profile"]["validation_scope"] == "schema_and_domain"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("conts2evt-")
     assert output["observabilidade"]["validation_profile_ready_event_id"].startswith("conts2evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("conts2evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("conts2coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("conts2coreevt-")
+    assert output["scaffold"]["contrato_versao"] == "cont.s2.v1"
 
 
 def test_cont_s2_service_raises_actionable_error_for_invalid_source_kind() -> None:
@@ -117,3 +126,60 @@ def test_cont_s2_service_raises_actionable_error_for_invalid_source_kind() -> No
     assert "source_kind suportado" in error.action
     assert error.stage == "scaffold"
     assert (error.event_id or "").startswith("conts2evt-")
+
+
+def test_cont_s2_core_success_runs_main_flow() -> None:
+    flow_input = S2CanonicalContractCoreInput(
+        contract_id="CONT_STG_OPTIN_V2",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v2",
+        strict_validation=True,
+        lineage_required=True,
+        owner_team="etl",
+        schema_required_fields=("record_id", "event_ts", "source_id", "payload_checksum"),
+        domain_constraints={
+            "source_id": ("app", "crm"),
+            "record_id": ("not_null",),
+        },
+        correlation_id="cont-s2-core-001",
+    )
+
+    output = execute_s2_contract_validation_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "cont.s2.core.v1"
+    assert output["correlation_id"] == "cont-s2-core-001"
+    assert output["status"] == "completed"
+    assert output["contract_id"] == "CONT_STG_OPTIN_V2"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["observabilidade"]["flow_started_event_id"].startswith("conts2coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("conts2coreevt-")
+
+
+def test_cont_s2_core_raises_actionable_error_for_failed_validation() -> None:
+    flow_input = S2CanonicalContractCoreInput(
+        contract_id="CONT_STG_OPTIN_V2",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v2",
+        strict_validation=True,
+        lineage_required=True,
+        owner_team="etl",
+        schema_required_fields=("record_id", "event_ts", "source_id", "payload_checksum"),
+        domain_constraints={
+            "source_id": ("app", "crm"),
+            "record_id": ("not_null",),
+        },
+        correlation_id="cont-s2-core-failed",
+    )
+
+    def fail_validator(_context: dict[str, object]) -> dict[str, object]:
+        return {"status": "failed", "decision_reason": "domain_violation"}
+
+    with pytest.raises(S2CanonicalContractCoreError) as exc:
+        execute_s2_contract_validation_main_flow(flow_input, execute_validation=fail_validator)
+
+    error = exc.value
+    assert error.code == "CONT_S2_VALIDATION_FAILED"
+    assert error.stage == "validation"
+    assert (error.event_id or "").startswith("conts2coreevt-")

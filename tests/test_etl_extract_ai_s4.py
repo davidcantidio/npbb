@@ -19,6 +19,11 @@ from app.services.etl_extract_ai_service import (  # noqa: E402
     S4AIExtractServiceError,
     execute_s4_extract_ai_service,
 )
+from etl.extract.ai.s4_core import (  # noqa: E402
+    S4AIExtractCoreError,
+    S4AIExtractCoreInput,
+    execute_s4_ai_extract_main_flow,
+)
 from etl.extract.ai.s4_scaffold import (  # noqa: E402
     S4AIExtractScaffoldError,
     S4AIExtractScaffoldRequest,
@@ -89,13 +94,15 @@ def test_xia_s4_service_success_returns_contract_and_observability() -> None:
 
     assert output["contrato_versao"] == "xia.s4.service.v1"
     assert output["correlation_id"] == "xia-s4-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["source_kind"] == "pptx"
     assert output["extraction_plan"]["quality_profile_hint"] == "table_sensitive"
-    assert output["execucao"]["status"] == "not_started"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("xias4evt-")
     assert output["observabilidade"]["plan_ready_event_id"].startswith("xias4evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("xias4evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("xias4coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("xias4coreevt-")
 
 
 def test_xia_s4_service_raises_actionable_error_for_invalid_chunk_strategy() -> None:
@@ -116,3 +123,55 @@ def test_xia_s4_service_raises_actionable_error_for_invalid_chunk_strategy() -> 
     assert "source_kind=pdf_scan" in error.action
     assert error.stage == "scaffold"
     assert (error.event_id or "").startswith("xias4evt-")
+
+
+def test_xia_s4_core_success_runs_main_flow() -> None:
+    flow_input = S4AIExtractCoreInput(
+        source_id="SRC_TMJ_S4_PDF_2025",
+        source_kind="pdf",
+        source_uri="file:///tmp/tmj_2025.pdf",
+        quality_profile_hint="strict_textual",
+        consolidation_scope="cross_format_event",
+        output_normalization_profile="canonical_fields_v1",
+        ia_model_provider="openai",
+        ia_model_name="gpt-4.1-mini",
+        chunk_strategy="page",
+        max_tokens_output=2048,
+        temperature=0.0,
+        correlation_id="xia-s4-core-001",
+    )
+
+    output = execute_s4_ai_extract_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "xia.s4.core.v1"
+    assert output["correlation_id"] == "xia-s4-core-001"
+    assert output["status"] == "completed"
+    assert output["source_kind"] == "pdf"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["execucao"]["consolidation_group_id"].startswith("grp-")
+    assert output["observabilidade"]["flow_started_event_id"].startswith("xias4coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("xias4coreevt-")
+
+
+def test_xia_s4_core_raises_actionable_error_for_failed_extraction() -> None:
+    flow_input = S4AIExtractCoreInput(
+        source_id="SRC_TMJ_S4_DOCX_2025",
+        source_kind="docx",
+        source_uri="file:///tmp/tmj_2025.docx",
+        quality_profile_hint="strict_textual",
+        consolidation_scope="single_source",
+        output_normalization_profile="canonical_fields_v2",
+        chunk_strategy="paragraph",
+        correlation_id="xia-s4-core-failed",
+    )
+
+    def fail_extractor(context: dict[str, object]) -> dict[str, object]:
+        return {"status": "failed", "chunk_count": 1, "decision_reason": "provider_timeout", "ctx": context}
+
+    with pytest.raises(S4AIExtractCoreError) as exc:
+        execute_s4_ai_extract_main_flow(flow_input, execute_extraction=fail_extractor)
+
+    error = exc.value
+    assert error.code == "XIA_S4_EXTRACTION_FAILED"
+    assert error.stage == "extraction"
+    assert (error.event_id or "").startswith("xias4coreevt-")

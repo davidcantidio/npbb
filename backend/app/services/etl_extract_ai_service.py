@@ -34,10 +34,13 @@ try:  # pragma: no cover - import style depends on execution cwd
     from etl.extract.ai.s3_scaffold import (
         S3AIExtractScaffoldRequest,
     )
+    from etl.extract.ai.s4_core import (
+        S4AIExtractCoreError,
+        S4AIExtractCoreInput,
+        execute_s4_ai_extract_main_flow,
+    )
     from etl.extract.ai.s4_scaffold import (
-        S4AIExtractScaffoldError,
         S4AIExtractScaffoldRequest,
-        build_s4_ai_extract_scaffold_contract,
     )
     from etl.extract.ai.s3_core import (
         S3AIExtractCoreError,
@@ -67,10 +70,13 @@ except ModuleNotFoundError:  # pragma: no cover
     from etl.extract.ai.s3_scaffold import (
         S3AIExtractScaffoldRequest,
     )
+    from etl.extract.ai.s4_core import (
+        S4AIExtractCoreError,
+        S4AIExtractCoreInput,
+        execute_s4_ai_extract_main_flow,
+    )
     from etl.extract.ai.s4_scaffold import (
-        S4AIExtractScaffoldError,
         S4AIExtractScaffoldRequest,
-        build_s4_ai_extract_scaffold_contract,
     )
     from etl.extract.ai.s3_core import (
         S3AIExtractCoreError,
@@ -812,18 +818,18 @@ def execute_s3_extract_ai_service(
 def execute_s4_extract_ai_service(
     request: S4AIExtractScaffoldRequest,
 ) -> S4AIExtractServiceOutput:
-    """Execute XIA Sprint 4 scaffold service with actionable diagnostics.
+    """Execute XIA Sprint 4 main-flow service with actionable diagnostics.
 
     Args:
-        request: XIA Sprint 4 input contract with source metadata and quality
-            calibration parameters.
+        request: XIA Sprint 4 input contract with source metadata, quality
+            calibration and consolidation parameters.
 
     Returns:
-        S4AIExtractServiceOutput: Stable Sprint 4 scaffold service output with
+        S4AIExtractServiceOutput: Stable Sprint 4 service output with
             extraction plan and observability identifiers.
 
     Raises:
-        S4AIExtractServiceError: If scaffold validation fails or an unexpected
+        S4AIExtractServiceError: If main-flow validation fails or an unexpected
             service error happens.
     """
 
@@ -843,21 +849,8 @@ def execute_s4_extract_ai_service(
     )
 
     try:
-        scaffold_output = build_s4_ai_extract_scaffold_contract(
-            S4AIExtractScaffoldRequest(
-                source_id=request.source_id,
-                source_kind=request.source_kind,
-                source_uri=request.source_uri,
-                quality_profile_hint=request.quality_profile_hint,
-                consolidation_scope=request.consolidation_scope,
-                output_normalization_profile=request.output_normalization_profile,
-                ia_model_provider=request.ia_model_provider,
-                ia_model_name=request.ia_model_name,
-                chunk_strategy=request.chunk_strategy,
-                max_tokens_output=request.max_tokens_output,
-                temperature=request.temperature,
-                correlation_id=correlation_id,
-            )
+        core_output = execute_s4_ai_extract_main_flow(
+            _to_s4_core_input(request=request, correlation_id=correlation_id)
         )
 
         plan_event_id = _new_s4_event_id()
@@ -866,13 +859,14 @@ def execute_s4_extract_ai_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": plan_event_id,
-                "source_id": scaffold_output.source_id,
-                "source_kind": scaffold_output.source_kind,
-                "quality_profile_hint": scaffold_output.extraction_plan.get("quality_profile_hint"),
-                "consolidation_scope": scaffold_output.extraction_plan.get("consolidation_scope"),
-                "output_normalization_profile": scaffold_output.extraction_plan.get(
+                "source_id": core_output.source_id,
+                "source_kind": core_output.source_kind,
+                "quality_profile_hint": core_output.extraction_plan.get("quality_profile_hint"),
+                "consolidation_scope": core_output.extraction_plan.get("consolidation_scope"),
+                "output_normalization_profile": core_output.extraction_plan.get(
                     "output_normalization_profile"
                 ),
+                "chunk_count": core_output.execucao.get("chunk_count"),
             },
         )
 
@@ -882,13 +876,14 @@ def execute_s4_extract_ai_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "source_id": scaffold_output.source_id,
-                "source_kind": scaffold_output.source_kind,
-                "status": scaffold_output.status,
+                "source_id": core_output.source_id,
+                "source_kind": core_output.source_kind,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
             },
         )
 
-        pontos_integracao = dict(scaffold_output.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["extract_ai_service_module"] = (
             "app.services.etl_extract_ai_service.execute_s4_extract_ai_service"
         )
@@ -899,34 +894,34 @@ def execute_s4_extract_ai_service(
         return S4AIExtractServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S4,
             correlation_id=correlation_id,
-            status=scaffold_output.status,
-            source_id=scaffold_output.source_id,
-            source_kind=scaffold_output.source_kind,
-            source_uri=scaffold_output.source_uri,
-            extraction_plan=dict(scaffold_output.extraction_plan),
-            execucao={
-                "status": "not_started",
-                "decision_reason": "s4_scaffold_ready_for_core_integration",
-                "chunk_count": 0,
-            },
+            status=core_output.status,
+            source_id=core_output.source_id,
+            source_kind=core_output.source_kind,
+            source_uri=core_output.source_uri,
+            extraction_plan=dict(core_output.extraction_plan),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "plan_ready_event_id": plan_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade["flow_completed_event_id"],
             },
-            scaffold=scaffold_output.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S4AIExtractScaffoldError as exc:
+    except S4AIExtractCoreError as exc:
         failed_event_id = _new_s4_event_id()
         logger.warning(
-            "etl_extract_ai_s4_scaffold_error",
+            "etl_extract_ai_s4_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S4AIExtractServiceError(
@@ -934,7 +929,7 @@ def execute_s4_extract_ai_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S4AIExtractServiceError:
@@ -1025,6 +1020,27 @@ def _to_s3_core_input(
         source_uri=request.source_uri,
         document_profile_hint=request.document_profile_hint,
         image_preprocess_hint=request.image_preprocess_hint,
+        ia_model_provider=request.ia_model_provider,
+        ia_model_name=request.ia_model_name,
+        chunk_strategy=request.chunk_strategy,
+        max_tokens_output=request.max_tokens_output,
+        temperature=request.temperature,
+        correlation_id=correlation_id,
+    )
+
+
+def _to_s4_core_input(
+    *,
+    request: S4AIExtractScaffoldRequest,
+    correlation_id: str,
+) -> S4AIExtractCoreInput:
+    return S4AIExtractCoreInput(
+        source_id=request.source_id,
+        source_kind=request.source_kind,
+        source_uri=request.source_uri,
+        quality_profile_hint=request.quality_profile_hint,
+        consolidation_scope=request.consolidation_scope,
+        output_normalization_profile=request.output_normalization_profile,
         ia_model_provider=request.ia_model_provider,
         ia_model_name=request.ia_model_name,
         chunk_strategy=request.chunk_strategy,

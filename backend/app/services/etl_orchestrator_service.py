@@ -4,7 +4,7 @@ This module executes:
 - Sprint 1 main flow contracts.
 - Sprint 2 deterministic-first contracts.
 - Sprint 3 agent-first contracts.
-- Sprint 4 telemetry/cost/latency scaffold contracts.
+- Sprint 4 telemetry/cost/latency main-flow contracts.
 It emits structured operational logs with actionable errors for integration
 layers.
 """
@@ -34,10 +34,13 @@ try:  # pragma: no cover - import style depends on execution cwd
     from etl.orchestrator.s3_scaffold import (
         S3OrchestratorScaffoldRequest,
     )
+    from etl.orchestrator.s4_core import (
+        S4OrchestratorCoreError,
+        S4OrchestratorCoreInput,
+        execute_s4_orchestrator_main_flow,
+    )
     from etl.orchestrator.s4_scaffold import (
-        S4OrchestratorScaffoldError,
         S4OrchestratorScaffoldRequest,
-        build_s4_scaffold_contract,
     )
     from etl.orchestrator.s3_core import (
         S3OrchestratorCoreError,
@@ -67,10 +70,13 @@ except ModuleNotFoundError:  # pragma: no cover
     from etl.orchestrator.s3_scaffold import (
         S3OrchestratorScaffoldRequest,
     )
+    from etl.orchestrator.s4_core import (
+        S4OrchestratorCoreError,
+        S4OrchestratorCoreInput,
+        execute_s4_orchestrator_main_flow,
+    )
     from etl.orchestrator.s4_scaffold import (
-        S4OrchestratorScaffoldError,
         S4OrchestratorScaffoldRequest,
-        build_s4_scaffold_contract,
     )
     from etl.orchestrator.s3_core import (
         S3OrchestratorCoreError,
@@ -345,7 +351,7 @@ class S3OrchestratorServiceOutput:
 
 @dataclass(frozen=True, slots=True)
 class S4OrchestratorServiceOutput:
-    """Output contract returned by ORQ Sprint 4 service scaffold flow."""
+    """Output contract returned by ORQ Sprint 4 service main flow."""
 
     contrato_versao: str
     correlation_id: str
@@ -356,6 +362,7 @@ class S4OrchestratorServiceOutput:
     rota_selecionada: str
     plano_telemetria: dict[str, Any]
     governanca_custo_latencia: dict[str, Any]
+    execucao: dict[str, Any]
     pontos_integracao: dict[str, str]
     observabilidade: dict[str, str]
     scaffold: dict[str, Any]
@@ -373,6 +380,7 @@ class S4OrchestratorServiceOutput:
             "rota_selecionada": self.rota_selecionada,
             "plano_telemetria": self.plano_telemetria,
             "governanca_custo_latencia": self.governanca_custo_latencia,
+            "execucao": self.execucao,
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
             "scaffold": self.scaffold,
@@ -834,7 +842,7 @@ def execute_s3_orchestrator_service(
 def execute_s4_orchestrator_service(
     request: S4OrchestratorScaffoldRequest,
 ) -> S4OrchestratorServiceOutput:
-    """Execute ORQ Sprint 4 scaffold service with actionable diagnostics.
+    """Execute ORQ Sprint 4 main-flow service with actionable diagnostics.
 
     Args:
         request: ORQ Sprint 4 input contract with telemetry, cost, and latency
@@ -842,10 +850,11 @@ def execute_s4_orchestrator_service(
 
     Returns:
         S4OrchestratorServiceOutput: Stable Sprint 4 service output with
-            telemetry plan, governance controls, and observability identifiers.
+            telemetry plan, governance controls, execution diagnostics, and
+            observability identifiers.
 
     Raises:
-        S4OrchestratorServiceError: If scaffold validation fails or an
+        S4OrchestratorServiceError: If main-flow execution fails or an
             unexpected service error happens.
     """
 
@@ -864,20 +873,8 @@ def execute_s4_orchestrator_service(
     )
 
     try:
-        scaffold = build_s4_scaffold_contract(
-            S4OrchestratorScaffoldRequest(
-                source_id=request.source_id,
-                source_kind=request.source_kind,
-                source_uri=request.source_uri,
-                rota_selecionada=request.rota_selecionada,
-                decisao_telemetria_habilitada=request.decisao_telemetria_habilitada,
-                custo_estimado_usd=request.custo_estimado_usd,
-                custo_orcamento_usd=request.custo_orcamento_usd,
-                latencia_estimada_ms=request.latencia_estimada_ms,
-                latencia_sla_ms=request.latencia_sla_ms,
-                telemetria_amostragem=request.telemetria_amostragem,
-                correlation_id=correlation_id,
-            )
+        core_output = execute_s4_orchestrator_main_flow(
+            _to_s4_core_input(request=request, correlation_id=correlation_id)
         )
 
         telemetry_plan_event_id = _new_s4_event_id()
@@ -886,11 +883,12 @@ def execute_s4_orchestrator_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": telemetry_plan_event_id,
-                "source_id": scaffold.source_id,
-                "source_kind": scaffold.source_kind,
-                "rota_selecionada": scaffold.rota_selecionada,
-                "custo_status": scaffold.governanca_custo_latencia.get("custo_status"),
-                "latencia_status": scaffold.governanca_custo_latencia.get("latencia_status"),
+                "source_id": core_output.source_id,
+                "source_kind": core_output.source_kind,
+                "rota_selecionada": core_output.rota_selecionada,
+                "decision_reason": core_output.execucao.get("decision_reason"),
+                "custo_status": core_output.governanca_custo_latencia.get("custo_status"),
+                "latencia_status": core_output.governanca_custo_latencia.get("latencia_status"),
             },
         )
 
@@ -900,14 +898,15 @@ def execute_s4_orchestrator_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "source_id": scaffold.source_id,
-                "source_kind": scaffold.source_kind,
-                "rota_selecionada": scaffold.rota_selecionada,
-                "status": scaffold.status,
+                "source_id": core_output.source_id,
+                "source_kind": core_output.source_kind,
+                "rota_selecionada": core_output.rota_selecionada,
+                "status": core_output.status,
+                "route_status": core_output.execucao.get("status"),
             },
         )
 
-        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["orchestrator_service_module"] = (
             "app.services.etl_orchestrator_service.execute_s4_orchestrator_service"
         )
@@ -918,31 +917,41 @@ def execute_s4_orchestrator_service(
         return S4OrchestratorServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S4,
             correlation_id=correlation_id,
-            status=scaffold.status,
-            source_id=scaffold.source_id,
-            source_kind=scaffold.source_kind,
-            source_uri=scaffold.source_uri,
-            rota_selecionada=scaffold.rota_selecionada,
-            plano_telemetria=dict(scaffold.plano_telemetria),
-            governanca_custo_latencia=dict(scaffold.governanca_custo_latencia),
+            status=core_output.status,
+            source_id=core_output.source_id,
+            source_kind=core_output.source_kind,
+            source_uri=core_output.source_uri,
+            rota_selecionada=core_output.rota_selecionada,
+            plano_telemetria=dict(core_output.plano_telemetria),
+            governanca_custo_latencia=dict(core_output.governanca_custo_latencia),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "telemetry_plan_event_id": telemetry_plan_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_decision_event_id": core_output.observabilidade[
+                    "decision_recorded_event_id"
+                ],
+                "main_flow_completed_event_id": core_output.observabilidade[
+                    "flow_completed_event_id"
+                ],
             },
-            scaffold=scaffold.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S4OrchestratorScaffoldError as exc:
+    except S4OrchestratorCoreError as exc:
         failed_event_id = _new_s4_event_id()
         logger.warning(
-            "etl_orchestrator_s4_scaffold_error",
+            "etl_orchestrator_s4_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S4OrchestratorServiceError(
@@ -967,7 +976,7 @@ def execute_s4_orchestrator_service(
         )
         raise S4OrchestratorServiceError(
             code="ETL_ORCHESTRATOR_S4_FLOW_FAILED",
-            message=f"Falha ao executar scaffold do orquestrador S4: {type(exc).__name__}",
+            message=f"Falha ao executar fluxo do orquestrador S4: {type(exc).__name__}",
             action="Revisar logs operacionais e validar contrato de entrada do ORQ S4.",
             correlation_id=correlation_id,
             stage="service",
@@ -1174,6 +1183,26 @@ def _to_s3_core_input(
         timeout_seconds=request.timeout_seconds,
         circuit_breaker_failure_threshold=request.circuit_breaker_failure_threshold,
         circuit_breaker_reset_timeout_seconds=request.circuit_breaker_reset_timeout_seconds,
+        correlation_id=correlation_id,
+    )
+
+
+def _to_s4_core_input(
+    *,
+    request: S4OrchestratorScaffoldRequest,
+    correlation_id: str,
+) -> S4OrchestratorCoreInput:
+    return S4OrchestratorCoreInput(
+        source_id=request.source_id,
+        source_kind=request.source_kind,
+        source_uri=request.source_uri,
+        rota_selecionada=request.rota_selecionada,
+        decisao_telemetria_habilitada=request.decisao_telemetria_habilitada,
+        custo_estimado_usd=request.custo_estimado_usd,
+        custo_orcamento_usd=request.custo_orcamento_usd,
+        latencia_estimada_ms=request.latencia_estimada_ms,
+        latencia_sla_ms=request.latencia_sla_ms,
+        telemetria_amostragem=request.telemetria_amostragem,
         correlation_id=correlation_id,
     )
 

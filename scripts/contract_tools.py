@@ -1,7 +1,7 @@
-"""Operational tools for CONT Sprint 1 canonical contract validation flow.
+"""Operational tools for CONT Sprint 1 and Sprint 2 contract validation flows.
 
 This script provides small, verifiable runbook commands to:
-1. validate CONT Sprint 1 input contracts;
+1. validate CONT Sprint 1/Sprint 2 input contracts;
 2. simulate core and service flow execution;
 3. execute end-to-end local runbook checks.
 """
@@ -26,7 +26,9 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.services.contract_validation_service import (  # noqa: E402
     S1ContractValidationServiceError,
+    S2ContractValidationServiceError,
     execute_s1_contract_validation_service,
+    execute_s2_contract_validation_service,
 )
 from core.contracts.s1_core import (  # noqa: E402
     S1CanonicalContractCoreError,
@@ -37,6 +39,16 @@ from core.contracts.s1_validation import (  # noqa: E402
     S1CanonicalContractValidationInput,
     validate_s1_contract_flow_output_contract,
     validate_s1_contract_input_contract,
+)
+from core.contracts.s2_core import (  # noqa: E402
+    S2CanonicalContractCoreError,
+    execute_s2_contract_validation_main_flow,
+)
+from core.contracts.s2_validation import (  # noqa: E402
+    S2CanonicalContractValidationError,
+    S2CanonicalContractValidationInput,
+    validate_s2_contract_flow_output_contract,
+    validate_s2_contract_input_contract,
 )
 
 
@@ -75,7 +87,7 @@ class ToolExecutionError(RuntimeError):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Build CLI parser for CONT Sprint 1 operational commands."""
+    """Build CLI parser for CONT Sprint 1 and Sprint 2 operational commands."""
 
     parser = argparse.ArgumentParser(prog="contract_tools")
     parser.add_argument(
@@ -126,6 +138,42 @@ def _build_parser() -> argparse.ArgumentParser:
         correlation_id=None,
     )
 
+    s2_validate_parser = sub.add_parser(
+        "s2:validate-input",
+        help="Validate CONT Sprint 2 input contract.",
+    )
+    _add_s2_common_args(s2_validate_parser, required=True)
+
+    s2_simulate_core_parser = sub.add_parser(
+        "s2:simulate-core",
+        help="Simulate CONT Sprint 2 core flow and validate output contract.",
+    )
+    _add_s2_common_args(s2_simulate_core_parser, required=True)
+
+    s2_simulate_service_parser = sub.add_parser(
+        "s2:simulate-service",
+        help="Simulate CONT Sprint 2 service flow and validate output contract.",
+    )
+    _add_s2_common_args(s2_simulate_service_parser, required=True)
+
+    s2_runbook_parser = sub.add_parser(
+        "s2:runbook-check",
+        help="Run one complete local CONT Sprint 2 runbook check.",
+    )
+    _add_s2_common_args(s2_runbook_parser, required=False)
+    s2_runbook_parser.set_defaults(
+        contract_id="CONT_STG_OPTIN_V2",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v2",
+        strict_validation="true",
+        lineage_required="true",
+        owner_team="etl",
+        schema_required_fields="record_id,event_ts,source_id,payload_checksum",
+        domain_constraint=("record_id=not_null", "source_id=crm|app"),
+        correlation_id=None,
+    )
+
     return parser
 
 
@@ -164,6 +212,23 @@ def _add_s1_common_args(parser: argparse.ArgumentParser, *, required: bool) -> N
     parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
 
 
+def _add_s2_common_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    """Register common CONT Sprint 2 input arguments in one parser."""
+
+    _add_s1_common_args(parser, required=required)
+    parser.add_argument(
+        "--schema-required-fields",
+        default="record_id,event_ts,source_id,payload_checksum",
+        help="Comma-separated list of required schema fields.",
+    )
+    parser.add_argument(
+        "--domain-constraint",
+        action="append",
+        default=[],
+        help="Domain constraint rule in format field=value1|value2 (can be repeated).",
+    )
+
+
 def _as_bool(value: str) -> bool:
     """Convert CLI boolean string to Python bool."""
 
@@ -181,6 +246,61 @@ def _build_validation_input_from_args(args: argparse.Namespace) -> S1CanonicalCo
         strict_validation=_as_bool(str(args.strict_validation)),
         lineage_required=_as_bool(str(args.lineage_required)),
         owner_team=str(args.owner_team),
+        correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
+    )
+
+
+def _parse_required_fields(raw: str) -> tuple[str, ...]:
+    values = [item.strip() for item in str(raw).split(",") if item.strip()]
+    if not values:
+        return ("record_id", "event_ts", "source_id", "payload_checksum")
+    unique: list[str] = []
+    for value in values:
+        if value not in unique:
+            unique.append(value)
+    return tuple(unique)
+
+
+def _parse_domain_constraints(raw_constraints: list[str]) -> dict[str, tuple[str, ...]]:
+    constraints: dict[str, tuple[str, ...]] = {}
+    for rule in raw_constraints:
+        text = str(rule).strip()
+        if not text:
+            continue
+        if "=" not in text:
+            raise ToolExecutionError(
+                code="INVALID_DOMAIN_CONSTRAINT_FORMAT",
+                message=f"Regra de dominio invalida: {text}",
+                action="Use --domain-constraint no formato campo=valor1|valor2.",
+                correlation_id=f"cont-tool-{uuid4().hex[:12]}",
+            )
+        field, values_raw = text.split("=", 1)
+        field_name = field.strip()
+        values = [item.strip() for item in values_raw.split("|") if item.strip()]
+        if not field_name or not values:
+            raise ToolExecutionError(
+                code="INVALID_DOMAIN_CONSTRAINT_FORMAT",
+                message=f"Regra de dominio invalida: {text}",
+                action="Use --domain-constraint no formato campo=valor1|valor2.",
+                correlation_id=f"cont-tool-{uuid4().hex[:12]}",
+            )
+        constraints[field_name] = tuple(values)
+    return constraints
+
+
+def _build_s2_validation_input_from_args(args: argparse.Namespace) -> S2CanonicalContractValidationInput:
+    """Build CONT Sprint 2 validation input from parsed CLI args."""
+
+    return S2CanonicalContractValidationInput(
+        contract_id=str(args.contract_id),
+        dataset_name=str(args.dataset_name),
+        source_kind=str(args.source_kind),
+        schema_version=str(args.schema_version),
+        strict_validation=_as_bool(str(args.strict_validation)),
+        lineage_required=_as_bool(str(args.lineage_required)),
+        owner_team=str(args.owner_team),
+        schema_required_fields=_parse_required_fields(str(args.schema_required_fields)),
+        domain_constraints=_parse_domain_constraints(list(args.domain_constraint)),
         correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
     )
 
@@ -362,6 +482,164 @@ def _run_s1_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _run_s2_validate_input(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:validate-input` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_validate_input_started",
+        correlation_id=payload.correlation_id or "",
+        context={
+            "contract_id": payload.contract_id,
+            "dataset_name": payload.dataset_name,
+            "source_kind": payload.source_kind,
+        },
+    )
+    result = validate_s2_contract_input_contract(payload)
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_validate_input_completed",
+        correlation_id=result.correlation_id,
+        context={"status": result.status, "route_preview": result.route_preview},
+    )
+    return {"command": "s2:validate-input", "result": result.to_dict()}
+
+
+def _run_s2_simulate_core(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:simulate-core` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    validation = validate_s2_contract_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_simulate_core_started",
+        correlation_id=correlation_id,
+        context={
+            "contract_id": payload.contract_id,
+            "dataset_name": payload.dataset_name,
+            "source_kind": payload.source_kind,
+            "strict_validation": payload.strict_validation,
+            "lineage_required": payload.lineage_required,
+        },
+    )
+
+    core_output = execute_s2_contract_validation_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_s2_contract_flow_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_simulate_core_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "contract_id": core_output.get("contract_id"),
+            "execution_status": core_output.get("execucao", {}).get("status"),
+        },
+    )
+    return {
+        "command": "s2:simulate-core",
+        "input_validation": validation.to_dict(),
+        "flow_output": core_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s2_simulate_service(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:simulate-service` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    validation = validate_s2_contract_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_simulate_service_started",
+        correlation_id=correlation_id,
+        context={
+            "contract_id": payload.contract_id,
+            "dataset_name": payload.dataset_name,
+            "source_kind": payload.source_kind,
+            "strict_validation": payload.strict_validation,
+            "lineage_required": payload.lineage_required,
+        },
+    )
+
+    service_output = execute_s2_contract_validation_service(
+        payload.to_scaffold_request(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_s2_contract_flow_output_contract(
+        service_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_simulate_service_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "contract_id": service_output.get("contract_id"),
+            "execution_status": service_output.get("execucao", {}).get("status"),
+        },
+    )
+    return {
+        "command": "s2:simulate-service",
+        "input_validation": validation.to_dict(),
+        "flow_output": service_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s2_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:runbook-check` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    validation = validate_s2_contract_input_contract(payload)
+    correlation_id = validation.correlation_id
+
+    core_output = execute_s2_contract_validation_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    core_output_validation = validate_s2_contract_flow_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+
+    service_output = execute_s2_contract_validation_service(
+        payload.to_scaffold_request(correlation_id=correlation_id)
+    ).to_dict()
+    service_output_validation = validate_s2_contract_flow_output_contract(
+        service_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="cont_s2_runbook_check_completed",
+        correlation_id=correlation_id,
+        context={
+            "core_status": core_output_validation.status,
+            "service_status": service_output_validation.status,
+            "contract_id": service_output.get("contract_id"),
+        },
+    )
+    return {
+        "command": "s2:runbook-check",
+        "input_validation": validation.to_dict(),
+        "core_flow": {
+            "output": core_output,
+            "validation": core_output_validation.to_dict(),
+        },
+        "service_flow": {
+            "output": service_output,
+            "validation": service_output_validation.to_dict(),
+        },
+    }
+
+
 def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
     """Render command result payload in selected output format."""
 
@@ -378,7 +656,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - route_preview: {result.get('route_preview')}")
         return
 
-    if command == "s1:runbook-check":
+    if command in {"s1:runbook-check", "s2:runbook-check"}:
         validation = payload.get("input_validation", {})
         core = payload.get("core_flow", {})
         service = payload.get("service_flow", {})
@@ -431,7 +709,7 @@ def _context_from_error(error: Exception) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run operational tool commands for CONT Sprint 1.
+    """Run operational tool commands for CONT Sprint 1 and Sprint 2.
 
     Args:
         argv: Optional CLI argument list.
@@ -459,6 +737,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = _run_s1_simulate_service(args)
         elif args.command == "s1:runbook-check":
             payload = _run_s1_runbook_check(args)
+        elif args.command == "s2:validate-input":
+            payload = _run_s2_validate_input(args)
+        elif args.command == "s2:simulate-core":
+            payload = _run_s2_simulate_core(args)
+        elif args.command == "s2:simulate-service":
+            payload = _run_s2_simulate_service(args)
+        elif args.command == "s2:runbook-check":
+            payload = _run_s2_runbook_check(args)
         else:
             raise ToolExecutionError(
                 code="UNKNOWN_COMMAND",
@@ -468,7 +754,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         _render_output(payload, output_format=str(args.output_format))
         return 0
-    except S1CanonicalContractValidationError as exc:
+    except (S1CanonicalContractValidationError, S2CanonicalContractValidationError) as exc:
         _log_event(
             level=logging.WARNING,
             event_name="cont_tool_validation_failed",
@@ -486,7 +772,12 @@ def main(argv: list[str] | None = None) -> int:
             output_format=str(args.output_format),
         )
         return 1
-    except (S1CanonicalContractCoreError, S1ContractValidationServiceError) as exc:
+    except (
+        S1CanonicalContractCoreError,
+        S2CanonicalContractCoreError,
+        S1ContractValidationServiceError,
+        S2ContractValidationServiceError,
+    ) as exc:
         _log_event(
             level=logging.ERROR,
             event_name="cont_tool_flow_failed",

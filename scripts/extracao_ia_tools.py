@@ -1,4 +1,4 @@
-"""Operational tools for XIA Sprint 1, Sprint 2, and Sprint 3 extraction flows.
+"""Operational tools for XIA Sprint 1, Sprint 2, Sprint 3, and Sprint 4 extraction flows.
 
 This script offers small, verifiable commands for runbook operations:
 1. Validate XIA Sprint 1/Sprint 2/Sprint 3 input contracts.
@@ -28,9 +28,11 @@ from app.services.etl_extract_ai_service import (  # noqa: E402
     S1AIExtractServiceError,
     S2AIExtractServiceError,
     S3AIExtractServiceError,
+    S4AIExtractServiceError,
     execute_s1_extract_ai_service,
     execute_s2_extract_ai_service,
     execute_s3_extract_ai_service,
+    execute_s4_extract_ai_service,
 )
 from etl.extract.ai.s1_core import (  # noqa: E402
     S1AIExtractCoreError,
@@ -61,6 +63,16 @@ from etl.extract.ai.s3_validation import (  # noqa: E402
     S3AIExtractValidationInput,
     validate_s3_extract_ai_flow_output_contract,
     validate_s3_extract_ai_input_contract,
+)
+from etl.extract.ai.s4_core import (  # noqa: E402
+    S4AIExtractCoreError,
+    execute_s4_ai_extract_main_flow,
+)
+from etl.extract.ai.s4_validation import (  # noqa: E402
+    S4AIExtractValidationError,
+    S4AIExtractValidationInput,
+    validate_s4_extract_ai_flow_output_contract,
+    validate_s4_extract_ai_input_contract,
 )
 
 
@@ -99,7 +111,7 @@ class ToolExecutionError(RuntimeError):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Build CLI parser for XIA Sprint 1, Sprint 2, and Sprint 3 commands."""
+    """Build CLI parser for XIA Sprint 1, Sprint 2, Sprint 3, and Sprint 4 commands."""
 
     parser = argparse.ArgumentParser(prog="extracao_ia_tools")
     parser.add_argument(
@@ -218,6 +230,44 @@ def _build_parser() -> argparse.ArgumentParser:
         source_uri="file:///tmp/tmj_2025_scan.pdf",
         document_profile_hint="pdf_scan_document",
         image_preprocess_hint="ocr_enhanced",
+        ia_model_provider="openai",
+        ia_model_name="gpt-4.1-mini",
+        chunk_strategy="page",
+        max_tokens_output=4096,
+        temperature=0.0,
+        correlation_id=None,
+    )
+
+    s4_validate_parser = sub.add_parser(
+        "s4:validate-input",
+        help="Validate XIA Sprint 4 input contract.",
+    )
+    _add_s4_common_args(s4_validate_parser, required=True)
+
+    s4_simulate_core_parser = sub.add_parser(
+        "s4:simulate-core",
+        help="Simulate XIA Sprint 4 core flow and validate output contract.",
+    )
+    _add_s4_common_args(s4_simulate_core_parser, required=True)
+
+    s4_simulate_service_parser = sub.add_parser(
+        "s4:simulate-service",
+        help="Simulate XIA Sprint 4 service flow and validate output contract.",
+    )
+    _add_s4_common_args(s4_simulate_service_parser, required=True)
+
+    s4_runbook_parser = sub.add_parser(
+        "s4:runbook-check",
+        help="Run one complete local XIA Sprint 4 runbook check.",
+    )
+    _add_s4_common_args(s4_runbook_parser, required=False)
+    s4_runbook_parser.set_defaults(
+        source_id="SRC_TMJ_S4_PDF_2025",
+        source_kind="pdf",
+        source_uri="file:///tmp/tmj_2025.pdf",
+        quality_profile_hint="strict_textual",
+        consolidation_scope="cross_format_event",
+        output_normalization_profile="canonical_fields_v1",
         ia_model_provider="openai",
         ia_model_name="gpt-4.1-mini",
         chunk_strategy="page",
@@ -391,6 +441,65 @@ def _add_s3_common_args(parser: argparse.ArgumentParser, *, required: bool) -> N
     parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
 
 
+def _add_s4_common_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    """Register common XIA Sprint 4 input arguments in one parser."""
+
+    parser.add_argument("--source-id", required=required, help="Stable source identifier.")
+    parser.add_argument(
+        "--source-kind",
+        required=required,
+        help="Source kind used by Sprint 4 calibrated extraction (pdf, docx, pptx, xlsx, csv, pdf_scan, jpg, png).",
+    )
+    parser.add_argument(
+        "--source-uri",
+        required=required,
+        help="Source URI or path used for operational traceability.",
+    )
+    parser.add_argument(
+        "--quality-profile-hint",
+        default="strict_textual",
+        help="Quality calibration profile (strict_textual, table_sensitive, ocr_resilient, multimodal_document).",
+    )
+    parser.add_argument(
+        "--consolidation-scope",
+        default="single_source",
+        help="Consolidation scope (single_source, batch_session, cross_format_event).",
+    )
+    parser.add_argument(
+        "--output-normalization-profile",
+        default="canonical_fields_v1",
+        help="Output normalization profile (canonical_fields_v1, canonical_fields_v2).",
+    )
+    parser.add_argument(
+        "--ia-model-provider",
+        default="openai",
+        help="Model provider (openai, azure_openai, anthropic, local).",
+    )
+    parser.add_argument(
+        "--ia-model-name",
+        default="gpt-4.1-mini",
+        help="Model name used by extraction flow.",
+    )
+    parser.add_argument(
+        "--chunk-strategy",
+        default="section",
+        help="Chunking strategy (section, page, paragraph, slide, sheet, row_block, image, region).",
+    )
+    parser.add_argument(
+        "--max-tokens-output",
+        type=int,
+        default=4096,
+        help="Maximum output tokens allowed in one extraction pass.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.0,
+        help="Model temperature between 0 and 1.",
+    )
+    parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
+
+
 def _build_validation_input_from_args(args: argparse.Namespace) -> S1AIExtractValidationInput:
     """Build XIA Sprint 1 validation input from parsed CLI args."""
 
@@ -435,6 +544,25 @@ def _build_s3_validation_input_from_args(args: argparse.Namespace) -> S3AIExtrac
         source_uri=str(args.source_uri),
         document_profile_hint=(str(args.document_profile_hint).strip() if args.document_profile_hint else None),
         image_preprocess_hint=(str(args.image_preprocess_hint).strip() if args.image_preprocess_hint else None),
+        ia_model_provider=str(args.ia_model_provider),
+        ia_model_name=str(args.ia_model_name),
+        chunk_strategy=str(args.chunk_strategy),
+        max_tokens_output=int(args.max_tokens_output),
+        temperature=float(args.temperature),
+        correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
+    )
+
+
+def _build_s4_validation_input_from_args(args: argparse.Namespace) -> S4AIExtractValidationInput:
+    """Build XIA Sprint 4 validation input from parsed CLI args."""
+
+    return S4AIExtractValidationInput(
+        source_id=str(args.source_id),
+        source_kind=str(args.source_kind),
+        source_uri=str(args.source_uri),
+        quality_profile_hint=str(args.quality_profile_hint),
+        consolidation_scope=str(args.consolidation_scope),
+        output_normalization_profile=str(args.output_normalization_profile),
         ia_model_provider=str(args.ia_model_provider),
         ia_model_name=str(args.ia_model_name),
         chunk_strategy=str(args.chunk_strategy),
@@ -889,6 +1017,148 @@ def _run_s3_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _run_s4_validate_input(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:validate-input` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_validate_input_started",
+        correlation_id=payload.correlation_id or "",
+        context={"source_kind": payload.source_kind, "chunk_strategy": payload.chunk_strategy},
+    )
+    result = validate_s4_extract_ai_input_contract(payload)
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_validate_input_completed",
+        correlation_id=result.correlation_id,
+        context={"status": result.status, "route_preview": result.route_preview},
+    )
+    return {"command": "s4:validate-input", "result": result.to_dict()}
+
+
+def _run_s4_simulate_core(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:simulate-core` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    validation = validate_s4_extract_ai_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_simulate_core_started",
+        correlation_id=correlation_id,
+        context={"source_kind": payload.source_kind, "chunk_strategy": payload.chunk_strategy},
+    )
+
+    core_output = execute_s4_ai_extract_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_s4_extract_ai_flow_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_simulate_core_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "source_kind": core_output.get("source_kind"),
+            "chunk_count": core_output.get("execucao", {}).get("chunk_count"),
+        },
+    )
+    return {
+        "command": "s4:simulate-core",
+        "input_validation": validation.to_dict(),
+        "flow_output": core_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s4_simulate_service(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:simulate-service` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    validation = validate_s4_extract_ai_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_simulate_service_started",
+        correlation_id=correlation_id,
+        context={"source_kind": payload.source_kind, "chunk_strategy": payload.chunk_strategy},
+    )
+
+    service_output = execute_s4_extract_ai_service(
+        payload.to_scaffold_request(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_s4_extract_ai_flow_output_contract(
+        service_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_simulate_service_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "source_kind": service_output.get("source_kind"),
+            "chunk_count": service_output.get("execucao", {}).get("chunk_count"),
+        },
+    )
+    return {
+        "command": "s4:simulate-service",
+        "input_validation": validation.to_dict(),
+        "flow_output": service_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s4_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:runbook-check` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    validation = validate_s4_extract_ai_input_contract(payload)
+    correlation_id = validation.correlation_id
+
+    core_output = execute_s4_ai_extract_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    core_output_validation = validate_s4_extract_ai_flow_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+
+    service_output = execute_s4_extract_ai_service(
+        payload.to_scaffold_request(correlation_id=correlation_id)
+    ).to_dict()
+    service_output_validation = validate_s4_extract_ai_flow_output_contract(
+        service_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="xia_s4_runbook_check_completed",
+        correlation_id=correlation_id,
+        context={
+            "core_status": core_output_validation.status,
+            "service_status": service_output_validation.status,
+            "source_kind": service_output.get("source_kind"),
+        },
+    )
+    return {
+        "command": "s4:runbook-check",
+        "input_validation": validation.to_dict(),
+        "core_flow": {
+            "output": core_output,
+            "validation": core_output_validation.to_dict(),
+        },
+        "service_flow": {
+            "output": service_output,
+            "validation": service_output_validation.to_dict(),
+        },
+    }
+
+
 def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
     """Render command result payload in selected output format."""
 
@@ -905,7 +1175,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - route_preview: {result.get('route_preview')}")
         return
 
-    if command in {"s1:runbook-check", "s2:runbook-check", "s3:runbook-check"}:
+    if command in {"s1:runbook-check", "s2:runbook-check", "s3:runbook-check", "s4:runbook-check"}:
         validation = payload.get("input_validation", {})
         core = payload.get("core_flow", {})
         service = payload.get("service_flow", {})
@@ -958,7 +1228,7 @@ def _context_from_error(error: Exception) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run operational tool commands for XIA Sprint 1, Sprint 2, and Sprint 3.
+    """Run operational tool commands for XIA Sprint 1, Sprint 2, Sprint 3, and Sprint 4.
 
     Args:
         argv: Optional CLI argument list.
@@ -1002,6 +1272,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = _run_s3_simulate_service(args)
         elif args.command == "s3:runbook-check":
             payload = _run_s3_runbook_check(args)
+        elif args.command == "s4:validate-input":
+            payload = _run_s4_validate_input(args)
+        elif args.command == "s4:simulate-core":
+            payload = _run_s4_simulate_core(args)
+        elif args.command == "s4:simulate-service":
+            payload = _run_s4_simulate_service(args)
+        elif args.command == "s4:runbook-check":
+            payload = _run_s4_runbook_check(args)
         else:
             raise ToolExecutionError(
                 code="UNKNOWN_COMMAND",
@@ -1011,7 +1289,12 @@ def main(argv: list[str] | None = None) -> int:
             )
         _render_output(payload, output_format=str(args.output_format))
         return 0
-    except (S1AIExtractValidationError, S2AIExtractValidationError, S3AIExtractValidationError) as exc:
+    except (
+        S1AIExtractValidationError,
+        S2AIExtractValidationError,
+        S3AIExtractValidationError,
+        S4AIExtractValidationError,
+    ) as exc:
         _log_event(
             level=logging.WARNING,
             event_name="xia_tool_validation_failed",
@@ -1036,6 +1319,8 @@ def main(argv: list[str] | None = None) -> int:
         S2AIExtractServiceError,
         S3AIExtractCoreError,
         S3AIExtractServiceError,
+        S4AIExtractCoreError,
+        S4AIExtractServiceError,
     ) as exc:
         _log_event(
             level=logging.ERROR,

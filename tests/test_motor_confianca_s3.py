@@ -30,11 +30,47 @@ from core.confidence.s3_scaffold import (  # noqa: E402
     S3ConfidenceScaffoldRequest,
     build_s3_confidence_scaffold,
 )
+from core.confidence.s3_validation import (  # noqa: E402
+    S3ConfidenceValidationError,
+    S3ConfidenceValidationInput,
+    validate_s3_confidence_input_contract,
+    validate_s3_confidence_output_contract,
+)
 
 
 def _build_valid_s3_request(*, correlation_id: str) -> S3ConfidenceScaffoldRequest:
     return S3ConfidenceScaffoldRequest(
         policy_id="conf report policy v3",
+        dataset_name="event_report_lines",
+        entity_kind="evento",
+        schema_version="v3",
+        owner_team="etl",
+        field_weights={
+            "nome_evento": 0.30,
+            "data_evento": 0.30,
+            "local_evento": 0.20,
+            "diretoria": 0.20,
+        },
+        default_weight=0.10,
+        auto_approve_threshold=0.85,
+        manual_review_threshold=0.60,
+        gap_threshold=0.40,
+        missing_field_penalty=0.10,
+        decision_mode="critical_fields_guardrails",
+        gap_escalation_required=True,
+        max_manual_review_queue=500,
+        critical_fields=("nome_evento", "data_evento", "local_evento"),
+        min_critical_fields_present=2,
+        critical_field_penalty=0.25,
+        critical_violation_route="manual_review",
+        critical_override_required=True,
+        correlation_id=correlation_id,
+    )
+
+
+def _build_valid_s3_validation_input(*, correlation_id: str) -> S3ConfidenceValidationInput:
+    return S3ConfidenceValidationInput(
+        policy_id="CONF_REPORT_POLICY_V3",
         dataset_name="event_report_lines",
         entity_kind="evento",
         schema_version="v3",
@@ -215,3 +251,91 @@ def test_conf_s3_core_raises_actionable_error_for_failed_decision_execution() ->
     assert error.code == "CONF_S3_DECISION_EXECUTION_FAILED"
     assert error.stage == "decision_engine"
     assert (error.event_id or "").startswith("confs3coreevt-")
+
+
+def test_conf_s3_validation_input_success_returns_contract() -> None:
+    payload = _build_valid_s3_validation_input(correlation_id="conf-s3-validation-001")
+
+    result = validate_s3_confidence_input_contract(payload)
+
+    assert result.status == "valid"
+    assert result.validation_version == "conf.s3.validation.v1"
+    assert result.correlation_id == "conf-s3-validation-001"
+    assert "policy_id" in result.checks
+    assert "critical_fields" in result.checks
+    assert "scaffold_contract" in result.checks
+    assert result.route_preview == "confidence_policy_s3"
+    assert result.observabilidade["validation_started_event_id"].startswith("confs3coreevt-")
+    assert result.observabilidade["validation_completed_event_id"].startswith("confs3coreevt-")
+
+
+def test_conf_s3_validation_input_rejects_invalid_critical_override_required() -> None:
+    payload = _build_valid_s3_validation_input(
+        correlation_id="conf-s3-validation-error-critical-override"
+    )
+    payload = replace(payload, critical_override_required="yes")  # type: ignore[arg-type]
+
+    with pytest.raises(S3ConfidenceValidationError) as exc:
+        validate_s3_confidence_input_contract(payload)
+
+    error = exc.value
+    assert error.code == "INVALID_CRITICAL_OVERRIDE_REQUIRED_TYPE"
+    assert "critical_override_required" in error.action
+    assert error.stage == "validation_input"
+    assert error.correlation_id == "conf-s3-validation-error-critical-override"
+    assert (error.observability_event_id or "").startswith("confs3coreevt-")
+
+
+def test_conf_s3_validation_with_core_flow_output_contract_integration() -> None:
+    payload = _build_valid_s3_validation_input(correlation_id="conf-s3-validation-core-integration")
+    validation = validate_s3_confidence_input_contract(payload)
+    core_output = execute_s3_confidence_policy_main_flow(
+        payload.to_core_input(correlation_id=validation.correlation_id)
+    ).to_dict()
+
+    output_validation = validate_s3_confidence_output_contract(
+        core_output,
+        correlation_id=validation.correlation_id,
+    )
+
+    assert output_validation.status == "valid"
+    assert output_validation.layer == "core"
+    assert "execucao" in output_validation.checked_fields
+    assert output_validation.observabilidade["flow_started_event_id"].startswith("confs3coreevt-")
+    assert output_validation.observabilidade["flow_completed_event_id"].startswith("confs3coreevt-")
+
+
+def test_conf_s3_validation_with_service_flow_output_contract_integration() -> None:
+    payload = _build_valid_s3_validation_input(
+        correlation_id="conf-s3-validation-service-integration"
+    )
+    validation = validate_s3_confidence_input_contract(payload)
+    service_output = execute_s3_confidence_policy_service(
+        payload.to_scaffold_request(correlation_id=validation.correlation_id)
+    ).to_dict()
+
+    output_validation = validate_s3_confidence_output_contract(
+        service_output,
+        correlation_id=validation.correlation_id,
+    )
+
+    assert output_validation.status == "valid"
+    assert output_validation.layer == "service"
+    assert "observabilidade" in output_validation.checked_fields
+    assert output_validation.observabilidade["flow_started_event_id"].startswith("confs3evt-")
+    assert output_validation.observabilidade["main_flow_started_event_id"].startswith(
+        "confs3coreevt-"
+    )
+
+
+def test_conf_s3_validation_flow_output_rejects_missing_required_fields() -> None:
+    with pytest.raises(S3ConfidenceValidationError) as exc:
+        validate_s3_confidence_output_contract(
+            {"status": "completed"},
+            correlation_id="conf-s3-output-invalid",
+        )
+
+    error = exc.value
+    assert error.code == "INCOMPLETE_FLOW_OUTPUT"
+    assert "contrato completo da sprint" in error.action
+    assert error.stage == "validation_output"

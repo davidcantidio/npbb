@@ -18,6 +18,11 @@ try:  # pragma: no cover - import style depends on execution cwd
         S1WorkbenchCoreInput,
         execute_workbench_revisao_s1_main_flow,
     )
+    from frontend.src.features.revisao_humana.s2_core import (
+        S2WorkbenchCoreError,
+        S2WorkbenchCoreInput,
+        execute_workbench_revisao_s2_main_flow,
+    )
     from frontend.src.features.revisao_humana.s1_scaffold import (
         S1WorkbenchScaffoldError,
         S1WorkbenchScaffoldRequest,
@@ -36,6 +41,11 @@ except ModuleNotFoundError:  # pragma: no cover
         S1WorkbenchCoreError,
         S1WorkbenchCoreInput,
         execute_workbench_revisao_s1_main_flow,
+    )
+    from frontend.src.features.revisao_humana.s2_core import (
+        S2WorkbenchCoreError,
+        S2WorkbenchCoreInput,
+        execute_workbench_revisao_s2_main_flow,
     )
     from frontend.src.features.revisao_humana.s1_scaffold import (
         S1WorkbenchScaffoldError,
@@ -91,6 +101,26 @@ class RevisaoHumanaS1ExecuteBody(BaseModel):
 
 class RevisaoHumanaS2PrepareBody(BaseModel):
     """Body contract for WORK Sprint 2 scaffold preparation endpoint."""
+
+    workflow_id: str = Field(..., min_length=1)
+    dataset_name: str = Field(..., min_length=1)
+    entity_kind: str = "lead"
+    schema_version: str = "v2"
+    owner_team: str = "etl"
+    missing_fields: list[str] | None = None
+    candidate_sources: list[str] | None = None
+    correspondence_mode: str = "manual_confirm"
+    match_strategy: str = "fuzzy"
+    min_similarity_score: float = 0.70
+    auto_apply_threshold: float = 0.95
+    max_suggestions_per_field: int = 5
+    require_evidence_for_suggestion: bool = True
+    reviewer_roles: list[str] | None = None
+    correlation_id: str | None = None
+
+
+class RevisaoHumanaS2ExecuteBody(BaseModel):
+    """Body contract for WORK Sprint 2 main-flow execution endpoint."""
 
     workflow_id: str = Field(..., min_length=1)
     dataset_name: str = Field(..., min_length=1)
@@ -291,6 +321,105 @@ def prepare_workbench_revisao_s2(payload: RevisaoHumanaS2PrepareBody) -> dict[st
             "dataset_name": result["dataset_name"],
             "status": result["status"],
             "correspondence_mode": result.get("correspondence_policy", {}).get("correspondence_mode"),
+        },
+    )
+    return result
+
+
+@router.post("/s2/execute")
+def execute_workbench_revisao_s2(payload: RevisaoHumanaS2ExecuteBody) -> dict[str, object]:
+    """Execute WORK Sprint 2 main flow and return stable output contract.
+
+    Args:
+        payload: Workbench correspondence-policy input contract for Sprint 2
+            execution.
+
+    Returns:
+        dict[str, object]: Stable main-flow output contract for Sprint 2.
+
+    Raises:
+        HTTPException: If flow validation or execution fails.
+    """
+
+    correlation_id = payload.correlation_id or f"work-s2-api-{uuid4().hex[:12]}"
+    logger.info(
+        "workbench_revisao_s2_execute_requested",
+        extra={
+            "correlation_id": correlation_id,
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "schema_version": payload.schema_version,
+            "correspondence_mode": payload.correspondence_mode,
+            "match_strategy": payload.match_strategy,
+        },
+    )
+
+    try:
+        core_input = S2WorkbenchCoreInput(
+            workflow_id=payload.workflow_id,
+            dataset_name=payload.dataset_name,
+            entity_kind=payload.entity_kind,
+            schema_version=payload.schema_version,
+            owner_team=payload.owner_team,
+            missing_fields=(
+                tuple(payload.missing_fields)
+                if payload.missing_fields is not None
+                else None
+            ),
+            candidate_sources=(
+                tuple(payload.candidate_sources)
+                if payload.candidate_sources is not None
+                else None
+            ),
+            correspondence_mode=payload.correspondence_mode,
+            match_strategy=payload.match_strategy,
+            min_similarity_score=payload.min_similarity_score,
+            auto_apply_threshold=payload.auto_apply_threshold,
+            max_suggestions_per_field=payload.max_suggestions_per_field,
+            require_evidence_for_suggestion=payload.require_evidence_for_suggestion,
+            reviewer_roles=(
+                tuple(payload.reviewer_roles)
+                if payload.reviewer_roles is not None
+                else None
+            ),
+            correlation_id=correlation_id,
+        )
+        result = execute_workbench_revisao_s2_main_flow(core_input).to_dict()
+    except S2WorkbenchCoreError as exc:
+        logger.warning(
+            "workbench_revisao_s2_execute_failed",
+            extra={
+                "correlation_id": correlation_id,
+                "workflow_id": payload.workflow_id,
+                "dataset_name": payload.dataset_name,
+                "error_code": exc.code,
+                "error_message": exc.message,
+                "recommended_action": exc.action,
+                "stage": exc.stage,
+                "event_id": exc.event_id,
+            },
+        )
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code=exc.code,
+            message=exc.message,
+            extra={
+                "action": exc.action,
+                "correlation_id": correlation_id,
+                "stage": exc.stage,
+                "event_id": exc.event_id,
+            },
+        )
+
+    logger.info(
+        "workbench_revisao_s2_execute_completed",
+        extra={
+            "correlation_id": result["correlation_id"],
+            "workflow_id": result["workflow_id"],
+            "dataset_name": result["dataset_name"],
+            "status": result["status"],
+            "execution_status": result.get("execucao", {}).get("status"),
         },
     )
     return result

@@ -23,6 +23,10 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 - `etl/contrato_canonico_s2.md` - runbook operacional CONT S2
 - `etl/contrato_canonico_s3.md` - runbook operacional CONT S3
 - `etl/contrato_canonico_s4.md` - fluxo principal e gate de regressao CONT S4
+- `etl/motor_confianca_s1.md` - runbook operacional CONF S1
+- `etl/motor_confianca_s2.md` - runbook operacional CONF S2
+- `etl/motor_confianca_s3.md` - runbook operacional CONF S3
+- `etl/motor_confianca_s4.md` - fluxo principal e guardrails de tuning CONF S4
 
 ## Dashboard e relatorios
 - `tela-inicial/menu/Dashboard/leads_dashboard.md` - contrato do dashboard de leads (backend)

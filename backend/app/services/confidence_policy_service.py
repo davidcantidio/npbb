@@ -39,10 +39,13 @@ try:  # pragma: no cover - import style depends on execution cwd
     from core.confidence.s3_scaffold import (
         S3ConfidenceScaffoldRequest,
     )
+    from core.confidence.s4_core import (
+        S4ConfidenceCoreError,
+        S4ConfidenceCoreInput,
+        execute_s4_confidence_policy_main_flow,
+    )
     from core.confidence.s4_scaffold import (
-        S4ConfidenceScaffoldError,
         S4ConfidenceScaffoldRequest,
-        build_s4_confidence_scaffold,
     )
 except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
@@ -72,10 +75,13 @@ except ModuleNotFoundError:  # pragma: no cover
     from core.confidence.s3_scaffold import (
         S3ConfidenceScaffoldRequest,
     )
+    from core.confidence.s4_core import (
+        S4ConfidenceCoreError,
+        S4ConfidenceCoreInput,
+        execute_s4_confidence_policy_main_flow,
+    )
     from core.confidence.s4_scaffold import (
-        S4ConfidenceScaffoldError,
         S4ConfidenceScaffoldRequest,
-        build_s4_confidence_scaffold,
     )
 
 
@@ -797,7 +803,7 @@ def execute_s3_confidence_policy_service(
 def execute_s4_confidence_policy_service(
     request: S4ConfidenceScaffoldRequest,
 ) -> S4ConfidencePolicyServiceOutput:
-    """Execute CONF Sprint 4 scaffold service with actionable diagnostics.
+    """Execute CONF Sprint 4 main-flow service with actionable diagnostics.
 
     Args:
         request: CONF Sprint 4 input contract with real-outcome threshold
@@ -808,8 +814,8 @@ def execute_s4_confidence_policy_service(
             decision policy and observability identifiers.
 
     Raises:
-        S4ConfidencePolicyServiceError: If scaffold validation fails or an
-            unexpected service error happens.
+        S4ConfidencePolicyServiceError: If main-flow threshold adjustment fails
+            or an unexpected service error happens.
     """
 
     correlation_id = request.correlation_id or f"conf-s4-{uuid4().hex[:12]}"
@@ -829,8 +835,8 @@ def execute_s4_confidence_policy_service(
     )
 
     try:
-        scaffold = build_s4_confidence_scaffold(
-            _to_s4_scaffold_input(request=request, correlation_id=correlation_id)
+        core_output = execute_s4_confidence_policy_main_flow(
+            _to_s4_core_input(request=request, correlation_id=correlation_id)
         )
 
         policy_ready_event_id = _new_s4_event_id()
@@ -839,17 +845,17 @@ def execute_s4_confidence_policy_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": policy_ready_event_id,
-                "policy_id": scaffold.policy_id,
-                "dataset_name": scaffold.dataset_name,
-                "schema_version": scaffold.decision_policy.get("schema_version"),
-                "decision_mode": scaffold.decision_policy.get("decision_mode"),
+                "policy_id": core_output.policy_id,
+                "dataset_name": core_output.dataset_name,
+                "schema_version": core_output.decision_policy.get("schema_version"),
+                "decision_mode": core_output.decision_policy.get("decision_mode"),
                 "feedback_window_days": (
-                    scaffold.decision_policy.get("threshold_calibration_policy", {}).get(
+                    core_output.decision_policy.get("threshold_calibration_policy", {}).get(
                         "feedback_window_days"
                     )
                 ),
                 "min_feedback_samples": (
-                    scaffold.decision_policy.get("threshold_calibration_policy", {}).get(
+                    core_output.decision_policy.get("threshold_calibration_policy", {}).get(
                         "min_feedback_samples"
                     )
                 ),
@@ -862,14 +868,18 @@ def execute_s4_confidence_policy_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "policy_id": scaffold.policy_id,
-                "dataset_name": scaffold.dataset_name,
-                "status": scaffold.status,
-                "execution_status": "ready",
+                "policy_id": core_output.policy_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
+                "decision": core_output.execucao.get("decision"),
+                "confidence_score": core_output.execucao.get("confidence_score"),
+                "threshold_delta_applied": core_output.execucao.get("threshold_delta_applied"),
+                "quality_drop_detected": core_output.execucao.get("quality_drop_detected"),
             },
         )
 
-        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["confidence_policy_service_module"] = (
             "app.services.confidence_policy_service.execute_s4_confidence_policy_service"
         )
@@ -880,38 +890,35 @@ def execute_s4_confidence_policy_service(
         return S4ConfidencePolicyServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S4,
             correlation_id=correlation_id,
-            status=scaffold.status,
-            policy_id=scaffold.policy_id,
-            dataset_name=scaffold.dataset_name,
-            decision_policy=dict(scaffold.decision_policy),
-            execucao={
-                "status": "ready",
-                "decision_reason": "scaffold_only_base_contract",
-                "auto_threshold_tuning_enabled": bool(
-                    scaffold.decision_policy.get("threshold_calibration_policy", {}).get(
-                        "auto_threshold_tuning_enabled",
-                        False,
-                    )
-                ),
-            },
+            status=core_output.status,
+            policy_id=core_output.policy_id,
+            dataset_name=core_output.dataset_name,
+            decision_policy=dict(core_output.decision_policy),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "policy_profile_ready_event_id": policy_ready_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade[
+                    "flow_completed_event_id"
+                ],
             },
-            scaffold=scaffold.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S4ConfidenceScaffoldError as exc:
+    except S4ConfidenceCoreError as exc:
         failed_event_id = _new_s4_event_id()
         logger.warning(
-            "confidence_policy_s4_scaffold_error",
+            "confidence_policy_s4_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S4ConfidencePolicyServiceError(
@@ -919,7 +926,7 @@ def execute_s4_confidence_policy_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S4ConfidencePolicyServiceError:
@@ -937,7 +944,7 @@ def execute_s4_confidence_policy_service(
         raise S4ConfidencePolicyServiceError(
             code="CONFIDENCE_POLICY_S4_FLOW_FAILED",
             message=f"Falha ao executar fluxo CONF S4: {type(exc).__name__}",
-            action="Revisar logs operacionais e validar contrato de entrada do CONF S4.",
+            action="Revisar logs operacionais e validar contrato de entrada/main-flow do CONF S4.",
             correlation_id=correlation_id,
             stage="service",
             event_id=failed_event_id,
@@ -1034,12 +1041,12 @@ def _to_s3_core_input(
     )
 
 
-def _to_s4_scaffold_input(
+def _to_s4_core_input(
     *,
     request: S4ConfidenceScaffoldRequest,
     correlation_id: str,
-) -> S4ConfidenceScaffoldRequest:
-    return S4ConfidenceScaffoldRequest(
+) -> S4ConfidenceCoreInput:
+    return S4ConfidenceCoreInput(
         policy_id=request.policy_id,
         dataset_name=request.dataset_name,
         entity_kind=request.entity_kind,

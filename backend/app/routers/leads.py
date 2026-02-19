@@ -17,6 +17,7 @@ import httpx
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from pydantic import TypeAdapter, ValidationError
 from openpyxl import load_workbook
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -25,6 +26,7 @@ from app.db.database import get_session
 from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
+from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListResponse
 from app.utils.http_errors import raise_http_error
 from app.utils.log_sanitize import sanitize_exception
 from app.utils.lead_import_normalize import coerce_field
@@ -252,6 +254,110 @@ def _get_lead_or_404(*, session: Session, lead_id: int) -> Lead:
             message="Lead nao encontrado",
         )
     return lead
+
+
+@router.get("", response_model=LeadListResponse)
+@router.get("/", response_model=LeadListResponse)
+def listar_leads(
+    params: LeadListQuery = Depends(),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    total = int(session.exec(select(func.count(Lead.id))).one() or 0)
+    offset = (params.page - 1) * params.page_size
+
+    latest_conversao_subquery = (
+        select(
+            LeadConversao.lead_id.label("lead_id"),
+            func.max(LeadConversao.id).label("latest_conversao_id"),
+        )
+        .group_by(LeadConversao.lead_id)
+        .subquery()
+    )
+
+    rows = session.exec(
+        select(
+            Lead.id,
+            Lead.nome,
+            Lead.sobrenome,
+            Lead.email,
+            Lead.cpf,
+            Lead.telefone,
+            Lead.evento_nome,
+            Lead.cidade,
+            Lead.estado,
+            Lead.data_compra,
+            Lead.data_criacao,
+            LeadConversao.tipo,
+            LeadConversao.data_conversao_evento,
+            LeadConversao.created_at,
+            LeadConversao.evento_id,
+            Evento.nome.label("evento_convertido_nome"),
+        )
+        .select_from(Lead)
+        .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
+        .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
+        .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
+        .order_by(Lead.data_criacao.desc(), Lead.id.desc())
+        .offset(offset)
+        .limit(params.page_size)
+    ).all()
+
+    items: list[LeadListItemRead] = []
+    for (
+        lead_id,
+        nome,
+        sobrenome,
+        email,
+        cpf,
+        telefone,
+        evento_nome,
+        cidade,
+        estado,
+        data_compra,
+        data_criacao,
+        tipo_conversao,
+        data_conversao_evento,
+        data_conversao_criada,
+        evento_convertido_id,
+        evento_convertido_nome,
+    ) in rows:
+        tipo_conversao_value = None
+        if tipo_conversao is not None:
+            tipo_conversao_value = (
+                tipo_conversao.value if hasattr(tipo_conversao, "value") else str(tipo_conversao)
+            )
+        nome_completo = " ".join(
+            part.strip()
+            for part in [nome or "", sobrenome or ""]
+            if part and part.strip()
+        ) or None
+        items.append(
+            LeadListItemRead(
+                id=int(lead_id),
+                nome=nome_completo,
+                email=email,
+                cpf=cpf,
+                telefone=telefone,
+                evento_nome=evento_nome,
+                cidade=cidade,
+                estado=estado,
+                data_compra=data_compra,
+                data_criacao=data_criacao,
+                evento_convertido_id=int(evento_convertido_id) if evento_convertido_id is not None else None,
+                evento_convertido_nome=evento_convertido_nome,
+                tipo_conversao=tipo_conversao_value,
+                data_conversao=data_conversao_evento or data_conversao_criada,
+            )
+        )
+
+    return LeadListResponse(
+        page=params.page,
+        page_size=params.page_size,
+        total=total,
+        items=items,
+    )
 
 
 @router.post("/{lead_id}/conversoes", response_model=LeadConversaoRead, status_code=status.HTTP_201_CREATED)

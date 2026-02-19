@@ -4,6 +4,9 @@
 Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de datetime.
 
 ## Endpoints
+- `GET /leads`  
+  Lista leads paginados (`page`, `page_size`) com campos principais e a conversao mais recente
+  (`evento_convertido_id`, `evento_convertido_nome`, `tipo_conversao`, `data_conversao`).
 - `POST /leads/import/upload`  
   Valida arquivo (extensao/tamanho).
 - `POST /leads/import/preview`  
@@ -59,4 +62,14 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
 2) Sistema detecta linha de dados e sugere mapeamento.
 3) Usuario confirma mapeamento e referencias.
 4) Import executa, retornando resumo (criadas/atualizadas/ignoradas).
+5) UI recarrega a listagem de leads e exibe a tabela atualizada.
 
+## Resposta de listagem (`GET /leads`)
+- Estrutura:
+  - `page`, `page_size`, `total`, `items[]`.
+- Cada item inclui, entre outros:
+  - Identificacao e contato: `id`, `nome`, `email`, `cpf`, `telefone`.
+  - Origem: `evento_nome`, `cidade`, `estado`.
+  - Conversao mais recente: `evento_convertido_id`, `evento_convertido_nome`,
+    `tipo_conversao`, `data_conversao`.
+  - Datas: `data_compra`, `data_criacao`.

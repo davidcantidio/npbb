@@ -2,6 +2,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -12,14 +13,23 @@ import {
   Paper,
   Select,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import {
+  type LeadListItem,
   listReferenciaCidades,
   listReferenciaEstados,
   listReferenciaEventos,
   listReferenciaGeneros,
+  listLeads,
   createLeadAlias,
   previewLeadImport,
   runLeadImport,
@@ -48,6 +58,13 @@ export default function LeadsImport() {
   const [generosRef, setGenerosRef] = useState<string[]>([]);
   const [secondarySelections, setSecondarySelections] = useState<Record<number, string>>({});
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
+  const [leads, setLeads] = useState<LeadListItem[]>([]);
+  const [leadsTotal, setLeadsTotal] = useState(0);
+  const [leadsPage, setLeadsPage] = useState(1);
+  const [leadsPageSize, setLeadsPageSize] = useState(20);
+  const [leadsLoading, setLeadsLoading] = useState(false);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
+  const [leadsReloadKey, setLeadsReloadKey] = useState(0);
 
   const availableFields = [
     { value: "", label: "Ignorar" },
@@ -88,6 +105,20 @@ export default function LeadsImport() {
       }
     }
     return raw;
+  };
+
+  const formatDateTime = (value: string | null | undefined) => {
+    if (!value) return "-";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString("pt-BR");
+  };
+
+  const formatCpf = (value: string | null | undefined) => {
+    if (!value) return "-";
+    const digits = String(value).replace(/\D/g, "");
+    if (digits.length !== 11) return value;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
   };
 
   const handleUpload = async (selected: File) => {
@@ -150,6 +181,8 @@ export default function LeadsImport() {
       await handleConfirmMapping();
       const result = await runLeadImport(token, file, preview.suggestions);
       setImportResult(result);
+      setLeadsPage(1);
+      setLeadsReloadKey((prev) => prev + 1);
     } catch (err: any) {
       const message = err?.message ? normalizeErrorMessage(err.message) : "Erro ao importar arquivo.";
       setImportError(message);
@@ -220,6 +253,33 @@ export default function LeadsImport() {
       return next;
     });
   }, [preview, referenceOptions]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
+    setLeadsLoading(true);
+    setLeadsError(null);
+    listLeads(token, { page: leadsPage, page_size: leadsPageSize })
+      .then((data) => {
+        if (cancelled) return;
+        setLeads(data.items);
+        setLeadsTotal(data.total);
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        const message = err?.message ? normalizeErrorMessage(err.message) : "Erro ao carregar lista de leads.";
+        setLeadsError(message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLeadsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, leadsPage, leadsPageSize, leadsReloadKey]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -429,6 +489,134 @@ export default function LeadsImport() {
             ) : null}
           </Box>
         ) : null}
+      </Paper>
+
+      <Paper elevation={1} sx={{ mt: 3, borderRadius: 3, overflow: "hidden" }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          spacing={1}
+          sx={{ px: { xs: 2, md: 3 }, py: 2 }}
+        >
+          <Box>
+            <Typography variant="subtitle1" fontWeight={800}>
+              Leads cadastrados
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Total no banco: {leadsTotal}
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            sx={{ textTransform: "none", fontWeight: 700 }}
+            onClick={() => setLeadsReloadKey((prev) => prev + 1)}
+            disabled={leadsLoading}
+          >
+            Atualizar
+          </Button>
+        </Stack>
+
+        {leadsError ? (
+          <Alert severity="error" sx={{ mx: { xs: 2, md: 3 }, mb: 2 }}>
+            {leadsError}
+          </Alert>
+        ) : null}
+
+        <TableContainer>
+          <Table size="small" aria-label="Tabela de leads">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nome</TableCell>
+                <TableCell>Contato</TableCell>
+                <TableCell>CPF</TableCell>
+                <TableCell>Evento (origem)</TableCell>
+                <TableCell>Evento convertido</TableCell>
+                <TableCell>Conversao</TableCell>
+                <TableCell>Data da compra</TableCell>
+                <TableCell>Cadastro</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {leadsLoading && leads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 1 }}>
+                      <CircularProgress size={16} />
+                      <Typography variant="body2" color="text.secondary">
+                        Carregando leads...
+                      </Typography>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ) : null}
+
+              {!leadsLoading && leads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8}>
+                    <Typography variant="body2" color="text.secondary">
+                      Nenhum lead encontrado.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : null}
+
+              {leads.map((lead) => (
+                <TableRow key={lead.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600}>
+                      {lead.nome || "-"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{lead.email || "-"}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {lead.telefone || "-"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{formatCpf(lead.cpf)}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{lead.evento_nome || "-"}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {[lead.cidade, lead.estado].filter(Boolean).join(" / ") || "-"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {lead.evento_convertido_nome ||
+                      (lead.evento_convertido_id ? `#${lead.evento_convertido_id}` : "-")}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {lead.tipo_conversao ? lead.tipo_conversao.replace(/_/g, " ") : "-"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatDateTime(lead.data_conversao)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{formatDateTime(lead.data_compra)}</TableCell>
+                  <TableCell>{formatDateTime(lead.data_criacao)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          component="div"
+          count={leadsTotal}
+          page={Math.max(leadsPage - 1, 0)}
+          onPageChange={(_, page) => setLeadsPage(page + 1)}
+          rowsPerPage={leadsPageSize}
+          onRowsPerPageChange={(event) => {
+            setLeadsPageSize(Number(event.target.value));
+            setLeadsPage(1);
+          }}
+          rowsPerPageOptions={[10, 20, 50]}
+          labelRowsPerPage="Linhas por pagina"
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+          }
+        />
       </Paper>
 
       <Dialog open={Boolean(importResult)} onClose={() => setImportResult(null)} maxWidth="xs" fullWidth>

@@ -38,6 +38,7 @@ Relacionamento:
 ## 5. API (basico)
 - `POST /leads/{lead_id}/conversoes`
 - `GET /leads/{lead_id}/conversoes`
+- `GET /leads?page=&page_size=` (listagem paginada com a conversao mais recente por lead)
 
 ## 6. Uso esperado
 Relatorios e analises devem considerar:

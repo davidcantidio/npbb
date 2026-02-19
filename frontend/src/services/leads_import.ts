@@ -22,6 +22,30 @@ export type LeadImportPreview = {
   } | null>;
 };
 
+export type LeadListItem = {
+  id: number;
+  nome: string | null;
+  email: string | null;
+  cpf: string | null;
+  telefone: string | null;
+  evento_nome: string | null;
+  cidade: string | null;
+  estado: string | null;
+  data_compra: string | null;
+  data_criacao: string;
+  evento_convertido_id: number | null;
+  evento_convertido_nome: string | null;
+  tipo_conversao: string | null;
+  data_conversao: string | null;
+};
+
+export type LeadListResponse = {
+  page: number;
+  page_size: number;
+  total: number;
+  items: LeadListItem[];
+};
+
 async function parseJsonSafe(text: string) {
   try {
     return text ? JSON.parse(text) : null;
@@ -139,4 +163,19 @@ export async function runLeadImport(
     body: form,
   });
   return handleResponse<{ filename: string; created: number; updated: number; skipped: number }>(res);
+}
+
+export async function listLeads(
+  token: string,
+  params?: { page?: number; page_size?: number },
+): Promise<LeadListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const url = `${API_BASE_URL}/leads${qs.toString() ? `?${qs}` : ""}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<LeadListResponse>(res);
 }

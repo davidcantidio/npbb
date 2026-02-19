@@ -8,9 +8,22 @@
 4. Revise o **mapeamento de colunas**.
 5. Ajuste referencias (evento/cidade/estado/genero) quando houver sugestoes.
 6. Clique em **Importar**.
+7. Consulte a tabela **Leads cadastrados** (paginada) na mesma tela.
+
+### Tabela de leads na UI (`/leads`)
+- Fonte de dados: `GET /leads?page=<n>&page_size=<n>`.
+- Colunas principais exibidas:
+  - Nome, email, telefone, CPF
+  - Evento (origem): `evento_nome`, `cidade`, `estado`
+  - Evento convertido: `evento_convertido_nome` (ou `evento_convertido_id`)
+  - Conversao: `tipo_conversao`, `data_conversao`
+  - Datas: `data_compra`, `data_criacao`
+- Ao concluir um import, a listagem e recarregada automaticamente (volta para pagina 1).
 
 ### API (pipeline)
 Endpoints principais:
+- `GET /leads` (query: `page`, `page_size`)  
+  Lista leads com paginacao e dados da conversao mais recente por lead.
 - `POST /leads/import/preview` (multipart)  
   Retorna headers, amostra e sugestoes de mapeamento.
 - `POST /leads/import/validate` (JSON)  
@@ -64,4 +77,3 @@ Saida:
 Observacoes:
 - O script usa o mesmo service do dashboard e gera **apenas dados agregados**.
 - Se faltarem dados (ex.: redes sociais), o relatorio inclui a lacuna.
-

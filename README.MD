@@ -7,7 +7,7 @@ Plataforma para gestao de eventos, captura de leads, gamificacao e dashboards. O
 - **Frontend**: Vite + React + MUI (UI e fluxos).
 - **Banco**: Postgres (Supabase) via SQLAlchemy.
 - **Auth**: JWT (login, /auth/me, recuperacao de senha).
-- **Leads**: importacao CSV/XLSX com mapeamento assistido.
+- **Leads**: importacao CSV/XLSX com mapeamento assistido + tabela paginada em `/leads`.
 - **Relatorios**: dashboard agregado + geracao de DOCX (Festival TMJ 2025).
 
 ## Setup rapido (caminho feliz)

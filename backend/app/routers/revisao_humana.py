@@ -28,6 +28,11 @@ try:  # pragma: no cover - import style depends on execution cwd
         S3WorkbenchCoreInput,
         execute_workbench_revisao_s3_main_flow,
     )
+    from frontend.src.features.revisao_humana.s4_core import (
+        S4WorkbenchCoreError,
+        S4WorkbenchCoreInput,
+        execute_workbench_revisao_s4_main_flow,
+    )
     from frontend.src.features.revisao_humana.s1_scaffold import (
         S1WorkbenchScaffoldError,
         S1WorkbenchScaffoldRequest,
@@ -66,6 +71,11 @@ except ModuleNotFoundError:  # pragma: no cover
         S3WorkbenchCoreError,
         S3WorkbenchCoreInput,
         execute_workbench_revisao_s3_main_flow,
+    )
+    from frontend.src.features.revisao_humana.s4_core import (
+        S4WorkbenchCoreError,
+        S4WorkbenchCoreInput,
+        execute_workbench_revisao_s4_main_flow,
     )
     from frontend.src.features.revisao_humana.s1_scaffold import (
         S1WorkbenchScaffoldError,
@@ -211,6 +221,29 @@ class RevisaoHumanaS3ExecuteBody(BaseModel):
 
 class RevisaoHumanaS4PrepareBody(BaseModel):
     """Body contract for WORK Sprint 4 scaffold preparation endpoint."""
+
+    workflow_id: str = Field(..., min_length=1)
+    dataset_name: str = Field(..., min_length=1)
+    entity_kind: str = "lead"
+    schema_version: str = "v4"
+    owner_team: str = "etl"
+    audit_dimensions: list[str] | None = None
+    change_channels: list[str] | None = None
+    audit_mode: str = "full_trace"
+    sla_target_minutes: int = 120
+    sla_warning_threshold_minutes: int = 90
+    sla_breach_grace_minutes: int = 15
+    productivity_window_hours: int = 8
+    minimum_actions_per_window: int = 10
+    require_change_reason: bool = True
+    capture_before_after_state: bool = True
+    enable_anomaly_alerts: bool = True
+    reviewer_roles: list[str] | None = None
+    correlation_id: str | None = None
+
+
+class RevisaoHumanaS4ExecuteBody(BaseModel):
+    """Body contract for WORK Sprint 4 main-flow execution endpoint."""
 
     workflow_id: str = Field(..., min_length=1)
     dataset_name: str = Field(..., min_length=1)
@@ -689,6 +722,109 @@ def execute_workbench_revisao_s3(payload: RevisaoHumanaS3ExecuteBody) -> dict[st
 
     logger.info(
         "workbench_revisao_s3_execute_completed",
+        extra={
+            "correlation_id": result["correlation_id"],
+            "workflow_id": result["workflow_id"],
+            "dataset_name": result["dataset_name"],
+            "status": result["status"],
+            "execution_status": result.get("execucao", {}).get("status"),
+        },
+    )
+    return result
+
+
+@router.post("/s4/execute")
+def execute_workbench_revisao_s4(payload: RevisaoHumanaS4ExecuteBody) -> dict[str, object]:
+    """Execute WORK Sprint 4 main flow and return stable output contract.
+
+    Args:
+        payload: Workbench operational-audit input contract for Sprint 4
+            execution.
+
+    Returns:
+        dict[str, object]: Stable main-flow output contract for Sprint 4.
+
+    Raises:
+        HTTPException: If flow validation or execution fails.
+    """
+
+    correlation_id = payload.correlation_id or f"work-s4-api-{uuid4().hex[:12]}"
+    logger.info(
+        "workbench_revisao_s4_execute_requested",
+        extra={
+            "correlation_id": correlation_id,
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "schema_version": payload.schema_version,
+            "audit_mode": payload.audit_mode,
+            "sla_target_minutes": payload.sla_target_minutes,
+            "productivity_window_hours": payload.productivity_window_hours,
+        },
+    )
+
+    try:
+        core_input = S4WorkbenchCoreInput(
+            workflow_id=payload.workflow_id,
+            dataset_name=payload.dataset_name,
+            entity_kind=payload.entity_kind,
+            schema_version=payload.schema_version,
+            owner_team=payload.owner_team,
+            audit_dimensions=(
+                tuple(payload.audit_dimensions)
+                if payload.audit_dimensions is not None
+                else None
+            ),
+            change_channels=(
+                tuple(payload.change_channels)
+                if payload.change_channels is not None
+                else None
+            ),
+            audit_mode=payload.audit_mode,
+            sla_target_minutes=payload.sla_target_minutes,
+            sla_warning_threshold_minutes=payload.sla_warning_threshold_minutes,
+            sla_breach_grace_minutes=payload.sla_breach_grace_minutes,
+            productivity_window_hours=payload.productivity_window_hours,
+            minimum_actions_per_window=payload.minimum_actions_per_window,
+            require_change_reason=payload.require_change_reason,
+            capture_before_after_state=payload.capture_before_after_state,
+            enable_anomaly_alerts=payload.enable_anomaly_alerts,
+            reviewer_roles=(
+                tuple(payload.reviewer_roles)
+                if payload.reviewer_roles is not None
+                else None
+            ),
+            correlation_id=correlation_id,
+        )
+        result = execute_workbench_revisao_s4_main_flow(core_input).to_dict()
+    except S4WorkbenchCoreError as exc:
+        logger.warning(
+            "workbench_revisao_s4_execute_failed",
+            extra={
+                "correlation_id": correlation_id,
+                "workflow_id": payload.workflow_id,
+                "dataset_name": payload.dataset_name,
+                "error_code": exc.code,
+                "error_message": exc.message,
+                "recommended_action": exc.action,
+                "stage": exc.stage,
+                "event_id": exc.event_id,
+            },
+        )
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code=exc.code,
+            message=exc.message,
+            extra={
+                "action": exc.action,
+                "correlation_id": correlation_id,
+                "stage": exc.stage,
+                "event_id": exc.event_id,
+            },
+        )
+
+    logger.info(
+        "workbench_revisao_s4_execute_completed",
         extra={
             "correlation_id": result["correlation_id"],
             "workflow_id": result["workflow_id"],

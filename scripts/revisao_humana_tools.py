@@ -1,7 +1,7 @@
-"""Operational tools for WORK Sprint 1 and Sprint 2 workbench flows.
+"""Operational tools for WORK Sprint 1, Sprint 2, and Sprint 3 workbench flows.
 
 This script provides small, verifiable runbook commands to:
-1. validate WORK Sprint 1 and Sprint 2 input contracts;
+1. validate WORK Sprint 1, Sprint 2, and Sprint 3 input contracts;
 2. simulate core execution and API integration;
 3. execute one end-to-end local runbook check per sprint.
 """
@@ -32,10 +32,14 @@ from app.routers.revisao_humana import (  # noqa: E402
     RevisaoHumanaS1PrepareBody,
     RevisaoHumanaS2ExecuteBody,
     RevisaoHumanaS2PrepareBody,
+    RevisaoHumanaS3ExecuteBody,
+    RevisaoHumanaS3PrepareBody,
     execute_workbench_revisao_s1,
     execute_workbench_revisao_s2,
+    execute_workbench_revisao_s3,
     prepare_workbench_revisao_s1,
     prepare_workbench_revisao_s2,
+    prepare_workbench_revisao_s3,
 )
 from frontend.src.features.revisao_humana.s1_core import (  # noqa: E402
     S1WorkbenchCoreError,
@@ -51,11 +55,21 @@ from frontend.src.features.revisao_humana.s2_core import (  # noqa: E402
     S2WorkbenchCoreError,
     execute_workbench_revisao_s2_main_flow,
 )
+from frontend.src.features.revisao_humana.s3_core import (  # noqa: E402
+    S3WorkbenchCoreError,
+    execute_workbench_revisao_s3_main_flow,
+)
 from frontend.src.features.revisao_humana.s2_validation import (  # noqa: E402
     S2WorkbenchValidationError,
     S2WorkbenchValidationInput,
     validate_workbench_revisao_s2_input_contract,
     validate_workbench_revisao_s2_output_contract,
+)
+from frontend.src.features.revisao_humana.s3_validation import (  # noqa: E402
+    S3WorkbenchValidationError,
+    S3WorkbenchValidationInput,
+    validate_workbench_revisao_s3_input_contract,
+    validate_workbench_revisao_s3_output_contract,
 )
 
 
@@ -94,7 +108,7 @@ class ToolExecutionError(RuntimeError):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Build CLI parser for WORK Sprint 1 and Sprint 2 commands."""
+    """Build CLI parser for WORK Sprint 1, Sprint 2, and Sprint 3 commands."""
 
     parser = argparse.ArgumentParser(prog="revisao_humana_tools")
     parser.add_argument(
@@ -188,6 +202,47 @@ def _build_parser() -> argparse.ArgumentParser:
         max_suggestions_per_field=5,
         require_evidence_for_suggestion="true",
         reviewer_role=("operador", "supervisor"),
+        correlation_id=None,
+    )
+
+    s3_validate_parser = sub.add_parser(
+        "s3:validate-input",
+        help="Validate WORK Sprint 3 input contract.",
+    )
+    _add_s3_common_args(s3_validate_parser, required=True)
+
+    s3_simulate_core_parser = sub.add_parser(
+        "s3:simulate-core",
+        help="Simulate WORK Sprint 3 core flow and validate output contract.",
+    )
+    _add_s3_common_args(s3_simulate_core_parser, required=True)
+
+    s3_simulate_api_parser = sub.add_parser(
+        "s3:simulate-api",
+        help="Simulate WORK Sprint 3 API prepare/execute integration and validate output.",
+    )
+    _add_s3_common_args(s3_simulate_api_parser, required=True)
+
+    s3_runbook_parser = sub.add_parser(
+        "s3:runbook-check",
+        help="Run one complete local WORK Sprint 3 runbook check.",
+    )
+    _add_s3_common_args(s3_runbook_parser, required=False)
+    s3_runbook_parser.set_defaults(
+        workflow_id="WORK_REVIEW_LEAD_S3",
+        dataset_name="leads_capture",
+        entity_kind="lead",
+        schema_version="v3",
+        owner_team="etl",
+        batch_size=200,
+        max_pending_batches=2000,
+        approval_mode="dual_control",
+        required_approvers=2,
+        approver_role=("supervisor", "coordenador"),
+        approval_sla_hours=24,
+        require_justification="true",
+        allow_partial_approval="false",
+        auto_lock_on_conflict="true",
         correlation_id=None,
     )
     return parser
@@ -331,6 +386,87 @@ def _add_s2_common_args(parser: argparse.ArgumentParser, *, required: bool) -> N
         action="append",
         default=[],
         help="Reviewer role (can be repeated).",
+    )
+    parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
+
+
+def _add_s3_common_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    """Register common WORK Sprint 3 input arguments in one parser."""
+
+    parser.add_argument("--workflow-id", required=required, help="Stable workbench workflow id.")
+    parser.add_argument(
+        "--dataset-name",
+        required=required,
+        help="Dataset name for batch-approval ownership.",
+    )
+    parser.add_argument(
+        "--entity-kind",
+        default="lead",
+        help="Entity kind (lead, evento, ingresso, generic).",
+    )
+    parser.add_argument(
+        "--schema-version",
+        default="v3",
+        help="Schema version in vN format.",
+    )
+    parser.add_argument(
+        "--owner-team",
+        default="etl",
+        help="Owner team used by approval governance.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=200,
+        help="Maximum batches processed per execution pass.",
+    )
+    parser.add_argument(
+        "--max-pending-batches",
+        type=int,
+        default=2000,
+        help="Maximum pending batches supported by queue capacity.",
+    )
+    parser.add_argument(
+        "--approval-mode",
+        default="dual_control",
+        choices=("single_reviewer", "dual_control", "committee"),
+        help="Approval mode used by the sprint flow.",
+    )
+    parser.add_argument(
+        "--required-approvers",
+        type=int,
+        default=2,
+        help="Minimum number of approvals required per batch.",
+    )
+    parser.add_argument(
+        "--approver-role",
+        action="append",
+        default=[],
+        help="Approver role (can be repeated).",
+    )
+    parser.add_argument(
+        "--approval-sla-hours",
+        type=int,
+        default=24,
+        help="Approval SLA in hours.",
+    )
+    parser.add_argument(
+        "--require-justification",
+        default="true",
+        choices=("true", "false"),
+        help="Whether justification is mandatory for reject/escalate decisions.",
+    )
+    parser.add_argument(
+        "--allow-partial-approval",
+        default="false",
+        choices=("true", "false"),
+        help="Whether partial approvals are allowed.",
+    )
+    parser.add_argument(
+        "--auto-lock-on-conflict",
+        default="true",
+        choices=("true", "false"),
+        help="Whether conflicting batches are auto-locked.",
     )
     parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
 
@@ -482,6 +618,76 @@ def _build_s2_execute_body(
         max_suggestions_per_field=payload.max_suggestions_per_field,
         require_evidence_for_suggestion=payload.require_evidence_for_suggestion,
         reviewer_roles=list(payload.reviewer_roles) if payload.reviewer_roles is not None else None,
+        correlation_id=correlation_id,
+    )
+
+
+def _build_s3_validation_input_from_args(args: argparse.Namespace) -> S3WorkbenchValidationInput:
+    """Build WORK Sprint 3 validation input from parsed CLI args."""
+
+    return S3WorkbenchValidationInput(
+        workflow_id=str(args.workflow_id),
+        dataset_name=str(args.dataset_name),
+        entity_kind=str(args.entity_kind),
+        schema_version=str(args.schema_version),
+        owner_team=str(args.owner_team),
+        batch_size=int(args.batch_size),
+        max_pending_batches=int(args.max_pending_batches),
+        approval_mode=str(args.approval_mode),
+        required_approvers=int(args.required_approvers),
+        approver_roles=_parse_optional_tuple(list(args.approver_role)),
+        approval_sla_hours=int(args.approval_sla_hours),
+        require_justification=_as_bool(str(args.require_justification)),
+        allow_partial_approval=_as_bool(str(args.allow_partial_approval)),
+        auto_lock_on_conflict=_as_bool(str(args.auto_lock_on_conflict)),
+        correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
+    )
+
+
+def _build_s3_prepare_body(
+    *,
+    payload: S3WorkbenchValidationInput,
+    correlation_id: str,
+) -> RevisaoHumanaS3PrepareBody:
+    return RevisaoHumanaS3PrepareBody(
+        workflow_id=payload.workflow_id,
+        dataset_name=payload.dataset_name,
+        entity_kind=payload.entity_kind,
+        schema_version=payload.schema_version,
+        owner_team=payload.owner_team,
+        batch_size=payload.batch_size,
+        max_pending_batches=payload.max_pending_batches,
+        approval_mode=payload.approval_mode,
+        required_approvers=payload.required_approvers,
+        approver_roles=list(payload.approver_roles) if payload.approver_roles is not None else None,
+        approval_sla_hours=payload.approval_sla_hours,
+        require_justification=payload.require_justification,
+        allow_partial_approval=payload.allow_partial_approval,
+        auto_lock_on_conflict=payload.auto_lock_on_conflict,
+        correlation_id=correlation_id,
+    )
+
+
+def _build_s3_execute_body(
+    *,
+    payload: S3WorkbenchValidationInput,
+    correlation_id: str,
+) -> RevisaoHumanaS3ExecuteBody:
+    return RevisaoHumanaS3ExecuteBody(
+        workflow_id=payload.workflow_id,
+        dataset_name=payload.dataset_name,
+        entity_kind=payload.entity_kind,
+        schema_version=payload.schema_version,
+        owner_team=payload.owner_team,
+        batch_size=payload.batch_size,
+        max_pending_batches=payload.max_pending_batches,
+        approval_mode=payload.approval_mode,
+        required_approvers=payload.required_approvers,
+        approver_roles=list(payload.approver_roles) if payload.approver_roles is not None else None,
+        approval_sla_hours=payload.approval_sla_hours,
+        require_justification=payload.require_justification,
+        allow_partial_approval=payload.allow_partial_approval,
+        auto_lock_on_conflict=payload.auto_lock_on_conflict,
         correlation_id=correlation_id,
     )
 
@@ -883,6 +1089,196 @@ def _run_s2_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _run_s3_validate_input(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s3:validate-input` command and return output payload."""
+
+    payload = _build_s3_validation_input_from_args(args)
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_validate_input_started",
+        correlation_id=payload.correlation_id or "",
+        context={
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+        },
+    )
+    result = validate_workbench_revisao_s3_input_contract(payload)
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_validate_input_completed",
+        correlation_id=result.correlation_id,
+        context={"status": result.status, "route_preview": result.route_preview},
+    )
+    return {"command": "s3:validate-input", "result": result.to_dict()}
+
+
+def _run_s3_simulate_core(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s3:simulate-core` command and return output payload."""
+
+    payload = _build_s3_validation_input_from_args(args)
+    validation = validate_workbench_revisao_s3_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_simulate_core_started",
+        correlation_id=correlation_id,
+        context={
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "approval_mode": payload.approval_mode,
+            "required_approvers": payload.required_approvers,
+            "batch_size": payload.batch_size,
+        },
+    )
+
+    core_output = execute_workbench_revisao_s3_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_workbench_revisao_s3_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_simulate_core_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "workflow_id": core_output.get("workflow_id"),
+            "execution_status": core_output.get("execucao", {}).get("status"),
+            "batches_received": core_output.get("execucao", {}).get("batches_received"),
+        },
+    )
+    return {
+        "command": "s3:simulate-core",
+        "input_validation": validation.to_dict(),
+        "flow_output": core_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s3_simulate_api(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s3:simulate-api` command and return output payload."""
+
+    payload = _build_s3_validation_input_from_args(args)
+    validation = validate_workbench_revisao_s3_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_simulate_api_started",
+        correlation_id=correlation_id,
+        context={
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "approval_mode": payload.approval_mode,
+            "required_approvers": payload.required_approvers,
+            "batch_size": payload.batch_size,
+        },
+    )
+
+    prepare_output = prepare_workbench_revisao_s3(
+        _build_s3_prepare_body(payload=payload, correlation_id=correlation_id)
+    )
+    if str(prepare_output.get("status", "")).strip().lower() != "ready":
+        raise ToolExecutionError(
+            code="INVALID_PREPARE_STATUS",
+            message=f"Status inesperado no prepare WORK S3: {prepare_output.get('status')}",
+            action="Revisar rota /internal/revisao-humana/s3/prepare e contrato de scaffold.",
+            correlation_id=correlation_id,
+            context={"prepare_status": str(prepare_output.get("status", ""))},
+        )
+
+    api_output = execute_workbench_revisao_s3(
+        _build_s3_execute_body(payload=payload, correlation_id=correlation_id)
+    )
+    output_validation = validate_workbench_revisao_s3_output_contract(
+        api_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_simulate_api_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "workflow_id": api_output.get("workflow_id"),
+            "prepare_status": prepare_output.get("status"),
+            "execution_status": api_output.get("execucao", {}).get("status"),
+            "batches_received": api_output.get("execucao", {}).get("batches_received"),
+        },
+    )
+    return {
+        "command": "s3:simulate-api",
+        "input_validation": validation.to_dict(),
+        "prepare_output": prepare_output,
+        "flow_output": api_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s3_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s3:runbook-check` command and return output payload."""
+
+    payload = _build_s3_validation_input_from_args(args)
+    validation = validate_workbench_revisao_s3_input_contract(payload)
+    correlation_id = validation.correlation_id
+
+    core_output = execute_workbench_revisao_s3_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    core_output_validation = validate_workbench_revisao_s3_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+
+    prepare_output = prepare_workbench_revisao_s3(
+        _build_s3_prepare_body(payload=payload, correlation_id=correlation_id)
+    )
+    if str(prepare_output.get("status", "")).strip().lower() != "ready":
+        raise ToolExecutionError(
+            code="INVALID_PREPARE_STATUS",
+            message=f"Status inesperado no prepare WORK S3: {prepare_output.get('status')}",
+            action="Revisar rota /internal/revisao-humana/s3/prepare e contrato de scaffold.",
+            correlation_id=correlation_id,
+            context={"prepare_status": str(prepare_output.get("status", ""))},
+        )
+
+    api_output = execute_workbench_revisao_s3(
+        _build_s3_execute_body(payload=payload, correlation_id=correlation_id)
+    )
+    api_output_validation = validate_workbench_revisao_s3_output_contract(
+        api_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s3_runbook_check_completed",
+        correlation_id=correlation_id,
+        context={
+            "core_status": core_output_validation.status,
+            "api_status": api_output_validation.status,
+            "workflow_id": api_output.get("workflow_id"),
+            "prepare_status": prepare_output.get("status"),
+        },
+    )
+    return {
+        "command": "s3:runbook-check",
+        "input_validation": validation.to_dict(),
+        "core_flow": {
+            "output": core_output,
+            "validation": core_output_validation.to_dict(),
+        },
+        "api_prepare": prepare_output,
+        "api_flow": {
+            "output": api_output,
+            "validation": api_output_validation.to_dict(),
+        },
+    }
+
+
 def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
     """Render command result payload in selected output format."""
 
@@ -899,7 +1295,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - route_preview: {result.get('route_preview')}")
         return
 
-    if command in {"s1:runbook-check", "s2:runbook-check"}:
+    if command in {"s1:runbook-check", "s2:runbook-check", "s3:runbook-check"}:
         validation = payload.get("input_validation", {})
         core = payload.get("core_flow", {})
         api_prepare = payload.get("api_prepare", {})
@@ -915,7 +1311,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - api_validation_status: {api_flow.get('validation', {}).get('status')}")
         return
 
-    if command in {"s1:simulate-api", "s2:simulate-api"}:
+    if command in {"s1:simulate-api", "s2:simulate-api", "s3:simulate-api"}:
         input_validation = payload.get("input_validation", {})
         prepare_output = payload.get("prepare_output", {})
         flow_output = payload.get("flow_output", {})
@@ -995,7 +1391,7 @@ def _extract_http_exception_payload(exc: HTTPException) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run operational tool commands for WORK Sprint 1 and Sprint 2.
+    """Run operational tool commands for WORK Sprint 1, Sprint 2, and Sprint 3.
 
     Args:
         argv: Optional CLI argument list.
@@ -1031,6 +1427,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = _run_s2_simulate_api(args)
         elif args.command == "s2:runbook-check":
             payload = _run_s2_runbook_check(args)
+        elif args.command == "s3:validate-input":
+            payload = _run_s3_validate_input(args)
+        elif args.command == "s3:simulate-core":
+            payload = _run_s3_simulate_core(args)
+        elif args.command == "s3:simulate-api":
+            payload = _run_s3_simulate_api(args)
+        elif args.command == "s3:runbook-check":
+            payload = _run_s3_runbook_check(args)
         else:
             raise ToolExecutionError(
                 code="UNKNOWN_COMMAND",
@@ -1040,7 +1444,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         _render_output(payload, output_format=str(args.output_format))
         return 0
-    except (S1WorkbenchValidationError, S2WorkbenchValidationError) as exc:
+    except (
+        S1WorkbenchValidationError,
+        S2WorkbenchValidationError,
+        S3WorkbenchValidationError,
+    ) as exc:
         _log_event(
             level=logging.WARNING,
             event_name="work_tool_validation_failed",
@@ -1058,7 +1466,11 @@ def main(argv: list[str] | None = None) -> int:
             output_format=str(args.output_format),
         )
         return 1
-    except (S1WorkbenchCoreError, S2WorkbenchCoreError) as exc:
+    except (
+        S1WorkbenchCoreError,
+        S2WorkbenchCoreError,
+        S3WorkbenchCoreError,
+    ) as exc:
         _log_event(
             level=logging.ERROR,
             event_name="work_tool_core_failed",

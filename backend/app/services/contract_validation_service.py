@@ -14,11 +14,12 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
-    from core.contracts.s4_scaffold import (
-        S4CanonicalContractScaffoldRequest,
-        S4ContractScaffoldError,
-        build_s4_contract_scaffold,
+    from core.contracts.s4_core import (
+        S4CanonicalContractCoreError,
+        S4CanonicalContractCoreInput,
+        execute_s4_contract_validation_main_flow,
     )
+    from core.contracts.s4_scaffold import S4CanonicalContractScaffoldRequest
     from core.contracts.s3_core import (
         S3CanonicalContractCoreError,
         S3CanonicalContractCoreInput,
@@ -47,11 +48,12 @@ except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
-    from core.contracts.s4_scaffold import (
-        S4CanonicalContractScaffoldRequest,
-        S4ContractScaffoldError,
-        build_s4_contract_scaffold,
+    from core.contracts.s4_core import (
+        S4CanonicalContractCoreError,
+        S4CanonicalContractCoreInput,
+        execute_s4_contract_validation_main_flow,
     )
+    from core.contracts.s4_scaffold import S4CanonicalContractScaffoldRequest
     from core.contracts.s3_core import (
         S3CanonicalContractCoreError,
         S3CanonicalContractCoreInput,
@@ -760,7 +762,7 @@ def execute_s3_contract_validation_service(
 def execute_s4_contract_validation_service(
     request: S4CanonicalContractScaffoldRequest,
 ) -> S4ContractValidationServiceOutput:
-    """Execute CONT Sprint 4 scaffold service with actionable diagnostics.
+    """Execute CONT Sprint 4 main-flow service with actionable diagnostics.
 
     Args:
         request: CONT Sprint 4 input contract with version compatibility and
@@ -771,8 +773,8 @@ def execute_s4_contract_validation_service(
             versioning profile and observability identifiers.
 
     Raises:
-        S4ContractValidationServiceError: If scaffold validation fails or an
-            unexpected service error happens.
+        S4ContractValidationServiceError: If main-flow compatibility validation
+            fails or an unexpected service error happens.
     """
 
     correlation_id = request.correlation_id or f"cont-s4-{uuid4().hex[:12]}"
@@ -791,8 +793,8 @@ def execute_s4_contract_validation_service(
     )
 
     try:
-        scaffold = build_s4_contract_scaffold(
-            _to_s4_scaffold_input(request=request, correlation_id=correlation_id)
+        core_output = execute_s4_contract_validation_main_flow(
+            _to_s4_core_input(request=request, correlation_id=correlation_id)
         )
 
         versioning_plan_event_id = _new_s4_event_id()
@@ -801,11 +803,11 @@ def execute_s4_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": versioning_plan_event_id,
-                "contract_id": scaffold.contract_id,
-                "dataset_name": scaffold.dataset_name,
-                "schema_version": scaffold.versioning_profile.get("schema_version"),
-                "compatibility_mode": scaffold.versioning_profile.get("compatibility_mode"),
-                "regression_gate_required": scaffold.versioning_profile.get(
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "schema_version": core_output.versioning_profile.get("schema_version"),
+                "compatibility_mode": core_output.versioning_profile.get("compatibility_mode"),
+                "regression_gate_required": core_output.versioning_profile.get(
                     "regression_gate_required"
                 ),
             },
@@ -817,14 +819,16 @@ def execute_s4_contract_validation_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "contract_id": scaffold.contract_id,
-                "dataset_name": scaffold.dataset_name,
-                "status": scaffold.status,
-                "execution_status": "ready",
+                "contract_id": core_output.contract_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
+                "compatibility_result": core_output.execucao.get("compatibility_result"),
+                "regression_gate_passed": core_output.execucao.get("regression_gate_passed"),
             },
         )
 
-        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["contract_validation_service_module"] = (
             "app.services.contract_validation_service.execute_s4_contract_validation_service"
         )
@@ -835,35 +839,35 @@ def execute_s4_contract_validation_service(
         return S4ContractValidationServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S4,
             correlation_id=correlation_id,
-            status=scaffold.status,
-            contract_id=scaffold.contract_id,
-            dataset_name=scaffold.dataset_name,
-            versioning_profile=dict(scaffold.versioning_profile),
-            execucao={
-                "status": "ready",
-                "decision_reason": "scaffold_only_base_contract",
-                "regression_gate_required": bool(
-                    scaffold.versioning_profile.get("regression_gate_required", False)
-                ),
-            },
+            status=core_output.status,
+            contract_id=core_output.contract_id,
+            dataset_name=core_output.dataset_name,
+            versioning_profile=dict(core_output.versioning_profile),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "versioning_profile_ready_event_id": versioning_plan_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade[
+                    "flow_completed_event_id"
+                ],
             },
-            scaffold=scaffold.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S4ContractScaffoldError as exc:
+    except S4CanonicalContractCoreError as exc:
         failed_event_id = _new_s4_event_id()
         logger.warning(
-            "contract_validation_s4_scaffold_error",
+            "contract_validation_s4_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S4ContractValidationServiceError(
@@ -871,7 +875,7 @@ def execute_s4_contract_validation_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S4ContractValidationServiceError:
@@ -1004,12 +1008,12 @@ def _to_s3_core_input(
     )
 
 
-def _to_s4_scaffold_input(
+def _to_s4_core_input(
     *,
     request: S4CanonicalContractScaffoldRequest,
     correlation_id: str,
-) -> S4CanonicalContractScaffoldRequest:
-    return S4CanonicalContractScaffoldRequest(
+) -> S4CanonicalContractCoreInput:
+    return S4CanonicalContractCoreInput(
         contract_id=request.contract_id,
         dataset_name=request.dataset_name,
         source_kind=request.source_kind,

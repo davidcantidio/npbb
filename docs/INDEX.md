@@ -18,6 +18,12 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 - `leads_importacao.md` - importacao CSV/XLSX
 - `leads_conversoes.md` - regras de conversao
 
+## ETL - Runbooks de Sprint
+- `etl/contrato_canonico_s1.md` - runbook operacional CONT S1
+- `etl/contrato_canonico_s2.md` - runbook operacional CONT S2
+- `etl/contrato_canonico_s3.md` - runbook operacional CONT S3
+- `etl/contrato_canonico_s4.md` - fluxo principal e gate de regressao CONT S4
+
 ## Dashboard e relatorios
 - `tela-inicial/menu/Dashboard/leads_dashboard.md` - contrato do dashboard de leads (backend)
 - `roadmap_dashboard_import_batch.md` - roadmap tecnico

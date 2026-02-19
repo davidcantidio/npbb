@@ -1,4 +1,4 @@
-"""Unit tests for CONT Sprint 4 scaffold and service base contracts."""
+"""Unit tests for CONT Sprint 4 scaffold, core, and service contracts."""
 
 from __future__ import annotations
 
@@ -19,6 +19,11 @@ if str(BACKEND_ROOT) not in sys.path:
 from app.services.contract_validation_service import (  # noqa: E402
     S4ContractValidationServiceError,
     execute_s4_contract_validation_service,
+)
+from core.contracts.s4_core import (  # noqa: E402
+    S4CanonicalContractCoreError,
+    S4CanonicalContractCoreInput,
+    execute_s4_contract_validation_main_flow,
 )
 from core.contracts.s4_scaffold import (  # noqa: E402
     S4CanonicalContractScaffoldRequest,
@@ -89,13 +94,15 @@ def test_cont_s4_service_success_returns_profile_and_observability() -> None:
 
     assert output["contrato_versao"] == "cont.s4.service.v1"
     assert output["correlation_id"] == "cont-s4-service-001"
-    assert output["status"] == "ready"
+    assert output["status"] == "completed"
     assert output["contract_id"] == "CONT_STG_OPTIN_V4"
     assert output["versioning_profile"]["compatibility_mode"] == "strict_backward"
-    assert output["execucao"]["status"] == "ready"
+    assert output["execucao"]["status"] == "succeeded"
     assert output["observabilidade"]["flow_started_event_id"].startswith("conts4evt-")
     assert output["observabilidade"]["versioning_profile_ready_event_id"].startswith("conts4evt-")
     assert output["observabilidade"]["flow_completed_event_id"].startswith("conts4evt-")
+    assert output["observabilidade"]["main_flow_started_event_id"].startswith("conts4coreevt-")
+    assert output["observabilidade"]["main_flow_completed_event_id"].startswith("conts4coreevt-")
     assert output["scaffold"]["contrato_versao"] == "cont.s4.v1"
 
 
@@ -111,3 +118,89 @@ def test_cont_s4_service_raises_actionable_error_for_conflicting_policy() -> Non
     assert "breaking_change_policy=block" in error.action or "block" in error.action
     assert error.stage == "scaffold"
     assert (error.event_id or "").startswith("conts4evt-")
+
+
+def test_cont_s4_core_success_runs_main_flow() -> None:
+    flow_input = S4CanonicalContractCoreInput(
+        contract_id="CONT_STG_OPTIN_V4",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v4",
+        strict_validation=True,
+        lineage_required=True,
+        owner_team="etl",
+        schema_required_fields=("record_id", "event_ts", "source_id", "payload_checksum"),
+        lineage_field_requirements={
+            "record_id": ("crm.orders.id",),
+            "source_id": ("crm.sources.origin_system",),
+        },
+        metric_lineage_requirements={
+            "optin_total": ("crm.optin.total",),
+        },
+        compatibility_mode="strict_backward",
+        previous_contract_versions=("v3",),
+        regression_gate_required=True,
+        regression_suite_version="s4",
+        max_regression_failures=0,
+        breaking_change_policy="block",
+        deprecation_window_days=0,
+        correlation_id="cont-s4-core-001",
+    )
+
+    output = execute_s4_contract_validation_main_flow(flow_input).to_dict()
+
+    assert output["contrato_versao"] == "cont.s4.core.v1"
+    assert output["correlation_id"] == "cont-s4-core-001"
+    assert output["status"] == "completed"
+    assert output["contract_id"] == "CONT_STG_OPTIN_V4"
+    assert output["execucao"]["status"] == "succeeded"
+    assert output["execucao"]["regression_gate_passed"] is True
+    assert output["observabilidade"]["flow_started_event_id"].startswith("conts4coreevt-")
+    assert output["observabilidade"]["flow_completed_event_id"].startswith("conts4coreevt-")
+
+
+def test_cont_s4_core_raises_actionable_error_for_failed_regression_gate() -> None:
+    flow_input = S4CanonicalContractCoreInput(
+        contract_id="CONT_STG_OPTIN_V4",
+        dataset_name="stg_optin_events",
+        source_kind="csv",
+        schema_version="v4",
+        strict_validation=True,
+        lineage_required=True,
+        owner_team="etl",
+        schema_required_fields=("record_id", "event_ts", "source_id", "payload_checksum"),
+        lineage_field_requirements={
+            "record_id": ("crm.orders.id",),
+            "source_id": ("crm.sources.origin_system",),
+        },
+        metric_lineage_requirements={
+            "optin_total": ("crm.optin.total",),
+        },
+        compatibility_mode="strict_backward",
+        previous_contract_versions=("v3",),
+        regression_gate_required=True,
+        regression_suite_version="s4",
+        max_regression_failures=0,
+        breaking_change_policy="block",
+        deprecation_window_days=0,
+        correlation_id="cont-s4-core-failed",
+    )
+
+    def fail_regression_gate(_context: dict[str, object]) -> dict[str, object]:
+        return {
+            "status": "succeeded",
+            "decision_reason": "regression_detected",
+            "regression_failures": 2,
+            "regression_gate_passed": False,
+        }
+
+    with pytest.raises(S4CanonicalContractCoreError) as exc:
+        execute_s4_contract_validation_main_flow(
+            flow_input,
+            execute_compatibility_validation=fail_regression_gate,
+        )
+
+    error = exc.value
+    assert error.code == "CONT_S4_REGRESSION_GATE_FAILED"
+    assert error.stage == "compatibility_validation"
+    assert (error.event_id or "").startswith("conts4coreevt-")

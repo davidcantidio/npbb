@@ -10,8 +10,12 @@ Documentar o fluxo principal da Sprint 4 do epico Contrato Canonico + Validacao 
 Arquivos principais da sprint:
 - `core/contracts/s4_scaffold.py`
 - `core/contracts/s4_core.py`
+- `core/contracts/s4_observability.py`
 - `backend/app/services/contract_validation_service.py`
+- `backend/app/services/contrato-can-nico-valida-o-estrita-linhagem-obrigat-ria_telemetry.py`
 - `tests/test_contract_validation_s4.py`
+- `tests/test_contract_validation_s4_observability.py`
+- `tests/test_contract_validation_s4_telemetry.py`
 
 ## Escopo funcional da Sprint 4
 - Validar entrada canonicamente no scaffold S4.
@@ -61,6 +65,14 @@ Saida service (`execute_s4_contract_validation_service`):
 - `scaffold`
 
 ## Logs e rastreabilidade
+Observabilidade do core:
+- modulo: `core/contracts/s4_observability.py`
+- principais funcoes: `build_s4_contract_observability_event`, `log_s4_contract_observability_event`, `build_s4_contract_actionable_error`
+
+Telemetria do backend:
+- modulo: `backend/app/services/contrato-can-nico-valida-o-estrita-linhagem-obrigat-ria_telemetry.py`
+- principais funcoes: `build_s4_contract_telemetry_event`, `emit_s4_contract_telemetry_event`, `build_s4_contract_error_detail`
+
 Core:
 - logger: `npbb.core.contracts.s4.core`
 - eventos: `contract_validation_s4_main_flow_started`, `contract_validation_s4_main_flow_completed`
@@ -87,10 +99,14 @@ Campos minimos para diagnostico:
 - `CONT_S4_REGRESSION_GATE_FAILED`
 - `CONT_S4_MAIN_FLOW_FAILED`
 - `CONTRACT_VALIDATION_S4_FLOW_FAILED`
+- `INVALID_CONT_S4_OBSERVABILITY_*`
+- `INVALID_CONT_S4_TELEMETRY_*`
 
 ## Validacao local
 ```bash
 pytest -q tests/test_contract_validation_s4.py
+pytest -q tests/test_contract_validation_s4_observability.py
+pytest -q tests/test_contract_validation_s4_telemetry.py
 ```
 
 ## Limites da Sprint 4

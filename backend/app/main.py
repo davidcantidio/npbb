@@ -18,6 +18,7 @@ from app.routers.checkin_sem_qr_public import router as checkin_sem_qr_public_ro
 from app.routers.landing_public import router as landing_public_router
 from app.routers.leads import router as leads_router
 from app.routers.ingressos import router as ingressos_router
+from app.routers.revisao_humana import router as revisao_humana_router
 from app.routers.usuarios import router as usuarios_router
 
 app = FastAPI(title="NPBB API")
@@ -157,3 +158,4 @@ app.include_router(ingressos_router)
 app.include_router(leads_router)
 app.include_router(landing_public_router)
 app.include_router(checkin_sem_qr_public_router)
+app.include_router(revisao_humana_router)

@@ -23,6 +23,11 @@ try:  # pragma: no cover - import style depends on execution cwd
         S2WorkbenchCoreInput,
         execute_workbench_revisao_s2_main_flow,
     )
+    from frontend.src.features.revisao_humana.s3_core import (
+        S3WorkbenchCoreError,
+        S3WorkbenchCoreInput,
+        execute_workbench_revisao_s3_main_flow,
+    )
     from frontend.src.features.revisao_humana.s1_scaffold import (
         S1WorkbenchScaffoldError,
         S1WorkbenchScaffoldRequest,
@@ -51,6 +56,11 @@ except ModuleNotFoundError:  # pragma: no cover
         S2WorkbenchCoreError,
         S2WorkbenchCoreInput,
         execute_workbench_revisao_s2_main_flow,
+    )
+    from frontend.src.features.revisao_humana.s3_core import (
+        S3WorkbenchCoreError,
+        S3WorkbenchCoreInput,
+        execute_workbench_revisao_s3_main_flow,
     )
     from frontend.src.features.revisao_humana.s1_scaffold import (
         S1WorkbenchScaffoldError,
@@ -151,6 +161,26 @@ class RevisaoHumanaS2ExecuteBody(BaseModel):
 
 class RevisaoHumanaS3PrepareBody(BaseModel):
     """Body contract for WORK Sprint 3 scaffold preparation endpoint."""
+
+    workflow_id: str = Field(..., min_length=1)
+    dataset_name: str = Field(..., min_length=1)
+    entity_kind: str = "lead"
+    schema_version: str = "v3"
+    owner_team: str = "etl"
+    batch_size: int = 200
+    max_pending_batches: int = 2000
+    approval_mode: str = "dual_control"
+    required_approvers: int = 2
+    approver_roles: list[str] | None = None
+    approval_sla_hours: int = 24
+    require_justification: bool = True
+    allow_partial_approval: bool = False
+    auto_lock_on_conflict: bool = True
+    correlation_id: str | None = None
+
+
+class RevisaoHumanaS3ExecuteBody(BaseModel):
+    """Body contract for WORK Sprint 3 main-flow execution endpoint."""
 
     workflow_id: str = Field(..., min_length=1)
     dataset_name: str = Field(..., min_length=1)
@@ -440,6 +470,98 @@ def prepare_workbench_revisao_s3(payload: RevisaoHumanaS3PrepareBody) -> dict[st
             "dataset_name": result["dataset_name"],
             "status": result["status"],
             "approval_mode": result.get("batch_approval_policy", {}).get("approval_mode"),
+        },
+    )
+    return result
+
+
+@router.post("/s3/execute")
+def execute_workbench_revisao_s3(payload: RevisaoHumanaS3ExecuteBody) -> dict[str, object]:
+    """Execute WORK Sprint 3 main flow and return stable output contract.
+
+    Args:
+        payload: Workbench batch-approval input contract for Sprint 3
+            execution.
+
+    Returns:
+        dict[str, object]: Stable main-flow output contract for Sprint 3.
+
+    Raises:
+        HTTPException: If flow validation or execution fails.
+    """
+
+    correlation_id = payload.correlation_id or f"work-s3-api-{uuid4().hex[:12]}"
+    logger.info(
+        "workbench_revisao_s3_execute_requested",
+        extra={
+            "correlation_id": correlation_id,
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "schema_version": payload.schema_version,
+            "approval_mode": payload.approval_mode,
+            "required_approvers": payload.required_approvers,
+            "batch_size": payload.batch_size,
+        },
+    )
+
+    try:
+        core_input = S3WorkbenchCoreInput(
+            workflow_id=payload.workflow_id,
+            dataset_name=payload.dataset_name,
+            entity_kind=payload.entity_kind,
+            schema_version=payload.schema_version,
+            owner_team=payload.owner_team,
+            batch_size=payload.batch_size,
+            max_pending_batches=payload.max_pending_batches,
+            approval_mode=payload.approval_mode,
+            required_approvers=payload.required_approvers,
+            approver_roles=(
+                tuple(payload.approver_roles)
+                if payload.approver_roles is not None
+                else None
+            ),
+            approval_sla_hours=payload.approval_sla_hours,
+            require_justification=payload.require_justification,
+            allow_partial_approval=payload.allow_partial_approval,
+            auto_lock_on_conflict=payload.auto_lock_on_conflict,
+            correlation_id=correlation_id,
+        )
+        result = execute_workbench_revisao_s3_main_flow(core_input).to_dict()
+    except S3WorkbenchCoreError as exc:
+        logger.warning(
+            "workbench_revisao_s3_execute_failed",
+            extra={
+                "correlation_id": correlation_id,
+                "workflow_id": payload.workflow_id,
+                "dataset_name": payload.dataset_name,
+                "error_code": exc.code,
+                "error_message": exc.message,
+                "recommended_action": exc.action,
+                "stage": exc.stage,
+                "event_id": exc.event_id,
+            },
+        )
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code=exc.code,
+            message=exc.message,
+            extra={
+                "action": exc.action,
+                "correlation_id": correlation_id,
+                "stage": exc.stage,
+                "event_id": exc.event_id,
+            },
+        )
+
+    logger.info(
+        "workbench_revisao_s3_execute_completed",
+        extra={
+            "correlation_id": result["correlation_id"],
+            "workflow_id": result["workflow_id"],
+            "dataset_name": result["dataset_name"],
+            "status": result["status"],
+            "execution_status": result.get("execucao", {}).get("status"),
         },
     )
     return result

@@ -109,36 +109,29 @@ function getFriendlyErrorMessage(err: unknown, fallback: string) {
   return fallback;
 }
 
+function formatDiretoriaNome(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 type AtivoCardProps = {
-  item: AtivoListItem;
+  grupo: {
+    evento_id: number;
+    evento_nome: string;
+    diretorias: AtivoListItem[];
+  };
   onAssign: (item: AtivoListItem) => void;
   onDelete: (item: AtivoListItem) => void;
   onOpenIngressos: (item: AtivoListItem) => void;
 };
 
-type DiretoriaSummary = {
-  diretoria_id: number;
-  diretoria_nome: string;
-  total: number;
-  usados: number;
-  disponiveis: number;
-  percentual_usado: number;
-  eventos: AtivoListItem[];
-};
-
-const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onOpenIngressos }: AtivoCardProps) {
-  const disponiveis =
-    typeof item.disponiveis === "number" ? item.disponiveis : Math.max(item.total - item.usados, 0);
-  const rawPercentual =
-    typeof item.percentual_usado === "number"
-      ? item.percentual_usado
-      : item.total > 0
-        ? item.usados / item.total
-        : 0;
-  const percentual = Math.max(0, Math.min(rawPercentual, 1));
-  const percentualLabel = `${Math.round(percentual * 100)}%`;
-  const usageColor = percentual >= 0.8 ? "error" : percentual >= 0.5 ? "warning" : "success";
-
+const AtivoCard = memo(function AtivoCard({ grupo, onAssign, onDelete, onOpenIngressos }: AtivoCardProps) {
   return (
     <Paper
       elevation={2}
@@ -148,151 +141,111 @@ const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onOpenIngr
         display: "flex",
         flexDirection: "column",
         gap: 2,
-        cursor: "pointer",
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-        "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: 6,
-        },
       }}
-      onClick={() => onOpenIngressos(item)}
     >
-      <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
-        <Box>
-          <Typography variant="subtitle1" fontWeight={800}>
-            {item.evento_nome}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            Diretoria: {item.diretoria_nome}
-          </Typography>
-        </Box>
-        <Box display="flex" alignItems="center" gap={0.5}>
-          <IconButton
-            size="small"
-            aria-label="Editar cota"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAssign(item);
-            }}
-            sx={{ color: "text.secondary" }}
-          >
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
-            aria-label="Excluir cota"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(item);
-            }}
-            disabled={item.usados > 0}
-            sx={{
-              color: item.usados > 0 ? "action.disabled" : "error.main",
-            }}
-          >
-            <DeleteOutlineIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      </Box>
-
       <Box>
-        <Typography variant="body2" fontWeight={700}>
-          {item.usados} usados de {item.total}
+        <Typography variant="subtitle1" fontWeight={800}>
+          {grupo.evento_nome}
         </Typography>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography
-            variant="caption"
-            fontWeight={700}
-            color={disponiveis > 0 ? "success.main" : "text.secondary"}
-          >
-            {disponiveis} disponiveis
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {percentualLabel}
-          </Typography>
-        </Box>
-        <LinearProgress
-          variant="determinate"
-          value={Math.min(percentual * 100, 100)}
-          color={usageColor}
-          sx={{ mt: 1, height: 8, borderRadius: 999 }}
-        />
-      </Box>
-
-    </Paper>
-  );
-});
-
-const DiretoriaCard = memo(function DiretoriaCard({ summary }: { summary: DiretoriaSummary }) {
-  const percentual = Math.max(0, Math.min(summary.percentual_usado, 1));
-  const percentualLabel = `${Math.round(percentual * 100)}%`;
-  const usageColor = percentual >= 0.8 ? "error" : percentual >= 0.5 ? "warning" : "success";
-
-  return (
-    <Paper elevation={2} sx={{ p: 2.5, borderRadius: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
-        <Box>
-          <Typography variant="subtitle1" fontWeight={800}>
-            {summary.diretoria_nome}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {summary.eventos.length} evento(s)
-          </Typography>
-        </Box>
-        <Box textAlign="right">
-          <Typography variant="body2" fontWeight={800}>
-            {summary.disponiveis} disponiveis
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {summary.usados} usados de {summary.total}
-          </Typography>
-        </Box>
-      </Box>
-
-      <Box>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="caption" color="text.secondary">
-            Uso total
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {percentualLabel}
-          </Typography>
-        </Box>
-        <LinearProgress
-          variant="determinate"
-          value={Math.min(percentual * 100, 100)}
-          color={usageColor}
-          sx={{ mt: 0.5, height: 6, borderRadius: 999 }}
-        />
+        <Typography variant="caption" color="text.secondary">
+          {grupo.diretorias.length} diretoria(s)
+        </Typography>
       </Box>
 
       <Stack spacing={1}>
-        {summary.eventos.map((evento) => {
+        {grupo.diretorias.map((item) => {
           const disponiveis =
-            typeof evento.disponiveis === "number"
-              ? evento.disponiveis
-              : Math.max(evento.total - evento.usados, 0);
-          const percentualEvento =
-            evento.total > 0 ? Math.max(0, Math.min(evento.usados / evento.total, 1)) : 0;
-          const colorEvento =
-            percentualEvento >= 0.8 ? "error" : percentualEvento >= 0.5 ? "warning" : "success";
+            typeof item.disponiveis === "number" ? item.disponiveis : Math.max(item.total - item.usados, 0);
+          const rawPercentual =
+            typeof item.percentual_usado === "number"
+              ? item.percentual_usado
+              : item.total > 0
+                ? item.usados / item.total
+                : 0;
+          const percentual = Math.max(0, Math.min(rawPercentual, 1));
+          const percentualLabel = `${Math.round(percentual * 100)}%`;
+          const usageColor = percentual >= 0.8 ? "error" : percentual >= 0.5 ? "warning" : "success";
 
           return (
-            <Box key={evento.id} sx={{ borderRadius: 1, p: 1, backgroundColor: "action.hover" }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
-                <Typography variant="caption" fontWeight={700} noWrap>
-                  {evento.evento_nome}
+            <Box
+              key={item.id}
+              sx={{
+                p: 1.25,
+                borderRadius: 1.5,
+                backgroundColor: "action.hover",
+                cursor: "pointer",
+              }}
+              onClick={() => onOpenIngressos(item)}
+            >
+              <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
+                <Typography variant="caption">
+                  <Box component="span" sx={{ fontWeight: 700 }}>
+                    {formatDiretoriaNome(item.diretoria_nome)}
+                  </Box>
+                  {" • "}
+                  {disponiveis} disponiveis de {item.total}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {disponiveis} disp.
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <IconButton
+                    size="small"
+                    aria-label="Editar cota"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onAssign(item);
+                    }}
+                    sx={{ color: "text.secondary" }}
+                  >
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    aria-label="Excluir cota"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(item);
+                    }}
+                    disabled={item.usados > 0}
+                    sx={{
+                      color: item.usados > 0 ? "action.disabled" : "error.main",
+                    }}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              </Box>
+
+              <Box display="flex" alignItems="center" gap={1} mt={0.75}>
+                <Box sx={{ flex: 1, position: "relative" }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(percentual * 100, 100)}
+                    color={usageColor}
+                    sx={{
+                      height: 16,
+                      borderRadius: 999,
+                      backgroundColor: "rgba(0,0,0,0.12)",
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 800,
+                      color: percentual >= 0.45 ? "#fff" : "text.primary",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {item.usados}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 40, textAlign: "right" }}>
+                  {percentualLabel}
                 </Typography>
               </Box>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(percentualEvento * 100, 100)}
-                color={colorEvento}
-                sx={{ mt: 0.5, height: 6, borderRadius: 999 }}
-              />
             </Box>
           );
         })}
@@ -771,65 +724,36 @@ export default function AtivosList() {
   );
 
   const filtersPortal = filtersContainer ? createPortal(filtersPanel, filtersContainer) : null;
-  const diretoriaSummaries = useMemo<DiretoriaSummary[]>(() => {
-    if (!items.length) return [];
-    const grouped = new Map<number, DiretoriaSummary>();
-    items.forEach((item) => {
-      const key = item.diretoria_id;
-      const disponiveis =
-        typeof item.disponiveis === "number" ? item.disponiveis : Math.max(item.total - item.usados, 0);
-      const existing =
-        grouped.get(key) ??
-        ({
-          diretoria_id: item.diretoria_id,
-          diretoria_nome: item.diretoria_nome,
-          total: 0,
-          usados: 0,
-          disponiveis: 0,
-          percentual_usado: 0,
-          eventos: [],
-        } as DiretoriaSummary);
-
-      existing.total += Number(item.total ?? 0);
-      existing.usados += Number(item.usados ?? 0);
-      existing.disponiveis += Number(disponiveis ?? 0);
-      existing.eventos.push(item);
-      grouped.set(key, existing);
-    });
+  const groupedItems = useMemo(() => {
+    const grouped = new Map<number, { evento_id: number; evento_nome: string; diretorias: AtivoListItem[] }>();
+    for (const item of items) {
+      const current = grouped.get(item.evento_id);
+      if (!current) {
+        grouped.set(item.evento_id, {
+          evento_id: item.evento_id,
+          evento_nome: item.evento_nome,
+          diretorias: [item],
+        });
+        continue;
+      }
+      current.diretorias.push(item);
+    }
 
     return Array.from(grouped.values())
-      .map((summary) => {
-        summary.percentual_usado =
-          summary.total > 0 ? Math.max(0, Math.min(summary.usados / summary.total, 1)) : 0;
-        summary.eventos.sort((a, b) => {
-          const nameCompare = a.evento_nome.localeCompare(b.evento_nome);
-          if (nameCompare !== 0) return nameCompare;
-          return a.evento_id - b.evento_id;
-        });
-        return summary;
-      })
-      .sort((a, b) => a.diretoria_nome.localeCompare(b.diretoria_nome));
+      .map((grupo) => ({
+        ...grupo,
+        diretorias: [...grupo.diretorias].sort((a, b) => {
+          const nomeCompare = a.diretoria_nome.localeCompare(b.diretoria_nome);
+          if (nomeCompare !== 0) return nomeCompare;
+          return a.id - b.id;
+        }),
+      }))
+      .sort((a, b) => {
+        const nomeCompare = a.evento_nome.localeCompare(b.evento_nome);
+        if (nomeCompare !== 0) return nomeCompare;
+        return a.evento_id - b.evento_id;
+      });
   }, [items]);
-
-  const diretoriaCards = useMemo(() => {
-    if (showSkeletons) {
-      return Array.from({ length: 2 }).map((_, index) => (
-        <Paper
-          key={`diretoria-skeleton-${index}`}
-          elevation={2}
-          sx={{ p: 2.5, borderRadius: 2, display: "flex", flexDirection: "column", gap: 1.5 }}
-        >
-          <Skeleton variant="text" width="60%" height={24} />
-          <Skeleton variant="text" width="40%" height={16} />
-          <Skeleton variant="rectangular" height={6} sx={{ borderRadius: 999 }} />
-          <Skeleton variant="rectangular" height={6} sx={{ borderRadius: 999 }} />
-        </Paper>
-      ));
-    }
-    return diretoriaSummaries.map((summary) => (
-      <DiretoriaCard key={summary.diretoria_id} summary={summary} />
-    ));
-  }, [diretoriaSummaries, showSkeletons]);
 
   const cardsGrid = useMemo(() => {
     if (showSkeletons) {
@@ -853,16 +777,16 @@ export default function AtivosList() {
       ));
     }
 
-    return items.map((item) => (
+    return groupedItems.map((grupo) => (
       <AtivoCard
-        key={item.id}
-        item={item}
+        key={grupo.evento_id}
+        grupo={grupo}
         onAssign={handleOpenModal}
         onDelete={handleOpenDelete}
         onOpenIngressos={handleOpenIngressos}
       />
     ));
-  }, [handleOpenDelete, handleOpenModal, handleOpenIngressos, items, showSkeletons]);
+  }, [groupedItems, handleOpenDelete, handleOpenModal, handleOpenIngressos, showSkeletons]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -904,27 +828,6 @@ export default function AtivosList() {
       {showTopLoading ? (
         <Box sx={{ mb: 2 }}>
           <LinearProgress />
-        </Box>
-      ) : null}
-
-      {!error && (showSkeletons || diretoriaSummaries.length > 0) ? (
-        <Box mb={3}>
-          <Typography variant="subtitle1" fontWeight={800} mb={1}>
-            Disponibilidade por diretoria
-          </Typography>
-          <Box
-            sx={{
-              display: "grid",
-              gap: { xs: 1.5, sm: 2 },
-              gridTemplateColumns: {
-                xs: "1fr",
-                md: "repeat(2, minmax(0, 1fr))",
-                xl: "repeat(3, minmax(0, 1fr))",
-              },
-            }}
-          >
-            {diretoriaCards}
-          </Box>
         </Box>
       ) : null}
 

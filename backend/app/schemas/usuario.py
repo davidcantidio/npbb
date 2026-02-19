@@ -32,10 +32,10 @@ class UsuarioCreate(BaseModel):
             if self.diretoria_id is not None:
                 raise ValueError("Usuario do tipo 'agencia' nao deve ter diretoria_id")
         elif self.tipo_usuario == UsuarioTipo.BB:
-            if not self.matricula and self.diretoria_id is None:
-                raise ValueError("Usuario do tipo 'bb' deve informar matricula ou diretoria")
-            if self.matricula and self.diretoria_id is not None:
-                raise ValueError("Usuario do tipo 'bb' deve informar apenas matricula ou diretoria")
+            if not self.matricula or not str(self.matricula).strip():
+                raise ValueError("Usuario do tipo 'bb' deve informar matricula")
+            if self.diretoria_id is None:
+                raise ValueError("Usuario do tipo 'bb' deve informar diretoria")
             if self.agencia_id is not None:
                 raise ValueError("Usuario do tipo 'bb' nao deve ter agencia_id")
         else:  # NPBB
@@ -52,6 +52,8 @@ class UsuarioRead(BaseModel):
     id: int
     email: EmailStr
     matricula: Optional[str] = None
+    diretoria_id: Optional[int] = None
+    status_aprovacao: Optional[str] = None
     tipo_usuario: UsuarioTipo
     funcionario_id: Optional[int]
     agencia_id: Optional[int]

@@ -116,6 +116,16 @@ type AtivoCardProps = {
   onOpenIngressos: (item: AtivoListItem) => void;
 };
 
+type DiretoriaSummary = {
+  diretoria_id: number;
+  diretoria_nome: string;
+  total: number;
+  usados: number;
+  disponiveis: number;
+  percentual_usado: number;
+  eventos: AtivoListItem[];
+};
+
 const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onOpenIngressos }: AtivoCardProps) {
   const disponiveis =
     typeof item.disponiveis === "number" ? item.disponiveis : Math.max(item.total - item.usados, 0);
@@ -209,6 +219,84 @@ const AtivoCard = memo(function AtivoCard({ item, onAssign, onDelete, onOpenIngr
         />
       </Box>
 
+    </Paper>
+  );
+});
+
+const DiretoriaCard = memo(function DiretoriaCard({ summary }: { summary: DiretoriaSummary }) {
+  const percentual = Math.max(0, Math.min(summary.percentual_usado, 1));
+  const percentualLabel = `${Math.round(percentual * 100)}%`;
+  const usageColor = percentual >= 0.8 ? "error" : percentual >= 0.5 ? "warning" : "success";
+
+  return (
+    <Paper elevation={2} sx={{ p: 2.5, borderRadius: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
+        <Box>
+          <Typography variant="subtitle1" fontWeight={800}>
+            {summary.diretoria_nome}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {summary.eventos.length} evento(s)
+          </Typography>
+        </Box>
+        <Box textAlign="right">
+          <Typography variant="body2" fontWeight={800}>
+            {summary.disponiveis} disponiveis
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {summary.usados} usados de {summary.total}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="caption" color="text.secondary">
+            Uso total
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {percentualLabel}
+          </Typography>
+        </Box>
+        <LinearProgress
+          variant="determinate"
+          value={Math.min(percentual * 100, 100)}
+          color={usageColor}
+          sx={{ mt: 0.5, height: 6, borderRadius: 999 }}
+        />
+      </Box>
+
+      <Stack spacing={1}>
+        {summary.eventos.map((evento) => {
+          const disponiveis =
+            typeof evento.disponiveis === "number"
+              ? evento.disponiveis
+              : Math.max(evento.total - evento.usados, 0);
+          const percentualEvento =
+            evento.total > 0 ? Math.max(0, Math.min(evento.usados / evento.total, 1)) : 0;
+          const colorEvento =
+            percentualEvento >= 0.8 ? "error" : percentualEvento >= 0.5 ? "warning" : "success";
+
+          return (
+            <Box key={evento.id} sx={{ borderRadius: 1, p: 1, backgroundColor: "action.hover" }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+                <Typography variant="caption" fontWeight={700} noWrap>
+                  {evento.evento_nome}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {disponiveis} disp.
+                </Typography>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(percentualEvento * 100, 100)}
+                color={colorEvento}
+                sx={{ mt: 0.5, height: 6, borderRadius: 999 }}
+              />
+            </Box>
+          );
+        })}
+      </Stack>
     </Paper>
   );
 });
@@ -373,7 +461,7 @@ export default function AtivosList() {
 
   const handleOpenIngressos = useCallback(
     (item: AtivoListItem) => {
-      navigate(`/ingressos?evento_id=${item.evento_id}`);
+      navigate(`/ingressos?cota_id=${item.id}`);
     },
     [navigate],
   );
@@ -683,6 +771,66 @@ export default function AtivosList() {
   );
 
   const filtersPortal = filtersContainer ? createPortal(filtersPanel, filtersContainer) : null;
+  const diretoriaSummaries = useMemo<DiretoriaSummary[]>(() => {
+    if (!items.length) return [];
+    const grouped = new Map<number, DiretoriaSummary>();
+    items.forEach((item) => {
+      const key = item.diretoria_id;
+      const disponiveis =
+        typeof item.disponiveis === "number" ? item.disponiveis : Math.max(item.total - item.usados, 0);
+      const existing =
+        grouped.get(key) ??
+        ({
+          diretoria_id: item.diretoria_id,
+          diretoria_nome: item.diretoria_nome,
+          total: 0,
+          usados: 0,
+          disponiveis: 0,
+          percentual_usado: 0,
+          eventos: [],
+        } as DiretoriaSummary);
+
+      existing.total += Number(item.total ?? 0);
+      existing.usados += Number(item.usados ?? 0);
+      existing.disponiveis += Number(disponiveis ?? 0);
+      existing.eventos.push(item);
+      grouped.set(key, existing);
+    });
+
+    return Array.from(grouped.values())
+      .map((summary) => {
+        summary.percentual_usado =
+          summary.total > 0 ? Math.max(0, Math.min(summary.usados / summary.total, 1)) : 0;
+        summary.eventos.sort((a, b) => {
+          const nameCompare = a.evento_nome.localeCompare(b.evento_nome);
+          if (nameCompare !== 0) return nameCompare;
+          return a.evento_id - b.evento_id;
+        });
+        return summary;
+      })
+      .sort((a, b) => a.diretoria_nome.localeCompare(b.diretoria_nome));
+  }, [items]);
+
+  const diretoriaCards = useMemo(() => {
+    if (showSkeletons) {
+      return Array.from({ length: 2 }).map((_, index) => (
+        <Paper
+          key={`diretoria-skeleton-${index}`}
+          elevation={2}
+          sx={{ p: 2.5, borderRadius: 2, display: "flex", flexDirection: "column", gap: 1.5 }}
+        >
+          <Skeleton variant="text" width="60%" height={24} />
+          <Skeleton variant="text" width="40%" height={16} />
+          <Skeleton variant="rectangular" height={6} sx={{ borderRadius: 999 }} />
+          <Skeleton variant="rectangular" height={6} sx={{ borderRadius: 999 }} />
+        </Paper>
+      ));
+    }
+    return diretoriaSummaries.map((summary) => (
+      <DiretoriaCard key={summary.diretoria_id} summary={summary} />
+    ));
+  }, [diretoriaSummaries, showSkeletons]);
+
   const cardsGrid = useMemo(() => {
     if (showSkeletons) {
       return Array.from({ length: 4 }).map((_, index) => (
@@ -756,6 +904,27 @@ export default function AtivosList() {
       {showTopLoading ? (
         <Box sx={{ mb: 2 }}>
           <LinearProgress />
+        </Box>
+      ) : null}
+
+      {!error && (showSkeletons || diretoriaSummaries.length > 0) ? (
+        <Box mb={3}>
+          <Typography variant="subtitle1" fontWeight={800} mb={1}>
+            Disponibilidade por diretoria
+          </Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gap: { xs: 1.5, sm: 2 },
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "repeat(2, minmax(0, 1fr))",
+                xl: "repeat(3, minmax(0, 1fr))",
+              },
+            }}
+          >
+            {diretoriaCards}
+          </Box>
         </Box>
       ) : null}
 

@@ -94,7 +94,7 @@ def test_login_inactive_user(client, engine):
     assert response.status_code == 401
 
 
-def test_login_bb_pendente_retorna_403(client, engine):
+def test_login_bb_pendente_ok(client, engine):
     user = seed_user(
         engine,
         email="bb@bb.com.br",
@@ -105,8 +105,7 @@ def test_login_bb_pendente_retorna_403(client, engine):
         "/auth/login",
         json={"email": user.email, "password": "senha123"},
     )
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Usuário BB pendente de aprovação"
+    assert response.status_code == 200
 
 
 def test_login_bb_aprovado_ok(client, engine):

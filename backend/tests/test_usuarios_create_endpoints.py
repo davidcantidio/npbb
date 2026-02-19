@@ -93,6 +93,7 @@ def test_usuarios_create_bb_sucesso_e_link_por_matricula(client, engine):
             "password": "Senha123",
             "tipo_usuario": "bb",
             "matricula": "c1351833",
+            "diretoria_id": funcionario.diretoria_id,
         },
     )
     assert resp.status_code == 201
@@ -142,7 +143,13 @@ def test_usuarios_create_rejeita_domain_invalido(client):
     assert detail["field"] == "email"
 
 
-def test_usuarios_create_rejeita_matricula_invalida_bb(client):
+def test_usuarios_create_rejeita_matricula_invalida_bb(client, engine):
+    with Session(engine) as session:
+        diretoria = Diretoria(nome="dimac")
+        session.add(diretoria)
+        session.commit()
+        session.refresh(diretoria)
+
     resp = client.post(
         "/usuarios/",
         json={
@@ -150,6 +157,7 @@ def test_usuarios_create_rejeita_matricula_invalida_bb(client):
             "password": "Senha123",
             "tipo_usuario": "bb",
             "matricula": "123",
+            "diretoria_id": diretoria.id,
         },
     )
     assert resp.status_code == 400
@@ -210,6 +218,12 @@ def test_usuarios_create_rejeita_email_duplicado(client, engine):
 
 
 def test_usuarios_create_rejeita_matricula_duplicada(client, engine):
+    with Session(engine) as session:
+        diretoria = Diretoria(nome="dimac")
+        session.add(diretoria)
+        session.commit()
+        session.refresh(diretoria)
+
     resp_1 = client.post(
         "/usuarios/",
         json={
@@ -217,6 +231,7 @@ def test_usuarios_create_rejeita_matricula_duplicada(client, engine):
             "password": "Senha123",
             "tipo_usuario": "bb",
             "matricula": "c999",
+            "diretoria_id": diretoria.id,
         },
     )
     assert resp_1.status_code == 201
@@ -228,6 +243,7 @@ def test_usuarios_create_rejeita_matricula_duplicada(client, engine):
             "password": "Senha123",
             "tipo_usuario": "bb",
             "matricula": "c999",
+            "diretoria_id": diretoria.id,
         },
     )
     assert resp_2.status_code == 409

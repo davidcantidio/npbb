@@ -124,10 +124,9 @@ export default function Register() {
 
     if (userType === "bb") {
       if (!diretoriaId) next.diretoriaId = "Selecione sua diretoria";
-      // Matricula BB desativada (Jan/2026). Para reativar, use o bloco abaixo.
-      // if (!matriculaBB) next.matriculaBB = "Informe a matricula BB";
-      // else if (!/^[A-Za-z][0-9]{1,16}$/.test(matriculaBB))
-      //   next.matriculaBB = "Formato invalido (ex.: A123)";
+      if (!matriculaBB) next.matriculaBB = "Informe a matricula BB";
+      else if (!/^[A-Za-z][0-9]{1,16}$/.test(matriculaBB))
+        next.matriculaBB = "Formato invalido (ex.: A123)";
     }
 
     if (userType === "agencia" && !agenciaId) next.agenciaId = "Selecione uma agencia";
@@ -186,7 +185,9 @@ export default function Register() {
         email: email.trim(),
         password,
         tipo_usuario: userType,
-        ...(userType === "bb" ? { diretoria_id: Number(diretoriaId) } : {}),
+        ...(userType === "bb"
+          ? { diretoria_id: Number(diretoriaId), matricula: matriculaBB.trim() }
+          : {}),
         ...(userType === "agencia" ? { agencia_id: Number(agenciaId) } : {}),
       });
 
@@ -522,8 +523,6 @@ export default function Register() {
                         {diretoriasError}
                       </Typography>
                     )}
-                    {/* Matricula BB desativada (Jan/2026). Para reativar, descomentar. */}
-                    {/*
                     <TextField
                       label="Matricula BB"
                       value={matriculaBB}
@@ -541,7 +540,6 @@ export default function Register() {
                       error={Boolean(errors.matriculaBB || serverFieldErrors.matriculaBB)}
                       helperText={serverFieldErrors.matriculaBB ?? errors.matriculaBB}
                     />
-                    */}
                   </>
                 )}
 

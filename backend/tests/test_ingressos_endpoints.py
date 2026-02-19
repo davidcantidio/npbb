@@ -66,10 +66,13 @@ def seed_user_with_diretoria(
     email: str,
     password: str,
     diretoria_id: int,
+    matricula: str | None = None,
+    status_aprovacao: str | None = "APROVADO",
 ) -> Usuario:
+    matricula_value = matricula or f"c{abs(hash(email)) % 100000}"
     funcionario = Funcionario(
         nome="Funcionario",
-        chave_c=f"CHV{email}",
+        chave_c=matricula_value,
         diretoria_id=diretoria_id,
         email=email,
     )
@@ -82,6 +85,8 @@ def seed_user_with_diretoria(
         password_hash=hash_password(password),
         tipo_usuario="bb",
         funcionario_id=int(funcionario.id),
+        matricula=matricula_value,
+        status_aprovacao=status_aprovacao,
         ativo=True,
     )
     session.add(user)
@@ -115,12 +120,40 @@ def login_and_get_token(client: TestClient, email: str, password: str) -> str:
     return resp.json()["access_token"]
 
 
+def test_ingressos_bb_pendente_bloqueia(client, engine):
+    with Session(engine) as session:
+        diretoria = seed_diretoria(session, nome="pendente")
+        user = seed_user_with_diretoria(
+            session,
+            email="pendente@bb.com.br",
+            password="Senha123!",
+            diretoria_id=int(diretoria.id),
+            status_aprovacao="PENDENTE",
+        )
+        token = login_and_get_token(client, user.email, "Senha123!")
+
+    resp = client.get(
+        "/ingressos/ativos",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 403
+    detail = resp.json().get("detail", {})
+    assert detail.get("code") == "USER_NOT_APPROVED"
+
+
 def test_solicitacao_disponibilidade_bloqueia(client, engine):
     with Session(engine) as session:
         diretoria = seed_diretoria(session)
         user = seed_user_with_diretoria(
             session,
             email="user@bb.com.br",
+            password="Senha123!",
+            diretoria_id=int(diretoria.id),
+        )
+        user_email = user.email
+        ocupante = seed_user_with_diretoria(
+            session,
+            email="ocupante@bb.com.br",
             password="Senha123!",
             diretoria_id=int(diretoria.id),
         )
@@ -133,25 +166,26 @@ def test_solicitacao_disponibilidade_bloqueia(client, engine):
         session.add(cota)
         session.commit()
         session.refresh(cota)
+        cota_id = int(cota.id)
         session.add(
             SolicitacaoIngresso(
                 cota_id=int(cota.id),
                 evento_id=int(evento.id),
                 diretoria_id=int(diretoria.id),
-                solicitante_usuario_id=int(user.id),
-                solicitante_email=user.email,
+                solicitante_usuario_id=int(ocupante.id),
+                solicitante_email=ocupante.email,
                 tipo=SolicitacaoIngressoTipo.SELF,
-                indicado_email=user.email,
+                indicado_email=ocupante.email,
                 status=SolicitacaoIngressoStatus.SOLICITADO,
             )
         )
         session.commit()
 
-        token = login_and_get_token(client, user.email, "Senha123!")
+        token = login_and_get_token(client, user_email, "Senha123!")
 
     resp = client.post(
         "/ingressos/solicitacoes",
-        json={"cota_id": int(cota.id), "tipo": "SELF"},
+        json={"cota_id": cota_id, "tipo": "SELF"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 409
@@ -168,6 +202,7 @@ def test_solicitacao_duplicidade_bloqueia(client, engine):
             password="Senha123!",
             diretoria_id=int(diretoria.id),
         )
+        user_email = user.email
         evento = seed_evento(session, diretoria_id=int(diretoria.id))
         cota = CotaCortesia(
             evento_id=int(evento.id),
@@ -177,19 +212,20 @@ def test_solicitacao_duplicidade_bloqueia(client, engine):
         session.add(cota)
         session.commit()
         session.refresh(cota)
+        cota_id = int(cota.id)
 
-        token = login_and_get_token(client, user.email, "Senha123!")
+        token = login_and_get_token(client, user_email, "Senha123!")
 
     resp1 = client.post(
         "/ingressos/solicitacoes",
-        json={"cota_id": int(cota.id), "tipo": "SELF"},
+        json={"cota_id": cota_id, "tipo": "SELF"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp1.status_code == 201
 
     resp2 = client.post(
         "/ingressos/solicitacoes",
-        json={"cota_id": int(cota.id), "tipo": "SELF"},
+        json={"cota_id": cota_id, "tipo": "SELF"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp2.status_code == 409
@@ -206,6 +242,7 @@ def test_solicitacao_self_ok(client, engine):
             password="Senha123!",
             diretoria_id=int(diretoria.id),
         )
+        user_email = user.email
         evento = seed_evento(session, diretoria_id=int(diretoria.id))
         cota = CotaCortesia(
             evento_id=int(evento.id),
@@ -215,16 +252,17 @@ def test_solicitacao_self_ok(client, engine):
         session.add(cota)
         session.commit()
         session.refresh(cota)
-        token = login_and_get_token(client, user.email, "Senha123!")
+        cota_id = int(cota.id)
+        token = login_and_get_token(client, user_email, "Senha123!")
 
     resp = client.post(
         "/ingressos/solicitacoes",
-        json={"cota_id": int(cota.id), "tipo": "SELF"},
+        json={"cota_id": cota_id, "tipo": "SELF"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 201
     payload = resp.json()
-    assert payload["cota_id"] == int(cota.id)
+    assert payload["cota_id"] == cota_id
     assert payload["status"] == "SOLICITADO"
     assert payload["solicitante_email"] == "self@bb.com.br"
     assert payload["indicado_email"] == "self@bb.com.br"
@@ -239,6 +277,7 @@ def test_solicitacao_terceiro_ok(client, engine):
             password="Senha123!",
             diretoria_id=int(diretoria.id),
         )
+        user_email = user.email
         evento = seed_evento(session, diretoria_id=int(diretoria.id))
         cota = CotaCortesia(
             evento_id=int(evento.id),
@@ -248,16 +287,17 @@ def test_solicitacao_terceiro_ok(client, engine):
         session.add(cota)
         session.commit()
         session.refresh(cota)
-        token = login_and_get_token(client, user.email, "Senha123!")
+        cota_id = int(cota.id)
+        token = login_and_get_token(client, user_email, "Senha123!")
 
     resp = client.post(
         "/ingressos/solicitacoes",
-        json={"cota_id": int(cota.id), "tipo": "TERCEIRO", "indicado_email": "alvo@bb.com.br"},
+        json={"cota_id": cota_id, "tipo": "TERCEIRO", "indicado_email": "alvo@bb.com.br"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 201
     payload = resp.json()
-    assert payload["cota_id"] == int(cota.id)
+    assert payload["cota_id"] == cota_id
     assert payload["status"] == "SOLICITADO"
     assert payload["solicitante_email"] == "terc@bb.com.br"
     assert payload["indicado_email"] == "alvo@bb.com.br"
@@ -272,6 +312,7 @@ def test_ingressos_ativos_ignora_cancelado(client, engine):
             password="Senha123!",
             diretoria_id=int(diretoria.id),
         )
+        user_email = user.email
         evento = seed_evento(session, diretoria_id=int(diretoria.id))
         cota = CotaCortesia(
             evento_id=int(evento.id),
@@ -295,7 +336,7 @@ def test_ingressos_ativos_ignora_cancelado(client, engine):
         )
         session.commit()
 
-        token = login_and_get_token(client, user.email, "Senha123!")
+        token = login_and_get_token(client, user_email, "Senha123!")
 
     resp = client.get(
         "/ingressos/ativos",

@@ -77,7 +77,7 @@ def criar_usuario(
     - email
     - password (sera hasheada no servidor)
     - tipo_usuario: bb | npbb | agencia
-    - matricula (BB) / agencia_id (AGENCIA)
+    - matricula + diretoria (BB) / agencia_id (AGENCIA)
 
     Regras:
     - Dominios de email:
@@ -109,35 +109,47 @@ def criar_usuario(
                 message="Para BB, use email @bb.com.br",
                 field="email",
             )
-        if usuario_in.matricula:
-            matricula = (usuario_in.matricula or "").strip()
-            if not MATRICULA_RE.match(matricula):
+        matricula = (usuario_in.matricula or "").strip()
+        if not MATRICULA_RE.match(matricula):
+            _raise_http(
+                status.HTTP_400_BAD_REQUEST,
+                code="MATRICULA_INVALID",
+                message="Matricula invalida (ex.: A123)",
+                field="matricula",
+            )
+        if usuario_in.diretoria_id is None:
+            _raise_http(
+                status.HTTP_400_BAD_REQUEST,
+                code="DIRETORIA_REQUIRED",
+                message="Diretoria e obrigatoria para usuarios BB",
+                field="diretoria_id",
+            )
+        matricula_value = matricula.lower()
+        diretoria = session.get(Diretoria, usuario_in.diretoria_id)
+        if not diretoria:
+            _raise_http(
+                status.HTTP_400_BAD_REQUEST,
+                code="DIRETORIA_NOT_FOUND",
+                message="Diretoria nao encontrada",
+                field="diretoria_id",
+            )
+        funcionario = session.exec(
+            select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_value)
+        ).first()
+        if funcionario:
+            if funcionario.diretoria_id and int(funcionario.diretoria_id) != int(diretoria.id):
                 _raise_http(
                     status.HTTP_400_BAD_REQUEST,
-                    code="MATRICULA_INVALID",
-                    message="Matricula invalida (ex.: A123)",
-                    field="matricula",
-                )
-            matricula_value = matricula.lower()
-            funcionario = session.exec(
-                select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_value)
-            ).first()
-            if funcionario:
-                funcionario_id = funcionario.id
-        elif usuario_in.diretoria_id is not None:
-            diretoria = session.get(Diretoria, usuario_in.diretoria_id)
-            if not diretoria:
-                _raise_http(
-                    status.HTTP_400_BAD_REQUEST,
-                    code="DIRETORIA_NOT_FOUND",
-                    message="Diretoria nao encontrada",
+                    code="DIRETORIA_MISMATCH",
+                    message="Diretoria nao corresponde a matricula",
                     field="diretoria_id",
                 )
+            funcionario_id = funcionario.id
+        else:
             email_local = email.split("@")[0]
-            chave_c = _generate_chave_c(session, email_local)
             funcionario = Funcionario(
                 nome=email_local or email,
-                chave_c=chave_c,
+                chave_c=matricula_value,
                 diretoria_id=int(diretoria.id),
                 email=email,
             )
@@ -204,6 +216,7 @@ def criar_usuario(
         tipo_usuario=usuario_in.tipo_usuario.value,
         funcionario_id=funcionario_id,
         agencia_id=agencia_id,
+        status_aprovacao="PENDENTE" if usuario_in.tipo_usuario == UsuarioTipo.BB else None,
     )
 
     try:

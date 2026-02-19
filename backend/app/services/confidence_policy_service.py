@@ -1,8 +1,8 @@
 """Operational service for CONF Sprint 1, Sprint 2, and Sprint 3 policies.
 
-This module executes CONF Sprint 1 and Sprint 2 main-flow contracts, plus
-CONF Sprint 3 scaffold contracts, and emits structured operational logs with
-actionable errors for integration layers.
+This module executes CONF Sprint 1, Sprint 2, and Sprint 3 main-flow
+contracts and emits structured operational logs with actionable errors for
+integration layers.
 """
 
 from __future__ import annotations
@@ -31,10 +31,13 @@ try:  # pragma: no cover - import style depends on execution cwd
     from core.confidence.s2_scaffold import (
         S2ConfidenceScaffoldRequest,
     )
+    from core.confidence.s3_core import (
+        S3ConfidenceCoreError,
+        S3ConfidenceCoreInput,
+        execute_s3_confidence_policy_main_flow,
+    )
     from core.confidence.s3_scaffold import (
-        S3ConfidenceScaffoldError,
         S3ConfidenceScaffoldRequest,
-        build_s3_confidence_scaffold,
     )
 except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
@@ -56,10 +59,13 @@ except ModuleNotFoundError:  # pragma: no cover
     from core.confidence.s2_scaffold import (
         S2ConfidenceScaffoldRequest,
     )
+    from core.confidence.s3_core import (
+        S3ConfidenceCoreError,
+        S3ConfidenceCoreInput,
+        execute_s3_confidence_policy_main_flow,
+    )
     from core.confidence.s3_scaffold import (
-        S3ConfidenceScaffoldError,
         S3ConfidenceScaffoldRequest,
-        build_s3_confidence_scaffold,
     )
 
 
@@ -558,7 +564,7 @@ def execute_s2_confidence_policy_service(
 def execute_s3_confidence_policy_service(
     request: S3ConfidenceScaffoldRequest,
 ) -> S3ConfidencePolicyServiceOutput:
-    """Execute CONF Sprint 3 scaffold service with actionable diagnostics.
+    """Execute CONF Sprint 3 main-flow service with actionable diagnostics.
 
     Args:
         request: CONF Sprint 3 input contract with critical-field guardrails
@@ -569,8 +575,8 @@ def execute_s3_confidence_policy_service(
             decision policy and observability identifiers.
 
     Raises:
-        S3ConfidencePolicyServiceError: If scaffold validation fails or an
-            unexpected service error happens.
+        S3ConfidencePolicyServiceError: If main-flow decision execution fails
+            or an unexpected service error happens.
     """
 
     correlation_id = request.correlation_id or f"conf-s3-{uuid4().hex[:12]}"
@@ -590,8 +596,8 @@ def execute_s3_confidence_policy_service(
     )
 
     try:
-        scaffold = build_s3_confidence_scaffold(
-            _to_s3_scaffold_input(request=request, correlation_id=correlation_id)
+        core_output = execute_s3_confidence_policy_main_flow(
+            _to_s3_core_input(request=request, correlation_id=correlation_id)
         )
 
         policy_ready_event_id = _new_s3_event_id()
@@ -600,16 +606,16 @@ def execute_s3_confidence_policy_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": policy_ready_event_id,
-                "policy_id": scaffold.policy_id,
-                "dataset_name": scaffold.dataset_name,
-                "entity_kind": scaffold.decision_policy.get("entity_kind"),
+                "policy_id": core_output.policy_id,
+                "dataset_name": core_output.dataset_name,
+                "entity_kind": core_output.decision_policy.get("entity_kind"),
                 "critical_fields_count": (
-                    scaffold.decision_policy.get("critical_fields_policy", {}).get(
+                    core_output.decision_policy.get("critical_fields_policy", {}).get(
                         "critical_fields_count"
                     )
                 ),
                 "critical_violation_route": (
-                    scaffold.decision_policy.get("critical_fields_policy", {}).get(
+                    core_output.decision_policy.get("critical_fields_policy", {}).get(
                         "critical_violation_route"
                     )
                 ),
@@ -622,19 +628,22 @@ def execute_s3_confidence_policy_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "policy_id": scaffold.policy_id,
-                "dataset_name": scaffold.dataset_name,
-                "status": scaffold.status,
-                "execution_status": "ready",
-                "critical_override_required": (
-                    scaffold.decision_policy.get("critical_fields_policy", {}).get(
-                        "critical_override_required"
-                    )
+                "policy_id": core_output.policy_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
+                "decision": core_output.execucao.get("decision"),
+                "confidence_score": core_output.execucao.get("confidence_score"),
+                "critical_violation_triggered": core_output.execucao.get(
+                    "critical_violation_triggered"
+                ),
+                "gap_escalation_triggered": core_output.execucao.get(
+                    "gap_escalation_triggered"
                 ),
             },
         )
 
-        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["confidence_policy_service_module"] = (
             "app.services.confidence_policy_service.execute_s3_confidence_policy_service"
         )
@@ -645,38 +654,35 @@ def execute_s3_confidence_policy_service(
         return S3ConfidencePolicyServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S3,
             correlation_id=correlation_id,
-            status=scaffold.status,
-            policy_id=scaffold.policy_id,
-            dataset_name=scaffold.dataset_name,
-            decision_policy=dict(scaffold.decision_policy),
-            execucao={
-                "status": "ready",
-                "decision_reason": "scaffold_only_critical_fields_contract",
-                "critical_override_required": bool(
-                    scaffold.decision_policy.get("critical_fields_policy", {}).get(
-                        "critical_override_required",
-                        False,
-                    )
-                ),
-            },
+            status=core_output.status,
+            policy_id=core_output.policy_id,
+            dataset_name=core_output.dataset_name,
+            decision_policy=dict(core_output.decision_policy),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "policy_profile_ready_event_id": policy_ready_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade[
+                    "flow_completed_event_id"
+                ],
             },
-            scaffold=scaffold.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S3ConfidenceScaffoldError as exc:
+    except S3ConfidenceCoreError as exc:
         failed_event_id = _new_s3_event_id()
         logger.warning(
-            "confidence_policy_s3_scaffold_error",
+            "confidence_policy_s3_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S3ConfidencePolicyServiceError(
@@ -684,7 +690,7 @@ def execute_s3_confidence_policy_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S3ConfidencePolicyServiceError:
@@ -702,7 +708,7 @@ def execute_s3_confidence_policy_service(
         raise S3ConfidencePolicyServiceError(
             code="CONFIDENCE_POLICY_S3_FLOW_FAILED",
             message=f"Falha ao executar fluxo CONF S3: {type(exc).__name__}",
-            action="Revisar logs operacionais e validar contrato de entrada do CONF S3.",
+            action="Revisar logs operacionais e validar contrato de entrada/main-flow do CONF S3.",
             correlation_id=correlation_id,
             stage="service",
             event_id=failed_event_id,
@@ -766,12 +772,12 @@ def _to_s2_core_input(
     )
 
 
-def _to_s3_scaffold_input(
+def _to_s3_core_input(
     *,
     request: S3ConfidenceScaffoldRequest,
     correlation_id: str,
-) -> S3ConfidenceScaffoldRequest:
-    return S3ConfidenceScaffoldRequest(
+) -> S3ConfidenceCoreInput:
+    return S3ConfidenceCoreInput(
         policy_id=request.policy_id,
         dataset_name=request.dataset_name,
         entity_kind=request.entity_kind,

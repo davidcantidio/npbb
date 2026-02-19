@@ -1,7 +1,7 @@
-"""Operational tools for CONF Sprint 1, Sprint 2, and Sprint 3 flows.
+"""Operational tools for CONF Sprint 1, Sprint 2, Sprint 3, and Sprint 4 flows.
 
 This script provides small, verifiable runbook commands to:
-1. validate CONF Sprint 1/Sprint 2/Sprint 3 input contracts;
+1. validate CONF Sprint 1/Sprint 2/Sprint 3/Sprint 4 input contracts;
 2. simulate core and service flow execution;
 3. execute end-to-end local runbook checks.
 """
@@ -28,9 +28,11 @@ from app.services.confidence_policy_service import (  # noqa: E402
     S1ConfidencePolicyServiceError,
     S2ConfidencePolicyServiceError,
     S3ConfidencePolicyServiceError,
+    S4ConfidencePolicyServiceError,
     execute_s1_confidence_policy_service,
     execute_s2_confidence_policy_service,
     execute_s3_confidence_policy_service,
+    execute_s4_confidence_policy_service,
 )
 from core.confidence.s1_core import (  # noqa: E402
     S1ConfidenceCoreError,
@@ -61,6 +63,16 @@ from core.confidence.s3_validation import (  # noqa: E402
     S3ConfidenceValidationInput,
     validate_s3_confidence_input_contract,
     validate_s3_confidence_output_contract,
+)
+from core.confidence.s4_core import (  # noqa: E402
+    S4ConfidenceCoreError,
+    execute_s4_confidence_policy_main_flow,
+)
+from core.confidence.s4_validation import (  # noqa: E402
+    S4ConfidenceValidationError,
+    S4ConfidenceValidationInput,
+    validate_s4_confidence_input_contract,
+    validate_s4_confidence_output_contract,
 )
 
 
@@ -99,7 +111,7 @@ class ToolExecutionError(RuntimeError):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Build CLI parser for CONF Sprint 1, Sprint 2, and Sprint 3 commands."""
+    """Build CLI parser for CONF Sprint 1, Sprint 2, Sprint 3, and Sprint 4 commands."""
 
     parser = argparse.ArgumentParser(prog="confidence_tools")
     parser.add_argument(
@@ -243,6 +255,63 @@ def _build_parser() -> argparse.ArgumentParser:
         critical_field_penalty=0.25,
         critical_violation_route="manual_review",
         critical_override_required="true",
+        correlation_id=None,
+    )
+
+    s4_validate_parser = sub.add_parser(
+        "s4:validate-input",
+        help="Validate CONF Sprint 4 input contract.",
+    )
+    _add_s4_common_args(s4_validate_parser, required=True)
+
+    s4_simulate_core_parser = sub.add_parser(
+        "s4:simulate-core",
+        help="Simulate CONF Sprint 4 core flow and validate output contract.",
+    )
+    _add_s4_common_args(s4_simulate_core_parser, required=True)
+
+    s4_simulate_service_parser = sub.add_parser(
+        "s4:simulate-service",
+        help="Simulate CONF Sprint 4 service flow and validate output contract.",
+    )
+    _add_s4_common_args(s4_simulate_service_parser, required=True)
+
+    s4_runbook_parser = sub.add_parser(
+        "s4:runbook-check",
+        help="Run one complete local CONF Sprint 4 runbook check.",
+    )
+    _add_s4_common_args(s4_runbook_parser, required=False)
+    s4_runbook_parser.set_defaults(
+        policy_id="CONF_REPORT_POLICY_V4",
+        dataset_name="event_report_lines",
+        entity_kind="evento",
+        schema_version="v4",
+        owner_team="etl",
+        field_weight=(
+            "nome_evento=0.3",
+            "data_evento=0.3",
+            "local_evento=0.2",
+            "diretoria=0.2",
+        ),
+        default_weight=0.1,
+        auto_approve_threshold=0.85,
+        manual_review_threshold=0.60,
+        gap_threshold=0.40,
+        missing_field_penalty=0.10,
+        decision_mode="feedback_adjusted_thresholds",
+        gap_escalation_required="true",
+        max_manual_review_queue=500,
+        critical_field=("nome_evento", "data_evento", "local_evento"),
+        min_critical_fields_present=2,
+        critical_field_penalty=0.25,
+        critical_violation_route="manual_review",
+        critical_override_required="true",
+        feedback_window_days=30,
+        min_feedback_samples=200,
+        auto_threshold_tuning_enabled="true",
+        max_threshold_delta=0.10,
+        quality_drop_tolerance=0.05,
+        calibration_freeze_on_anomaly="true",
         correlation_id=None,
     )
 
@@ -492,6 +561,152 @@ def _add_s3_common_args(parser: argparse.ArgumentParser, *, required: bool) -> N
     parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
 
 
+def _add_s4_common_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    """Register common CONF Sprint 4 input arguments in one parser."""
+
+    parser.add_argument("--policy-id", required=required, help="Stable confidence policy id.")
+    parser.add_argument("--dataset-name", required=required, help="Dataset name for policy ownership.")
+    parser.add_argument(
+        "--entity-kind",
+        default="lead",
+        help="Entity kind (lead, evento, ingresso, generic).",
+    )
+    parser.add_argument(
+        "--schema-version",
+        default="v4",
+        help="Schema version in vN format.",
+    )
+    parser.add_argument(
+        "--owner-team",
+        default="etl",
+        help="Owner team used by confidence policy governance.",
+    )
+    parser.add_argument(
+        "--field-weight",
+        action="append",
+        default=[],
+        help="Field weight rule in format field=weight (can be repeated).",
+    )
+    parser.add_argument(
+        "--default-weight",
+        type=float,
+        default=1.0,
+        help="Default weight for fields not listed in field_weights.",
+    )
+    parser.add_argument(
+        "--auto-approve-threshold",
+        type=float,
+        default=0.85,
+        help="Confidence threshold for automatic approval.",
+    )
+    parser.add_argument(
+        "--manual-review-threshold",
+        type=float,
+        default=0.60,
+        help="Confidence threshold for manual review.",
+    )
+    parser.add_argument(
+        "--gap-threshold",
+        type=float,
+        default=0.40,
+        help="Confidence threshold for gap routing.",
+    )
+    parser.add_argument(
+        "--missing-field-penalty",
+        type=float,
+        default=0.10,
+        help="Penalty applied when required fields are missing.",
+    )
+    parser.add_argument(
+        "--decision-mode",
+        default="feedback_adjusted_thresholds",
+        choices=(
+            "feedback_adjusted_thresholds",
+            "weighted_feedback_adjusted_thresholds",
+        ),
+        help="Decision policy mode for threshold tuning by real outcomes.",
+    )
+    parser.add_argument(
+        "--gap-escalation-required",
+        default="true",
+        choices=("true", "false"),
+        help="Whether gap escalation is required when manual queue overflows.",
+    )
+    parser.add_argument(
+        "--max-manual-review-queue",
+        type=int,
+        default=500,
+        help="Maximum tolerated manual review queue before escalation to gap.",
+    )
+    parser.add_argument(
+        "--critical-field",
+        action="append",
+        default=[],
+        help="Critical field name (can be repeated).",
+    )
+    parser.add_argument(
+        "--min-critical-fields-present",
+        type=int,
+        default=1,
+        help="Minimum number of critical fields required to avoid violation route.",
+    )
+    parser.add_argument(
+        "--critical-field-penalty",
+        type=float,
+        default=0.20,
+        help="Penalty applied when critical field rule is violated.",
+    )
+    parser.add_argument(
+        "--critical-violation-route",
+        default="manual_review",
+        choices=("manual_review", "gap", "reject"),
+        help="Decision route used when critical field rules are violated.",
+    )
+    parser.add_argument(
+        "--critical-override-required",
+        default="true",
+        choices=("true", "false"),
+        help="Whether critical field rules must override confidence decision.",
+    )
+    parser.add_argument(
+        "--feedback-window-days",
+        type=int,
+        default=30,
+        help="Feedback window (days) used by threshold tuning policy.",
+    )
+    parser.add_argument(
+        "--min-feedback-samples",
+        type=int,
+        default=200,
+        help="Minimum feedback samples required before threshold tuning.",
+    )
+    parser.add_argument(
+        "--auto-threshold-tuning-enabled",
+        default="true",
+        choices=("true", "false"),
+        help="Whether automatic threshold tuning is enabled.",
+    )
+    parser.add_argument(
+        "--max-threshold-delta",
+        type=float,
+        default=0.10,
+        help="Maximum allowed threshold adjustment delta.",
+    )
+    parser.add_argument(
+        "--quality-drop-tolerance",
+        type=float,
+        default=0.05,
+        help="Quality-drop tolerance used by calibration guardrail.",
+    )
+    parser.add_argument(
+        "--calibration-freeze-on-anomaly",
+        default="true",
+        choices=("true", "false"),
+        help="Whether calibration must freeze when anomaly is detected.",
+    )
+    parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
+
+
 def _as_bool(value: str) -> bool:
     """Convert CLI boolean string to Python bool."""
 
@@ -610,6 +825,39 @@ def _build_s3_validation_input_from_args(args: argparse.Namespace) -> S3Confiden
         critical_field_penalty=float(args.critical_field_penalty),
         critical_violation_route=str(args.critical_violation_route),
         critical_override_required=_as_bool(str(args.critical_override_required)),
+        correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
+    )
+
+
+def _build_s4_validation_input_from_args(args: argparse.Namespace) -> S4ConfidenceValidationInput:
+    """Build CONF Sprint 4 validation input from parsed CLI args."""
+
+    return S4ConfidenceValidationInput(
+        policy_id=str(args.policy_id),
+        dataset_name=str(args.dataset_name),
+        entity_kind=str(args.entity_kind),
+        schema_version=str(args.schema_version),
+        owner_team=str(args.owner_team),
+        field_weights=_parse_field_weights(list(args.field_weight)),
+        default_weight=float(args.default_weight),
+        auto_approve_threshold=float(args.auto_approve_threshold),
+        manual_review_threshold=float(args.manual_review_threshold),
+        gap_threshold=float(args.gap_threshold),
+        missing_field_penalty=float(args.missing_field_penalty),
+        decision_mode=str(args.decision_mode),
+        gap_escalation_required=_as_bool(str(args.gap_escalation_required)),
+        max_manual_review_queue=int(args.max_manual_review_queue),
+        critical_fields=_parse_critical_fields(list(args.critical_field)),
+        min_critical_fields_present=int(args.min_critical_fields_present),
+        critical_field_penalty=float(args.critical_field_penalty),
+        critical_violation_route=str(args.critical_violation_route),
+        critical_override_required=_as_bool(str(args.critical_override_required)),
+        feedback_window_days=int(args.feedback_window_days),
+        min_feedback_samples=int(args.min_feedback_samples),
+        auto_threshold_tuning_enabled=_as_bool(str(args.auto_threshold_tuning_enabled)),
+        max_threshold_delta=float(args.max_threshold_delta),
+        quality_drop_tolerance=float(args.quality_drop_tolerance),
+        calibration_freeze_on_anomaly=_as_bool(str(args.calibration_freeze_on_anomaly)),
         correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
     )
 
@@ -1127,6 +1375,177 @@ def _run_s3_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _run_s4_validate_input(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:validate-input` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_validate_input_started",
+        correlation_id=payload.correlation_id or "",
+        context={
+            "policy_id": payload.policy_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "decision_mode": payload.decision_mode,
+        },
+    )
+    result = validate_s4_confidence_input_contract(payload)
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_validate_input_completed",
+        correlation_id=result.correlation_id,
+        context={"status": result.status, "route_preview": result.route_preview},
+    )
+    return {"command": "s4:validate-input", "result": result.to_dict()}
+
+
+def _run_s4_simulate_core(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:simulate-core` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    validation = validate_s4_confidence_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_simulate_core_started",
+        correlation_id=correlation_id,
+        context={
+            "policy_id": payload.policy_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "decision_mode": payload.decision_mode,
+            "feedback_window_days": payload.feedback_window_days,
+            "min_feedback_samples": payload.min_feedback_samples,
+            "auto_threshold_tuning_enabled": payload.auto_threshold_tuning_enabled,
+        },
+    )
+
+    core_output = execute_s4_confidence_policy_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_s4_confidence_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_simulate_core_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "policy_id": core_output.get("policy_id"),
+            "execution_status": core_output.get("execucao", {}).get("status"),
+            "decision": core_output.get("execucao", {}).get("decision"),
+            "confidence_score": core_output.get("execucao", {}).get("confidence_score"),
+            "threshold_delta_applied": core_output.get("execucao", {}).get("threshold_delta_applied"),
+        },
+    )
+    return {
+        "command": "s4:simulate-core",
+        "input_validation": validation.to_dict(),
+        "flow_output": core_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s4_simulate_service(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:simulate-service` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    validation = validate_s4_confidence_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_simulate_service_started",
+        correlation_id=correlation_id,
+        context={
+            "policy_id": payload.policy_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "decision_mode": payload.decision_mode,
+            "feedback_window_days": payload.feedback_window_days,
+            "min_feedback_samples": payload.min_feedback_samples,
+            "auto_threshold_tuning_enabled": payload.auto_threshold_tuning_enabled,
+        },
+    )
+
+    service_output = execute_s4_confidence_policy_service(
+        payload.to_scaffold_request(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_s4_confidence_output_contract(
+        service_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_simulate_service_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "policy_id": service_output.get("policy_id"),
+            "execution_status": service_output.get("execucao", {}).get("status"),
+            "decision": service_output.get("execucao", {}).get("decision"),
+            "confidence_score": service_output.get("execucao", {}).get("confidence_score"),
+            "threshold_delta_applied": service_output.get("execucao", {}).get(
+                "threshold_delta_applied"
+            ),
+        },
+    )
+    return {
+        "command": "s4:simulate-service",
+        "input_validation": validation.to_dict(),
+        "flow_output": service_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s4_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s4:runbook-check` command and return output payload."""
+
+    payload = _build_s4_validation_input_from_args(args)
+    validation = validate_s4_confidence_input_contract(payload)
+    correlation_id = validation.correlation_id
+
+    core_output = execute_s4_confidence_policy_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    core_output_validation = validate_s4_confidence_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+
+    service_output = execute_s4_confidence_policy_service(
+        payload.to_scaffold_request(correlation_id=correlation_id)
+    ).to_dict()
+    service_output_validation = validate_s4_confidence_output_contract(
+        service_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="conf_s4_runbook_check_completed",
+        correlation_id=correlation_id,
+        context={
+            "core_status": core_output_validation.status,
+            "service_status": service_output_validation.status,
+            "policy_id": service_output.get("policy_id"),
+        },
+    )
+    return {
+        "command": "s4:runbook-check",
+        "input_validation": validation.to_dict(),
+        "core_flow": {
+            "output": core_output,
+            "validation": core_output_validation.to_dict(),
+        },
+        "service_flow": {
+            "output": service_output,
+            "validation": service_output_validation.to_dict(),
+        },
+    }
+
+
 def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
     """Render command result payload in selected output format."""
 
@@ -1143,7 +1562,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - route_preview: {result.get('route_preview')}")
         return
 
-    if command in {"s1:runbook-check", "s2:runbook-check", "s3:runbook-check"}:
+    if command in {"s1:runbook-check", "s2:runbook-check", "s3:runbook-check", "s4:runbook-check"}:
         validation = payload.get("input_validation", {})
         core = payload.get("core_flow", {})
         service = payload.get("service_flow", {})
@@ -1196,7 +1615,7 @@ def _context_from_error(error: Exception) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run operational tool commands for CONF Sprint 1, Sprint 2, and Sprint 3.
+    """Run operational tool commands for CONF Sprint 1, Sprint 2, Sprint 3, and Sprint 4.
 
     Args:
         argv: Optional CLI argument list.
@@ -1240,6 +1659,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = _run_s3_simulate_service(args)
         elif args.command == "s3:runbook-check":
             payload = _run_s3_runbook_check(args)
+        elif args.command == "s4:validate-input":
+            payload = _run_s4_validate_input(args)
+        elif args.command == "s4:simulate-core":
+            payload = _run_s4_simulate_core(args)
+        elif args.command == "s4:simulate-service":
+            payload = _run_s4_simulate_service(args)
+        elif args.command == "s4:runbook-check":
+            payload = _run_s4_runbook_check(args)
         else:
             raise ToolExecutionError(
                 code="UNKNOWN_COMMAND",
@@ -1253,6 +1680,7 @@ def main(argv: list[str] | None = None) -> int:
         S1ConfidenceValidationError,
         S2ConfidenceValidationError,
         S3ConfidenceValidationError,
+        S4ConfidenceValidationError,
     ) as exc:
         _log_event(
             level=logging.WARNING,
@@ -1275,9 +1703,11 @@ def main(argv: list[str] | None = None) -> int:
         S1ConfidenceCoreError,
         S2ConfidenceCoreError,
         S3ConfidenceCoreError,
+        S4ConfidenceCoreError,
         S1ConfidencePolicyServiceError,
         S2ConfidencePolicyServiceError,
         S3ConfidencePolicyServiceError,
+        S4ConfidencePolicyServiceError,
     ) as exc:
         _log_event(
             level=logging.ERROR,

@@ -1,7 +1,7 @@
-"""Operational service for CONF Sprint 1 confidence policy scaffolding.
+"""Operational service for CONF Sprint 1 confidence policy main flow.
 
-This module executes CONF Sprint 1 scaffold contracts for field-level
-confidence policy and emits structured operational logs with actionable errors.
+This module executes CONF Sprint 1 confidence contracts through the core
+main flow and emits structured operational logs with actionable errors.
 """
 
 from __future__ import annotations
@@ -14,19 +14,25 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
+    from core.confidence.s1_core import (
+        S1ConfidenceCoreError,
+        S1ConfidenceCoreInput,
+        execute_s1_confidence_policy_main_flow,
+    )
     from core.confidence.s1_scaffold import (
-        S1ConfidenceScaffoldError,
         S1ConfidenceScaffoldRequest,
-        build_s1_confidence_scaffold,
     )
 except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
+    from core.confidence.s1_core import (
+        S1ConfidenceCoreError,
+        S1ConfidenceCoreInput,
+        execute_s1_confidence_policy_main_flow,
+    )
     from core.confidence.s1_scaffold import (
-        S1ConfidenceScaffoldError,
         S1ConfidenceScaffoldRequest,
-        build_s1_confidence_scaffold,
     )
 
 
@@ -106,7 +112,7 @@ class S1ConfidencePolicyServiceOutput:
 def execute_s1_confidence_policy_service(
     request: S1ConfidenceScaffoldRequest,
 ) -> S1ConfidencePolicyServiceOutput:
-    """Execute CONF Sprint 1 scaffold service with actionable diagnostics.
+    """Execute CONF Sprint 1 main-flow service with actionable diagnostics.
 
     Args:
         request: CONF Sprint 1 input contract with field-level scoring policy
@@ -117,7 +123,7 @@ def execute_s1_confidence_policy_service(
             policy metadata and observability identifiers.
 
     Raises:
-        S1ConfidencePolicyServiceError: If scaffold validation fails or an
+        S1ConfidencePolicyServiceError: If main-flow scoring fails or an
             unexpected service error happens.
     """
 
@@ -137,8 +143,8 @@ def execute_s1_confidence_policy_service(
     )
 
     try:
-        scaffold = build_s1_confidence_scaffold(
-            _to_s1_scaffold_input(request=request, correlation_id=correlation_id)
+        core_output = execute_s1_confidence_policy_main_flow(
+            _to_s1_core_input(request=request, correlation_id=correlation_id)
         )
 
         policy_ready_event_id = _new_s1_event_id()
@@ -147,10 +153,10 @@ def execute_s1_confidence_policy_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": policy_ready_event_id,
-                "policy_id": scaffold.policy_id,
-                "dataset_name": scaffold.dataset_name,
-                "entity_kind": scaffold.confidence_policy.get("entity_kind"),
-                "field_weights_count": scaffold.confidence_policy.get("field_weights_count"),
+                "policy_id": core_output.policy_id,
+                "dataset_name": core_output.dataset_name,
+                "entity_kind": core_output.confidence_policy.get("entity_kind"),
+                "field_weights_count": core_output.confidence_policy.get("field_weights_count"),
             },
         )
 
@@ -160,14 +166,16 @@ def execute_s1_confidence_policy_service(
             extra={
                 "correlation_id": correlation_id,
                 "event_id": completed_event_id,
-                "policy_id": scaffold.policy_id,
-                "dataset_name": scaffold.dataset_name,
-                "status": scaffold.status,
-                "execution_status": "ready",
+                "policy_id": core_output.policy_id,
+                "dataset_name": core_output.dataset_name,
+                "status": core_output.status,
+                "execution_status": core_output.execucao.get("status"),
+                "decision": core_output.execucao.get("decision"),
+                "confidence_score": core_output.execucao.get("confidence_score"),
             },
         )
 
-        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao = dict(core_output.pontos_integracao)
         pontos_integracao["confidence_policy_service_module"] = (
             "app.services.confidence_policy_service.execute_s1_confidence_policy_service"
         )
@@ -178,33 +186,35 @@ def execute_s1_confidence_policy_service(
         return S1ConfidencePolicyServiceOutput(
             contrato_versao=SERVICE_CONTRACT_VERSION_S1,
             correlation_id=correlation_id,
-            status=scaffold.status,
-            policy_id=scaffold.policy_id,
-            dataset_name=scaffold.dataset_name,
-            confidence_policy=dict(scaffold.confidence_policy),
-            execucao={
-                "status": "ready",
-                "decision_reason": "scaffold_only_base_contract",
-                "field_weights_count": int(scaffold.confidence_policy.get("field_weights_count", 0)),
-            },
+            status=core_output.status,
+            policy_id=core_output.policy_id,
+            dataset_name=core_output.dataset_name,
+            confidence_policy=dict(core_output.confidence_policy),
+            execucao=dict(core_output.execucao),
             pontos_integracao=pontos_integracao,
             observabilidade={
                 "flow_started_event_id": started_event_id,
                 "policy_profile_ready_event_id": policy_ready_event_id,
                 "flow_completed_event_id": completed_event_id,
+                "main_flow_started_event_id": core_output.observabilidade["flow_started_event_id"],
+                "main_flow_completed_event_id": core_output.observabilidade[
+                    "flow_completed_event_id"
+                ],
             },
-            scaffold=scaffold.to_dict(),
+            scaffold=dict(core_output.scaffold),
         )
-    except S1ConfidenceScaffoldError as exc:
+    except S1ConfidenceCoreError as exc:
         failed_event_id = _new_s1_event_id()
         logger.warning(
-            "confidence_policy_s1_scaffold_error",
+            "confidence_policy_s1_main_flow_error",
             extra={
                 "correlation_id": correlation_id,
                 "event_id": failed_event_id,
                 "error_code": exc.code,
                 "error_message": exc.message,
                 "recommended_action": exc.action,
+                "failed_stage": exc.stage,
+                "core_event_id": exc.event_id,
             },
         )
         raise S1ConfidencePolicyServiceError(
@@ -212,7 +222,7 @@ def execute_s1_confidence_policy_service(
             message=exc.message,
             action=exc.action,
             correlation_id=correlation_id,
-            stage="scaffold",
+            stage=exc.stage,
             event_id=failed_event_id,
         ) from exc
     except S1ConfidencePolicyServiceError:
@@ -230,7 +240,7 @@ def execute_s1_confidence_policy_service(
         raise S1ConfidencePolicyServiceError(
             code="CONFIDENCE_POLICY_S1_FLOW_FAILED",
             message=f"Falha ao executar fluxo CONF S1: {type(exc).__name__}",
-            action="Revisar logs operacionais e validar contrato de entrada do CONF S1.",
+            action="Revisar logs operacionais e validar contrato de entrada/main-flow do CONF S1.",
             correlation_id=correlation_id,
             stage="service",
             event_id=failed_event_id,
@@ -241,12 +251,12 @@ def _new_s1_event_id() -> str:
     return f"confs1evt-{uuid4().hex[:12]}"
 
 
-def _to_s1_scaffold_input(
+def _to_s1_core_input(
     *,
     request: S1ConfidenceScaffoldRequest,
     correlation_id: str,
-) -> S1ConfidenceScaffoldRequest:
-    return S1ConfidenceScaffoldRequest(
+) -> S1ConfidenceCoreInput:
+    return S1ConfidenceCoreInput(
         policy_id=request.policy_id,
         dataset_name=request.dataset_name,
         entity_kind=request.entity_kind,

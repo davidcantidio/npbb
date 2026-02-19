@@ -10,8 +10,12 @@ Documentar o fluxo operacional da Sprint 4 do epico Motor de Confianca e Politic
 Arquivos principais da sprint:
 - `core/confidence/s4_scaffold.py`
 - `core/confidence/s4_core.py`
+- `core/confidence/s4_observability.py`
 - `backend/app/services/confidence_policy_service.py`
+- `backend/app/services/motor-de-confian-a-e-pol-tica-de-decis-o_telemetry.py`
 - `tests/test_motor_confianca_s4.py`
+- `tests/test_motor_confianca_s4_observability.py`
+- `tests/test_motor_confianca_s4_telemetry.py`
 
 ## Quando usar
 - Validar o contrato S4 antes de integrar o motor de confianca com pipelines de feedback real.
@@ -74,17 +78,25 @@ Scaffold/Core:
 Service:
 - `confidence_policy_service_module`: `app.services.confidence_policy_service.execute_s4_confidence_policy_service`
 - `confidence_policy_service_telemetry_module`: `app.services.confidence_policy_service`
+- `confidence_policy_backend_telemetry_module`: `backend/app/services/motor-de-confian-a-e-pol-tica-de-decis-o_telemetry.py`
 
 ## Validacao local
 Executar testes da sprint:
 ```bash
-pytest -q tests/test_motor_confianca_s4.py
+pytest -q \
+  tests/test_motor_confianca_s4.py \
+  tests/test_motor_confianca_s4_observability.py \
+  tests/test_motor_confianca_s4_telemetry.py
 ```
 
 Validar sintaxe dos arquivos alterados:
 ```bash
 python3 -m py_compile \
   core/confidence/s4_core.py \
+  core/confidence/s4_observability.py \
   backend/app/services/confidence_policy_service.py \
-  tests/test_motor_confianca_s4.py
+  backend/app/services/motor-de-confian-a-e-pol-tica-de-decis-o_telemetry.py \
+  tests/test_motor_confianca_s4.py \
+  tests/test_motor_confianca_s4_observability.py \
+  tests/test_motor_confianca_s4_telemetry.py
 ```

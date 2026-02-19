@@ -1,9 +1,9 @@
-"""Operational tools for WORK Sprint 1 human-review workbench flow.
+"""Operational tools for WORK Sprint 1 and Sprint 2 workbench flows.
 
 This script provides small, verifiable runbook commands to:
-1. validate WORK Sprint 1 input contracts;
+1. validate WORK Sprint 1 and Sprint 2 input contracts;
 2. simulate core execution and API integration;
-3. execute one end-to-end local runbook check.
+3. execute one end-to-end local runbook check per sprint.
 """
 
 from __future__ import annotations
@@ -30,8 +30,12 @@ if str(BACKEND_ROOT) not in sys.path:
 from app.routers.revisao_humana import (  # noqa: E402
     RevisaoHumanaS1ExecuteBody,
     RevisaoHumanaS1PrepareBody,
+    RevisaoHumanaS2ExecuteBody,
+    RevisaoHumanaS2PrepareBody,
     execute_workbench_revisao_s1,
+    execute_workbench_revisao_s2,
     prepare_workbench_revisao_s1,
+    prepare_workbench_revisao_s2,
 )
 from frontend.src.features.revisao_humana.s1_core import (  # noqa: E402
     S1WorkbenchCoreError,
@@ -42,6 +46,16 @@ from frontend.src.features.revisao_humana.s1_validation import (  # noqa: E402
     S1WorkbenchValidationInput,
     validate_workbench_revisao_s1_input_contract,
     validate_workbench_revisao_s1_output_contract,
+)
+from frontend.src.features.revisao_humana.s2_core import (  # noqa: E402
+    S2WorkbenchCoreError,
+    execute_workbench_revisao_s2_main_flow,
+)
+from frontend.src.features.revisao_humana.s2_validation import (  # noqa: E402
+    S2WorkbenchValidationError,
+    S2WorkbenchValidationInput,
+    validate_workbench_revisao_s2_input_contract,
+    validate_workbench_revisao_s2_output_contract,
 )
 
 
@@ -80,7 +94,7 @@ class ToolExecutionError(RuntimeError):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Build CLI parser for WORK Sprint 1 commands."""
+    """Build CLI parser for WORK Sprint 1 and Sprint 2 commands."""
 
     parser = argparse.ArgumentParser(prog="revisao_humana_tools")
     parser.add_argument(
@@ -132,6 +146,47 @@ def _build_parser() -> argparse.ArgumentParser:
         sla_hours=24,
         max_queue_size=1000,
         auto_assignment_enabled="true",
+        reviewer_role=("operador", "supervisor"),
+        correlation_id=None,
+    )
+
+    s2_validate_parser = sub.add_parser(
+        "s2:validate-input",
+        help="Validate WORK Sprint 2 input contract.",
+    )
+    _add_s2_common_args(s2_validate_parser, required=True)
+
+    s2_simulate_core_parser = sub.add_parser(
+        "s2:simulate-core",
+        help="Simulate WORK Sprint 2 core flow and validate output contract.",
+    )
+    _add_s2_common_args(s2_simulate_core_parser, required=True)
+
+    s2_simulate_api_parser = sub.add_parser(
+        "s2:simulate-api",
+        help="Simulate WORK Sprint 2 API prepare/execute integration and validate output.",
+    )
+    _add_s2_common_args(s2_simulate_api_parser, required=True)
+
+    s2_runbook_parser = sub.add_parser(
+        "s2:runbook-check",
+        help="Run one complete local WORK Sprint 2 runbook check.",
+    )
+    _add_s2_common_args(s2_runbook_parser, required=False)
+    s2_runbook_parser.set_defaults(
+        workflow_id="WORK_REVIEW_LEAD_S2",
+        dataset_name="leads_capture",
+        entity_kind="lead",
+        schema_version="v2",
+        owner_team="etl",
+        missing_field=("nome", "email", "telefone"),
+        candidate_source=("crm", "formulario", "ocr"),
+        correspondence_mode="manual_confirm",
+        match_strategy="fuzzy",
+        min_similarity_score=0.70,
+        auto_apply_threshold=0.95,
+        max_suggestions_per_field=5,
+        require_evidence_for_suggestion="true",
         reviewer_role=("operador", "supervisor"),
         correlation_id=None,
     )
@@ -193,6 +248,83 @@ def _add_s1_common_args(parser: argparse.ArgumentParser, *, required: bool) -> N
         default="true",
         choices=("true", "false"),
         help="Whether auto assignment is enabled.",
+    )
+    parser.add_argument(
+        "--reviewer-role",
+        action="append",
+        default=[],
+        help="Reviewer role (can be repeated).",
+    )
+    parser.add_argument("--correlation-id", default=None, help="Optional flow correlation id.")
+
+
+def _add_s2_common_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    """Register common WORK Sprint 2 input arguments in one parser."""
+
+    parser.add_argument("--workflow-id", required=required, help="Stable workbench workflow id.")
+    parser.add_argument("--dataset-name", required=required, help="Dataset name for correspondence ownership.")
+    parser.add_argument(
+        "--entity-kind",
+        default="lead",
+        help="Entity kind (lead, evento, ingresso, generic).",
+    )
+    parser.add_argument(
+        "--schema-version",
+        default="v2",
+        help="Schema version in vN format.",
+    )
+    parser.add_argument(
+        "--owner-team",
+        default="etl",
+        help="Owner team used by correspondence governance.",
+    )
+    parser.add_argument(
+        "--missing-field",
+        action="append",
+        default=[],
+        help="Missing field name (can be repeated).",
+    )
+    parser.add_argument(
+        "--candidate-source",
+        action="append",
+        default=[],
+        help="Candidate source name (can be repeated).",
+    )
+    parser.add_argument(
+        "--correspondence-mode",
+        default="manual_confirm",
+        choices=("manual_confirm", "suggest_only", "semi_auto"),
+        help="Correspondence mode used by the sprint flow.",
+    )
+    parser.add_argument(
+        "--match-strategy",
+        default="fuzzy",
+        choices=("exact", "normalized", "fuzzy", "semantic"),
+        help="Matching strategy used to evaluate candidate pairs.",
+    )
+    parser.add_argument(
+        "--min-similarity-score",
+        type=float,
+        default=0.70,
+        help="Minimum similarity score to emit one suggestion.",
+    )
+    parser.add_argument(
+        "--auto-apply-threshold",
+        type=float,
+        default=0.95,
+        help="Similarity threshold for auto apply mode.",
+    )
+    parser.add_argument(
+        "--max-suggestions-per-field",
+        type=int,
+        default=5,
+        help="Maximum suggestions generated per missing field.",
+    )
+    parser.add_argument(
+        "--require-evidence-for-suggestion",
+        default="true",
+        choices=("true", "false"),
+        help="Whether evidence is mandatory for each suggestion.",
     )
     parser.add_argument(
         "--reviewer-role",
@@ -279,6 +411,76 @@ def _build_execute_body(
         sla_hours=payload.sla_hours,
         max_queue_size=payload.max_queue_size,
         auto_assignment_enabled=payload.auto_assignment_enabled,
+        reviewer_roles=list(payload.reviewer_roles) if payload.reviewer_roles is not None else None,
+        correlation_id=correlation_id,
+    )
+
+
+def _build_s2_validation_input_from_args(args: argparse.Namespace) -> S2WorkbenchValidationInput:
+    """Build WORK Sprint 2 validation input from parsed CLI args."""
+
+    return S2WorkbenchValidationInput(
+        workflow_id=str(args.workflow_id),
+        dataset_name=str(args.dataset_name),
+        entity_kind=str(args.entity_kind),
+        schema_version=str(args.schema_version),
+        owner_team=str(args.owner_team),
+        missing_fields=_parse_optional_tuple(list(args.missing_field)),
+        candidate_sources=_parse_optional_tuple(list(args.candidate_source)),
+        correspondence_mode=str(args.correspondence_mode),
+        match_strategy=str(args.match_strategy),
+        min_similarity_score=float(args.min_similarity_score),
+        auto_apply_threshold=float(args.auto_apply_threshold),
+        max_suggestions_per_field=int(args.max_suggestions_per_field),
+        require_evidence_for_suggestion=_as_bool(str(args.require_evidence_for_suggestion)),
+        reviewer_roles=_parse_optional_tuple(list(args.reviewer_role)),
+        correlation_id=(str(args.correlation_id).strip() if args.correlation_id else None),
+    )
+
+
+def _build_s2_prepare_body(
+    *,
+    payload: S2WorkbenchValidationInput,
+    correlation_id: str,
+) -> RevisaoHumanaS2PrepareBody:
+    return RevisaoHumanaS2PrepareBody(
+        workflow_id=payload.workflow_id,
+        dataset_name=payload.dataset_name,
+        entity_kind=payload.entity_kind,
+        schema_version=payload.schema_version,
+        owner_team=payload.owner_team,
+        missing_fields=list(payload.missing_fields) if payload.missing_fields is not None else None,
+        candidate_sources=list(payload.candidate_sources) if payload.candidate_sources is not None else None,
+        correspondence_mode=payload.correspondence_mode,
+        match_strategy=payload.match_strategy,
+        min_similarity_score=payload.min_similarity_score,
+        auto_apply_threshold=payload.auto_apply_threshold,
+        max_suggestions_per_field=payload.max_suggestions_per_field,
+        require_evidence_for_suggestion=payload.require_evidence_for_suggestion,
+        reviewer_roles=list(payload.reviewer_roles) if payload.reviewer_roles is not None else None,
+        correlation_id=correlation_id,
+    )
+
+
+def _build_s2_execute_body(
+    *,
+    payload: S2WorkbenchValidationInput,
+    correlation_id: str,
+) -> RevisaoHumanaS2ExecuteBody:
+    return RevisaoHumanaS2ExecuteBody(
+        workflow_id=payload.workflow_id,
+        dataset_name=payload.dataset_name,
+        entity_kind=payload.entity_kind,
+        schema_version=payload.schema_version,
+        owner_team=payload.owner_team,
+        missing_fields=list(payload.missing_fields) if payload.missing_fields is not None else None,
+        candidate_sources=list(payload.candidate_sources) if payload.candidate_sources is not None else None,
+        correspondence_mode=payload.correspondence_mode,
+        match_strategy=payload.match_strategy,
+        min_similarity_score=payload.min_similarity_score,
+        auto_apply_threshold=payload.auto_apply_threshold,
+        max_suggestions_per_field=payload.max_suggestions_per_field,
+        require_evidence_for_suggestion=payload.require_evidence_for_suggestion,
         reviewer_roles=list(payload.reviewer_roles) if payload.reviewer_roles is not None else None,
         correlation_id=correlation_id,
     )
@@ -491,6 +693,196 @@ def _run_s1_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _run_s2_validate_input(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:validate-input` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_validate_input_started",
+        correlation_id=payload.correlation_id or "",
+        context={
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+        },
+    )
+    result = validate_workbench_revisao_s2_input_contract(payload)
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_validate_input_completed",
+        correlation_id=result.correlation_id,
+        context={"status": result.status, "route_preview": result.route_preview},
+    )
+    return {"command": "s2:validate-input", "result": result.to_dict()}
+
+
+def _run_s2_simulate_core(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:simulate-core` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    validation = validate_workbench_revisao_s2_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_simulate_core_started",
+        correlation_id=correlation_id,
+        context={
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "correspondence_mode": payload.correspondence_mode,
+            "match_strategy": payload.match_strategy,
+            "max_suggestions_per_field": payload.max_suggestions_per_field,
+        },
+    )
+
+    core_output = execute_workbench_revisao_s2_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    output_validation = validate_workbench_revisao_s2_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_simulate_core_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "workflow_id": core_output.get("workflow_id"),
+            "execution_status": core_output.get("execucao", {}).get("status"),
+            "suggested_matches": core_output.get("execucao", {}).get("suggested_matches"),
+        },
+    )
+    return {
+        "command": "s2:simulate-core",
+        "input_validation": validation.to_dict(),
+        "flow_output": core_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s2_simulate_api(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:simulate-api` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    validation = validate_workbench_revisao_s2_input_contract(payload)
+    correlation_id = validation.correlation_id
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_simulate_api_started",
+        correlation_id=correlation_id,
+        context={
+            "workflow_id": payload.workflow_id,
+            "dataset_name": payload.dataset_name,
+            "entity_kind": payload.entity_kind,
+            "correspondence_mode": payload.correspondence_mode,
+            "match_strategy": payload.match_strategy,
+            "max_suggestions_per_field": payload.max_suggestions_per_field,
+        },
+    )
+
+    prepare_output = prepare_workbench_revisao_s2(
+        _build_s2_prepare_body(payload=payload, correlation_id=correlation_id)
+    )
+    if str(prepare_output.get("status", "")).strip().lower() != "ready":
+        raise ToolExecutionError(
+            code="INVALID_PREPARE_STATUS",
+            message=f"Status inesperado no prepare WORK S2: {prepare_output.get('status')}",
+            action="Revisar rota /internal/revisao-humana/s2/prepare e contrato de scaffold.",
+            correlation_id=correlation_id,
+            context={"prepare_status": str(prepare_output.get("status", ""))},
+        )
+
+    api_output = execute_workbench_revisao_s2(
+        _build_s2_execute_body(payload=payload, correlation_id=correlation_id)
+    )
+    output_validation = validate_workbench_revisao_s2_output_contract(
+        api_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_simulate_api_completed",
+        correlation_id=correlation_id,
+        context={
+            "status": output_validation.status,
+            "workflow_id": api_output.get("workflow_id"),
+            "prepare_status": prepare_output.get("status"),
+            "execution_status": api_output.get("execucao", {}).get("status"),
+            "suggested_matches": api_output.get("execucao", {}).get("suggested_matches"),
+        },
+    )
+    return {
+        "command": "s2:simulate-api",
+        "input_validation": validation.to_dict(),
+        "prepare_output": prepare_output,
+        "flow_output": api_output,
+        "output_validation": output_validation.to_dict(),
+    }
+
+
+def _run_s2_runbook_check(args: argparse.Namespace) -> dict[str, Any]:
+    """Run `s2:runbook-check` command and return output payload."""
+
+    payload = _build_s2_validation_input_from_args(args)
+    validation = validate_workbench_revisao_s2_input_contract(payload)
+    correlation_id = validation.correlation_id
+
+    core_output = execute_workbench_revisao_s2_main_flow(
+        payload.to_core_input(correlation_id=correlation_id)
+    ).to_dict()
+    core_output_validation = validate_workbench_revisao_s2_output_contract(
+        core_output,
+        correlation_id=correlation_id,
+    )
+
+    prepare_output = prepare_workbench_revisao_s2(
+        _build_s2_prepare_body(payload=payload, correlation_id=correlation_id)
+    )
+    if str(prepare_output.get("status", "")).strip().lower() != "ready":
+        raise ToolExecutionError(
+            code="INVALID_PREPARE_STATUS",
+            message=f"Status inesperado no prepare WORK S2: {prepare_output.get('status')}",
+            action="Revisar rota /internal/revisao-humana/s2/prepare e contrato de scaffold.",
+            correlation_id=correlation_id,
+            context={"prepare_status": str(prepare_output.get("status", ""))},
+        )
+
+    api_output = execute_workbench_revisao_s2(
+        _build_s2_execute_body(payload=payload, correlation_id=correlation_id)
+    )
+    api_output_validation = validate_workbench_revisao_s2_output_contract(
+        api_output,
+        correlation_id=correlation_id,
+    )
+    _log_event(
+        level=logging.INFO,
+        event_name="work_s2_runbook_check_completed",
+        correlation_id=correlation_id,
+        context={
+            "core_status": core_output_validation.status,
+            "api_status": api_output_validation.status,
+            "workflow_id": api_output.get("workflow_id"),
+            "prepare_status": prepare_output.get("status"),
+        },
+    )
+    return {
+        "command": "s2:runbook-check",
+        "input_validation": validation.to_dict(),
+        "core_flow": {
+            "output": core_output,
+            "validation": core_output_validation.to_dict(),
+        },
+        "api_prepare": prepare_output,
+        "api_flow": {
+            "output": api_output,
+            "validation": api_output_validation.to_dict(),
+        },
+    }
+
+
 def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
     """Render command result payload in selected output format."""
 
@@ -507,7 +899,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - route_preview: {result.get('route_preview')}")
         return
 
-    if command == "s1:runbook-check":
+    if command in {"s1:runbook-check", "s2:runbook-check"}:
         validation = payload.get("input_validation", {})
         core = payload.get("core_flow", {})
         api_prepare = payload.get("api_prepare", {})
@@ -523,7 +915,7 @@ def _render_output(payload: dict[str, Any], *, output_format: str) -> None:
         print(f" - api_validation_status: {api_flow.get('validation', {}).get('status')}")
         return
 
-    if command == "s1:simulate-api":
+    if command in {"s1:simulate-api", "s2:simulate-api"}:
         input_validation = payload.get("input_validation", {})
         prepare_output = payload.get("prepare_output", {})
         flow_output = payload.get("flow_output", {})
@@ -577,7 +969,7 @@ def _context_from_error(error: Exception) -> dict[str, Any]:
 
 def _extract_http_exception_payload(exc: HTTPException) -> dict[str, Any]:
     detail = exc.detail if isinstance(exc.detail, dict) else {}
-    code = str(detail.get("code", "WORK_S1_HTTP_ERROR"))
+    code = str(detail.get("code", "WORK_HTTP_ERROR"))
     message = str(detail.get("message", str(exc.detail)))
     action = str(
         detail.get(
@@ -603,7 +995,7 @@ def _extract_http_exception_payload(exc: HTTPException) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run operational tool commands for WORK Sprint 1.
+    """Run operational tool commands for WORK Sprint 1 and Sprint 2.
 
     Args:
         argv: Optional CLI argument list.
@@ -631,6 +1023,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = _run_s1_simulate_api(args)
         elif args.command == "s1:runbook-check":
             payload = _run_s1_runbook_check(args)
+        elif args.command == "s2:validate-input":
+            payload = _run_s2_validate_input(args)
+        elif args.command == "s2:simulate-core":
+            payload = _run_s2_simulate_core(args)
+        elif args.command == "s2:simulate-api":
+            payload = _run_s2_simulate_api(args)
+        elif args.command == "s2:runbook-check":
+            payload = _run_s2_runbook_check(args)
         else:
             raise ToolExecutionError(
                 code="UNKNOWN_COMMAND",
@@ -640,7 +1040,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         _render_output(payload, output_format=str(args.output_format))
         return 0
-    except S1WorkbenchValidationError as exc:
+    except (S1WorkbenchValidationError, S2WorkbenchValidationError) as exc:
         _log_event(
             level=logging.WARNING,
             event_name="work_tool_validation_failed",
@@ -658,7 +1058,7 @@ def main(argv: list[str] | None = None) -> int:
             output_format=str(args.output_format),
         )
         return 1
-    except S1WorkbenchCoreError as exc:
+    except (S1WorkbenchCoreError, S2WorkbenchCoreError) as exc:
         _log_event(
             level=logging.ERROR,
             event_name="work_tool_core_failed",
@@ -709,8 +1109,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         _render_error(
             ToolExecutionError(
-                code="WORK_S1_TOOL_PAYLOAD_VALIDATION_ERROR",
-                message="Falha de validacao de payload na ferramenta operacional WORK S1.",
+                code="WORK_TOOL_PAYLOAD_VALIDATION_ERROR",
+                message="Falha de validacao de payload na ferramenta operacional WORK.",
                 action="Revisar argumentos CLI e campos obrigatorios da rota simulada.",
                 correlation_id=correlation_id,
                 context={"errors": exc.errors()},
@@ -731,8 +1131,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         _render_error(
             ToolExecutionError(
-                code="WORK_S1_TOOL_UNEXPECTED_ERROR",
-                message=f"Falha inesperada na ferramenta WORK S1: {type(exc).__name__}",
+                code="WORK_TOOL_UNEXPECTED_ERROR",
+                message=f"Falha inesperada na ferramenta WORK: {type(exc).__name__}",
                 action="Reexecute com --log-level DEBUG e revise os logs operacionais.",
                 correlation_id=correlation_id,
             ),
@@ -743,4 +1143,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

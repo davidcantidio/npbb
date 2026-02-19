@@ -10,6 +10,7 @@ Documentar o fluxo operacional da Sprint 4 do epico Motor de Confianca e Politic
 Arquivos principais da sprint:
 - `core/confidence/s4_scaffold.py`
 - `core/confidence/s4_core.py`
+- `core/confidence/s4_validation.py`
 - `core/confidence/s4_observability.py`
 - `backend/app/services/confidence_policy_service.py`
 - `backend/app/services/motor-de-confian-a-e-pol-tica-de-decis-o_telemetry.py`
@@ -80,6 +81,10 @@ Service:
 - `confidence_policy_service_telemetry_module`: `app.services.confidence_policy_service`
 - `confidence_policy_backend_telemetry_module`: `backend/app/services/motor-de-confian-a-e-pol-tica-de-decis-o_telemetry.py`
 
+Validacao:
+- `confidence_policy_s4_validation_module`: `core.confidence.s4_validation.validate_s4_confidence_input_contract`
+- `validate_s4_confidence_output_contract`: validacao de contrato de saida para `conf.s4.core.v1` e `conf.s4.service.v1`
+
 ## Validacao local
 Executar testes da sprint:
 ```bash
@@ -93,6 +98,7 @@ Validar sintaxe dos arquivos alterados:
 ```bash
 python3 -m py_compile \
   core/confidence/s4_core.py \
+  core/confidence/s4_validation.py \
   core/confidence/s4_observability.py \
   backend/app/services/confidence_policy_service.py \
   backend/app/services/motor-de-confian-a-e-pol-tica-de-decis-o_telemetry.py \

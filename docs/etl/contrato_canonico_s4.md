@@ -11,11 +11,13 @@ Arquivos principais da sprint:
 - `core/contracts/s4_scaffold.py`
 - `core/contracts/s4_core.py`
 - `core/contracts/s4_observability.py`
+- `core/contracts/s4_validation.py`
 - `backend/app/services/contract_validation_service.py`
 - `backend/app/services/contrato-can-nico-valida-o-estrita-linhagem-obrigat-ria_telemetry.py`
 - `tests/test_contract_validation_s4.py`
 - `tests/test_contract_validation_s4_observability.py`
 - `tests/test_contract_validation_s4_telemetry.py`
+- `tests/test_contrato_canonico_s4.py`
 
 ## Escopo funcional da Sprint 4
 - Validar entrada canonicamente no scaffold S4.
@@ -107,6 +109,7 @@ Campos minimos para diagnostico:
 pytest -q tests/test_contract_validation_s4.py
 pytest -q tests/test_contract_validation_s4_observability.py
 pytest -q tests/test_contract_validation_s4_telemetry.py
+pytest -q tests/test_contrato_canonico_s4.py
 ```
 
 ## Limites da Sprint 4

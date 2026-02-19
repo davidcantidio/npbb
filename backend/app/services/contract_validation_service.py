@@ -1,6 +1,6 @@
-"""Operational service for CONT Sprint 1, Sprint 2, and Sprint 3 scaffolding.
+"""Operational service for CONT Sprint 1, Sprint 2, Sprint 3, and Sprint 4.
 
-This module executes Sprint 1, Sprint 2, and Sprint 3 scaffold contracts for
+This module executes Sprint 1, Sprint 2, Sprint 3, and Sprint 4 contracts for
 canonical validation and emits structured operational logs with actionable errors.
 """
 
@@ -14,6 +14,11 @@ from typing import Any
 from uuid import uuid4
 
 try:  # pragma: no cover - import style depends on execution cwd
+    from core.contracts.s4_scaffold import (
+        S4CanonicalContractScaffoldRequest,
+        S4ContractScaffoldError,
+        build_s4_contract_scaffold,
+    )
     from core.contracts.s3_core import (
         S3CanonicalContractCoreError,
         S3CanonicalContractCoreInput,
@@ -42,6 +47,11 @@ except ModuleNotFoundError:  # pragma: no cover
     npbb_root = Path(__file__).resolve().parents[3]
     if str(npbb_root) not in sys.path:
         sys.path.insert(0, str(npbb_root))
+    from core.contracts.s4_scaffold import (
+        S4CanonicalContractScaffoldRequest,
+        S4ContractScaffoldError,
+        build_s4_contract_scaffold,
+    )
     from core.contracts.s3_core import (
         S3CanonicalContractCoreError,
         S3CanonicalContractCoreInput,
@@ -73,6 +83,7 @@ logger = logging.getLogger("app.services.contract_validation")
 SERVICE_CONTRACT_VERSION_S1 = "cont.s1.service.v1"
 SERVICE_CONTRACT_VERSION_S2 = "cont.s2.service.v1"
 SERVICE_CONTRACT_VERSION_S3 = "cont.s3.service.v1"
+SERVICE_CONTRACT_VERSION_S4 = "cont.s4.service.v1"
 
 
 class S1ContractValidationServiceError(RuntimeError):
@@ -149,6 +160,42 @@ class S2ContractValidationServiceError(RuntimeError):
 
 class S3ContractValidationServiceError(RuntimeError):
     """Raised when CONT Sprint 3 service flow fails."""
+
+    def __init__(
+        self,
+        *,
+        code: str,
+        message: str,
+        action: str,
+        correlation_id: str,
+        stage: str,
+        event_id: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.action = action
+        self.correlation_id = correlation_id
+        self.stage = stage
+        self.event_id = event_id
+
+    def to_dict(self) -> dict[str, str]:
+        """Return serializable diagnostics payload for API integration."""
+
+        payload = {
+            "code": self.code,
+            "message": self.message,
+            "action": self.action,
+            "correlation_id": self.correlation_id,
+            "stage": self.stage,
+        }
+        if self.event_id:
+            payload["event_id"] = self.event_id
+        return payload
+
+
+class S4ContractValidationServiceError(RuntimeError):
+    """Raised when CONT Sprint 4 service flow fails."""
 
     def __init__(
         self,
@@ -272,6 +319,38 @@ class S3ContractValidationServiceOutput:
             "contract_id": self.contract_id,
             "dataset_name": self.dataset_name,
             "lineage_profile": self.lineage_profile,
+            "execucao": self.execucao,
+            "pontos_integracao": self.pontos_integracao,
+            "observabilidade": self.observabilidade,
+            "scaffold": self.scaffold,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class S4ContractValidationServiceOutput:
+    """Output contract returned by CONT Sprint 4 service flow."""
+
+    contrato_versao: str
+    correlation_id: str
+    status: str
+    contract_id: str
+    dataset_name: str
+    versioning_profile: dict[str, Any]
+    execucao: dict[str, Any]
+    pontos_integracao: dict[str, str]
+    observabilidade: dict[str, str]
+    scaffold: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return plain dictionary for API/CLI serialization."""
+
+        return {
+            "contrato_versao": self.contrato_versao,
+            "correlation_id": self.correlation_id,
+            "status": self.status,
+            "contract_id": self.contract_id,
+            "dataset_name": self.dataset_name,
+            "versioning_profile": self.versioning_profile,
             "execucao": self.execucao,
             "pontos_integracao": self.pontos_integracao,
             "observabilidade": self.observabilidade,
@@ -678,6 +757,145 @@ def execute_s3_contract_validation_service(
         ) from exc
 
 
+def execute_s4_contract_validation_service(
+    request: S4CanonicalContractScaffoldRequest,
+) -> S4ContractValidationServiceOutput:
+    """Execute CONT Sprint 4 scaffold service with actionable diagnostics.
+
+    Args:
+        request: CONT Sprint 4 input contract with version compatibility and
+            regression gate policies.
+
+    Returns:
+        S4ContractValidationServiceOutput: Stable Sprint 4 service output with
+            versioning profile and observability identifiers.
+
+    Raises:
+        S4ContractValidationServiceError: If scaffold validation fails or an
+            unexpected service error happens.
+    """
+
+    correlation_id = request.correlation_id or f"cont-s4-{uuid4().hex[:12]}"
+    started_event_id = _new_s4_event_id()
+    logger.info(
+        "contract_validation_s4_flow_started",
+        extra={
+            "correlation_id": correlation_id,
+            "event_id": started_event_id,
+            "contract_id": request.contract_id,
+            "dataset_name": request.dataset_name,
+            "source_kind": request.source_kind,
+            "schema_version": request.schema_version,
+            "compatibility_mode": request.compatibility_mode,
+        },
+    )
+
+    try:
+        scaffold = build_s4_contract_scaffold(
+            _to_s4_scaffold_input(request=request, correlation_id=correlation_id)
+        )
+
+        versioning_plan_event_id = _new_s4_event_id()
+        logger.info(
+            "contract_validation_s4_versioning_profile_ready",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": versioning_plan_event_id,
+                "contract_id": scaffold.contract_id,
+                "dataset_name": scaffold.dataset_name,
+                "schema_version": scaffold.versioning_profile.get("schema_version"),
+                "compatibility_mode": scaffold.versioning_profile.get("compatibility_mode"),
+                "regression_gate_required": scaffold.versioning_profile.get(
+                    "regression_gate_required"
+                ),
+            },
+        )
+
+        completed_event_id = _new_s4_event_id()
+        logger.info(
+            "contract_validation_s4_flow_completed",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": completed_event_id,
+                "contract_id": scaffold.contract_id,
+                "dataset_name": scaffold.dataset_name,
+                "status": scaffold.status,
+                "execution_status": "ready",
+            },
+        )
+
+        pontos_integracao = dict(scaffold.pontos_integracao)
+        pontos_integracao["contract_validation_service_module"] = (
+            "app.services.contract_validation_service.execute_s4_contract_validation_service"
+        )
+        pontos_integracao["contract_validation_service_telemetry_module"] = (
+            "app.services.contract_validation_service"
+        )
+
+        return S4ContractValidationServiceOutput(
+            contrato_versao=SERVICE_CONTRACT_VERSION_S4,
+            correlation_id=correlation_id,
+            status=scaffold.status,
+            contract_id=scaffold.contract_id,
+            dataset_name=scaffold.dataset_name,
+            versioning_profile=dict(scaffold.versioning_profile),
+            execucao={
+                "status": "ready",
+                "decision_reason": "scaffold_only_base_contract",
+                "regression_gate_required": bool(
+                    scaffold.versioning_profile.get("regression_gate_required", False)
+                ),
+            },
+            pontos_integracao=pontos_integracao,
+            observabilidade={
+                "flow_started_event_id": started_event_id,
+                "versioning_profile_ready_event_id": versioning_plan_event_id,
+                "flow_completed_event_id": completed_event_id,
+            },
+            scaffold=scaffold.to_dict(),
+        )
+    except S4ContractScaffoldError as exc:
+        failed_event_id = _new_s4_event_id()
+        logger.warning(
+            "contract_validation_s4_scaffold_error",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": failed_event_id,
+                "error_code": exc.code,
+                "error_message": exc.message,
+                "recommended_action": exc.action,
+            },
+        )
+        raise S4ContractValidationServiceError(
+            code=exc.code,
+            message=exc.message,
+            action=exc.action,
+            correlation_id=correlation_id,
+            stage="scaffold",
+            event_id=failed_event_id,
+        ) from exc
+    except S4ContractValidationServiceError:
+        raise
+    except Exception as exc:
+        failed_event_id = _new_s4_event_id()
+        logger.error(
+            "contract_validation_s4_flow_unexpected_error",
+            extra={
+                "correlation_id": correlation_id,
+                "event_id": failed_event_id,
+                "error_type": type(exc).__name__,
+            },
+        )
+        raise S4ContractValidationServiceError(
+            code="CONTRACT_VALIDATION_S4_FLOW_FAILED",
+            message=f"Falha ao executar fluxo CONT S4: {type(exc).__name__}",
+            action="Revisar logs operacionais e validar contrato de entrada do CONT S4.",
+            correlation_id=correlation_id,
+            stage="service",
+            event_id=failed_event_id,
+        ) from exc
+
+
 def build_s1_contract_validation_error_detail(
     *,
     code: str,
@@ -724,6 +942,10 @@ def _new_s2_event_id() -> str:
 
 def _new_s3_event_id() -> str:
     return f"conts3evt-{uuid4().hex[:12]}"
+
+
+def _new_s4_event_id() -> str:
+    return f"conts4evt-{uuid4().hex[:12]}"
 
 
 def _to_s1_core_input(
@@ -778,5 +1000,32 @@ def _to_s3_core_input(
         schema_required_fields=request.schema_required_fields,
         lineage_field_requirements=request.lineage_field_requirements,
         metric_lineage_requirements=request.metric_lineage_requirements,
+        correlation_id=correlation_id,
+    )
+
+
+def _to_s4_scaffold_input(
+    *,
+    request: S4CanonicalContractScaffoldRequest,
+    correlation_id: str,
+) -> S4CanonicalContractScaffoldRequest:
+    return S4CanonicalContractScaffoldRequest(
+        contract_id=request.contract_id,
+        dataset_name=request.dataset_name,
+        source_kind=request.source_kind,
+        schema_version=request.schema_version,
+        strict_validation=request.strict_validation,
+        lineage_required=request.lineage_required,
+        owner_team=request.owner_team,
+        schema_required_fields=request.schema_required_fields,
+        lineage_field_requirements=request.lineage_field_requirements,
+        metric_lineage_requirements=request.metric_lineage_requirements,
+        compatibility_mode=request.compatibility_mode,
+        previous_contract_versions=request.previous_contract_versions,
+        regression_gate_required=request.regression_gate_required,
+        regression_suite_version=request.regression_suite_version,
+        max_regression_failures=request.max_regression_failures,
+        breaking_change_policy=request.breaking_change_policy,
+        deprecation_window_days=request.deprecation_window_days,
         correlation_id=correlation_id,
     )

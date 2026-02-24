@@ -1,0 +1,2999 @@
+# 08 — Issues por Sprint (TMJ 2025)
+
+Legenda de IDs:
+- Prefixo: `TMJ-ETL-###`
+- `###` é um contador sequencial único neste backlog (não representa sprint).
+
+Regras aplicadas neste arquivo:
+- Issues atômicas (uma coisa só), verificáveis e concluíveis em poucas horas.
+- Cada issue inclui escopo explícito (inclui/exclui), passos objetivos, critérios de aceite, caminhos previstos e dependências.
+- Docstrings obrigatórias quando houver criação/edição de módulo/função/classe (PEP257).
+
+
+## Épico: DOCX como Spec de Dados
+
+### TMJ-ETL-001 — Criar pacote de spec (DOCX) e CLI base
+**Sprint:** Sprint 1 — Checklist do DOCX como contrato
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Precisamos tornar o DOCX um spec executável, com uma base de código única para extrair estrutura e gerar artefatos de planejamento.
+**Escopo:**
+- Inclui: criar estrutura `npbb/core/spec/` e um comando CLI mínimo para rodar a extração do spec do DOCX
+- Exclui: implementar mapeamentos para banco/marts (fica na Sprint 2)
+
+**Implementação (passos):**
+- Criar os pacotes `npbb/core/` e `npbb/core/spec/` com `__init__.py` e docstrings de módulo.
+- Criar `npbb/etl/cli_spec.py` com um comando `spec:extract` que recebe caminho do DOCX e caminho de saída.
+- Adicionar documentação curta de uso no topo do CLI (exemplos de comando).
+
+**Critérios de aceite:**
+- [ ] Pacotes e módulos importam sem erro e possuem docstrings de módulo
+- [ ] CLI `spec:extract` executa e escreve um artefato de saída (mesmo que inicial/simplificado)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/__init__.py`
+- `npbb/core/spec/__init__.py`
+- `npbb/etl/cli_spec.py`
+
+**Dependências:**
+- nenhuma
+
+### TMJ-ETL-002 — Extrair seções e headings do DOCX (parser)
+**Sprint:** Sprint 1 — Checklist do DOCX como contrato
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** O spec depende de identificar a árvore de seções (Heading 1/2/3) e o texto associado a cada seção.
+**Escopo:**
+- Inclui: extrator de seções/headings e normalização (nível, título, corpo)
+- Exclui: extração de tabelas e figuras (issue separada)
+
+**Implementação (passos):**
+- Implementar `DocxSectionExtractor` com função `extract_sections(docx_path) -> list[Section]`.
+- Normalizar níveis (ex.: `Heading 1` vira `level=1`) e limpar whitespace.
+- Registrar erros de parsing com exceções claras e mensagens acionáveis.
+
+**Critérios de aceite:**
+- [ ] Extração retorna lista ordenada de seções com `level`, `title` e `body_lines`
+- [ ] Falhas (arquivo inexistente, docx inválido) retornam erro controlado com mensagem clara
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/docx_sections.py`
+- `npbb/etl/cli_spec.py`
+
+**Dependências:**
+- TMJ-ETL-001
+
+### TMJ-ETL-003 — Extrair inventário de figuras e tabelas do DOCX
+**Sprint:** Sprint 1 — Checklist do DOCX como contrato
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** O fechamento exige lista de figuras e tabelas (ex.: "Figura X - ...") para garantir que o report generator tenha contratos explícitos.
+**Escopo:**
+- Inclui: identificar linhas de figura e extrair cabeçalhos de tabelas do DOCX
+- Exclui: gerar gráficos/imagens (isso é do report generator)
+
+**Implementação (passos):**
+- Implementar `extract_figures(paragraphs)` para capturar itens do tipo "Figura".
+- Implementar `extract_tables(doc)` para capturar cabeçalho (primeira linha) e número de colunas.
+- Associar cada figura/tabela à seção mais próxima (heurística simples e documentada).
+
+**Critérios de aceite:**
+- [ ] Inventário de figuras contém texto completo do título e posição aproximada no documento
+- [ ] Inventário de tabelas captura cabeçalhos e número de colunas de cada tabela
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/docx_figures_tables.py`
+- `npbb/core/spec/docx_sections.py`
+
+**Dependências:**
+- TMJ-ETL-002
+
+### TMJ-ETL-004 — Gerar checklist Markdown (00_docx_as_spec) a partir do spec
+**Sprint:** Sprint 1 — Checklist do DOCX como contrato
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Precisamos de um artefato estável (Markdown) que vira contrato entre spec e pipeline (status OK/GAP/INCONSISTENTE).
+**Escopo:**
+- Inclui: gerador de Markdown do checklist com colunas padronizadas e itens obrigatórios
+- Exclui: inferir números/métricas reais (isso depende das fontes)
+
+**Implementação (passos):**
+- Definir um modelo `DocxSpec` (seções, figuras, tabelas, definições) serializável.
+- Implementar `render_docx_as_spec_md(spec) -> str` e escrever no path de saída.
+- Incluir explicitamente no checklist o item "Shows por dia (12/12, 13/12, 14/12)" como requisito obrigatório.
+
+**Critérios de aceite:**
+- [ ] Saída Markdown contém tabela de checklist com colunas fixas e status inicial preenchido
+- [ ] O item "Shows por dia (12/12, 13/12, 14/12)" existe no checklist gerado
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/spec_models.py`
+- `npbb/core/spec/render_markdown.py`
+- `npbb/etl/cli_spec.py`
+
+**Dependências:**
+- TMJ-ETL-002
+- TMJ-ETL-003
+
+### TMJ-ETL-005 — Testes do spec do DOCX (fixtures + unit tests)
+**Sprint:** Sprint 1 — Checklist do DOCX como contrato
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** O spec precisa ser testável para evitar regressões quando o template DOCX mudar.
+**Escopo:**
+- Inclui: fixtures mínimas de DOCX e testes unitários para seções/figuras/tabelas e render
+- Exclui: testes de integração com banco
+
+**Implementação (passos):**
+- Criar um DOCX mínimo em `tests/fixtures/docx/min_template.docx` para cobrir headings, uma tabela e uma figura.
+- Escrever testes para `extract_sections`, `extract_figures`, `extract_tables` e `render_docx_as_spec_md`.
+- Garantir que os testes validem estrutura (não números do relatório).
+
+**Critérios de aceite:**
+- [ ] Testes unitários cobrem extração de seções, figuras e tabelas
+- [ ] Testes unitários cobrem renderização do checklist Markdown
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/fixtures/docx/min_template.docx`
+- `tests/test_docx_spec.py`
+
+**Dependências:**
+- TMJ-ETL-004
+
+### TMJ-ETL-006 — Definir schema de mapeamento (DOCX -> schema/marts) e formato YAML
+**Sprint:** Sprint 2 — Mapeamento DOCX para schema e marts
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Para gerar o relatório do banco, cada item do checklist precisa apontar para tabelas/campos e regras de cálculo, com fontes e validações.
+**Escopo:**
+- Inclui: modelo de dados (classes) para mapping e definição do formato de arquivo YAML
+- Exclui: criação de views/marts no banco (fica no épico de Normalização)
+
+**Implementação (passos):**
+- Definir `RequirementMapping` e `MartContract` com campos mínimos (item_docx, tabela.campo, regra_calculo, fontes, validacoes).
+- Definir um schema YAML para armazenar mappings e contratos de views (com exemplos).
+- Implementar validação de schema do YAML (campos obrigatórios, domínios e tipos).
+
+**Critérios de aceite:**
+- [ ] Existe um schema de mapping versionável (modelos Python + YAML de exemplo)
+- [ ] Validação do YAML falha com mensagens claras quando campos obrigatórios faltam
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/mapping_models.py`
+- `npbb/core/spec/mapping_schema.yml`
+
+**Dependências:**
+- TMJ-ETL-004
+
+### TMJ-ETL-007 — Parser do mapping YAML e normalização de referências
+**Sprint:** Sprint 2 — Mapeamento DOCX para schema e marts
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Precisamos carregar o mapping como fonte de verdade para validação e geração de documentação (sem hardcode).
+**Escopo:**
+- Inclui: parser do YAML + normalização de referências (`table.field`, `mart_report_*`)
+- Exclui: execução real de queries no banco
+
+**Implementação (passos):**
+- Implementar `load_mapping(path) -> MappingSpec` com validação e normalização.
+- Normalizar referências de destino para um formato único (ex.: `schema.table.field` opcional).
+- Garantir mensagens de erro com linha/coluna quando possível (no parsing YAML).
+
+**Critérios de aceite:**
+- [ ] Mapping YAML é carregado em objetos tipados e normalizados
+- [ ] Erros de parsing/validação apontam o item e o campo que falhou
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/mapping_loader.py`
+- `npbb/core/spec/mapping_models.py`
+
+**Dependências:**
+- TMJ-ETL-006
+
+### TMJ-ETL-008 — Validar cobertura: todo item do checklist tem mapping
+**Sprint:** Sprint 2 — Mapeamento DOCX para schema e marts
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** O risco de omissão acontece quando um item do DOCX não tem correspondência no banco, ou quando falta regra/fonte/validação.
+**Escopo:**
+- Inclui: verificador de completude do mapping vs checklist e regras mínimas por item
+- Exclui: extração de dados das fontes (PDF/XLSX/PPTX)
+
+**Implementação (passos):**
+- Implementar `validate_mapping_coverage(checklist, mapping) -> list[Finding]`.
+- Regras mínimas: destino (tabela/view) obrigatório; regra de cálculo obrigatória; fonte(s) obrigatória; validações mínimas quando derivado.
+- Produzir saída em formato consumível (JSON/Markdown) para ser lida pelo gate.
+
+**Critérios de aceite:**
+- [ ] Validador identifica itens sem mapping e itens com mapping incompleto
+- [ ] Saída do validador lista findings com severidade e referência ao item do DOCX
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/mapping_validate.py`
+- `npbb/core/spec/spec_models.py`
+
+**Dependências:**
+- TMJ-ETL-007
+
+### TMJ-ETL-009 — Gerar documentação do mapping (03_requirements_to_schema_mapping)
+**Sprint:** Sprint 2 — Mapeamento DOCX para schema e marts
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** O time precisa de documentação gerada a partir do mapping para evitar divergência entre o que está implementado e o que está documentado.
+**Escopo:**
+- Inclui: gerador Markdown do mapeamento (tabela item->tabela.campo->regra->fonte->validação)
+- Exclui: editar manualmente o documento gerado
+
+**Implementação (passos):**
+- Implementar `render_mapping_md(checklist, mapping) -> str`.
+- Incluir colunas de validação e observações de regua de publico (entradas validadas, opt-in, vendidos, publico unico).
+- Integrar no CLI `spec:render-mapping` para produzir arquivo de saída.
+
+**Critérios de aceite:**
+- [ ] Documento gerado reflete exatamente o mapping YAML (sem conteúdo inventado)
+- [ ] Documento explicita regua de publico por métrica quando aplicável
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/render_mapping_md.py`
+- `npbb/etl/cli_spec.py`
+
+**Dependências:**
+- TMJ-ETL-008
+
+### TMJ-ETL-010 — Testes do mapping (loader + validador + render)
+**Sprint:** Sprint 2 — Mapeamento DOCX para schema e marts
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** O mapping e o validador são o principal mecanismo anti-omissão antes de extrair dados e gerar o Word.
+**Escopo:**
+- Inclui: testes unitários para `load_mapping`, `validate_mapping_coverage` e `render_mapping_md`
+- Exclui: testes de integração com banco e extractors
+
+**Implementação (passos):**
+- Criar fixture de YAML mínimo e YAML inválido (campos faltantes).
+- Testar cenários: item sem mapping, item com regra ausente, item derivado sem validações.
+- Validar que o render inclui colunas e campos obrigatórios.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem casos de sucesso e falha do loader/validador
+- [ ] Testes cobrem render do mapeamento (snapshot simples)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_spec_mapping.py`
+- `tests/fixtures/spec/mapping_min.yml`
+
+**Dependências:**
+- TMJ-ETL-009
+
+### TMJ-ETL-011 — Checks de completude do spec (seções obrigatórias e duplicidade)
+**Sprint:** Sprint 3 — Spec executavel e governanca do template
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Mudanças no DOCX podem remover seções/figuras e passar despercebidas, gerando omissões no fechamento.
+**Escopo:**
+- Inclui: checks de completude e consistência do spec extraído
+- Exclui: checks de dados extraídos das fontes (fica no épico de Data Quality)
+
+**Implementação (passos):**
+- Implementar `check_required_sections(spec)` com lista configurável de seções obrigatórias.
+- Implementar `check_duplicates(spec)` para detectar títulos repetidos e itens ambíguos.
+- Produzir findings com severidade (warn/error) para uso no gate.
+
+**Critérios de aceite:**
+- [ ] Checks detectam ausência de seções obrigatórias e duplicidade de títulos
+- [ ] Findings incluem severidade e referência clara ao item problemático
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/spec_checks.py`
+- `npbb/core/spec/spec_models.py`
+
+**Dependências:**
+- TMJ-ETL-005
+
+### TMJ-ETL-012 — Diff de spec entre versões do DOCX (resumo de mudanças)
+**Sprint:** Sprint 3 — Spec executavel e governanca do template
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Precisamos comparar rapidamente duas versões do template para avaliar impacto no pipeline (novas seções, figuras removidas, etc).
+**Escopo:**
+- Inclui: utilitário de diff (spec A vs spec B) com saída legível
+- Exclui: atualização automática de mappings (deve ser manual e revisada)
+
+**Implementação (passos):**
+- Implementar `diff_specs(old, new) -> DiffReport` (seções adicionadas/removidas, figuras/tabelas).
+- Renderizar diff em Markdown e JSON para auditoria.
+- Integrar comando `spec:diff` no CLI.
+
+**Critérios de aceite:**
+- [ ] Diff identifica seções/figuras/tabelas adicionadas e removidas
+- [ ] Saída do diff é gerada em Markdown e JSON
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/spec_diff.py`
+- `npbb/etl/cli_spec.py`
+
+**Dependências:**
+- TMJ-ETL-011
+
+### TMJ-ETL-013 — Gate do spec (bloquear quando itens críticos estiverem inválidos)
+**Sprint:** Sprint 3 — Spec executavel e governanca do template
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Antes de rodar ETL e gerar report, precisamos de um gate automático que impeça execução quando o spec não está completo.
+**Escopo:**
+- Inclui: comando `spec:gate` que roda checks e valida coverage do mapping
+- Exclui: gate de dados (DQ) e gate de geração do Word (fica em épicos próprios)
+
+**Implementação (passos):**
+- Implementar `run_spec_gate(docx_path, mapping_path) -> exit_code`.
+- Rodar `spec_checks` e `validate_mapping_coverage` e consolidar findings.
+- Definir regra de severidade para falha (ex.: qualquer error falha).
+
+**Critérios de aceite:**
+- [ ] Gate falha (exit code não-zero) quando há findings de severidade error
+- [ ] Gate imprime resumo acionável (itens faltantes e como corrigir)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/cli_spec.py`
+- `npbb/core/spec/spec_gate.py`
+
+**Dependências:**
+- TMJ-ETL-012
+- TMJ-ETL-010
+
+### TMJ-ETL-014 — Política de versionamento do template/spec (config + documentação)
+**Sprint:** Sprint 3 — Spec executavel e governanca do template
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Sem uma política explícita, mudanças no template quebram o pipeline ou geram divergência entre versões de relatório.
+**Escopo:**
+- Inclui: definir política como config (código) e documentação no repositório
+- Exclui: automação de release/CI externa
+
+**Implementação (passos):**
+- Criar `npbb/core/spec/policy.py` com constantes e docstring explicando compatibilidade e versão mínima do spec.
+- Documentar processo: como atualizar template, rodar diff, atualizar mapping, e revalidar gate.
+- Referenciar caminhos padrão dos artefatos gerados (`00_*`, `03_*`).
+
+**Critérios de aceite:**
+- [ ] Política existe em código (config) e em documentação humana
+- [ ] Processo descreve passos para mudanças e validação (diff + gate)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/spec/policy.py`
+- `npbb/docs/analises/eventos/tamo_junto_2025/planning/00_docx_as_spec.md`
+
+**Dependências:**
+- TMJ-ETL-013
+
+### TMJ-ETL-015 — Snapshot tests do spec e script local de validação
+**Sprint:** Sprint 3 — Spec executavel e governanca do template
+**Épico:** DOCX como Spec de Dados
+
+**Contexto:** Precisamos de uma verificação rápida (local) que garanta que o spec gerado não mudou sem intenção.
+**Escopo:**
+- Inclui: snapshot tests (golden files) do Markdown gerado e script local para rodar gate/checks
+- Exclui: execução em pipeline remoto
+
+**Implementação (passos):**
+- Criar snapshots em `tests/golden/spec/` para saída do checklist e do mapping renderizado.
+- Adicionar script `npbb/scripts/run_spec_checks.py` para executar `spec:extract`, `spec:render-mapping` e `spec:gate`.
+- Garantir que snapshots sejam atualizados por comando explícito (flag).
+
+**Critérios de aceite:**
+- [ ] Snapshot tests falham quando a saída muda sem atualização explícita
+- [ ] Script local executa checks e gate de ponta a ponta para o spec
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/scripts/run_spec_checks.py`
+- `tests/golden/spec/README.md`
+- `tests/test_spec_snapshots.py`
+
+**Dependências:**
+- TMJ-ETL-013
+
+
+## Épico: Ingestion Registry / Catalogo de fontes
+
+### TMJ-ETL-016 — Criar pacote core de registry (sources/ingestions/lineage)
+**Sprint:** Sprint 1 — Registry de sources e ingestions
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** O ETL precisa de um registry central para rastrear fontes, execucoes de ingestao e posteriormente linhagem.
+**Escopo:**
+- Inclui: criar `npbb/core/registry/` com tipos e interfaces para registry
+- Exclui: migrations e modelos de banco (issue separada)
+
+**Implementação (passos):**
+- Criar `npbb/core/registry/` com `__init__.py` e docstrings de modulo.
+- Definir tipos base (`SourceId`, `IngestionId`, `IngestionStatus`) e contratos de funcoes.
+- Criar `npbb/core/registry/errors.py` com excecoes padrao (mensagens acionaveis).
+
+**Critérios de aceite:**
+- [ ] Modulos do registry importam sem erro e possuem docstrings
+- [ ] Excecoes padrao existem e sao reutilizaveis por extractors/loaders
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/registry/__init__.py`
+- `npbb/core/registry/types.py`
+- `npbb/core/registry/errors.py`
+
+**Dependências:**
+- nenhuma
+
+### TMJ-ETL-017 — Modelos e migration: tabelas sources e ingestions
+**Sprint:** Sprint 1 — Registry de sources e ingestions
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Sem tabelas persistidas, nao existe historico de execucao e nao existe auditoria de origem dos dados.
+**Escopo:**
+- Inclui: criar modelos ORM e migration Alembic para `sources` e `ingestions`
+- Exclui: endpoints de consulta (fica na Sprint 3)
+
+**Implementação (passos):**
+- Definir modelos SQLModel para `Source` e `IngestionRun` (campos minimos + indices).
+- Criar migration Alembic criando as tabelas e constraints basicas (unique por `source_id`).
+- Adicionar enums/valores de status (success/failed/partial) em um dominio controlado.
+
+**Critérios de aceite:**
+- [ ] Migration cria tabelas `sources` e `ingestions` com chaves, indices e constraints minimas
+- [ ] Modelos ORM existem e refletem o schema criado
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/models/etl_registry.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-016
+
+### TMJ-ETL-018 — Utilitario de hash e metadados de arquivo (source fingerprint)
+**Sprint:** Sprint 1 — Registry de sources e ingestions
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** A mesma fonte pode existir em versoes diferentes. Precisamos de hash e metadados para detectar mudancas e garantir reprodutibilidade.
+**Escopo:**
+- Inclui: funcoes para hash (sha256) e coleta de metadados (tamanho, mtime, caminho)
+- Exclui: upload/copia de arquivos para raw storage
+
+**Implementação (passos):**
+- Implementar `compute_file_sha256(path) -> str` com leitura em chunks.
+- Implementar `collect_file_metadata(path) -> FileMetadata`.
+- Garantir tratamento de erros (permissao, arquivo inexistente) com excecoes do registry.
+
+**Critérios de aceite:**
+- [ ] Hash calculado e estavel para o mesmo conteudo
+- [ ] Metadados capturam informacoes minimas para auditoria e debug
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/utils/file_fingerprint.py`
+- `npbb/core/registry/errors.py`
+
+**Dependências:**
+- TMJ-ETL-016
+
+### TMJ-ETL-019 — Servico de registro: register source + start/finish ingestion
+**Sprint:** Sprint 1 — Registry de sources e ingestions
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Extractors e loaders precisam registrar de forma padrao: "qual arquivo", "qual execucao", "qual status".
+**Escopo:**
+- Inclui: funcoes para registrar source e criar/finalizar ingestion runs no banco
+- Exclui: catalogo operacional e consultas agregadas (Sprint 3)
+
+**Implementação (passos):**
+- Implementar `register_source_from_path(session, source_id, path) -> Source`.
+- Implementar `start_ingestion_run(session, source_id, extractor_name) -> IngestionRun`.
+- Implementar `finish_ingestion_run(session, ingestion_id, status, notes) -> None`.
+
+**Critérios de aceite:**
+- [ ] Fluxo completo registra source e cria ingestion run com status e timestamps
+- [ ] Operacoes sao idempotentes quando aplicavel (source_id unico)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/etl_registry_service.py`
+- `npbb/backend/app/models/etl_registry.py`
+
+**Dependências:**
+- TMJ-ETL-017
+- TMJ-ETL-018
+
+### TMJ-ETL-020 — Testes do registry (sources/ingestions + hashing)
+**Sprint:** Sprint 1 — Registry de sources e ingestions
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** O registry e uma dependencia central. Precisamos garantir que nao quebre quando novos extractors forem adicionados.
+**Escopo:**
+- Inclui: testes unitarios para hashing e para funcoes de registro (com banco de teste)
+- Exclui: testes end-to-end de ETL completo
+
+**Implementação (passos):**
+- Criar testes para `compute_file_sha256` e `collect_file_metadata` com arquivos temporarios.
+- Criar testes para `register_source_from_path` e `start/finish_ingestion_run` em banco isolado.
+- Validar constraints (source_id unico) e transicoes de status.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem hashing/metadados e fluxo de registro de ingestao
+- [ ] Testes verificam constraints e caminhos de erro (arquivo inexistente, status invalido)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_registry_sources_ingestions.py`
+- `npbb/core/utils/file_fingerprint.py`
+
+**Dependências:**
+- TMJ-ETL-019
+
+### TMJ-ETL-021 — Modelos e migration: tabela de lineage (fonte + localizacao + evidencia)
+**Sprint:** Sprint 2 — Linhagem de metricas (fonte e localizacao)
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** A regra anti-alucinacao exige que cada metrica aponte para arquivo e local (pagina/slide/aba/range) e evidencia (titulo/label).
+**Escopo:**
+- Inclui: criar modelo e migration da tabela `lineage_refs` (ou equivalente)
+- Exclui: uso dessa tabela em todos os fatos (isso ocorre conforme fatos forem implementados)
+
+**Implementação (passos):**
+- Definir modelo SQLModel `LineageRef` com `source_id`, `ingestion_id`, `location_type`, `location_value`, `evidence_text`.
+- Criar migration Alembic criando a tabela e indices (por `source_id` e `ingestion_id`).
+- Definir dominio controlado para `location_type` (page/slide/sheet/range).
+
+**Critérios de aceite:**
+- [ ] Migration cria tabela de linhagem com campos e indices minimos
+- [ ] Modelo ORM existe e define dominio para `location_type`
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/models/etl_lineage.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-017
+
+### TMJ-ETL-022 — Padrao de localizacao: formatar e parsear referencias (page/slide/sheet/range)
+**Sprint:** Sprint 2 — Linhagem de metricas (fonte e localizacao)
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Sem um padrao de representacao, a localizacao vira texto livre e perde valor de auditoria.
+**Escopo:**
+- Inclui: formatadores e parsers para `location_value` por tipo
+- Exclui: extracao automatica de pagina/slide (isso e responsabilidade do extractor)
+
+**Implementação (passos):**
+- Implementar `format_location(location_type, parts) -> str` com formatos documentados.
+- Implementar `parse_location(location_type, value) -> dict` para validacao e debug.
+- Adicionar validacoes (ex.: page deve ser inteiro positivo; sheet nao vazio).
+
+**Critérios de aceite:**
+- [ ] Formatadores geram strings consistentes e parsers recuperam a mesma informacao
+- [ ] Valores invalidos sao rejeitados com erro claro e acionavel
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/registry/location_ref.py`
+- `npbb/core/registry/types.py`
+
+**Dependências:**
+- TMJ-ETL-021
+
+### TMJ-ETL-023 — Helpers de linhagem para extractors e loaders (API unica)
+**Sprint:** Sprint 2 — Linhagem de metricas (fonte e localizacao)
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Para evitar "dados sem fonte", extractors precisam de helpers padrao que criem `LineageRef` e anexem ao registro extraido.
+**Escopo:**
+- Inclui: helpers `create_lineage_ref` e `attach_lineage` para registros de staging/canonical
+- Exclui: regras de DQ (percentuais, reconciliacao)
+
+**Implementação (passos):**
+- Implementar `create_lineage_ref(session, ...) -> LineageRef` (persistindo no banco).
+- Implementar `attach_lineage(record, lineage_ref_id) -> record` padronizando campo.
+- Documentar no docstring como extractors devem registrar evidencia (titulo da tabela/label do slide).
+
+**Critérios de aceite:**
+- [ ] Helpers permitem criar e associar linhagem sem duplicar logica em cada extractor
+- [ ] Evidencia e obrigatoria quando o registro representa uma metrica agregada
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/etl_lineage_service.py`
+- `npbb/backend/app/models/etl_lineage.py`
+
+**Dependências:**
+- TMJ-ETL-021
+- TMJ-ETL-019
+
+### TMJ-ETL-024 — Enforcement: bloquear ou marcar parcial quando faltar linhagem
+**Sprint:** Sprint 2 — Linhagem de metricas (fonte e localizacao)
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** A disciplina precisa ser aplicada pelo sistema. Se linhagem for opcional, ela vira ausente.
+**Escopo:**
+- Inclui: validacao central que rejeita registros sem linhagem quando o dataset exige
+- Exclui: implementacao de checks de negocio (isso e do epico de Data Quality)
+
+**Implementação (passos):**
+- Criar `LineagePolicy` (ex.: required/optional) por dataset.
+- Implementar validacao em loaders de staging/canonical: se policy=required e lineage faltar, falhar ingestao.
+- Registrar falhas no ingestion run como `partial/failed` conforme severidade configurada.
+
+**Critérios de aceite:**
+- [ ] Datasets marcados como required falham quando qualquer registro nao tem linhagem
+- [ ] Falha e registrada no ingestion run com mensagem acionavel
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/registry/lineage_policy.py`
+- `npbb/backend/app/services/etl_registry_service.py`
+
+**Dependências:**
+- TMJ-ETL-023
+
+### TMJ-ETL-025 — Testes da linhagem (format/parse + policy enforcement)
+**Sprint:** Sprint 2 — Linhagem de metricas (fonte e localizacao)
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** A linhagem e requisito central e precisa ter testes para evitar regressao.
+**Escopo:**
+- Inclui: testes unitarios para location_ref e lineage_policy
+- Exclui: testes de extractors especificos (XLSX/PDF/PPTX)
+
+**Implementação (passos):**
+- Testar roundtrip de `format_location` e `parse_location` por tipo (page/slide/sheet/range).
+- Testar `LineagePolicy` em cenarios: required sem lineage, optional sem lineage, required com lineage.
+- Validar mensagens de erro e classificacao de status (failed/partial).
+
+**Critérios de aceite:**
+- [ ] Testes cobrem format/parse e enforcement de policy
+- [ ] Testes cobrem erros de validacao e mensagens acionaveis
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_registry_lineage.py`
+- `npbb/core/registry/location_ref.py`
+- `npbb/core/registry/lineage_policy.py`
+
+**Dependências:**
+- TMJ-ETL-024
+
+### TMJ-ETL-026 — View/query: ultima ingestao por source (latest run)
+**Sprint:** Sprint 3 — Catalogo operacional e consultas de auditoria
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Precisamos responder rapidamente "o que foi ingerido" e "qual foi a ultima execucao por fonte".
+**Escopo:**
+- Inclui: query reutilizavel (ou view) para obter ultimo ingestion run por source_id
+- Exclui: cobertura por sessao/dia (issue separada)
+
+**Implementação (passos):**
+- Implementar query SQL (ou ORM) `latest_ingestion_by_source(session)`.
+- Garantir ordenacao por timestamp e desempate deterministico.
+- Documentar o contrato de saida (campos retornados) para reuso em API/CLI.
+
+**Critérios de aceite:**
+- [ ] Query retorna uma linha por source com o ultimo status e timestamps
+- [ ] Contrato e documentado e estavel para consumo por outras camadas
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/etl_catalog_queries.py`
+- `npbb/backend/app/models/etl_registry.py`
+
+**Dependências:**
+- TMJ-ETL-019
+
+### TMJ-ETL-027 — CLI: gerar relatorio operacional de ingestoes (markdown/json)
+**Sprint:** Sprint 3 — Catalogo operacional e consultas de auditoria
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** O time precisa de um comando unico que gere um resumo de ingestoes e falhas para auditoria e triagem.
+**Escopo:**
+- Inclui: comando CLI que lista sources, ultimo run, status, notas e contagens basicas
+- Exclui: dashboard web
+
+**Implementação (passos):**
+- Criar `npbb/etl/cli_catalog.py` com comando `catalog:report`.
+- Consumir queries do catalogo e renderizar Markdown e JSON.
+- Incluir opcao de filtro por status e por tipo de source (pdf/xlsx/pptx).
+
+**Critérios de aceite:**
+- [ ] CLI gera relatorio em Markdown e JSON com informacoes basicas por source
+- [ ] Filtros funcionam e nao exigem edicao de codigo
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/cli_catalog.py`
+- `npbb/backend/app/services/etl_catalog_queries.py`
+
+**Dependências:**
+- TMJ-ETL-026
+
+### TMJ-ETL-028 — API interna: listar sources e ingestions com filtros
+**Sprint:** Sprint 3 — Catalogo operacional e consultas de auditoria
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Para observabilidade e integracao futura, precisamos expor consultas internas (read-only) via API.
+**Escopo:**
+- Inclui: endpoints internos para listar sources e ingestion runs (com filtros)
+- Exclui: autenticacao/roles novos (usar mecanismo existente)
+
+**Implementação (passos):**
+- Criar router `internal_catalog` (prefixo `/internal/catalog`).
+- Implementar endpoints `GET /sources` e `GET /ingestions` com filtros (status, source_type).
+- Reutilizar `etl_catalog_queries` e paginar quando necessario.
+
+**Critérios de aceite:**
+- [ ] Endpoints retornam dados consistentes com o CLI e suportam filtros basicos
+- [ ] Resposta inclui IDs e timestamps para auditoria
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/routers/internal_catalog.py`
+- `npbb/backend/app/services/etl_catalog_queries.py`
+
+**Dependências:**
+- TMJ-ETL-026
+
+### TMJ-ETL-029 — Query: esqueleto de cobertura por sessao (esperado vs observado)
+**Sprint:** Sprint 3 — Catalogo operacional e consultas de auditoria
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** A auditoria de lacunas exige cruzar sessoes esperadas com fontes observadas (por tipo de dado).
+**Escopo:**
+- Inclui: query base para matriz de cobertura (sem regras complexas)
+- Exclui: definicao de agenda master e regras de show (fica no epico de Cobertura de shows)
+
+**Implementação (passos):**
+- Definir um contrato de saida para cobertura (session_id, dataset, status, sources_present).
+- Implementar query que cruza `event_sessions` com `sources/ingestions` por tags/datasets.
+- Retornar lista consumivel por DQ e pelo report generator (no futuro).
+
+**Critérios de aceite:**
+- [ ] Query produz uma estrutura de cobertura basica por sessao
+- [ ] Estrutura e consumivel por outras camadas (DQ e relatorio)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/etl_coverage_queries.py`
+- `npbb/backend/app/models/etl_registry.py`
+
+**Dependências:**
+- TMJ-ETL-026
+- TMJ-ETL-046
+
+### TMJ-ETL-030 — Testes do catalogo operacional (queries + API)
+**Sprint:** Sprint 3 — Catalogo operacional e consultas de auditoria
+**Épico:** Ingestion Registry / Catalogo de fontes
+
+**Contexto:** Consultas operacionais precisam ser confiaveis para evitar diagnosticos errados de cobertura.
+**Escopo:**
+- Inclui: testes unitarios para queries do catalogo e testes basicos dos endpoints internos
+- Exclui: testes de UI/dashboard
+
+**Implementação (passos):**
+- Criar testes para `latest_ingestion_by_source` e `etl_coverage_queries` com banco de teste.
+- Criar testes de API para `/internal/catalog/sources` e `/internal/catalog/ingestions`.
+- Validar filtros e ordenacao.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem queries e endpoints com cenarios de status/filtros
+- [ ] Testes validam ordenacao deterministica e formatos de resposta
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_catalog_queries.py`
+- `tests/test_internal_catalog_api.py`
+
+**Dependências:**
+- TMJ-ETL-028
+- TMJ-ETL-029
+
+
+## Épico: Extractors por tipo (PDF/XLSX/PPTX)
+
+### TMJ-ETL-031 — Criar estrutura base do ETL (extract/transform/load/validate)
+**Sprint:** Sprint 1 — Extractor XLSX (opt-in e leads)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Precisamos de uma estrutura padrao no repo para evoluir extractors sem espalhar codigo pelo backend.
+**Escopo:**
+- Inclui: criar pastas e modulos base do ETL com interfaces e docstrings
+- Exclui: implementacao de extractors especificos (issues separadas)
+
+**Implementação (passos):**
+- Criar `npbb/etl/` e subpastas `extract/`, `transform/`, `load/`, `validate/` com `__init__.py`.
+- Definir contrato de extractor (`extract() -> iterator[dict]`) e contrato de loader (`load(records) -> LoadResult`).
+- Criar um runner minimo `npbb/etl/runner.py` para orquestrar extract + load com ingestion_id.
+
+**Critérios de aceite:**
+- [ ] Estrutura de pastas existe e modulos importam sem erro
+- [ ] Interfaces basicas de extractor/loader estao definidas e documentadas
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/__init__.py`
+- `npbb/etl/extract/__init__.py`
+- `npbb/etl/transform/__init__.py`
+- `npbb/etl/load/__init__.py`
+- `npbb/etl/validate/__init__.py`
+- `npbb/etl/runner.py`
+
+**Dependências:**
+- TMJ-ETL-019
+
+### TMJ-ETL-032 — Utilitario XLSX: detectar header e normalizar colunas (celulas mescladas)
+**Sprint:** Sprint 1 — Extractor XLSX (opt-in e leads)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** As planilhas de opt-in possuem header com mesclas e lacunas; sem utilitario padrao, cada extractor vira um caso especial.
+**Escopo:**
+- Inclui: funcoes de leitura XLSX e normalizacao de header/colunas
+- Exclui: regras de negocio (segmentos, regua de publico)
+
+**Implementação (passos):**
+- Implementar `find_header_row(sheet) -> int` e `build_columns(sheet, header_row) -> list[str]`.
+- Criar normalizacao de nomes (trim, uppercase/lowercase, substituicao de espacos) com mapeamento configuravel.
+- Retornar tambem metadata de linhagem para XLSX (sheet name, header_row, range usado).
+
+**Critérios de aceite:**
+- [ ] Utilitario identifica header row e gera lista de colunas canonicas
+- [ ] Saida inclui metadata suficiente para linhagem (aba + linha do cabecalho)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/xlsx_utils.py`
+- `npbb/etl/transform/column_normalize.py`
+
+**Dependências:**
+- TMJ-ETL-031
+- TMJ-ETL-022
+
+### TMJ-ETL-033 — Extractor XLSX Opt-in: extrair para staging com linhagem
+**Sprint:** Sprint 1 — Extractor XLSX (opt-in e leads)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** A base de opt-in e a fonte para dinamica de pre-venda e proxy de relacionamento BB; precisamos extrair de forma reprodutivel e rastreavel.
+**Escopo:**
+- Inclui: extractor de opt-in e carga em tabela de staging no banco (com lineage_ref)
+- Exclui: agregacoes/marts (isso e do epico de Normalizacao)
+
+**Implementação (passos):**
+- Implementar `extract_optin_xlsx(path) -> iterator[dict]` usando `xlsx_utils`.
+- Definir modelo/tabela `stg_optin_transactions` e migration correspondente.
+- No load: criar ingestion run, criar lineage refs por sheet/range, e persistir registros com `ingestion_id`.
+
+**Critérios de aceite:**
+- [ ] Registros de opt-in sao carregados em staging com `ingestion_id` e `lineage_ref_id`
+- [ ] Quando faltar linhagem obrigatoria, ingestao falha ou marca parcial conforme policy
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/xlsx_optin.py`
+- `npbb/backend/app/models/stg_optin.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-019
+- TMJ-ETL-023
+- TMJ-ETL-032
+
+### TMJ-ETL-034 — Extractor XLSX Leads: extrair e normalizar acoes para staging
+**Sprint:** Sprint 1 — Extractor XLSX (opt-in e leads)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** A planilha de leads contem PII e a coluna de acoes pode ter multiplos valores; precisamos extrair com dedupe basico e rastreio.
+**Escopo:**
+- Inclui: extractor de leads e carga em staging (incluindo parsing de "Acoes")
+- Exclui: integracao completa com tabelas finais do NPBB (canonical/marts)
+
+**Implementação (passos):**
+- Implementar `extract_leads_xlsx(path) -> iterator[dict]` mapeando colunas conhecidas.
+- Implementar parser de `Acoes` para lista (delimitadores e limpeza) e salvar em staging normalizado (ex.: tabela `stg_lead_actions`).
+- Criar migrations para `stg_leads` e `stg_lead_actions` com `ingestion_id` e `lineage_ref_id`.
+
+**Critérios de aceite:**
+- [ ] Leads e acoes sao carregados em staging com chaves e linhagem
+- [ ] Parser de acoes e deterministico e documentado (delimitadores suportados)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/xlsx_leads.py`
+- `npbb/backend/app/models/stg_leads.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-019
+- TMJ-ETL-023
+- TMJ-ETL-032
+
+### TMJ-ETL-035 — Testes unitarios XLSX (utils + extractors)
+**Sprint:** Sprint 1 — Extractor XLSX (opt-in e leads)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Extractors de XLSX sao sensiveis a layout; testes evitam quebra silenciosa quando mudar cabecalho/aba.
+**Escopo:**
+- Inclui: fixtures XLSX minimas e testes para utils, opt-in e leads
+- Exclui: testes de integracao com Postgres real (usar banco de teste configurado)
+
+**Implementação (passos):**
+- Criar fixtures XLSX em `tests/fixtures/xlsx/` cobrindo header mesclado e colunas essenciais.
+- Testar `find_header_row`/`build_columns` e extratores retornando registros esperados.
+- Testar que lineage e registrada (sheet/header_row) e que policy required falha quando ausente.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem utils e extratores para cenarios minimos e de falha
+- [ ] Testes cobrem a geracao de metadata de linhagem no fluxo de extracao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/fixtures/xlsx/optin_min.xlsx`
+- `tests/fixtures/xlsx/leads_min.xlsx`
+- `tests/test_xlsx_extractors.py`
+
+**Dependências:**
+- TMJ-ETL-033
+- TMJ-ETL-034
+
+### TMJ-ETL-036 — Dependencias e bootstrap do extractor PPTX
+**Sprint:** Sprint 2 — Extractor PPTX (midias e social listening)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Para extrair metricas de slides com fidelidade, precisamos de biblioteca de PPTX e uma estrutura padrao de parsing.
+**Escopo:**
+- Inclui: adicionar dependencia `python-pptx` e criar modulo base de leitura de slides
+- Exclui: mapeamento slide->metrica (issue separada)
+
+**Implementação (passos):**
+- Adicionar `python-pptx` (e dependencias) no `requirements.txt`/`pyproject.toml` do ambiente de ETL.
+- Criar `npbb/etl/extract/pptx_reader.py` com funcao `iter_slides(pptx_path)`.
+- Documentar limitacoes (textos em shapes, tabelas, imagens) no docstring.
+
+**Critérios de aceite:**
+- [ ] Dependencia esta declarada e o modulo consegue abrir um PPTX e iterar slides
+- [ ] Erros de arquivo invalido sao tratados com excecoes acionaveis
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/requirements.txt`
+- `npbb/etl/extract/pptx_reader.py`
+
+**Dependências:**
+- TMJ-ETL-031
+
+### TMJ-ETL-037 — Fallback: extrair texto do PPTX via ZIP/XML (sem python-pptx)
+**Sprint:** Sprint 2 — Extractor PPTX (midias e social listening)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Em ambiente restrito, a dependencia pode falhar. Precisamos de fallback para extrair `a:t` do XML dos slides.
+**Escopo:**
+- Inclui: extracao de texto por slide via zip/xml
+- Exclui: interpretacao de numeros e labels (issue separada)
+
+**Implementação (passos):**
+- Implementar `iter_slide_text_blocks(pptx_path) -> iterator[SlideText]` via `zipfile` e parse de XML.
+- Retornar `slide_number`, `slide_title` (heuristica), e `texts[]`.
+- Registrar linhagem minima (slide_number) para consumo posterior.
+
+**Critérios de aceite:**
+- [ ] Fallback extrai textos por slide de forma deterministica
+- [ ] Saida contem `slide_number` e lista de textos para mapeamento posterior
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/pptx_xml_fallback.py`
+- `npbb/etl/extract/pptx_reader.py`
+
+**Dependências:**
+- TMJ-ETL-036
+- TMJ-ETL-022
+
+### TMJ-ETL-038 — Config: mapeamento slide->metrica (formato e loader)
+**Sprint:** Sprint 2 — Extractor PPTX (midias e social listening)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Slides tem layout variavel. Para evitar hardcode, o extractor deve ser dirigido por configuracao.
+**Escopo:**
+- Inclui: definir formato de config e loader/validador do arquivo de mapeamento
+- Exclui: extracao efetiva de metricas (issue separada)
+
+**Implementação (passos):**
+- Definir `pptx_metrics.yml` com chaves: slide_number/regex de titulo, metric_name, platform, unit, extraction_rule.
+- Implementar `load_pptx_mapping(path) -> list[MappingRule]` com validacao de schema.
+- Documentar como adicionar nova metrica e como registrar evidencia (label do slide).
+
+**Critérios de aceite:**
+- [ ] Config possui schema validado e e carregada em objetos tipados
+- [ ] Regras invalidas falham com mensagem clara (campo faltante, regex invalida)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/config/pptx_metrics.yml`
+- `npbb/etl/extract/pptx_mapping.py`
+
+**Dependências:**
+- TMJ-ETL-036
+
+### TMJ-ETL-039 — Extractor PPTX: gerar stg_social_metrics com lineage por slide
+**Sprint:** Sprint 2 — Extractor PPTX (midias e social listening)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** As metricas de redes/social listening precisam ser extraidas com evidencia e linhagem por slide.
+**Escopo:**
+- Inclui: extracao orientada por mapping + carga em staging `stg_social_metrics`
+- Exclui: agregacoes/marts e graficos (relatorio Word)
+
+**Implementação (passos):**
+- Implementar `extract_social_metrics(pptx_path, mapping_rules) -> iterator[dict]`.
+- Criar modelo/migration de `stg_social_metrics` com `ingestion_id` e `lineage_ref_id`.
+- Registrar `LineageRef` com `location_type=slide` e `evidence_text` como label/titulo do box.
+
+**Critérios de aceite:**
+- [ ] Metricas sao carregadas em staging com `platform`, `metric_name`, `metric_value` e linhagem por slide
+- [ ] O extractor falha/parcial quando a regra nao encontra o label esperado (drift de layout)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/pptx_social_metrics.py`
+- `npbb/backend/app/models/stg_social_metrics.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-019
+- TMJ-ETL-023
+- TMJ-ETL-038
+
+### TMJ-ETL-040 — Testes unitarios PPTX (reader + mapping + extractor)
+**Sprint:** Sprint 2 — Extractor PPTX (midias e social listening)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Precisamos garantir que o parsing de slides e o mapping nao quebrem com pequenas mudancas no PPTX.
+**Escopo:**
+- Inclui: fixtures PPTX simples e testes para reader/fallback/mapping/extractor
+- Exclui: testes de performance e arquivos grandes
+
+**Implementação (passos):**
+- Criar fixture PPTX minima em `tests/fixtures/pptx/min_metrics.pptx` (ou construir via xml fixture).
+- Testar `pptx_reader`, fallback xml, `load_pptx_mapping` e `extract_social_metrics`.
+- Validar registro de linhagem (slide) e comportamento em drift (metric missing).
+
+**Critérios de aceite:**
+- [ ] Testes cobrem leitura de slides, parsing de mapping e extracao de metricas
+- [ ] Testes cobrem comportamento quando label/metric nao e encontrado (drift)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/fixtures/pptx/min_metrics.pptx`
+- `tests/test_pptx_extractors.py`
+
+**Dependências:**
+- TMJ-ETL-039
+
+### TMJ-ETL-041 — Dependencias PDF + classificador (texto vs imagem/scan)
+**Sprint:** Sprint 3 — Extractor PDF (controle de acesso e relatorios)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** PDFs podem ter texto ou serem imagens. Precisamos escolher estrategia (tabela vs OCR/assistido) antes de tentar extrair.
+**Escopo:**
+- Inclui: declarar dependencias de PDF e implementar classificador de conteudo por pagina
+- Exclui: extracao de tabelas especificas (issues separadas)
+
+**Implementação (passos):**
+- Adicionar dependencias (ex.: `pypdf` e `pdfplumber`) no ambiente de ETL.
+- Implementar `classify_pdf(p) -> PdfProfile` (tem texto, tem imagens, numero de paginas).
+- Registrar no ingestion run um sumario do profile (para auditoria).
+
+**Critérios de aceite:**
+- [ ] Dependencias de PDF estao declaradas e modulo classifica PDFs de exemplo
+- [ ] Profile registra informacoes suficientes para decidir estrategia de extracao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/requirements.txt`
+- `npbb/etl/extract/pdf_profile.py`
+- `npbb/etl/extract/pdf_classify.py`
+
+**Dependências:**
+- TMJ-ETL-019
+
+### TMJ-ETL-042 — Extractor PDF controle de acesso: tabela por sessao para staging
+**Sprint:** Sprint 3 — Extractor PDF (controle de acesso e relatorios)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Controle de acesso e a fonte oficial de "entradas validadas" por sessao, que alimenta big numbers e comparecimento.
+**Escopo:**
+- Inclui: extracao de tabela de controle de acesso e carga em `stg_access_control_sessions`
+- Exclui: reconciliacao e checks (fica no epico de Data Quality)
+
+**Implementação (passos):**
+- Implementar `extract_access_control_pdf(pdf_path) -> iterator[dict]` (por pagina/tabela).
+- Criar modelo/migration `stg_access_control_sessions` com colunas padrao e `lineage_ref_id`.
+- Registrar `LineageRef` com `location_type=page` e `evidence_text` (titulo/cabecalho da tabela quando possivel).
+
+**Critérios de aceite:**
+- [ ] Registros de controle de acesso sao carregados em staging com colunas padrao e linhagem por pagina
+- [ ] Quando o PDF nao for extraivel automaticamente, o sistema retorna status parcial com orientacao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/pdf_access_control.py`
+- `npbb/backend/app/models/stg_access_control.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-021
+- TMJ-ETL-041
+
+### TMJ-ETL-043 — Fallback assistido: spec YAML para extrair tabela de PDF (bbox + colunas)
+**Sprint:** Sprint 3 — Extractor PDF (controle de acesso e relatorios)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** PDFs instaveis exigem um modo assistido, onde definimos coordenadas e mapeamento de colunas por versao.
+**Escopo:**
+- Inclui: formato YAML de spec assistido e interpretador para extracao por pagina/area
+- Exclui: UI para marcacao (somente arquivo de spec e execucao via CLI)
+
+**Implementação (passos):**
+- Definir `pdf_table_specs.yml` (page, bbox, columns, header_rows, postprocess).
+- Implementar `load_pdf_table_specs(path)` e `extract_with_spec(pdf_path, spec)`.
+- Integrar fallback no extractor de controle de acesso quando extracao automatica falhar.
+
+**Critérios de aceite:**
+- [ ] Spec YAML e validado e permite extrair tabela quando o modo automatico falhar
+- [ ] Fallback registra linhagem (page + bbox) e evidencia associada ao spec
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/config/pdf_table_specs.yml`
+- `npbb/etl/extract/pdf_assisted_specs.py`
+- `npbb/etl/extract/pdf_access_control.py`
+
+**Dependências:**
+- TMJ-ETL-042
+
+### TMJ-ETL-044 — Extractor PDF DIMAC/MTC: capturar metricas com evidencia ou gerar GAP
+**Sprint:** Sprint 3 — Extractor PDF (controle de acesso e relatorios)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** DIMAC e MTC podem trazer metricas em texto/quadro. Se nao houver evidencia precisa, o pipeline deve gerar GAP, nao numero.
+**Escopo:**
+- Inclui: extracao orientada a padroes (regex/anchors) + estrutura de saida GAP-aware
+- Exclui: OCR completo e extração de graficos complexos (ficaria para iteracao posterior)
+
+**Implementação (passos):**
+- Criar extratores `extract_dimac_pdf_metrics` e `extract_mtc_pdf_metrics` com saida `MetricCandidate`.
+- Para cada metrica encontrada, exigir `LineageRef` (page + evidence_text). Caso contrario, registrar como GAP.
+- Persistir saidas em staging (`stg_dimac_metrics`, `stg_mtc_metrics`) com status (ok/gap).
+
+**Critérios de aceite:**
+- [ ] Metricas extraidas possuem linhagem (page + evidencia); caso contrario, viram GAP estruturado
+- [ ] Saidas em staging permitem auditar o que foi encontrado vs o que faltou
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/extract/pdf_dimac.py`
+- `npbb/etl/extract/pdf_mtc.py`
+- `npbb/backend/app/models/stg_dimac_mtc.py`
+
+**Dependências:**
+- TMJ-ETL-021
+- TMJ-ETL-041
+
+### TMJ-ETL-045 — Testes unitarios PDF (profile + assisted specs + access control)
+**Sprint:** Sprint 3 — Extractor PDF (controle de acesso e relatorios)
+**Épico:** Extractors por tipo (PDF/XLSX/PPTX)
+
+**Contexto:** Extração de PDF e fragil. Precisamos de testes para o classificador e para o modo assistido.
+**Escopo:**
+- Inclui: testes para classificador e interpretador de spec assistido (com fixtures pequenas)
+- Exclui: testes end-to-end com PDFs grandes
+
+**Implementação (passos):**
+- Criar fixtures PDF pequenas (ou mocks) para validar `classify_pdf`.
+- Criar fixture YAML de spec e testar `load_pdf_table_specs` e `extract_with_spec`.
+- Testar que o extractor de controle de acesso usa fallback quando automatico falha.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem classificador e fallback assistido
+- [ ] Testes cobrem comportamento de falha/parcial com mensagens acionaveis
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/fixtures/pdf/min_table.pdf`
+- `tests/fixtures/pdf/table_specs_min.yml`
+- `tests/test_pdf_extractors.py`
+
+**Dependências:**
+- TMJ-ETL-043
+
+
+## Épico: Normalizacao e Regras de Metrica
+
+### TMJ-ETL-046 — Modelos e migration: events e event_sessions (dimensoes canonicas)
+**Sprint:** Sprint 1 — Catalogo de sessoes e dimensoes
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O relatorio e por evento/dia/sessao. Sem dimensoes canonicas, fatos ficam soltos e as agregacoes ficam inconsistentes.
+**Escopo:**
+- Inclui: criar tabelas/modelos `events` e `event_sessions` e migrations
+- Exclui: carga automatica de agenda master (epico de Cobertura de shows)
+
+**Implementação (passos):**
+- Definir modelos SQLModel para `Event` e `EventSession` (chaves, datas, tipo, timestamps).
+- Criar migration Alembic criando tabelas e indices (event_id, session_date, session_type).
+- Documentar campos obrigatorios e como outras tabelas devem referenciar `session_id`.
+
+**Critérios de aceite:**
+- [ ] Migration cria `events` e `event_sessions` com indices e constraints minimas
+- [ ] Modelos ORM existem e permitem relacionar fatos por `session_id`
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/models/events_sessions.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-017
+
+### TMJ-ETL-047 — Regras de nomeacao e classificacao de sessoes (diurno_gratuito vs noturno_show)
+**Sprint:** Sprint 1 — Catalogo de sessoes e dimensoes
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** A classificacao correta de sessoes e fundamental para nao misturar publico diurno gratuito com show noturno.
+**Escopo:**
+- Inclui: funcoes deterministicas para nomear e classificar sessoes
+- Exclui: deduplicacao de publico e regras de negocio de vendas
+
+**Implementação (passos):**
+- Implementar `normalize_session_name(raw) -> str` e `classify_session(raw) -> session_type`.
+- Definir dominio de `session_type` (ex.: diurno_gratuito, noturno_show, outro).
+- Documentar heuristicas e pontos de extensao (ex.: agenda master sobrescreve heuristica).
+
+**Critérios de aceite:**
+- [ ] Funcoes produzem nomes e tipos consistentes para a mesma entrada
+- [ ] Dominio de `session_type` e controlado e validado
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/sessions/session_normalize.py`
+- `npbb/core/sessions/session_classify.py`
+
+**Dependências:**
+- TMJ-ETL-046
+
+### TMJ-ETL-048 — Resolver session_id: mapear registros de staging para event_sessions
+**Sprint:** Sprint 1 — Catalogo de sessoes e dimensoes
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** Staging de XLSX/PDF/PPTX precisa ser vinculado a `session_id` para que marts e report funcionem por sessao/dia.
+**Escopo:**
+- Inclui: resolver `session_id` para registros de staging (opt-in, access control, social)
+- Exclui: agregacao em marts (epico de marts)
+
+**Implementação (passos):**
+- Implementar `resolve_session_id(session, event_id, raw_session_fields) -> session_id`.
+- Atualizar loaders de staging para preencher `event_id`/`session_id` quando a fonte trouxer timestamp/nome.
+- Definir estrategia para casos ambiguos (ex.: marcar como `session_id` nulo e gerar finding).
+
+**Critérios de aceite:**
+- [ ] Registros de staging relevantes podem ser associados a um `session_id` quando houver dados suficientes
+- [ ] Casos ambiguos geram registro acionavel (finding) e nao silenciam o problema
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/session_resolver.py`
+- `npbb/backend/app/models/stg_optin.py`
+- `npbb/backend/app/models/stg_access_control.py`
+- `npbb/backend/app/models/stg_social_metrics.py`
+
+**Dependências:**
+- TMJ-ETL-033
+- TMJ-ETL-039
+- TMJ-ETL-042
+- TMJ-ETL-047
+
+### TMJ-ETL-049 — Relatorio basico: sessoes esperadas vs sessoes observadas (coverage)
+**Sprint:** Sprint 1 — Catalogo de sessoes e dimensoes
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** Antes de fechar, precisamos enxergar rapidamente se existem sessoes sem dados e dados sem sessao.
+**Escopo:**
+- Inclui: gerador de relatorio de cobertura (por sessao) usando registry + sessions
+- Exclui: regras especificas de show (12/12 e 14/12) e gates (epico de Cobertura de shows)
+
+**Implementação (passos):**
+- Implementar um relatorio (Markdown/JSON) que liste `event_sessions` e datasets observados em staging.
+- Reutilizar `latest_ingestion_by_source` e `resolve_session_id` para cruzar informacoes.
+- Produzir status por sessao (ok/gap) e lista de missing datasets.
+
+**Critérios de aceite:**
+- [ ] Relatorio lista sessoes e aponta datasets ausentes com base em staging
+- [ ] Saida e consumivel por DQ e por geracao de relatorio (futuro)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/session_coverage_report.py`
+- `npbb/backend/app/services/etl_coverage_queries.py`
+
+**Dependências:**
+- TMJ-ETL-026
+- TMJ-ETL-048
+
+### TMJ-ETL-050 — Testes: classificacao e resolucao de sessoes
+**Sprint:** Sprint 1 — Catalogo de sessoes e dimensoes
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** A classificacao de sessoes impacta todo o fechamento; testes evitam regressao e mistura de tipos.
+**Escopo:**
+- Inclui: testes unitarios para normalize/classify e resolver session_id
+- Exclui: testes de marts e report generator
+
+**Implementação (passos):**
+- Criar casos de teste para nomes/timestamps de sessoes (diurno, noturno, desconhecido).
+- Testar `resolve_session_id` com entradas completas e incompletas.
+- Validar que casos ambiguos retornam finding e nao um session_id errado.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem classificacao de sessoes e resolucao de session_id
+- [ ] Testes cobrem casos ambiguos e validam erros/findings
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_sessions.py`
+- `npbb/core/sessions/session_classify.py`
+- `npbb/backend/app/services/session_resolver.py`
+
+**Dependências:**
+- TMJ-ETL-048
+
+### TMJ-ETL-051 — Definir regua de publico: metricas e dominios (entradas/opt-in/vendidos/unico)
+**Sprint:** Sprint 2 — Regua de publico e mapeamento de segmentos
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O fechamento precisa separar explicitamente entradas validadas, publico unico, ingressos vendidos e opt-in aceitos.
+**Escopo:**
+- Inclui: definicoes formais de metricas, enums e contratos de uso no relatorio
+- Exclui: calculo real de publico unico (depende de chave de dedupe)
+
+**Implementação (passos):**
+- Criar `MetricType` e `AudienceMeasure` com docstrings claras (quando usar e quando nao usar).
+- Definir contrato para rotular metricas em marts (`metric_type`, `numerator`, `denominator` quando derivado).
+- Documentar explicitamente que opt-in e recorte e nao substitui vendidos/entradas.
+
+**Critérios de aceite:**
+- [ ] Modulo de metricas define dominio controlado e definicoes de uso
+- [ ] Contrato exige rotulagem de metrica em marts/relatorio
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/metrics/definitions.py`
+- `npbb/core/metrics/__init__.py`
+
+**Dependências:**
+- TMJ-ETL-046
+
+### TMJ-ETL-052 — Schema canonico: separar fatos (access_control, ticket_sales, optin_transactions)
+**Sprint:** Sprint 2 — Regua de publico e mapeamento de segmentos
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** Para nao misturar reguas, precisamos de tabelas/fatos separados com colunas claras e linhagem.
+**Escopo:**
+- Inclui: criar modelos e migrations das tabelas canonicas minimas de fatos com lineage_ref
+- Exclui: views/marts finais do relatorio (Sprint 3)
+
+**Implementação (passos):**
+- Definir modelos `attendance_access_control`, `ticket_sales` e `optin_transactions` (cada um com `session_id`, `ingestion_id`, `lineage_ref_id`).
+- Criar migrations para as tabelas e indices por `session_id`.
+- Definir campos minimos coerentes com o DOCX (presentes/validos/ausentes; sold_total; optin_flag; qty).
+
+**Critérios de aceite:**
+- [ ] Tabelas canonicas existem e deixam claro qual regua de publico cada uma representa
+- [ ] Cada fato possui ligacao com sessao e linhagem (source + local)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/models/fct_attendance_access_control.py`
+- `npbb/backend/app/models/fct_ticket_sales.py`
+- `npbb/backend/app/models/fct_optin_transactions.py`
+- `npbb/backend/alembic/versions/`
+
+**Dependências:**
+- TMJ-ETL-021
+- TMJ-ETL-046
+
+### TMJ-ETL-053 — Mapear segmentos (proxy relacionamento BB) a partir de categoria de ingresso
+**Sprint:** Sprint 2 — Regua de publico e mapeamento de segmentos
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O DOCX usa categoria de ingresso como proxy de relacionamento BB; precisamos de mapeamento auditavel (config) e transformador deterministico.
+**Escopo:**
+- Inclui: config de mapeamento e transformador (ticket_category -> segmento canonico)
+- Exclui: definicao de beneficios/regras de negocio fora do relatorio
+
+**Implementação (passos):**
+- Criar `segment_mapping.yml` com categorias conhecidas e segmento alvo.
+- Implementar `map_ticket_category_to_segment(value) -> Segment`.
+- Registrar "unknown" quando categoria nao estiver mapeada, gerando finding.
+
+**Critérios de aceite:**
+- [ ] Mapeamento e configuravel e versionado no repo
+- [ ] Categorias desconhecidas sao tratadas explicitamente (unknown + finding)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/transform/config/segment_mapping.yml`
+- `npbb/etl/transform/segment_mapper.py`
+
+**Dependências:**
+- TMJ-ETL-051
+
+### TMJ-ETL-054 — Calculadoras e guardrails: comparecimento e share BB (com validacoes)
+**Sprint:** Sprint 2 — Regua de publico e mapeamento de segmentos
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** Percentuais e derivados sao fontes comuns de inconsistencias. Precisamos de funcoes unicas para calcular e validar.
+**Escopo:**
+- Inclui: funcoes de calculo (percentual) e validacoes (bounds, soma) para derivados do relatorio
+- Exclui: checks operacionais e observabilidade (epico de Data Quality)
+
+**Implementação (passos):**
+- Implementar `safe_percent(numerator, denominator)` e `validate_percent_bounds(value)`.
+- Implementar `compute_comparecimento(presentes, validos)` e `compute_share_bb(segment_counts)`.
+- Criar guardrail: marts devem incluir explicitamente `metric_type` e nao podem misturar fontes sem rotulo.
+
+**Critérios de aceite:**
+- [ ] Funcoes calculam derivados de forma segura e aplicam validacoes basicas
+- [ ] Guardrails impedem uso sem rotulo de regua (metric_type obrigatorio)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/core/metrics/calculators.py`
+- `npbb/core/metrics/guardrails.py`
+
+**Dependências:**
+- TMJ-ETL-051
+- TMJ-ETL-052
+
+### TMJ-ETL-055 — Testes: metricas, segmentos e reconciliacoes
+**Sprint:** Sprint 2 — Regua de publico e mapeamento de segmentos
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** Sem testes, e facil regressar para numeros "soltos" e percentuais incorretos em relatorios.
+**Escopo:**
+- Inclui: testes unitarios para definitions, segment mapper e calculators/guardrails
+- Exclui: testes de views/marts (Sprint 3)
+
+**Implementação (passos):**
+- Testar `safe_percent` com casos limite (denominador zero, nulos).
+- Testar `map_ticket_category_to_segment` com categorias mapeadas e desconhecidas.
+- Testar guardrails exigindo `metric_type` e validando bounds de percentuais.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem calculos e validacoes de percentuais e reconciliacoes
+- [ ] Testes cobrem mapeamento de segmento e tratamento de unknown
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_metrics_and_segments.py`
+- `npbb/core/metrics/calculators.py`
+- `npbb/etl/transform/segment_mapper.py`
+
+**Dependências:**
+- TMJ-ETL-054
+
+### TMJ-ETL-056 — Estrutura SQL de marts: pasta, runner e contrato de views
+**Sprint:** Sprint 3 — Marts do relatorio (views por secao)
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O gerador de Word deve consultar somente `mart_report_*`, entao precisamos de uma estrutura padrao para criar/manter views.
+**Escopo:**
+- Inclui: criar pasta de SQL, runner e contrato de colunas esperadas por view
+- Exclui: implementacao de todas as views (issues separadas)
+
+**Implementação (passos):**
+- Criar `npbb/reports/sql/marts/` e um runner `npbb/reports/sql/run_views.py`.
+- Definir contrato YAML por view (nome, colunas, tipos) para validar saida.
+- Documentar como aplicar views em ambiente de dev/test.
+
+**Critérios de aceite:**
+- [ ] Estrutura de SQL existe e runner consegue aplicar uma view simples
+- [ ] Contratos de views existem e podem ser validados (colunas esperadas)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/sql/marts/README.md`
+- `npbb/reports/sql/run_views.py`
+- `npbb/reports/sql/marts/contracts.yml`
+
+**Dependências:**
+- TMJ-ETL-052
+
+### TMJ-ETL-057 — View mart_report_attendance_by_session (controle de acesso)
+**Sprint:** Sprint 3 — Marts do relatorio (views por secao)
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O DOCX exige tabela e figura de entradas validadas por sessao e taxa de comparecimento.
+**Escopo:**
+- Inclui: criar view de attendance por sessao (presentes/validos/ausentes/comparecimento)
+- Exclui: render de figura no Word (epico de Report Generator)
+
+**Implementação (passos):**
+- Criar SQL `mart_report_attendance_by_session.sql` consultando `attendance_access_control`.
+- Incluir campos `metric_type` e identificar que e "entradas_validadas".
+- Garantir ordenacao por data/hora de sessao e estabilidade.
+
+**Critérios de aceite:**
+- [ ] View retorna uma linha por sessao com colunas exigidas pelo DOCX
+- [ ] View explicita regua de publico via `metric_type` (entradas validadas)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/sql/marts/mart_report_attendance_by_session.sql`
+- `npbb/reports/sql/marts/contracts.yml`
+
+**Dependências:**
+- TMJ-ETL-056
+- TMJ-ETL-054
+
+### TMJ-ETL-058 — Views de pre-venda: mart_report_presale_curves e mart_report_presale_ops
+**Sprint:** Sprint 3 — Marts do relatorio (views por secao)
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O DOCX exige serie por dia de compra, curva acumulada e indicadores operacionais por sessao.
+**Escopo:**
+- Inclui: views para curvas e agregados operacionais baseados em `optin_transactions`
+- Exclui: ingressos vendidos total (depende de base de vendas completa)
+
+**Implementação (passos):**
+- Criar `mart_report_presale_curves.sql` agregando por dia e sessao.
+- Criar `mart_report_presale_ops.sql` com compradores, media ingressos e compra multipla (quando houver chaves).
+- Incluir rotulos de regua (optin_aceitos) e observacoes de recorte.
+
+**Critérios de aceite:**
+- [ ] Views geram series e agregados com rotulo de regua (opt-in aceitos)
+- [ ] Contratos de colunas das views estao definidos e validados
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/sql/marts/mart_report_presale_curves.sql`
+- `npbb/reports/sql/marts/mart_report_presale_ops.sql`
+
+**Dependências:**
+- TMJ-ETL-056
+- TMJ-ETL-052
+
+### TMJ-ETL-059 — Views de relacionamento e fontes: mart_report_bb_share e mart_report_sources
+**Sprint:** Sprint 3 — Marts do relatorio (views por secao)
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** O DOCX exige proxy de relacionamento BB e lista de fontes/limitacoes para transparência metodologica.
+**Escopo:**
+- Inclui: view de share por segmento e view de fontes/ingestoes para o relatorio
+- Exclui: texto narrativo final (report generator)
+
+**Implementação (passos):**
+- Criar `mart_report_bb_share.sql` usando `optin_transactions` e `segment_mapper` (ou dimensao derivada).
+- Criar `mart_report_sources.sql` listando fontes, ultimo run e status (com notas).
+- Garantir que views exponham evidencias basicas e a regua de publico aplicada.
+
+**Critérios de aceite:**
+- [ ] View de share retorna segmentos canonicos com percentuais e rotulo de regua
+- [ ] View de fontes retorna lista de fontes e status de ingestao para compor secao de limitacoes
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/sql/marts/mart_report_bb_share.sql`
+- `npbb/reports/sql/marts/mart_report_sources.sql`
+
+**Dependências:**
+- TMJ-ETL-056
+- TMJ-ETL-053
+- TMJ-ETL-026
+
+### TMJ-ETL-060 — Testes de marts (contratos de colunas + smoke queries)
+**Sprint:** Sprint 3 — Marts do relatorio (views por secao)
+**Épico:** Normalizacao e Regras de Metrica
+
+**Contexto:** Views sao a API do relatorio. Precisamos validar colunas, tipos e queries basicas antes do Word generator.
+**Escopo:**
+- Inclui: testes de contrato (colunas) e smoke tests de execucao das views
+- Exclui: validacoes de negocio profundas (epico de Data Quality)
+
+**Implementação (passos):**
+- Implementar testes que validem que cada view retorna as colunas do contrato YAML.
+- Rodar smoke query para cada view em banco de teste (ou ambiente de testes configurado).
+- Falhar testes quando coluna obrigatoria faltar ou mudar de nome.
+
+**Critérios de aceite:**
+- [ ] Testes garantem contratos de colunas para `mart_report_*` implementadas
+- [ ] Smoke queries executam sem erro e validam ordenacao/campos minimos
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_marts_contracts.py`
+- `npbb/reports/sql/marts/contracts.yml`
+
+**Dependências:**
+- TMJ-ETL-057
+- TMJ-ETL-058
+- TMJ-ETL-059
+
+
+## Épico: Data Quality + Observabilidade
+
+### TMJ-ETL-061 — Scaffold do framework de validacao (checks + runner + CLI)
+**Sprint:** Sprint 1 — Framework de checks e relatorio de qualidade
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Antes de gerar marts e Word, precisamos de um mecanismo padrao para rodar checks e registrar resultados por execucao.
+**Escopo:**
+- Inclui: classes base de check, severidade, runner e um comando CLI
+- Exclui: checks especificos de negocio (issues separadas)
+
+**Implementação (passos):**
+- Criar `Check`, `CheckResult`, `Severity` e `CheckRunner` em `npbb/etl/validate/framework.py`.
+- Criar CLI `dq:run` que roda checks por `ingestion_id` e gera saida (json/markdown).
+- Definir convencoes de mensagens e como anexar evidencia/lineage no resultado.
+
+**Critérios de aceite:**
+- [ ] Framework roda uma lista de checks e gera um relatorio em JSON/Markdown
+- [ ] CLI aceita `ingestion_id` e retorna exit code coerente com severidade
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/framework.py`
+- `npbb/etl/validate/cli_dq.py`
+
+**Dependências:**
+- TMJ-ETL-031
+
+### TMJ-ETL-062 — Persistir resultados de DQ (tabela + modelos)
+**Sprint:** Sprint 1 — Framework de checks e relatorio de qualidade
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Precisamos auditar historico de qualidade por execucao e consultar depois (por fonte, por sessao).
+**Escopo:**
+- Inclui: tabela/modelo para armazenar resultados de checks por `ingestion_id`
+- Exclui: dashboard/visualizacao (Sprint 3)
+
+**Implementação (passos):**
+- Definir modelo `dq_check_result` com: check_id, severity, status, message, ingestion_id, source_id opcional, lineage_ref opcional.
+- Criar migration Alembic criando tabela e indices.
+- Atualizar runner para opcionalmente persistir resultados no banco.
+
+**Critérios de aceite:**
+- [ ] Tabela de resultados existe e suporta consulta por ingestion_id e severity
+- [ ] Runner consegue persistir resultados sem duplicar registros indevidamente
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/models/dq_results.py`
+- `npbb/backend/alembic/versions/`
+- `npbb/etl/validate/framework.py`
+
+**Dependências:**
+- TMJ-ETL-017
+- TMJ-ETL-061
+
+### TMJ-ETL-063 — Checks basicos: schema e nulos criticos (staging e canonical)
+**Sprint:** Sprint 1 — Framework de checks e relatorio de qualidade
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** A maior parte das falhas iniciais e schema drift e campos nulos em chaves (evento, sessao, datas).
+**Escopo:**
+- Inclui: checks de colunas obrigatorias e nulos criticos para tabelas alvo
+- Exclui: reconciliacao de percentuais e comparativos entre fontes (Sprint 2)
+
+**Implementação (passos):**
+- Implementar `SchemaCheck` (colunas esperadas) e `NotNullCheck` (colunas criticas) parametrizaveis por tabela.
+- Definir configuracao de checks por dataset (optin, access_control, social, dimac, mtc).
+- Registrar findings com referencia a dataset e, quando possivel, lineage_ref.
+
+**Critérios de aceite:**
+- [ ] Checks detectam colunas ausentes e nulos em campos criticos
+- [ ] Configuracao permite adicionar dataset novo sem alterar logica central
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/checks_schema.py`
+- `npbb/etl/validate/checks_not_null.py`
+- `npbb/etl/validate/config/datasets.yml`
+
+**Dependências:**
+- TMJ-ETL-062
+
+### TMJ-ETL-064 — Checks basicos: duplicidade (leads e opt-in)
+**Sprint:** Sprint 1 — Framework de checks e relatorio de qualidade
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Leads e opt-in podem ter duplicidade por reimportacao. Precisamos detectar cedo para nao inflar contagens.
+**Escopo:**
+- Inclui: checks de duplicidade por chaves definidas (cpf/email + evento + sessao, quando aplicavel)
+- Exclui: deduplicacao automatica (apenas detectar e reportar)
+
+**Implementação (passos):**
+- Implementar `DuplicateCheck` parametrizado por tabela e colunas chave.
+- Definir chaves recomendadas por dataset (leads, optin_transactions).
+- Persistir resultados com amostra de chaves duplicadas (limitada) para debug.
+
+**Critérios de aceite:**
+- [ ] Check identifica duplicidade por chaves definidas e registra quantidade
+- [ ] Saida inclui amostra controlada de chaves duplicadas para investigacao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/checks_duplicates.py`
+- `npbb/etl/validate/config/datasets.yml`
+
+**Dependências:**
+- TMJ-ETL-063
+
+### TMJ-ETL-065 — Testes do framework de DQ (runner + checks basicos)
+**Sprint:** Sprint 1 — Framework de checks e relatorio de qualidade
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** O framework de DQ vira gate do pipeline; testes evitam que checks parem de rodar ou gerem falsos positivos.
+**Escopo:**
+- Inclui: testes unitarios para runner, schema/not-null/duplicate checks
+- Exclui: testes de checks avancados (Sprint 2)
+
+**Implementação (passos):**
+- Criar fixtures de dados minimos (tabelas em banco de teste ou datasets em memoria).
+- Testar que runner executa checks e agrega resultados por severidade.
+- Testar que cada check gera mensagem e status coerentes.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem execucao do runner e comportamento dos checks basicos
+- [ ] Testes cobrem persistencia opcional em `dq_check_result` quando habilitada
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_dq_framework.py`
+- `npbb/etl/validate/framework.py`
+
+**Dependências:**
+- TMJ-ETL-064
+
+### TMJ-ETL-066 — Check: reconciliacao do controle de acesso (validos/presentes/ausentes/comparecimento)
+**Sprint:** Sprint 2 — Reconciliacoes e inconsistencias entre fontes
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Controle de acesso tem colunas que precisam reconciliar. Se nao reconciliar, o relatorio pode publicar percentuais errados.
+**Escopo:**
+- Inclui: check de reconciliacao e bounds para campos de controle de acesso
+- Exclui: correcao automatica de dados
+
+**Implementação (passos):**
+- Implementar `AccessControlReconciliationCheck` comparando `validos` vs `presentes + ausentes` quando aplicavel.
+- Validar que `presentes <= validos` e que percentuais estao em bounds.
+- Registrar findings com session_id e lineage_ref quando disponivel.
+
+**Critérios de aceite:**
+- [ ] Check detecta inconsistencias basicas e registra evidencias por sessao
+- [ ] Check diferencia casos em que a fonte nao fornece todos os campos (não falhar indevidamente)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/checks_access_control.py`
+- `npbb/backend/app/models/fct_attendance_access_control.py`
+
+**Dependências:**
+- TMJ-ETL-052
+- TMJ-ETL-063
+
+### TMJ-ETL-067 — Check: percentuais (soma e bounds) para DIMAC/redes/imprensa
+**Sprint:** Sprint 2 — Reconciliacoes e inconsistencias entre fontes
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Percentuais em survey e reports de midia precisam somar corretamente e respeitar bounds; isso evita "numeros bonitos" mas errados.
+**Escopo:**
+- Inclui: check de soma de percentuais e bounds por pergunta/grupo
+- Exclui: interpretacao de metodologia (amostra) alem do que estiver na fonte
+
+**Implementação (passos):**
+- Implementar `PercentSumCheck` (soma ~ 100) por group key configuravel.
+- Implementar `PercentBoundsCheck` (0 a 100) para cada valor.
+- Exigir lineage_ref para percentuais (page/slide + evidencia) quando extraidos.
+
+**Critérios de aceite:**
+- [ ] Checks detectam percentuais fora de bounds e somas inconsistentes por grupo
+- [ ] Findings incluem group key e origem (dataset + lineage quando houver)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/checks_percentages.py`
+- `npbb/etl/validate/config/datasets.yml`
+
+**Dependências:**
+- TMJ-ETL-044
+- TMJ-ETL-039
+
+### TMJ-ETL-068 — Check: inconsistencias entre fontes (marcar INCONSISTENTE com evidencia)
+**Sprint:** Sprint 2 — Reconciliacoes e inconsistencias entre fontes
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** A mesma metrica pode aparecer em mais de uma fonte. Divergencias precisam ser detectadas e registradas como INCONSISTENTE.
+**Escopo:**
+- Inclui: detector de divergencia e estrutura de registro de inconsistencias
+- Exclui: reconciliacao automatica ou escolha de "fonte vencedora" sem regra
+
+**Implementação (passos):**
+- Definir `dq_inconsistency` (tabela/modelo) com: metric_key, values, sources, lineage_refs, severidade.
+- Implementar `CrossSourceInconsistencyCheck` que compara metricas com a mesma chave (quando existir).
+- Registrar evidencias e sugerir acao (ex.: revisar fonte A vs B).
+
+**Critérios de aceite:**
+- [ ] Inconsistencias sao registradas com metrica, valores conflitantes e evidencias
+- [ ] Check nao inventa reconciliacao; apenas detecta e classifica
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/models/dq_inconsistency.py`
+- `npbb/backend/alembic/versions/`
+- `npbb/etl/validate/checks_cross_source.py`
+
+**Dependências:**
+- TMJ-ETL-062
+- TMJ-ETL-021
+
+### TMJ-ETL-069 — Render do relatorio de DQ (markdown/json) com INCONSISTENTE e evidencia
+**Sprint:** Sprint 2 — Reconciliacoes e inconsistencias entre fontes
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** O report generator precisa consumir um output padrao de DQ para inserir GAP/INCONSISTENTE no Word.
+**Escopo:**
+- Inclui: renderizador de relatorio DQ com evidencias (source + location + evidence_text)
+- Exclui: geracao do Word em si
+
+**Implementação (passos):**
+- Implementar `render_dq_report(results) -> str` e `render_dq_report_json(results) -> dict`.
+- Incluir sessoes: erros, warnings, inconsistencias, gaps por dataset.
+- Garantir que cada item mostre `source_id` e `location` quando existir.
+
+**Critérios de aceite:**
+- [ ] Relatorio DQ inclui erros/warnings/inconsistencias com evidencia quando disponivel
+- [ ] Saida e consumivel por uma secao do Word (strings curtas + lista)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/render_dq_report.py`
+- `npbb/etl/validate/cli_dq.py`
+
+**Dependências:**
+- TMJ-ETL-068
+
+### TMJ-ETL-070 — Testes: reconciliacao, percentuais e cross-source inconsistencies
+**Sprint:** Sprint 2 — Reconciliacoes e inconsistencias entre fontes
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Checks avancados precisam de testes para evitar falsos positivos e para garantir consistencia de severidade e evidencias.
+**Escopo:**
+- Inclui: testes unitarios para checks de reconciliacao/percentuais/cross-source e renderer DQ
+- Exclui: testes de observabilidade (Sprint 3)
+
+**Implementação (passos):**
+- Criar fixtures de dados inconsistentes e consistentes para cada check.
+- Validar que findings incluem severidade correta e referencias (session_id, metric_key).
+- Testar que o renderer inclui evidencias e ordenacao padrao.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem checks avancados e geracao do relatorio DQ
+- [ ] Testes verificam conteudo minimo de evidencia (source_id + location quando aplicavel)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_dq_advanced_checks.py`
+- `npbb/etl/validate/checks_cross_source.py`
+- `npbb/etl/validate/render_dq_report.py`
+
+**Dependências:**
+- TMJ-ETL-069
+
+### TMJ-ETL-071 — Views/queries de saude: status por source (latest run, linhas, falhas)
+**Sprint:** Sprint 3 — Observabilidade e painel de saude
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Operacao precisa saber rapidamente quais fontes estao quebradas, parciais ou desatualizadas.
+**Escopo:**
+- Inclui: consultas de saude por source e ingestion (status, contagens, erros)
+- Exclui: UI/dash (somente API/queries)
+
+**Implementação (passos):**
+- Implementar queries agregadas (source -> latest run -> status).
+- Adicionar contagens basicas por staging/canonical (linhas carregadas por ingestion_id).
+- Definir output padrao para consumo por API e por relatorio DQ.
+
+**Critérios de aceite:**
+- [ ] Consultas retornam status e contagens por source de forma deterministica
+- [ ] Saida permite identificar rapidamente fontes parciais e o motivo (notes)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/etl_health_queries.py`
+- `npbb/backend/app/models/etl_registry.py`
+
+**Dependências:**
+- TMJ-ETL-026
+- TMJ-ETL-062
+
+### TMJ-ETL-072 — Matriz de cobertura por sessao/dia (datasets obrigatorios por tipo de sessao)
+**Sprint:** Sprint 3 — Observabilidade e painel de saude
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** A falha do 12/12 e 14/12 e de cobertura por dia/sessao. Precisamos de uma matriz (sessao x dataset) para detectar gaps.
+**Escopo:**
+- Inclui: query/estrutura para cobertura por sessao e dataset, usando `event_sessions`
+- Exclui: regras especificas de show por dia (epico de Cobertura de shows)
+
+**Implementação (passos):**
+- Definir configuracao de datasets obrigatorios por `session_type`.
+- Implementar query que retorna status por `session_id` e dataset (ok/gap/partial).
+- Integrar essa saida no relatorio DQ (como secao de cobertura).
+
+**Critérios de aceite:**
+- [ ] Matriz de cobertura retorna status por sessao e dataset de forma clara
+- [ ] Saida pode ser usada como gate ou como secao do relatorio (GAP)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/coverage_matrix.py`
+- `npbb/etl/validate/config/datasets.yml`
+
+**Dependências:**
+- TMJ-ETL-049
+
+### TMJ-ETL-073 — API interna: endpoints de saude do ETL (read-only)
+**Sprint:** Sprint 3 — Observabilidade e painel de saude
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Um endpoint interno facilita integracao com dashboards e facilita triagem sem rodar CLI.
+**Escopo:**
+- Inclui: endpoints read-only para consultar saude por source, ingestion e cobertura por sessao
+- Exclui: autenticacao nova e UI
+
+**Implementação (passos):**
+- Criar router `internal_health` com endpoints `GET /internal/health/sources` e `GET /internal/health/coverage`.
+- Reutilizar `etl_health_queries` e `coverage_matrix`.
+- Implementar paginacao simples e filtros (status, source_type, event_id).
+
+**Critérios de aceite:**
+- [ ] Endpoints retornam status/contagens e cobertura por sessao sem custo alto
+- [ ] Filtros funcionam e respostas sao consistentes com relatorio CLI
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/routers/internal_health.py`
+- `npbb/backend/app/services/etl_health_queries.py`
+
+**Dependências:**
+- TMJ-ETL-071
+- TMJ-ETL-072
+
+### TMJ-ETL-074 — Alert rules: partial ingestion, drift e missing required datasets
+**Sprint:** Sprint 3 — Observabilidade e painel de saude
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Precisamos transformar sinais (status/coverage) em alertas acionaveis para o fechamento nao passar com lacunas silenciosas.
+**Escopo:**
+- Inclui: regras de alerta e classificacao de severidade
+- Exclui: integracao com sistemas externos (email/Slack)
+
+**Implementação (passos):**
+- Definir regras: ingestion parcial, drift (metric missing), dataset obrigatorio ausente por sessao.
+- Implementar `generate_alerts(health, coverage) -> list[Alert]`.
+- Integrar alertas no `dq:run` e nos endpoints internos (campo `alerts`).
+
+**Critérios de aceite:**
+- [ ] Alertas sao gerados com severidade e recomendacao objetiva de acao
+- [ ] Alertas destacam cobertura de show por dia como categoria critica
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/alerts.py`
+- `npbb/etl/validate/cli_dq.py`
+
+**Dependências:**
+- TMJ-ETL-073
+
+### TMJ-ETL-075 — Testes e runbook: saude, cobertura e alertas
+**Sprint:** Sprint 3 — Observabilidade e painel de saude
+**Épico:** Data Quality + Observabilidade
+
+**Contexto:** Observabilidade sem testes e sem runbook vira ruido. Precisamos garantir comportamento e orientar triagem.
+**Escopo:**
+- Inclui: testes para health/coverage/alerts e um runbook curto de triagem
+- Exclui: automatizar mitigacoes (somente diagnostico)
+
+**Implementação (passos):**
+- Criar testes para `etl_health_queries`, `coverage_matrix` e `generate_alerts`.
+- Validar regras de severidade e conteudo minimo das mensagens.
+- Criar runbook `npbb/docs/etl/runbook_dq.md` com passos de triagem por alerta.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem health/coverage/alerts e validam severidades
+- [ ] Runbook descreve triagem basica e aponta comandos/enderecos internos
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_observability.py`
+- `npbb/docs/etl/runbook_dq.md`
+
+**Dependências:**
+- TMJ-ETL-074
+
+
+## Épico: Report Generator (Word) a partir do banco
+
+### TMJ-ETL-076 — Scaffold do gerador Word (pacote + CLI)
+**Sprint:** Sprint 1 — Template e placeholders alinhados ao spec
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Precisamos de um gerador que produza DOCX a partir do banco usando um template com placeholders por secao.
+**Escopo:**
+- Inclui: criar pacote `npbb/reports/word/` e CLI para gerar um DOCX (esqueleto)
+- Exclui: render de tabelas e figuras (Sprint 2)
+
+**Implementação (passos):**
+- Criar `npbb/reports/word/` com `__init__.py` e docstrings de modulo.
+- Criar CLI `report:render` com parametros `event_id`, `template_path`, `output_path`.
+- Implementar estrutura base `WordReportRenderer` (sem placeholders ainda).
+
+**Critérios de aceite:**
+- [ ] CLI gera um DOCX de saida (esqueleto) a partir de um template valido
+- [ ] Pacote e classe base existem com docstrings e logs basicos
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/__init__.py`
+- `npbb/reports/word/renderer.py`
+- `npbb/reports/word/cli_report.py`
+
+**Dependências:**
+- TMJ-ETL-056
+
+### TMJ-ETL-077 — Formato de placeholders e mapping (placeholder -> mart/view)
+**Sprint:** Sprint 1 — Template e placeholders alinhados ao spec
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Placeholders precisam ser dirigidos por configuracao para evitar hardcode de queries por secao.
+**Escopo:**
+- Inclui: definir formato e loader do mapping de placeholders para `mart_report_*`
+- Exclui: execucao real das queries e renderizacao (issues separadas)
+
+**Implementação (passos):**
+- Definir `word_placeholders.yml` com: placeholder_id, mart_name, params, render_type (text/table/figure).
+- Implementar `load_placeholders_mapping(path)` com validacao de schema.
+- Documentar convencoes de nome (placeholders por secao) e como conectar ao spec do DOCX.
+
+**Critérios de aceite:**
+- [ ] Mapping de placeholders e carregavel e validado (erros acionaveis)
+- [ ] Convencao de placeholders e documentada e alinhada ao spec/marts
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/config/word_placeholders.yml`
+- `npbb/reports/word/placeholders_mapping.py`
+
+**Dependências:**
+- TMJ-ETL-009
+- TMJ-ETL-056
+
+### TMJ-ETL-078 — Render minimo: placeholders de texto (secao -> bullets/strings)
+**Sprint:** Sprint 1 — Template e placeholders alinhados ao spec
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Primeiro passo do gerador e preencher secoes de texto (contexto, objetivo, limitacoes, highlights) com saida "layout-ready".
+**Escopo:**
+- Inclui: resolver placeholders de texto e inserir no DOCX
+- Exclui: tabelas e graficos (Sprint 2)
+
+**Implementação (passos):**
+- Implementar `render_text_placeholder(doc, placeholder_id, value)` com regras simples (paragrafos/bullets).
+- Criar adaptador `query_to_text_payload(mart_rows)` para converter resultado de view em strings curtas.
+- Integrar no `WordReportRenderer` para processar placeholders do tipo `text`.
+
+**Critérios de aceite:**
+- [ ] Placeholders de texto sao substituidos no DOCX e o layout fica legivel (sem texto bruto de SQL)
+- [ ] Erros de placeholder ausente ou payload invalido sao tratados com mensagens claras
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/render_text.py`
+- `npbb/reports/word/renderer.py`
+
+**Dependências:**
+- TMJ-ETL-076
+- TMJ-ETL-077
+
+### TMJ-ETL-079 — Validador do template: placeholders desconhecidos ou nao resolvidos
+**Sprint:** Sprint 1 — Template e placeholders alinhados ao spec
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Um dos maiores riscos e gerar DOCX "bonito" com buracos (placeholders nao resolvidos).
+**Escopo:**
+- Inclui: varrer template e validar que todos placeholders tem mapping e foram resolvidos
+- Exclui: validar qualidade dos dados (isso e DQ)
+
+**Implementação (passos):**
+- Implementar `find_placeholders(docx_path) -> set[str]`.
+- Implementar `validate_template_placeholders(placeholders, mapping) -> findings`.
+- Integrar validacao no CLI (falhar se houver placeholders sem mapping).
+
+**Critérios de aceite:**
+- [ ] Template com placeholders sem mapping falha com lista objetiva do que falta
+- [ ] Template com placeholders resolvidos passa e gera DOCX final
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/template_validate.py`
+- `npbb/reports/word/cli_report.py`
+
+**Dependências:**
+- TMJ-ETL-077
+
+### TMJ-ETL-080 — Testes do gerador (texto + validacao de placeholders)
+**Sprint:** Sprint 1 — Template e placeholders alinhados ao spec
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Precisamos garantir que a geracao de DOCX nao regreda com mudancas no template ou no mapping.
+**Escopo:**
+- Inclui: fixtures de DOCX minimo e testes para render de texto e validacao de placeholders
+- Exclui: testes de tabelas/graficos (Sprint 2)
+
+**Implementação (passos):**
+- Criar template minimo `tests/fixtures/docx/report_template_min.docx` com placeholders de texto.
+- Testar `find_placeholders` e `validate_template_placeholders`.
+- Testar render de texto gerando DOCX e verificando que placeholders sumiram.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem validacao de placeholders e substituicao de texto
+- [ ] Testes validam que placeholders nao aparecem no DOCX final
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/fixtures/docx/report_template_min.docx`
+- `tests/test_word_report_text.py`
+
+**Dependências:**
+- TMJ-ETL-079
+
+### TMJ-ETL-081 — Render de tabela: mart/view -> tabela no DOCX
+**Sprint:** Sprint 2 — Render de tabelas e figuras a partir dos marts
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** O template exige tabelas (ex.: controle de acesso por sessao). Precisamos renderizar tabelas com ordem e colunas do contrato.
+**Escopo:**
+- Inclui: renderer generico de tabelas e adaptador de dados (rows -> docx table)
+- Exclui: graficos/figuras (issue separada)
+
+**Implementação (passos):**
+- Implementar `render_table_placeholder(doc, placeholder_id, columns, rows)`.
+- Implementar validacao de colunas vs contrato do mart (falhar se faltar).
+- Integrar render de `table` no `WordReportRenderer`.
+
+**Critérios de aceite:**
+- [ ] Tabelas sao renderizadas no DOCX com colunas e ordem esperadas
+- [ ] Falhas de contrato (coluna faltante) geram erro claro e bloqueiam geracao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/render_table.py`
+- `npbb/reports/word/renderer.py`
+
+**Dependências:**
+- TMJ-ETL-056
+- TMJ-ETL-078
+
+### TMJ-ETL-082 — Gerar graficos (bar/line) para figuras do relatorio
+**Sprint:** Sprint 2 — Render de tabelas e figuras a partir dos marts
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** O DOCX lista figuras (presencas por sessao, comparecimento, curvas). Precisamos de gerador de imagens deterministico.
+**Escopo:**
+- Inclui: utilitario para gerar graficos a partir de dados tabulares (PNG)
+- Exclui: design/estilos finais (iteracao futura)
+
+**Implementação (passos):**
+- Definir interface `ChartSpec` (tipo, titulo, eixos, series, formatos).
+- Implementar `render_chart_png(spec, data) -> bytes/path`.
+- Documentar padrao visual minimo (cores, fontes, tamanho) para consistencia.
+
+**Critérios de aceite:**
+- [ ] Gerador produz PNG deterministico para o mesmo input
+- [ ] Interface suporta pelo menos bar e line (suficiente para figuras do DOCX)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/charts/chart_spec.py`
+- `npbb/reports/charts/render_chart.py`
+
+**Dependências:**
+- TMJ-ETL-057
+- TMJ-ETL-058
+
+### TMJ-ETL-083 — Inserir figuras no DOCX (imagem + caption + sizing)
+**Sprint:** Sprint 2 — Render de tabelas e figuras a partir dos marts
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Para fechar o template, precisamos inserir imagens geradas e captions por figura, sem quebrar layout.
+**Escopo:**
+- Inclui: renderer de figura (imagem) e caption, incluindo sizing padrao
+- Exclui: otimizar compressao/performance
+
+**Implementação (passos):**
+- Implementar `render_figure_placeholder(doc, placeholder_id, image_path, caption)`.
+- Definir tamanho padrao e comportamento para imagens grandes/pequenas.
+- Integrar render de `figure` no `WordReportRenderer`.
+
+**Critérios de aceite:**
+- [ ] Figuras sao inseridas no DOCX com caption e tamanho padrao consistente
+- [ ] Falhas (imagem inexistente) geram erro claro e bloqueiam geracao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/render_figure.py`
+- `npbb/reports/word/renderer.py`
+
+**Dependências:**
+- TMJ-ETL-082
+
+### TMJ-ETL-084 — Runner de queries para marts (adaptador DB -> payloads de render)
+**Sprint:** Sprint 2 — Render de tabelas e figuras a partir dos marts
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Placeholders precisam buscar dados do banco de forma consistente (mesmas queries, mesmos params), com cache opcional por secao.
+**Escopo:**
+- Inclui: camada que executa queries/views e devolve payloads para text/table/figure
+- Exclui: definicao de views (marts) e DQ (gaps)
+
+**Implementação (passos):**
+- Implementar `MartQueryRunner` (execute view por nome + params) com session DB.
+- Implementar adaptadores: `rows_to_table_payload`, `rows_to_text_payload`, `rows_to_chart_payload`.
+- Integrar com mapping de placeholders e com `WordReportRenderer`.
+
+**Critérios de aceite:**
+- [ ] Runner executa marts por nome e retorna payloads tipados por render_type
+- [ ] Erros de query (view inexistente) geram erro acionavel com nome do mart
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/mart_query_runner.py`
+- `npbb/reports/word/placeholders_mapping.py`
+
+**Dependências:**
+- TMJ-ETL-081
+
+### TMJ-ETL-085 — Testes: tabelas e figuras (renderer + charts)
+**Sprint:** Sprint 2 — Render de tabelas e figuras a partir dos marts
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Render de tabela/figura e facil quebrar com mudanca de colunas/estilo. Precisamos de testes de snapshot.
+**Escopo:**
+- Inclui: testes unitarios para renderers de tabela/figura e geracao de chart
+- Exclui: teste end-to-end do relatorio completo
+
+**Implementação (passos):**
+- Criar fixtures de dados tabulares e `ChartSpec` minimo.
+- Testar que `render_table_placeholder` cria tabela com colunas esperadas.
+- Testar que `render_chart_png` gera imagem e que `render_figure_placeholder` insere no DOCX.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem renderers de tabela e figura e geracao de chart
+- [ ] Testes validam que colunas do contrato sao respeitadas (falha quando faltar)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_word_report_tables_figures.py`
+- `npbb/reports/word/render_table.py`
+- `npbb/reports/charts/render_chart.py`
+
+**Dependências:**
+- TMJ-ETL-084
+
+### TMJ-ETL-086 — Render de linhagem no relatorio (fonte + local + evidencia)
+**Sprint:** Sprint 3 — Linhagem no relatorio e tratamento de GAP
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** O relatorio precisa ser auditavel: cada numero/tabela/figura deve apontar para fonte e localizacao, sem lookup manual.
+**Escopo:**
+- Inclui: renderer de linhagem (rodape/apendice) e contrato de como anexar ao conteudo
+- Exclui: captura de linhagem na extracao (isso e do ETL)
+
+**Implementação (passos):**
+- Definir formato de exibicao de linhagem (ex.: lista por secao, ou rodape por figura).
+- Implementar `render_lineage_block(lineage_refs) -> paragraphs`.
+- Integrar: tabelas/figuras geradas devem carregar lista de `LineageRef` usada.
+
+**Critérios de aceite:**
+- [ ] DOCX gerado inclui linhagem (source_id + location + evidence_text) para tabelas/figuras
+- [ ] Quando lineage faltar, relatorio explicita GAP em vez de esconder
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/render_lineage.py`
+- `npbb/reports/word/renderer.py`
+
+**Dependências:**
+- TMJ-ETL-021
+- TMJ-ETL-084
+
+### TMJ-ETL-087 — Secao GAP/INCONSISTENTE no Word (consumir saida do DQ)
+**Sprint:** Sprint 3 — Linhagem no relatorio e tratamento de GAP
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Se faltar fonte (ex.: show 12/12 ou 14/12), o relatorio precisa declarar GAP com evidencia e o que falta pedir.
+**Escopo:**
+- Inclui: renderer de secao de GAP/INCONSISTENTE baseado no relatorio DQ e coverage
+- Exclui: executar checks de DQ (isso e do pipeline ETL)
+
+**Implementação (passos):**
+- Definir contrato de input (JSON) do DQ report para consumo pelo Word generator.
+- Implementar `render_gaps_section(dq_report)`.
+- Inserir a secao no template por placeholder dedicado (ex.: `{{section.gaps}}`).
+
+**Critérios de aceite:**
+- [ ] DOCX inclui secao de gaps/inconsistencias com lista objetiva e evidencias
+- [ ] Secao inclui itens de cobertura de shows por dia quando houver GAP
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/render_gaps.py`
+- `npbb/reports/word/config/word_placeholders.yml`
+
+**Dependências:**
+- TMJ-ETL-069
+- TMJ-ETL-072
+
+### TMJ-ETL-088 — Gate de publicacao do relatorio (bloquear ou marcar parcial)
+**Sprint:** Sprint 3 — Linhagem no relatorio e tratamento de GAP
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Precisamos impedir "fechamento silencioso" quando houver gaps criticos (ex.: show sem controle de acesso).
+**Escopo:**
+- Inclui: regras de gate para publicar/nao publicar e modo "parcial" quando permitido
+- Exclui: notificacoes externas e workflow de aprovacao humano
+
+**Implementação (passos):**
+- Definir configuracao `report_gate.yml` com severidades que bloqueiam vs permitem parcial.
+- Implementar `evaluate_report_gate(dq_report) -> GateDecision`.
+- Integrar no CLI: se gate bloquear, nao gerar DOCX final (ou gerar com watermark "parcial" se configurado).
+
+**Critérios de aceite:**
+- [ ] Gate bloqueia geracao quando existirem gaps criticos configurados
+- [ ] Modo parcial (quando habilitado) deixa explicito no DOCX o status e os gaps
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/gate_policy.py`
+- `npbb/reports/word/config/report_gate.yml`
+- `npbb/reports/word/cli_report.py`
+
+**Dependências:**
+- TMJ-ETL-087
+
+### TMJ-ETL-089 — Manifest do relatorio (JSON): secoes, queries, fontes e linhagem
+**Sprint:** Sprint 3 — Linhagem no relatorio e tratamento de GAP
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** Precisamos de um artefato maquina-legivel para auditoria e reprocessamento (quais marts foram usados, quais fontes, etc).
+**Escopo:**
+- Inclui: gerar `report_manifest.json` junto com o DOCX
+- Exclui: publicar manifest em sistemas externos
+
+**Implementação (passos):**
+- Definir schema do manifest (event_id, template_version, placeholders, marts, lineage_refs, dq_summary).
+- Implementar geracao do manifest durante render do report.
+- Garantir que o manifest referencia `source_id` e `location` para cada bloco de conteudo.
+
+**Critérios de aceite:**
+- [ ] Manifest e gerado junto com o DOCX e segue um schema documentado
+- [ ] Manifest inclui referencias de marts e linhagem usada por secao/tabela/figura
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/report_manifest.py`
+- `npbb/reports/word/renderer.py`
+
+**Dependências:**
+- TMJ-ETL-086
+
+### TMJ-ETL-090 — Testes: linhagem, gaps e gate do report
+**Sprint:** Sprint 3 — Linhagem no relatorio e tratamento de GAP
+**Épico:** Report Generator (Word) a partir do banco
+
+**Contexto:** As regras de gate e a exibicao de gaps sao a protecao contra omissao. Precisamos de testes para nao regredir.
+**Escopo:**
+- Inclui: testes unitarios para renderer de linhagem/gaps e para gate/manifest
+- Exclui: testes end-to-end com todas as fontes reais
+
+**Implementação (passos):**
+- Criar fixtures de DQ report (json) com gaps e inconsistencias.
+- Testar que `render_gaps_section` inclui itens e evidencia.
+- Testar `evaluate_report_gate` e geracao do manifest.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem render de gaps/linhagem e decisao do gate
+- [ ] Testes verificam geracao do manifest com campos minimos e linhagem
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_word_report_gate_and_lineage.py`
+- `npbb/reports/word/gate_policy.py`
+- `npbb/reports/word/render_gaps.py`
+
+**Dependências:**
+- TMJ-ETL-088
+- TMJ-ETL-089
+
+
+## Épico: Cobertura de shows por dia
+
+### TMJ-ETL-091 — Definir formato da agenda master (YAML/CSV) e schema de validacao
+**Sprint:** Sprint 1 — Agenda master e catalogo de shows
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Para evitar omissoes por dia, precisamos de uma lista unica de sessoes esperadas (diurno vs show) como input controlado.
+**Escopo:**
+- Inclui: schema e parser da agenda master (arquivo no repo ou fornecido por operacao)
+- Exclui: extracao de dados (PDF/XLSX/PPTX)
+
+**Implementação (passos):**
+- Definir formato `agenda_master.yml` com campos minimos (event_id, session_date, start_at, type, name).
+- Implementar `load_agenda_master(path)` com validacao de schema (campos obrigatorios, tipos, datas coerentes).
+- Documentar como atualizar agenda e versionar mudancas.
+
+**Critérios de aceite:**
+- [ ] Agenda master possui schema validado e parser falha com mensagens acionaveis
+- [ ] Formato suporta distinguir diurno gratuito vs noturno show explicitamente
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/transform/config/agenda_master.yml`
+- `npbb/etl/transform/agenda_loader.py`
+
+**Dependências:**
+- TMJ-ETL-046
+
+### TMJ-ETL-092 — Ingerir agenda master em event_sessions (seed/update idempotente)
+**Sprint:** Sprint 1 — Agenda master e catalogo de shows
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** A agenda master deve criar/atualizar `event_sessions` para que cobertura por dia/sessao seja calculavel.
+**Escopo:**
+- Inclui: rotina idempotente para criar/atualizar sessoes a partir da agenda master
+- Exclui: associar fontes e dados aos fatos (isso e responsabilidade do ETL)
+
+**Implementação (passos):**
+- Implementar `upsert_event_sessions_from_agenda(session, agenda)` (idempotente por chave natural).
+- Definir chave natural para sessao (event_id + start_at + type) e regras de update.
+- Registrar ingestion run para a agenda (como source_type=config) para auditoria.
+
+**Critérios de aceite:**
+- [ ] Agenda master cria/atualiza sessoes sem duplicar registros
+- [ ] Mudancas na agenda sao auditaveis (quem mudou e o que mudou via diff)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/backend/app/services/session_seed_from_agenda.py`
+- `npbb/backend/app/models/events_sessions.py`
+
+**Dependências:**
+- TMJ-ETL-091
+- TMJ-ETL-019
+
+### TMJ-ETL-093 — Definir contrato de cobertura por sessao (datasets obrigatorios por tipo)
+**Sprint:** Sprint 1 — Agenda master e catalogo de shows
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Para show noturno, a cobertura minima muda: controle de acesso do show e critico; opt-in pode ser opcional dependendo da operacao.
+**Escopo:**
+- Inclui: config de cobertura minima por session_type (show vs diurno) e por dataset
+- Exclui: implementar checks de cobertura (Sprint 2)
+
+**Implementação (passos):**
+- Criar `coverage_contract.yml` definindo datasets obrigatorios por `session_type`.
+- Definir status possiveis (ok/gap/partial) e severidade por dataset.
+- Documentar como o contrato alimenta gates do relatorio.
+
+**Critérios de aceite:**
+- [ ] Contrato define claramente o que e obrigatorio para sessoes de show
+- [ ] Contrato e versionado e consumivel por coverage evaluator e DQ
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/config/coverage_contract.yml`
+- `npbb/etl/validate/coverage_contract.py`
+
+**Dependências:**
+- TMJ-ETL-072
+
+### TMJ-ETL-094 — Coverage evaluator: status por dia/sessao e lista do que falta pedir
+**Sprint:** Sprint 1 — Agenda master e catalogo de shows
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** A saida precisa ser acionavel: "para a sessao X do dia Y falta o PDF de controle de acesso do show" etc.
+**Escopo:**
+- Inclui: avaliador de cobertura que gera status e missing artifacts (por sessao)
+- Exclui: gerar o Word e gates (Sprint 3)
+
+**Implementação (passos):**
+- Implementar `evaluate_coverage(event_id) -> CoverageReport` cruzando agenda, staging observado e contrato.
+- Produzir `missing_inputs[]` com dataset, sessao, e descricao objetiva do arquivo esperado.
+- Registrar lineage do "motivo" (ex.: ausencia em catalogo) e apontar quais fontes foram consideradas.
+
+**Critérios de aceite:**
+- [ ] Evaluator gera status por sessao e lista objetiva de faltas (missing_inputs)
+- [ ] Evaluator diferencia ausencia de arquivo vs falha de extracao (partial)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/show_coverage_evaluator.py`
+- `npbb/backend/app/services/etl_coverage_queries.py`
+
+**Dependências:**
+- TMJ-ETL-093
+- TMJ-ETL-049
+
+### TMJ-ETL-095 — Testes: agenda master e coverage evaluator
+**Sprint:** Sprint 1 — Agenda master e catalogo de shows
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Cobertura por dia e uma regra critica; testes evitam regressao e garantem que o 12/12 e 14/12 nao sumam de novo.
+**Escopo:**
+- Inclui: testes unitarios para parser da agenda, upsert de sessoes e evaluator de cobertura
+- Exclui: testes de geracao de Word
+
+**Implementação (passos):**
+- Criar fixtures de agenda (incluindo sessoes de show e diurno).
+- Testar upsert idempotente e avaliacao de cobertura com datasets presentes e ausentes.
+- Validar que missing_inputs contem dataset e sessao corretos.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem parser, upsert e evaluator com cenarios de ok/gap/partial
+- [ ] Testes validam lista de faltas (missing_inputs) como output acionavel
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_show_coverage_agenda.py`
+- `npbb/etl/validate/show_coverage_evaluator.py`
+
+**Dependências:**
+- TMJ-ETL-094
+
+### TMJ-ETL-096 — Check show coverage: falta controle de acesso do show (foco 12/12 e 14/12)
+**Sprint:** Sprint 2 — Cobertura de shows por dia (12/12 e 14/12)
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** O bug reportado e omissao de shows por dia. Precisamos detectar explicitamente quando falta controle de acesso noturno em dias esperados.
+**Escopo:**
+- Inclui: check de ausencia de dataset `access_control_show` para sessoes de show esperadas
+- Exclui: extrair o PDF (isso e do epico de Extractors PDF)
+
+**Implementação (passos):**
+- Implementar `MissingShowAccessControlCheck` consumindo agenda + contrato + catalogo/staging.
+- Gerar finding com severidade critica para dias de show esperados sem dados.
+- Incluir no finding: sessao, dia e recomendacao do arquivo a solicitar.
+
+**Critérios de aceite:**
+- [ ] Check sinaliza GAP quando uma sessao de show esperada nao tem controle de acesso
+- [ ] Finding inclui recomendacao objetiva do artefato faltante (PDF/relatorio) e porque e critico
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/checks_show_access_control.py`
+- `npbb/etl/validate/show_coverage_evaluator.py`
+
+**Dependências:**
+- TMJ-ETL-094
+- TMJ-ETL-042
+
+### TMJ-ETL-097 — Check show coverage: falta opt-in para sessoes de show esperadas (foco 12/12 e 14/12)
+**Sprint:** Sprint 2 — Cobertura de shows por dia (12/12 e 14/12)
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Opt-in e recorte, mas o DOCX usa para pre-venda e proxy de relacionamento. Precisamos sinalizar quando faltar opt-in para show esperado.
+**Escopo:**
+- Inclui: check para ausencia de dataset opt-in em sessoes de show esperadas (quando marcado como obrigatorio/esperado)
+- Exclui: inferir ingressos vendidos total
+
+**Implementação (passos):**
+- Implementar `MissingShowOptInCheck` com regra baseada no contrato (obrigatorio vs opcional).
+- Gerar findings com severidade configuravel (critico quando obrigatorio; warn quando opcional).
+- Incluir no finding o nome esperado do XLSX e a sessao/dia.
+
+**Critérios de aceite:**
+- [ ] Check diferencia opt-in obrigatorio vs opcional e gera severidade coerente
+- [ ] Finding explica que opt-in e recorte e nao substitui "vendidos total"
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/checks_show_optin.py`
+- `npbb/etl/validate/config/coverage_contract.yml`
+
+**Dependências:**
+- TMJ-ETL-033
+- TMJ-ETL-093
+
+### TMJ-ETL-098 — View mart_report_show_day_summary (status por dia e por regua)
+**Sprint:** Sprint 2 — Cobertura de shows por dia (12/12 e 14/12)
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** O relatorio precisa de uma tabela clara por dia: existe show? quais metricas existem (entradas, opt-in, vendidos)?
+**Escopo:**
+- Inclui: view consolidando sessoes de show, status de cobertura e metricas disponiveis
+- Exclui: render do Word (Sprint 3)
+
+**Implementação (passos):**
+- Criar `mart_report_show_day_summary.sql` cruzando `event_sessions` + cobertura + fatos existentes.
+- Expor colunas: dia, sessao, status_access_control, status_optin, status_ticket_sales, observacoes.
+- Incluir linhagem/refs quando disponivel (ao menos `source_id` do dataset observado).
+
+**Critérios de aceite:**
+- [ ] View retorna status por dia/sessao e deixa explicito o que falta para cada regua
+- [ ] View e consistente com contrato de cobertura e com o evaluator/checks
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/sql/marts/mart_report_show_day_summary.sql`
+- `npbb/reports/sql/marts/contracts.yml`
+
+**Dependências:**
+- TMJ-ETL-056
+- TMJ-ETL-094
+
+### TMJ-ETL-099 — Gerar "lista do que pedir" a partir de gaps de show (artefatos faltantes)
+**Sprint:** Sprint 2 — Cobertura de shows por dia (12/12 e 14/12)
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Quando houver GAP, o time precisa de uma saida pronta para requisicao: quais arquivos e de quais sessoes/dias.
+**Escopo:**
+- Inclui: gerador de request list a partir de findings de cobertura e do contrato
+- Exclui: envio automatico da requisicao
+
+**Implementação (passos):**
+- Implementar `build_missing_artifacts_list(coverage_report) -> list[RequestItem]`.
+- Gerar saida Markdown/CSV com colunas: dia, sessao, dataset, artefato esperado, justificativa.
+- Integrar no CLI `dq:run` (ou comando dedicado) como artefato de saida.
+
+**Critérios de aceite:**
+- [ ] Lista gerada e objetiva e inclui dataset, sessao e artefato esperado
+- [ ] Lista e consistente com findings (nao inventa arquivo, apenas descreve o que falta)
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/etl/validate/request_list.py`
+- `npbb/etl/validate/cli_dq.py`
+
+**Dependências:**
+- TMJ-ETL-096
+- TMJ-ETL-097
+
+### TMJ-ETL-100 — Testes: checks de show coverage + view show_day_summary
+**Sprint:** Sprint 2 — Cobertura de shows por dia (12/12 e 14/12)
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Precisamos garantir que os checks detectem gaps reais e que a view reflita os status corretamente.
+**Escopo:**
+- Inclui: testes unitarios para checks de cobertura e testes de contrato para a view
+- Exclui: testes end-to-end com todos os arquivos reais
+
+**Implementação (passos):**
+- Criar fixtures de agenda e coverage com dias de show e dados ausentes.
+- Testar que checks geram severidade e mensagens corretas para 12/12 e 14/12 quando faltarem artefatos.
+- Validar contrato de colunas da view `mart_report_show_day_summary`.
+
+**Critérios de aceite:**
+- [ ] Testes cobrem checks de ausencia e geracao de request list
+- [ ] Testes cobrem contrato de colunas e comportamento basico da view de show day summary
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_show_coverage_checks.py`
+- `tests/test_mart_show_day_summary.py`
+
+**Dependências:**
+- TMJ-ETL-098
+- TMJ-ETL-099
+
+### TMJ-ETL-101 — Render no Word: secao "cobertura de shows por dia" (tabela + status)
+**Sprint:** Sprint 3 — Integracao no relatorio e gates de publicacao
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** O template precisa incluir explicitamente a cobertura por dia para evitar omissoes. A secao deve vir mesmo quando houver GAP.
+**Escopo:**
+- Inclui: renderer de secao consumindo `mart_report_show_day_summary`
+- Exclui: definicao de estilos finais e graficos adicionais
+
+**Implementação (passos):**
+- Adicionar placeholder dedicado no mapping (ex.: `{{table.show_coverage}}`).
+- Implementar renderizacao da tabela de cobertura (dia, sessao, status por dataset, observacoes).
+- Incluir legenda de significados (OK/GAP/INCONSISTENTE) na secao.
+
+**Critérios de aceite:**
+- [ ] DOCX inclui a tabela de cobertura por dia de show mesmo quando houver GAP
+- [ ] Secao deixa explicito quais datasets faltam por dia/sessao
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/render_show_coverage.py`
+- `npbb/reports/word/config/word_placeholders.yml`
+
+**Dependências:**
+- TMJ-ETL-098
+- TMJ-ETL-081
+
+### TMJ-ETL-102 — Wiring: rodar auditoria de show coverage antes de gerar o Word
+**Sprint:** Sprint 3 — Integracao no relatorio e gates de publicacao
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** A auditoria precisa rodar antes do report generator, para que a secao de GAP e a tabela de cobertura sejam atuais.
+**Escopo:**
+- Inclui: orquestrar sequencia ETL -> DQ -> show coverage -> Word
+- Exclui: execucao completa de extractors (somente wiring e chamada)
+
+**Implementação (passos):**
+- Atualizar CLI principal para executar: `dq:run` e `evaluate_coverage` antes de `report:render`.
+- Garantir que outputs (dq_report.json e coverage_report.json) sejam passados ao renderer.
+- Registrar no manifest do report a versao da agenda e do contrato de cobertura.
+
+**Critérios de aceite:**
+- [ ] Pipeline chama coverage evaluator e DQ antes do Word generator
+- [ ] Artefatos gerados sao consumidos pelo renderer de GAP e show coverage
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/cli_report.py`
+- `npbb/etl/validate/cli_dq.py`
+
+**Dependências:**
+- TMJ-ETL-101
+- TMJ-ETL-087
+
+### TMJ-ETL-103 — Gate: nao publicar sem status explicito de shows por dia (ou GAP declarado)
+**Sprint:** Sprint 3 — Integracao no relatorio e gates de publicacao
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Mesmo com modo parcial, o relatorio precisa declarar explicitamente a cobertura de shows por dia para nao repetir omissao.
+**Escopo:**
+- Inclui: regra de gate especifica para show coverage integrada ao gate geral do report
+- Exclui: aprovacoes humanas e workflows externos
+
+**Implementação (passos):**
+- Estender `report_gate.yml` com regra de cobertura de shows (critico quando show esperado sem access control).
+- Implementar avaliacao da regra com base na view/coverage_report.
+- Garantir que o DOCX sempre inclua a secao de cobertura e gaps quando a regra falhar.
+
+**Critérios de aceite:**
+- [ ] Gate bloqueia ou marca parcial quando show coverage critico falhar
+- [ ] Relatorio sempre inclui secao de cobertura e GAP correspondente
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/reports/word/config/report_gate.yml`
+- `npbb/reports/word/gate_policy.py`
+
+**Dependências:**
+- TMJ-ETL-088
+- TMJ-ETL-102
+
+### TMJ-ETL-104 — Script dry-run: executar fluxo completo (sem depender de dados reais)
+**Sprint:** Sprint 3 — Integracao no relatorio e gates de publicacao
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Precisamos de um comando unico para validar o encadeamento do pipeline em ambiente de dev, usando fixtures.
+**Escopo:**
+- Inclui: script de dry-run que roda extractors com fixtures, DQ, coverage e gera DOCX
+- Exclui: rodar em producao e com arquivos reais do cliente
+
+**Implementação (passos):**
+- Criar `npbb/scripts/dry_run_tmj_pipeline.py` com opcoes para usar fixtures.
+- Usar fixtures de XLSX/PPTX/PDF minimos e agenda master de teste.
+- Gerar outputs: dq_report.json, coverage_report.json, report.docx e manifest.json.
+
+**Critérios de aceite:**
+- [ ] Dry-run executa pipeline com fixtures e gera DOCX + manifest
+- [ ] Dry-run falha com mensagem clara quando algum passo essencial nao estiver configurado
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `npbb/scripts/dry_run_tmj_pipeline.py`
+- `tests/fixtures/agenda/agenda_master_min.yml`
+
+**Dependências:**
+- TMJ-ETL-102
+
+### TMJ-ETL-105 — Testes: orquestracao e gates (show coverage + report gate)
+**Sprint:** Sprint 3 — Integracao no relatorio e gates de publicacao
+**Épico:** Cobertura de shows por dia
+
+**Contexto:** Gates e orquestracao sao o mecanismo anti-omissao. Precisamos garantir que falhem quando devem e que gerem DOCX parcial com secao de GAP.
+**Escopo:**
+- Inclui: testes unitarios para orquestracao, gate e render da secao de show coverage
+- Exclui: validar estetica final do DOCX
+
+**Implementação (passos):**
+- Criar fixtures de coverage_report com falha critica e com sucesso.
+- Testar que gate bloqueia/publica conforme configuracao e que secao de cobertura aparece no DOCX.
+- Testar que pipeline chama passos na ordem correta (DQ -> coverage -> report).
+
+**Critérios de aceite:**
+- [ ] Testes cobrem decisao de gate com foco em shows por dia e geracao de GAP
+- [ ] Testes cobrem ordem de execucao do pipeline e propagacao de artefatos
+- [ ] Docstring adicionada (PEP257) descrevendo objetivo, entradas, saídas e exceções
+- [ ] (se aplicável) Testes unitários adicionados e passando
+
+**Arquivos afetados:**
+- `tests/test_pipeline_orchestration.py`
+- `npbb/reports/word/render_show_coverage.py`
+
+**Dependências:**
+- TMJ-ETL-103
+- TMJ-ETL-104
+
+
+## Resumo
+
+- Total de issues: 105
+- Total de sprints: 21
+
+### Issues por sprint
+
+| Sprint | Qtd. issues |
+| --- | ---: |
+| Sprint 1 — Agenda master e catalogo de shows | 5 |
+| Sprint 1 — Catalogo de sessoes e dimensoes | 5 |
+| Sprint 1 — Checklist do DOCX como contrato | 5 |
+| Sprint 1 — Extractor XLSX (opt-in e leads) | 5 |
+| Sprint 1 — Framework de checks e relatorio de qualidade | 5 |
+| Sprint 1 — Registry de sources e ingestions | 5 |
+| Sprint 1 — Template e placeholders alinhados ao spec | 5 |
+| Sprint 2 — Cobertura de shows por dia (12/12 e 14/12) | 5 |
+| Sprint 2 — Extractor PPTX (midias e social listening) | 5 |
+| Sprint 2 — Linhagem de metricas (fonte e localizacao) | 5 |
+| Sprint 2 — Mapeamento DOCX para schema e marts | 5 |
+| Sprint 2 — Reconciliacoes e inconsistencias entre fontes | 5 |
+| Sprint 2 — Regua de publico e mapeamento de segmentos | 5 |
+| Sprint 2 — Render de tabelas e figuras a partir dos marts | 5 |
+| Sprint 3 — Catalogo operacional e consultas de auditoria | 5 |
+| Sprint 3 — Extractor PDF (controle de acesso e relatorios) | 5 |
+| Sprint 3 — Integracao no relatorio e gates de publicacao | 5 |
+| Sprint 3 — Linhagem no relatorio e tratamento de GAP | 5 |
+| Sprint 3 — Marts do relatorio (views por secao) | 5 |
+| Sprint 3 — Observabilidade e painel de saude | 5 |
+| Sprint 3 — Spec executavel e governanca do template | 5 |
+
+### Top 10 issues bloqueadoras (mais dependentes diretos)
+
+| Issue | Dependentes diretos | Sprint | Epico |
+| --- | ---: | --- | --- |
+| TMJ-ETL-019 | 9 | Sprint 1 — Registry de sources e ingestions | Ingestion Registry / Catalogo de fontes |
+| TMJ-ETL-021 | 7 | Sprint 2 — Linhagem de metricas (fonte e localizacao) | Ingestion Registry / Catalogo de fontes |
+| TMJ-ETL-056 | 7 | Sprint 3 — Marts do relatorio (views por secao) | Normalizacao e Regras de Metrica |
+| TMJ-ETL-026 | 6 | Sprint 3 — Catalogo operacional e consultas de auditoria | Ingestion Registry / Catalogo de fontes |
+| TMJ-ETL-046 | 5 | Sprint 1 — Catalogo de sessoes e dimensoes | Normalizacao e Regras de Metrica |
+| TMJ-ETL-017 | 4 | Sprint 1 — Registry de sources e ingestions | Ingestion Registry / Catalogo de fontes |
+| TMJ-ETL-023 | 4 | Sprint 2 — Linhagem de metricas (fonte e localizacao) | Ingestion Registry / Catalogo de fontes |
+| TMJ-ETL-052 | 4 | Sprint 2 — Regua de publico e mapeamento de segmentos | Normalizacao e Regras de Metrica |
+| TMJ-ETL-031 | 3 | Sprint 1 — Extractor XLSX (opt-in e leads) | Extractors por tipo (PDF/XLSX/PPTX) |
+| TMJ-ETL-033 | 3 | Sprint 1 — Extractor XLSX (opt-in e leads) | Extractors por tipo (PDF/XLSX/PPTX) |

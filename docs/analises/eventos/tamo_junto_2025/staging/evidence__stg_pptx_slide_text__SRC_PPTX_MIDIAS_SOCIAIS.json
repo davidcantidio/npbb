@@ -1,0 +1,21 @@
+{
+  "extractor": "extract_pptx_slide_text",
+  "source_id": "SRC_PPTX_MIDIAS_SOCIAIS",
+  "source_path": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\Relatorio TMJ BB  (Fortaleza)_V1.pptx",
+  "started_at": "2026-02-10T21:08:00.296027+00:00",
+  "finished_at": "2026-02-10T21:08:00.326245+00:00",
+  "status": "OK",
+  "notes": [],
+  "stats": {
+    "file_snapshot": {
+      "sha256": "3a1621852973b4f0ad150b359c35e301287a9d70a0c1fc423f92c0a74cbf83a7",
+      "size_bytes": 14571411,
+      "mtime_utc": "2026-02-06T17:08:16.986080+00:00"
+    },
+    "slides": 27,
+    "outputs": {
+      "csv": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_pptx_slide_text__SRC_PPTX_MIDIAS_SOCIAIS.csv",
+      "jsonl": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_pptx_slide_text__SRC_PPTX_MIDIAS_SOCIAIS.raw.jsonl"
+    }
+  }
+}

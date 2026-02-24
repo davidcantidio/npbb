@@ -1,0 +1,31 @@
+{
+  "source_id": "SRC_PDF_DIMAC_MONITORAMENTO",
+  "template_kind": "DIMAC",
+  "requested_items": [
+    {
+      "metric_key": "dimac.profile.age_distribution",
+      "description": "Age distribution table (percent/total) as shown in the report.",
+      "location_raw": "",
+      "evidence": "",
+      "value_raw": null
+    },
+    {
+      "metric_key": "dimac.profile.gender_distribution",
+      "description": "Gender distribution table (percent/total) as shown in the report.",
+      "location_raw": "",
+      "evidence": "",
+      "value_raw": null
+    },
+    {
+      "metric_key": "dimac.satisfaction.overall",
+      "description": "Overall satisfaction indicators (percent) as shown in the report.",
+      "location_raw": "",
+      "evidence": "",
+      "value_raw": null
+    }
+  ],
+  "notes": [
+    "This is an assisted template. Fill location_raw with page reference and evidence with table/figure title.",
+    "If microdata exists, prefer ingesting the microdata instead of copying aggregates from PDF."
+  ]
+}

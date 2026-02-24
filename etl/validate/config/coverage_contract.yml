@@ -1,0 +1,84 @@
+# Coverage contract by canonical session type.
+#
+# Purpose:
+# - define minimum dataset expectations by `session_type`;
+# - define severity and missing-status semantics per dataset;
+# - provide deterministic input for coverage evaluator and DQ/report gates.
+#
+# Notes:
+# - `required: true` means the dataset is expected in the coverage matrix.
+# - `status_on_missing` influences gate/report interpretation in future checks.
+# - For NOTURNO_SHOW, `access_control` is critical (`error` + `gap`).
+
+version: 1
+
+status_domain:
+  - ok
+  - gap
+  - partial
+
+default_required_datasets:
+  - access_control
+
+session_types:
+  NOTURNO_SHOW:
+    datasets:
+      - dataset: access_control
+        required: true
+        severity: error
+        status_on_missing: gap
+        description: Controle de acesso oficial por sessao de show (critico).
+      - dataset: ticket_sales
+        required: true
+        severity: error
+        status_on_missing: gap
+        description: Total de ingressos vendidos por sessao.
+      - dataset: optin
+        required: true
+        severity: error
+        status_on_missing: partial
+        description: >
+          Opt-in/Eventim para show; se required=true vira critico para cobertura.
+          Opt-in e recorte e nao substitui ingressos vendidos total.
+
+  DIURNO_GRATUITO:
+    datasets:
+      - dataset: access_control
+        required: true
+        severity: error
+        status_on_missing: gap
+        description: Entradas validadas da programacao diurna.
+      - dataset: leads
+        required: true
+        severity: warning
+        status_on_missing: gap
+        description: Leads do diurno (quando houver operacao de captura).
+      - dataset: optin
+        required: false
+        severity: info
+        status_on_missing: partial
+        description: Opcional para sessoes diurnas sem dinamica de prevenda.
+
+  OUTRO:
+    datasets:
+      - dataset: access_control
+        required: true
+        severity: warning
+        status_on_missing: gap
+        description: Cobertura minima para sessoes fora do catalogo principal.
+
+gate_actions:
+  error:
+    gap: block
+    partial: partial
+  warning:
+    gap: partial
+    partial: partial
+  info:
+    gap: allow
+    partial: allow
+
+documentation:
+  report_gate_note: >
+    O gate de publicacao deve priorizar severidade error com status gap para bloqueio.
+    Severidades warning/info devem permitir modo parcial conforme politica.

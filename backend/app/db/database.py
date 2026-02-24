@@ -1,6 +1,7 @@
 """Configuracao de conexao e utilitarios de sessao do SQLModel."""
 
 import os
+import sys
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -24,6 +25,18 @@ def _load_env() -> None:
 
 
 def _get_database_url() -> str:
+    # pytest sets up imports before executing tests; `PYTEST_CURRENT_TEST` is not reliable
+    # at module-import time. Detecting `pytest` in sys.modules keeps tests local/offline.
+    is_test = os.getenv("TESTING", "").lower() == "true" or "pytest" in sys.modules
+    if is_test:
+        url_test = os.getenv("DATABASE_URL_TEST")
+        if url_test:
+            return url_test
+        url = os.getenv("DATABASE_URL")
+        if url and os.getenv("FORCE_DATABASE_URL_IN_TESTS", "").lower() == "true":
+            return url
+        return "sqlite:///./app.db"
+
     url = os.getenv("DATABASE_URL")
     if url:
         return url
@@ -62,9 +75,6 @@ def _get_database_url() -> str:
             f"postgresql+psycopg2://{user_enc}:{password_enc}"
             f"@{host}:{port}/{dbname}?sslmode={sslmode}"
         )
-    # Permite SQLite apenas em execucoes de teste (ex.: pytest) ou se explicitamente marcado
-    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
-        return "sqlite:///./app.db"
     raise RuntimeError(
         "DATABASE_URL nao configurada e fallback SQLite desabilitado para producao/homologacao."
     )

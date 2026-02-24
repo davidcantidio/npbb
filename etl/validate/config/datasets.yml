@@ -1,0 +1,294 @@
+# Data-quality dataset contracts for TMJ ETL checks.
+#
+# Each entry configures:
+# - required_columns: schema contract
+# - critical_not_null_columns: columns that cannot be NULL
+# - source_id_column/lineage_ref_id_column: optional lineage hints in findings
+# - ingestion_id_column: scope filtering by ingestion execution
+datasets:
+  - dataset_id: stg_optin
+    table: stg_optin_transactions
+    domain: staging
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - sheet_name
+      - row_number
+      - raw_payload_json
+    critical_not_null_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - sheet_name
+      - row_number
+      - raw_payload_json
+    duplicate_key_sets:
+      - [cpf_hash, evento, sessao]
+      - [email_hash, evento, sessao]
+
+  - dataset_id: stg_leads
+    table: stg_leads
+    domain: staging
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - sheet_name
+      - row_number
+      - raw_payload_json
+    critical_not_null_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - sheet_name
+      - row_number
+      - raw_payload_json
+    duplicate_key_sets:
+      - [cpf_hash, evento]
+      - [email_hash, evento]
+      - [person_key_hash, evento]
+
+  - dataset_id: stg_access_control
+    table: stg_access_control_sessions
+    domain: staging
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - pdf_page
+      - session_name
+      - raw_payload_json
+    critical_not_null_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - pdf_page
+      - session_name
+      - raw_payload_json
+
+  - dataset_id: stg_social_metrics
+    table: stg_social_metrics
+    domain: staging
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - slide_number
+      - platform
+      - metric_name
+      - metric_value
+      - unit
+      - evidence_text
+      - raw_payload_json
+    critical_not_null_columns:
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - slide_number
+      - platform
+      - metric_name
+      - metric_value
+      - unit
+      - evidence_text
+      - raw_payload_json
+
+  - dataset_id: stg_dimac_metrics
+    table: stg_dimac_metrics
+    domain: staging
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - source_id
+      - ingestion_id
+      - metric_key
+      - status
+      - extraction_rule
+      - raw_payload_json
+    critical_not_null_columns:
+      - source_id
+      - ingestion_id
+      - metric_key
+      - status
+      - extraction_rule
+      - raw_payload_json
+
+  - dataset_id: stg_mtc_metrics
+    table: stg_mtc_metrics
+    domain: staging
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - source_id
+      - ingestion_id
+      - metric_key
+      - status
+      - extraction_rule
+      - raw_payload_json
+    critical_not_null_columns:
+      - source_id
+      - ingestion_id
+      - metric_key
+      - status
+      - extraction_rule
+      - raw_payload_json
+
+  - dataset_id: fct_attendance_access_control
+    table: attendance_access_control
+    domain: canonical
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - session_id
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - created_at
+    critical_not_null_columns:
+      - session_id
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+
+  - dataset_id: fct_ticket_sales
+    table: ticket_sales
+    domain: canonical
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - session_id
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - created_at
+    critical_not_null_columns:
+      - session_id
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+
+  - dataset_id: fct_optin_transactions
+    table: optin_transactions
+    domain: canonical
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    required_columns:
+      - session_id
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+      - created_at
+    critical_not_null_columns:
+      - session_id
+      - source_id
+      - ingestion_id
+      - lineage_ref_id
+
+# Percentage checks for survey/social/media metrics.
+percentage_checks:
+  - dataset_id: stg_social_metrics
+    table: stg_social_metrics
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    value_column: metric_value
+    unit_column: unit
+    percent_units: [percent]
+    require_lineage: true
+    lower_bound: 0
+    upper_bound: 100
+    sum_rules:
+      - rule_id: social_percent_by_slide_platform
+        group_by: [source_id, ingestion_id, slide_number, platform]
+        target_sum: 100
+        tolerance: 1
+        min_items: 2
+
+  - dataset_id: stg_dimac_metrics
+    table: stg_dimac_metrics
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    value_column: metric_value
+    unit_column: unit
+    percent_units: [percent]
+    status_column: status
+    allowed_statuses: [ok]
+    require_lineage: true
+    lower_bound: 0
+    upper_bound: 100
+    sum_rules:
+      - rule_id: dimac_percent_by_page
+        group_by: [source_id, ingestion_id, pdf_page]
+        target_sum: 100
+        tolerance: 1
+        min_items: 2
+
+  - dataset_id: stg_mtc_metrics
+    table: stg_mtc_metrics
+    severity: error
+    ingestion_id_column: ingestion_id
+    source_id_column: source_id
+    lineage_ref_id_column: lineage_ref_id
+    value_column: metric_value
+    unit_column: unit
+    percent_units: [percent]
+    status_column: status
+    allowed_statuses: [ok]
+    require_lineage: true
+    lower_bound: 0
+    upper_bound: 100
+    sum_rules:
+      - rule_id: mtc_percent_by_page
+        group_by: [source_id, ingestion_id, pdf_page]
+        target_sum: 100
+        tolerance: 1
+        min_items: 2
+
+# Coverage matrix requirements by canonical session type.
+# Used by `etl.validate.coverage_matrix` to compute status per session/dataset.
+coverage_requirements:
+  # Fallback requirements applied when a session type has no explicit mapping.
+  default_required_datasets:
+    - access_control
+    - optin
+
+  # Specific required datasets by canonical session type.
+  required_datasets_by_session_type:
+    NOTURNO_SHOW:
+      - access_control
+      - ticket_sales
+      - optin
+    DIURNO_GRATUITO:
+      - access_control
+      - leads
+    OUTRO:
+      - access_control

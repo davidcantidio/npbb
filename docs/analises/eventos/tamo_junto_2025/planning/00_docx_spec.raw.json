@@ -1,0 +1,278 @@
+{
+  "source_path": "C:\\Users\\NPBB\\Desktop\\Fechamento_TMJB2025_Modelo_NPBB_v2.docx",
+  "extracted_at": "2026-02-10T20:25:09.186563+00:00",
+  "sections": [
+    {
+      "level": 1,
+      "title": "1. Contexto do evento",
+      "body_lines": [
+        "O Festival Tamo Junto BB 2025 ocorreu em Fortaleza/CE, no Marina Park Hotel, entre 10 e 14 de dezembro de 2025, combinando programação esportiva (surf, skate, vôlei, corrida e games) durante o dia e shows musicais no período noturno, com atrações nacionais e locais."
+      ],
+      "start_paragraph_index": 5
+    },
+    {
+      "level": 1,
+      "title": "2. Objetivo do relatório",
+      "body_lines": [
+        "Entregar uma leitura técnica e propositiva do job, consolidando um modelo “padrão” de fechamento NPBB para eventos com múltiplas frentes (público, relacionamento BB, pré-venda, redes e leads)."
+      ],
+      "start_paragraph_index": 7
+    },
+    {
+      "level": 1,
+      "title": "3. Fontes de dados e limitações",
+      "body_lines": [
+        "Fontes analisadas:",
+        "Controle de acesso (PDF) – sessões 12/12 (diurno gratuito), 13/12 (diurno gratuito e noturno), 14/12 (diurno gratuito).",
+        "Eventim – Opt-in aceitos (Excel) – sessões 12/12 19:00 e 13/12 19:00 (base de transações/ingressos com opt-in).",
+        "Leads – Festival de Esportes (Excel) – base de capturas e ativações (CPF único).",
+        "DIMAC – Relatório de monitoramento (PDF) – amostra de 491 entrevistas com público (12–14/12).",
+        "Relatório de mídias sociais (PPTX) – métricas de Instagram e social listening.",
+        "MTC – Relatório de assessoria/imprensa (PDF) – releases, entrevistas, inserções e equivalência publicitária.",
+        "Limitações (importante):",
+        "“Entradas validadas” representam acessos/presenças por sessão, sem deduplicação de pessoas entre dias/turnos.",
+        "A base de Opt-in (Eventim) é um recorte (aceitos) e não representa o total de ingressos vendidos/validados do evento.",
+        "Perfil (idade/gênero) e percepções são oriundos de amostra (DIMAC, n=491); os percentuais devem ser lidos como indicativos.",
+        "Leads representam público que interagiu com ativações e aceitou cadastro; não são equivalentes ao público total presente."
+      ],
+      "start_paragraph_index": 9
+    },
+    {
+      "level": 1,
+      "title": "4. Big numbers (recorte analisado)",
+      "body_lines": [
+        "Leitura rápida:",
+        "Entradas validadas (presentes) – 12 a 14/12: 10.134 (somatório de sessões).",
+        "Maior sessão por presença: 13/12 noturno (show) – 4.267 entradas validadas.",
+        "Opt-in aceitos (Eventim | shows 12/12 19h + 13/12 19h): 5.661 ingressos (recorte com opt-in).",
+        "Leads captados (CPF únicos | 12–14/12): 717 leads (≈ 7,1% das entradas validadas no recorte, leitura aproximada).",
+        "Equivalência publicitária (MTC): R$ 65.195.343,05 | 342 inserções | 17 entrevistas | 113 jornalistas presentes."
+      ],
+      "start_paragraph_index": 22
+    },
+    {
+      "level": 2,
+      "title": "4.1 Público do evento (controle de acesso – entradas validadas)",
+      "body_lines": [
+        "Figura 1 – Entradas validadas (presentes) por sessão – 12 a 14/12/2025.",
+        "Figura 2 – Taxa de comparecimento por sessão (presentes/ingressos válidos).",
+        "Resumo por sessão (controle de acesso):"
+      ],
+      "start_paragraph_index": 29
+    },
+    {
+      "level": 2,
+      "title": "4.2 Dinâmica de vendas (pré-venda) – shows (Opt-in aceitos)",
+      "body_lines": [
+        "Janela de vendas observada (opt-in): 14/10/2025 até as datas de cada sessão (12/12 e 13/12).",
+        "Figura 3 – Ingressos (opt-in aceitos) por dia de compra – sessões 12/12 19h e 13/12 19h.",
+        "Figura 4 – Curva acumulada de vendas (% do total de ingressos por sessão).",
+        "Principais achados (pré-venda):",
+        "Sessão 13/12 19h: 25,3% dos ingressos vendidos na 1ª semana; 50,9% no 1º mês; 21,3% nos últimos 7 dias; 9,5% no dia do evento.",
+        "Sessão 12/12 19h: 10,9% na 1ª semana; 36,9% no 1º mês; 25,1% nos últimos 7 dias; 9,3% no dia do evento.",
+        "Primeira semana (ambas as sessões) foi 100% concentrada em segmentos de relacionamento BB (Cartão BB e Funcionários), indicando fase inicial direcionada.",
+        "Lote 2 (marcação “L2”) representou 40,0% dos ingressos do show 12/12 e 30,3% do show 13/12."
+      ],
+      "start_paragraph_index": 35
+    },
+    {
+      "level": 2,
+      "title": "4.3 Quem são clientes do Banco (proxy via categoria de ingresso – Opt-in)",
+      "body_lines": [
+        "Figura 5 – Ingressos por segmento (proxy de relacionamento BB) – sessões com ticket (opt-in aceitos).",
+        "Leitura do recorte (opt-in aceitos):",
+        "No agregado (12/12 + 13/12): 38,1% dos ingressos do recorte estão associados a relacionamento BB (Clientes + Cartão + Funcionários).",
+        "Distribuição no agregado (opt-in): Cliente BB 19,3%, Cliente Cartão BB 12,4%, Funcionários BB 6,4%, Público geral/outros 61,9%.",
+        "Show 13/12 (opt-in): relacionamento BB 41,8%; show 12/12 (opt-in): relacionamento BB 33,8%."
+      ],
+      "start_paragraph_index": 46
+    },
+    {
+      "level": 1,
+      "title": "5. Perfil do público (DIMAC – 12 a 14/12)",
+      "body_lines": [
+        "Amostra DIMAC: 491 entrevistas com público (12–14/12). Percentuais abaixo são indicativos do perfil no recorte.",
+        "Figura 6 – Faixa etária (DIMAC, n=491).",
+        "Figura 7 – Gênero (DIMAC, n=491)."
+      ],
+      "start_paragraph_index": 53
+    },
+    {
+      "level": 2,
+      "title": "5.1 Satisfação e percepção (DIMAC)",
+      "body_lines": [
+        "Síntese das percepções (DIMAC):",
+        "Satisfação geral do evento: 78,6% “muito satisfeito” e 11,8% “satisfeito”.",
+        "Satisfação com os shows: 69,0% “muito satisfeito” e 14,6% “satisfeito”.",
+        "Evento aproxima o público do Banco do Brasil: 67,4% “concordo totalmente” e 20,2% “concordo”.",
+        "Figura 8 – Satisfação geral (DIMAC).",
+        "Figura 9 – Participação em ações promovidas (DIMAC).",
+        "Figura 10 – Percepção: evento aproxima do BB (DIMAC)."
+      ],
+      "start_paragraph_index": 59
+    },
+    {
+      "level": 1,
+      "title": "6. Pré-venda (leitura técnica e aprendizados)",
+      "body_lines": [
+        "A pré-venda apresentou dois comportamentos distintos entre as sessões:",
+        "13/12 19h: forte tração inicial (25,3% na primeira semana), coerente com abertura segmentada (Cartão BB + Funcionários) e maior apelo de lineup.",
+        "12/12 19h: curva mais “lenta” no início e aceleração no meio da janela (novembro), sugerindo espaço para ajustes de comunicação/ativação e escalonamento de lotes.",
+        "Indicadores operacionais (opt-in aceitos):",
+        "Show 12/12: 1.655 compradores únicos; média 1,58 ingressos/comprador; 34,8% das transações foram compra múltipla, respondendo por 53,4% dos ingressos.",
+        "Show 13/12: 1.707 compradores únicos; média 1,78 ingressos/comprador; 43,6% das transações foram compra múltipla, respondendo por 63,9% dos ingressos."
+      ],
+      "start_paragraph_index": 70
+    },
+    {
+      "level": 1,
+      "title": "7. Performance nas redes (Instagram e social listening)",
+      "body_lines": [
+        "Métricas de Instagram (relatório de mídias sociais):",
+        "Visitas ao perfil: 75K | Ações no perfil: 88K | Cliques no link: 13K.",
+        "Viralização (métrica interna do relatório): 0,66 (com observação de meta/benchmark no próprio material).",
+        "Conteúdos de destaque (Reels): anúncio João Gomes – 407,8K visualizações e 3,5K interações; anúncio BaianaSystem – 304K visualizações e 8,7K interações; shows – 278,2K visualizações.",
+        "Achados do formato:",
+        "Reels concentraram 93% das visualizações e 67% das ações no perfil.",
+        "Ausência de TikTok no período limita alcance em um público mais jovem; recomendação de teste controlado em 2026 com métricas comparáveis.",
+        "Social listening (Brandwatch – highlights do relatório):",
+        "Instagram respondeu por ~11% das menções monitoradas; Facebook por ~5%; X/Twitter por ~0,5%.",
+        "Sentimento: ~86% positivo (no recorte citado).",
+        "58% das menções vieram de perfis de notícias."
+      ],
+      "start_paragraph_index": 77
+    },
+    {
+      "level": 1,
+      "title": "8. Mídia e imprensa (MTC)",
+      "body_lines": [
+        "Big numbers (MTC):",
+        "18 releases trabalhados | 342 inserções | 17 entrevistas concedidas | 113 jornalistas presentes/credenciados.",
+        "Equivalência publicitária: R$ 65.195.343,05.",
+        "Distribuição das inserções (contagem por canal no relatório): 179 online | 126 redes sociais | 13 TV | 22 impresso | 2 rádio.",
+        "Pontos de melhoria registrados (MTC) – exemplo de risco operacional:",
+        "Algumas oportunidades editoriais podem ser barradas por leitura de “caráter comercial” (ex.: logo em uniforme), exigindo alinhamento prévio de branding/produção com veículos e organizadores."
+      ],
+      "start_paragraph_index": 89
+    },
+    {
+      "level": 1,
+      "title": "9. Leads e ativações (Festival de Esportes | 12–14/12)",
+      "body_lines": [
+        "Visão geral:",
+        "Leads (CPF únicos): 717.",
+        "Participações em ativações (pode haver múltiplas por lead): 945.",
+        "Ativações mapeadas na base: BB :: MÁQUINA DE GARRA, BB :: CARAMELO, BB :: OFICINA KIDS PELUCIA, BB :: OFICINA KIDS LED.",
+        "Figura 11 – Leads captados por dia (CPF únicos).",
+        "Figura 12 – Top ativações (contagem de participações).",
+        "Leituras propositivas (leads/ativações):",
+        "Concentração de leads em 13–14/12 sugere (i) maior fluxo nesses dias e/ou (ii) início mais tardio/operacionalização da captura em 12/12.",
+        "Máquina de garra domina o volume de participações; oportunidade de otimizar o funil (cadastro → consentimento → oferta/benefício) para elevar qualidade, não só volume.",
+        "Padronizar ‘Ação’ como dimensão (ID + nome) e capturar também horário/local/operador para análises futuras (picos, filas, desempenho por ponto)."
+      ],
+      "start_paragraph_index": 96
+    },
+    {
+      "level": 1,
+      "title": "10. Recomendações (2026) – ações técnicas e de produto",
+      "body_lines": [
+        "Recomendações priorizadas (alto impacto / baixo atrito):",
+        "Unificar a régua de ‘público’ do fechamento: entradas validadas (controle de acesso) + ingressos vendidos (total) + opt-in (aceitos) + deduplicação quando houver CPF/ID.",
+        "Pré-venda: manter fase 1 exclusiva (Cartão BB + Funcionários) e explicitar calendário (abertura → lote 2 → público geral) para controlar picos e reduzir incerteza operacional.",
+        "Relacionamento: criar KPI padrão ‘share BB’ (cliente/cartão/funcionário) e acompanhar por semana; usar para calibrar benefícios e mídia.",
+        "Redes: priorizar Reels (onde está 93% das views), casar calendário de posts com marcos da pré-venda; testar TikTok com objetivo claro (alcance/consideração) e mensuração pareada.",
+        "Leads: instrumentar qualidade (campos mínimos, consentimento LGPD, motivo de interesse) e fechar a esteira de acionamento (CRM/WhatsApp/e-mail) com SLA e retorno de conversão."
+      ],
+      "start_paragraph_index": 109
+    },
+    {
+      "level": 1,
+      "title": "11. Apêndice – definições rápidas",
+      "body_lines": [
+        "Entradas validadas: contagem de presenças por sessão (leitura de QR/ingresso no controle de acesso).",
+        "Opt-in aceitos: recorte de transações/ingressos cujo titular aceitou opt-in (Eventim) – usado aqui como proxy de perfil/segmento, não como total de público.",
+        "Leads: CPFs cadastrados em ativações no Festival de Esportes (12–14/12)."
+      ],
+      "start_paragraph_index": 116
+    }
+  ],
+  "figures": [
+    {
+      "caption": "Figura 1 – Entradas validadas (presentes) por sessão – 12 a 14/12/2025.",
+      "paragraph_index": 30,
+      "section_title": "4.1 Público do evento (controle de acesso – entradas validadas)"
+    },
+    {
+      "caption": "Figura 2 – Taxa de comparecimento por sessão (presentes/ingressos válidos).",
+      "paragraph_index": 32,
+      "section_title": "4.1 Público do evento (controle de acesso – entradas validadas)"
+    },
+    {
+      "caption": "Figura 3 – Ingressos (opt-in aceitos) por dia de compra – sessões 12/12 19h e 13/12 19h.",
+      "paragraph_index": 37,
+      "section_title": "4.2 Dinâmica de vendas (pré-venda) – shows (Opt-in aceitos)"
+    },
+    {
+      "caption": "Figura 4 – Curva acumulada de vendas (% do total de ingressos por sessão).",
+      "paragraph_index": 39,
+      "section_title": "4.2 Dinâmica de vendas (pré-venda) – shows (Opt-in aceitos)"
+    },
+    {
+      "caption": "Figura 5 – Ingressos por segmento (proxy de relacionamento BB) – sessões com ticket (opt-in aceitos).",
+      "paragraph_index": 47,
+      "section_title": "4.3 Quem são clientes do Banco (proxy via categoria de ingresso – Opt-in)"
+    },
+    {
+      "caption": "Figura 6 – Faixa etária (DIMAC, n=491).",
+      "paragraph_index": 55,
+      "section_title": "5. Perfil do público (DIMAC – 12 a 14/12)"
+    },
+    {
+      "caption": "Figura 7 – Gênero (DIMAC, n=491).",
+      "paragraph_index": 57,
+      "section_title": "5. Perfil do público (DIMAC – 12 a 14/12)"
+    },
+    {
+      "caption": "Figura 8 – Satisfação geral (DIMAC).",
+      "paragraph_index": 64,
+      "section_title": "5.1 Satisfação e percepção (DIMAC)"
+    },
+    {
+      "caption": "Figura 9 – Participação em ações promovidas (DIMAC).",
+      "paragraph_index": 66,
+      "section_title": "5.1 Satisfação e percepção (DIMAC)"
+    },
+    {
+      "caption": "Figura 10 – Percepção: evento aproxima do BB (DIMAC).",
+      "paragraph_index": 68,
+      "section_title": "5.1 Satisfação e percepção (DIMAC)"
+    },
+    {
+      "caption": "Figura 11 – Leads captados por dia (CPF únicos).",
+      "paragraph_index": 101,
+      "section_title": "9. Leads e ativações (Festival de Esportes | 12–14/12)"
+    },
+    {
+      "caption": "Figura 12 – Top ativações (contagem de participações).",
+      "paragraph_index": 103,
+      "section_title": "9. Leads e ativações (Festival de Esportes | 12–14/12)"
+    }
+  ],
+  "tables": [
+    {
+      "table_index": 1,
+      "n_rows": 5,
+      "n_cols": 7,
+      "header_cells": [
+        "Sessão",
+        "Ingressos válidos",
+        "Inválidos",
+        "Bloqueados",
+        "Presentes",
+        "Ausentes",
+        "Comparecimento"
+      ],
+      "section_title": "4.1 Público do evento (controle de acesso – entradas validadas)"
+    }
+  ]
+}

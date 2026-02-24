@@ -1,0 +1,30 @@
+schema_version: "1.0"
+
+# Mapping rules for media/social PPTX slides.
+# How to add a metric:
+# - define metric_name/platform/unit/extraction_rule
+# - set slide_number when deck position is stable
+# - set title_regex when slide position can move
+# Evidence guidance:
+# - extraction_rule should include the label expected in slide text
+# - persist this label text as evidence when storing lineage
+rules:
+  - metric_name: media_reach_total
+    platform: instagram
+    unit: count
+    slide_number: 7
+    title_regex: "alcance|reach"
+    extraction_rule: "label:Alcance total | parse:first_integer"
+
+  - metric_name: social_engagement_rate
+    platform: instagram
+    unit: percent
+    title_regex: "engajamento|engagement"
+    extraction_rule: "label:Taxa de engajamento | parse:first_percent"
+
+  - metric_name: social_positive_sentiment
+    platform: social_listening
+    unit: percent
+    slide_number: 12
+    title_regex: "social listening|sentimento"
+    extraction_rule: "label:Sentimento positivo | parse:first_percent"

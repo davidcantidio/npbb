@@ -5,7 +5,7 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 ## Comece por aqui
 - `../README.MD` - visao geral + comandos rapidos
 - `SETUP.md` - setup completo (backend + frontend)
-- `WORKFLOWS.md` - fluxos principais (importacao de leads, dashboard, relatorio)
+- `WORKFLOWS.md` - fluxos principais (importacao assistida por dominio, dashboard, relatorio)
 - `TROUBLESHOOTING.md` - problemas comuns e como resolver
 - `ARCHITECTURE.md` - visao rapida de modulos e fronteiras
 
@@ -16,6 +16,7 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 - `gamificacao_api.md` - gamificacao
 - `ativacoes_api.md` - ativacoes
 - `leads_importacao.md` - importacao CSV/XLSX
+- `publicidade_importacao.md` - importacao assistida de publicidade (core reutilizavel)
 - `leads_conversoes.md` - regras de conversao
 
 ## ETL - Runbooks de Sprint
@@ -33,6 +34,7 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 - `roadmap_dashboard_import_batch.md` - roadmap tecnico
 - `../reports/README.md` - como gerar o DOCX do Festival TMJ 2025
 - `../reports/RESTORE_SUMMARY.md` - resumo de restauracao
+- `etl/tmj2025_dry_run_usage.md` - guia detalhado do dry-run TMJ 2025 (ETL -> DQ -> coverage -> Word)
 
 ## Especificacoes de UI (legacy)
 Estes arquivos descrevem telas e podem divergir do codigo atual. Use como referencia visual e valide no app.

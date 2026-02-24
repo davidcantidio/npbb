@@ -1,0 +1,65 @@
+# TMJ 2025 - DOCX mapping contract example
+# Version this file together with the DOCX checklist spec.
+#
+# Required root keys:
+# - schema_version: string
+# - spec_source: string
+# - requirements: list[RequirementMapping]
+# - marts: list[MartContract]
+#
+# RequirementMapping keys:
+# - requirement_id, item_docx, target_field (table.field), calculation_rule
+# - sources: list[{source_id, location}]
+# - validations: list[{rule_id, rule_type, severity, expression}]
+#
+# MartContract keys:
+# - mart_name (pattern: mart_[a-z0-9_]+), grain, description
+# - requirement_ids: references to requirement_id values above
+# - output_fields: list[{field, source, rule}]
+
+schema_version: "1.0"
+spec_source: "docs/analises/eventos/tamo_junto_2025/planning/00_docx_as_spec.md"
+
+requirements:
+  - requirement_id: "REQ-SHOWS-DIA-001"
+    item_docx: "Shows por dia (12/12, 13/12, 14/12)"
+    target_field: "mart_report_show_day_summary.coverage_status"
+    calculation_rule: "CASE WHEN has_access_control AND has_ticket_sales THEN 'OK' ELSE 'GAP' END"
+    sources:
+      - source_id: "pdf_access_control_2025_12_12"
+        location: "pagina 2 / tabela Entradas validadas"
+      - source_id: "xlsx_optin_aceitos_2025_12"
+        location: "aba Vendas / colunas data_compra,sessao"
+    validations:
+      - rule_id: "VAL-SHOW-COVERAGE-001"
+        rule_type: "reconciliation"
+        severity: "error"
+        expression: "coverage_status IN ('OK','GAP','INCONSISTENTE')"
+
+  - requirement_id: "REQ-PUBLICO-001"
+    item_docx: "Publico do evento (controle de acesso - entradas validadas)"
+    target_field: "attendance_access_control.entries_validated"
+    calculation_rule: "SUM(entries_validated) por evento_dia_sessao"
+    sources:
+      - source_id: "pdf_access_control_2025_12_13"
+        location: "pagina 1 / tabela Presencas"
+    validations:
+      - rule_id: "VAL-PUBLICO-NOT-NULL-001"
+        rule_type: "not_null"
+        severity: "error"
+        expression: "entries_validated IS NOT NULL"
+
+marts:
+  - mart_name: "mart_report_show_day_summary"
+    grain: "evento_dia_sessao"
+    description: "Resumo de cobertura e reconciliacao por dia/sessao de show."
+    requirement_ids:
+      - "REQ-SHOWS-DIA-001"
+      - "REQ-PUBLICO-001"
+    output_fields:
+      - field: "event_date"
+        source: "event_sessions.session_date"
+        rule: "DATE(session_start)"
+      - field: "coverage_status"
+        source: "attendance_access_control + ticket_sales + optin_transactions"
+        rule: "Regras de cobertura por sessao"

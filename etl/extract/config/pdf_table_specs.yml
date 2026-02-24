@@ -1,0 +1,40 @@
+schema_version: "1.0"
+
+# Assisted extraction specs for unstable PDF layouts.
+# Coordinates follow pdfplumber bbox format: [x0, top, x1, bottom].
+tables:
+  - table_id: access_control_default
+    dataset: access_control
+    pages: [1]
+    bbox: [40, 40, 560, 760]
+    header_rows: 1
+    evidence_label: "Tabela de controle de acesso"
+    columns:
+      - name: session_name
+        x_min: 40
+        x_max: 210
+      - name: ingressos_validos
+        x_min: 210
+        x_max: 270
+      - name: invalidos
+        x_min: 270
+        x_max: 320
+      - name: bloqueados
+        x_min: 320
+        x_max: 380
+      - name: presentes
+        x_min: 380
+        x_max: 440
+      - name: ausentes
+        x_min: 440
+        x_max: 500
+      - name: comparecimento_pct
+        x_min: 500
+        x_max: 560
+    postprocess:
+      ingressos_validos: int
+      invalidos: int
+      bloqueados: int
+      presentes: int
+      ausentes: int
+      comparecimento_pct: percent

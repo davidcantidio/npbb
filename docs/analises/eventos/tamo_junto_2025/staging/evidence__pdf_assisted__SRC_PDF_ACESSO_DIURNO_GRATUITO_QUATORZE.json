@@ -1,0 +1,22 @@
+{
+  "extractor": "extract_pdf_assisted",
+  "source_id": "SRC_PDF_ACESSO_DIURNO_GRATUITO_QUATORZE",
+  "source_path": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\14.12 gratuito - Controle de Acesso.pdf",
+  "started_at": "2026-02-10T21:08:00.334547+00:00",
+  "finished_at": "2026-02-10T21:08:00.336559+00:00",
+  "status": "MANUAL",
+  "notes": [
+    "No PDF parsing library is available in the current environment.",
+    "Template artifact generated for operator-assisted extraction."
+  ],
+  "stats": {
+    "file_snapshot": {
+      "sha256": "cbaa7e0aad28806ea1898f15d42e3c21eefadb95e624284593ff1366b9e51f64",
+      "size_bytes": 111263,
+      "mtime_utc": "2026-02-06T17:08:16.530678+00:00"
+    },
+    "template": "access_control",
+    "approx_page_count": 1,
+    "artifact": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_access_control_template__SRC_PDF_ACESSO_DIURNO_GRATUITO_QUATORZE.csv"
+  }
+}

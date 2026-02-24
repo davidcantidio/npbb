@@ -2,7 +2,7 @@
 
 ## 1) Importacao de Leads (CSV/XLSX)
 ### UI
-1. Faça login.
+1. Faca login.
 2. Acesse `/leads`.
 3. Clique em **Importar XLSX** e selecione um arquivo `.csv` ou `.xlsx`.
 4. Revise o **mapeamento de colunas**.
@@ -43,7 +43,33 @@ curl -X POST http://localhost:8000/leads/import/preview \
   -F "sample_rows=10"
 ```
 
-## 2) Dashboard de Leads
+## 2) Importacao de Publicidade (CSV/XLSX)
+### UI
+1. Faca login.
+2. Acesse `/publicidade`.
+3. Clique em **Importar CSV/XLSX**.
+4. Revise as sugestoes e ajuste mapeamentos.
+5. (Opcional) confirme alias de `codigo_projeto`.
+6. Execute import normal ou `dry-run`.
+
+### API (pipeline)
+Endpoints principais:
+- `POST /publicidade/import/upload` (multipart)
+- `POST /publicidade/import/preview` (multipart)
+- `POST /publicidade/import/validate` (JSON)
+- `POST /publicidade/import` (multipart; `mappings_json` + `dry_run`)
+
+Endpoints auxiliares:
+- `GET /publicidade/referencias/eventos`
+- `GET /publicidade/aliases` e `POST /publicidade/aliases`
+
+Relatorio esperado:
+- `received_rows`, `valid_rows`
+- `staged_inserted`, `staged_skipped`
+- `upsert_inserted`, `upsert_updated`
+- `unresolved_event_id`, `errors`
+
+## 3) Dashboard de Leads
 ### UI
 - Rota: `/dashboard/leads`
 - Mostra KPIs, serie temporal e rankings agregados.
@@ -61,7 +87,7 @@ curl "http://localhost:8000/dashboard/leads?evento_id=123&data_inicio=2025-01-01
   -H "Authorization: Bearer <token>"
 ```
 
-## 3) Relatorio TMJ 2025 (DOCX)
+## 4) Relatorio TMJ 2025 (DOCX)
 Script oficial:
 ```bash
 cd backend
@@ -75,5 +101,47 @@ Saida:
 - `reports/Festival_TMJ_2025_relatorio.docx`
 
 Observacoes:
-- O script usa o mesmo service do dashboard e gera **apenas dados agregados**.
+- O script usa o mesmo service do dashboard e gera apenas dados agregados.
 - Se faltarem dados (ex.: redes sociais), o relatorio inclui a lacuna.
+
+## 5) TMJ 2025 Dry-Run (ETL -> DQ -> Coverage -> Word)
+Script:
+```bash
+python scripts/dry_run_tmj_pipeline.py --out-dir reports/tmj2025/dry_run
+```
+
+Objetivo:
+- Validar localmente o encadeamento completo com fixtures, sem depender de banco externo ou fontes reais.
+
+Fluxo executado:
+- Extractors de fixtures (`xlsx`, `pdf`, `pptx`).
+- Seed de banco local SQLite (`sources`, `ingestions`, `event_sessions` via agenda).
+- Preflight (`dq:run` + coverage por sessao/show).
+- Render do DOCX com gate e geracao de manifest.
+
+Artefatos gerados:
+- `reports/tmj2025/dry_run/dq_report.json`
+- `reports/tmj2025/dry_run/coverage_report.json`
+- `reports/tmj2025/dry_run/report.docx`
+- `reports/tmj2025/dry_run/manifest.json`
+
+Observacoes:
+- O dry-run usa fixtures locais em `tests/fixtures`.
+- O banco do dry-run e isolado em `reports/tmj2025/dry_run/dry_run.sqlite`.
+- Guia detalhado: `docs/etl/tmj2025_dry_run_usage.md`.
+
+## 6) Ingestao Inteligente S1 (Upload + Selecao de Evento)
+### API
+Endpoints internos da sprint:
+- `POST /internal/ingestao-inteligente/s1/scaffold`
+- `POST /internal/ingestao-inteligente/s1/upload`
+
+Contrato operacional (resumo):
+- Entrada: `evento_id`, `nome_arquivo`, `tamanho_arquivo_bytes`, `content_type`, `correlation_id` (opcional).
+- Saida scaffold: limites de upload + `pontos_integracao` + `observabilidade`.
+- Saida upload: `upload_id`, `status=accepted`, `proxima_acao`, `observabilidade`.
+
+Observabilidade:
+- Todos os erros retornam `code`, `message`, `action`, `correlation_id`, `telemetry_event_id`.
+- Sucesso e erro geram eventos estruturados no logger `app.telemetry`.
+- O frontend S1 mantem rastreabilidade por `observability_event_id` e propaga `correlation_id`.

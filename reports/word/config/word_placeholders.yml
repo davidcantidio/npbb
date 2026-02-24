@@ -1,0 +1,70 @@
+# Mapping de placeholders do template Word para marts/views.
+#
+# Convencoes:
+# - placeholder_id: usar formato <SECAO>__<BLOCO>__<TIPO> em UPPER_SNAKE_CASE.
+#   Exemplo: PUBLICO__ATTENDANCE__TABLE
+# - mart_name: deve apontar para view com prefixo mart_report_*.
+# - params: parametros estaticos opcionais para filtros/ajustes de render.
+# - render_type: text | table | figure.
+# - spec_item: referencia textual ao item do spec DOCX (00_docx_as_spec/03_mapping).
+#
+# Observacao:
+# - Este arquivo define apenas contrato de configuracao e mapeamento.
+# - Execucao de query e renderizacao de placeholders sera implementada em sprint posterior.
+
+version: 1
+
+placeholders:
+  - placeholder_id: PUBLICO__ATTENDANCE__TABLE
+    mart_name: mart_report_attendance_by_session
+    params:
+      metric_type: entradas_validadas
+    render_type: table
+    spec_item: Publico do evento (controle de acesso - entradas validadas)
+    description: Tabela por sessao com presentes, validos e comparecimento.
+
+  - placeholder_id: SHOW__COVERAGE__TABLE
+    mart_name: mart_report_show_day_summary
+    params:
+      columns:
+        - dia
+        - sessao
+        - status_access_control
+        - status_optin
+        - status_ticket_sales
+        - observacoes
+    render_type: table
+    spec_item: Cobertura de shows por dia (12/12, 13/12, 14/12)
+    description: Tabela de status por dia/sessao com reguas e observacoes de cobertura.
+
+  - placeholder_id: PRESALE__CURVES__FIGURE
+    mart_name: mart_report_presale_curves
+    params:
+      metric_type: optin_aceitos
+    render_type: figure
+    spec_item: Dinamica de vendas (pre-venda) - shows (Opt-in aceitos)
+    description: Curva temporal de compras/opt-in por sessao.
+
+  - placeholder_id: PRESALE__OPS__TABLE
+    mart_name: mart_report_presale_ops
+    params:
+      metric_type: optin_aceitos
+    render_type: table
+    spec_item: Dinamica de vendas (pre-venda) - indicadores operacionais
+    description: Indicadores operacionais de pre-venda por sessao.
+
+  - placeholder_id: FONTES__SUMMARY__TEXT
+    mart_name: mart_report_sources
+    params:
+      include_notes: true
+    render_type: text
+    spec_item: Fontes de dados e limitacoes metodologicas
+    description: Resumo textual de fontes e status de ingestao.
+
+  - placeholder_id: GAPS__SUMMARY__TEXT
+    mart_name: mart_report_sources
+    params:
+      include_dq: true
+    render_type: text
+    spec_item: Secao GAP/INCONSISTENTE (DQ e cobertura)
+    description: Lista objetiva de gaps/inconsistencias com evidencias e cobertura por dia.

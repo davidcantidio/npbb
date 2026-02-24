@@ -1,0 +1,60 @@
+sources:
+  - source_id: SRC_XLSX_OPTIN_ACEITOS_DOZE
+    kind: XLSX
+    path: npbb/docs/analises/eventos/tamo_junto_2025/TAMO JUNTO BB 12.12 - 01.1 - Opt-In Aceitos.xlsx
+    extractor: xlsx_optin_aceitos
+    sheet: "01.1 - Opt-In Aceitos"
+
+  - source_id: SRC_XLSX_OPTIN_ACEITOS_TREZE
+    kind: XLSX
+    path: npbb/docs/analises/eventos/tamo_junto_2025/TAMO JUNTO BB 13.12 - Opt-In POR EVENTO (aceitos)v5.xlsx
+    extractor: xlsx_optin_aceitos
+    sheet: "01.1 - Opt-In Aceitos"
+
+  - source_id: SRC_XLSX_LEADS_FESTIVAL_ESPORTES
+    kind: XLSX
+    path: npbb/docs/analises/eventos/tamo_junto_2025/LEADS FESTIVAL DE ESPORTES 25.xlsx
+    extractor: xlsx_leads_festival
+    sheet: "Entidades"
+
+  - source_id: SRC_PPTX_MIDIAS_SOCIAIS
+    kind: PPTX
+    path: npbb/docs/analises/eventos/tamo_junto_2025/Relatorio TMJ BB  (Fortaleza)_V1.pptx
+    extractor: pptx_slide_text
+
+  - source_id: SRC_PDF_ACESSO_DIURNO_GRATUITO_DOZE
+    kind: PDF
+    path: npbb/docs/analises/eventos/tamo_junto_2025/12.12 gratuito - controle de acesso.pdf
+    extractor: pdf_assisted
+    template: access_control
+
+  - source_id: SRC_PDF_ACESSO_DIURNO_GRATUITO_TREZE
+    kind: PDF
+    path: npbb/docs/analises/eventos/tamo_junto_2025/13.12 Gratuito - Controle de Acesso.pdf
+    extractor: pdf_assisted
+    template: access_control
+
+  - source_id: SRC_PDF_ACESSO_NOTURNO_TREZE
+    kind: PDF
+    path: npbb/docs/analises/eventos/tamo_junto_2025/13.12 - Controle de Acesso.pdf
+    extractor: pdf_assisted
+    template: access_control
+
+  - source_id: SRC_PDF_ACESSO_DIURNO_GRATUITO_QUATORZE
+    kind: PDF
+    path: npbb/docs/analises/eventos/tamo_junto_2025/14.12 gratuito - Controle de Acesso.pdf
+    extractor: pdf_assisted
+    template: access_control
+
+  - source_id: SRC_PDF_DIMAC_MONITORAMENTO
+    kind: PDF
+    path: npbb/docs/analises/eventos/tamo_junto_2025/DIMAC - TMJ 25 - RELATÓRIO DE MONITORAMENTO - REVISADO.pdf
+    extractor: pdf_assisted
+    template: dimac
+
+  - source_id: SRC_PDF_MTC_IMPRENSA
+    kind: PDF
+    path: npbb/docs/analises/eventos/tamo_junto_2025/MTC_Relatorio_TMJBB_2025- MTC.pdf.pdf
+    extractor: pdf_assisted
+    template: mtc
+

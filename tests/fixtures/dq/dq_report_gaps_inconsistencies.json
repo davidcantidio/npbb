@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "error": 1,
+    "warning": 2,
+    "info": 0
+  },
+  "sections": {
+    "inconsistencies": [
+      {
+        "dataset_id": "show_12_dimac",
+        "message": "Conflito entre relatorio DIMAC e consolidado de redes no show de 12/12",
+        "source_id": "SRC_DIMAC_2025",
+        "location": "page=7",
+        "evidence_text": "Tabela de share BB por dia"
+      }
+    ],
+    "gaps_by_dataset": {
+      "show_14_access_control": [
+        {
+          "message": "Sem controle de acesso oficial para o show de 14/12",
+          "source_id": "SRC_ACCESS_2025",
+          "location": "page=0",
+          "evidence_text": "Arquivo nao entregue pela operacao"
+        }
+      ]
+    }
+  }
+}

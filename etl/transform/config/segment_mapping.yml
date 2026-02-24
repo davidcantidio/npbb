@@ -1,0 +1,29 @@
+version: 1
+description: "Mapeamento canonico de categoria de ingresso para segmento BB (proxy relacionamento)."
+default_segment: "DESCONHECIDO"
+mappings:
+  FUNCIONARIO_BB:
+    - "FUNCIONARIOS BB"
+    - "FUNCIONARIO BB"
+    - "FUNC BB"
+    - "COLABORADOR BB"
+  CARTAO_BB:
+    - "CARTAO BB"
+    - "PORTADOR CARTAO BB"
+    - "OUROCARD BB"
+    - "CARTAO BANCO DO BRASIL"
+  CLIENTE_BB:
+    - "CLIENTE BB"
+    - "CLIENTES BB"
+    - "CORRENTISTA BB"
+    - "RELACIONAMENTO BB"
+  PUBLICO_GERAL:
+    - "INTEIRA"
+    - "MEIA"
+    - "MEIA ENTRADA"
+    - "OUTRAS MEIAS"
+    - "DESCONTO"
+    - "PUBLICO GERAL"
+  OUTRO:
+    - "CONVIDADO"
+    - "CORTESIA"

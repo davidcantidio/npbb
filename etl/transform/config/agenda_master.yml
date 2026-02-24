@@ -1,0 +1,60 @@
+# Agenda master TMJ 2025.
+#
+# This file is the single controlled input for expected sessions used in
+# coverage/audit checks. Update via pull request and keep one logical change
+# per commit (for clear diff/history).
+#
+# Required fields per session:
+# - event_id: integer > 0
+# - session_date: YYYY-MM-DD
+# - start_at: YYYY-MM-DDTHH:MM:SS (timezone optional)
+# - type: diurno_gratuito | noturno_show
+# - name: non-empty text
+#
+# Optional:
+# - session_key: stable identifier for deterministic joins/audit
+
+version: 1
+
+sessions:
+  - event_id: 2025
+    session_date: 2025-12-12
+    start_at: 2025-12-12T10:00:00-03:00
+    type: diurno_gratuito
+    name: TMJ 2025 - Programacao Diurna 12/12
+    session_key: TMJ2025_20251212_DIURNO
+
+  - event_id: 2025
+    session_date: 2025-12-12
+    start_at: 2025-12-12T20:00:00-03:00
+    type: noturno_show
+    name: TMJ 2025 - Show 12/12
+    session_key: TMJ2025_20251212_SHOW
+
+  - event_id: 2025
+    session_date: 2025-12-13
+    start_at: 2025-12-13T10:00:00-03:00
+    type: diurno_gratuito
+    name: TMJ 2025 - Programacao Diurna 13/12
+    session_key: TMJ2025_20251213_DIURNO
+
+  - event_id: 2025
+    session_date: 2025-12-13
+    start_at: 2025-12-13T20:00:00-03:00
+    type: noturno_show
+    name: TMJ 2025 - Show 13/12
+    session_key: TMJ2025_20251213_SHOW
+
+  - event_id: 2025
+    session_date: 2025-12-14
+    start_at: 2025-12-14T10:00:00-03:00
+    type: diurno_gratuito
+    name: TMJ 2025 - Programacao Diurna 14/12
+    session_key: TMJ2025_20251214_DIURNO
+
+  - event_id: 2025
+    session_date: 2025-12-14
+    start_at: 2025-12-14T20:00:00-03:00
+    type: noturno_show
+    name: TMJ 2025 - Show 14/12
+    session_key: TMJ2025_20251214_SHOW

@@ -1,0 +1,36 @@
+version: 1
+
+block:
+  enabled: true
+  min_error_findings: 1
+  critical_statuses:
+    - GAP
+    - INCONSISTENTE
+  critical_tokens:
+    - 12/12
+    - 14/12
+    - 2025-12-12
+    - 2025-12-14
+    - show_12
+    - show_14
+
+partial:
+  enabled: true
+  statuses:
+    - GAP
+    - INCONSISTENTE
+  min_findings: 1
+  banner_text: "PARCIAL: relatorio gerado com gaps/inconsistencias; revisar secao GAP/INCONSISTENTE."
+
+output:
+  allow_partial_on_block: true
+
+show_coverage:
+  enabled: true
+  session_type: NOTURNO_SHOW
+  critical_dataset: access_control
+  critical_statuses:
+    - GAP
+  required_placeholders:
+    - SHOW__COVERAGE__TABLE
+    - GAPS__SUMMARY__TEXT

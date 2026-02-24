@@ -1,0 +1,44 @@
+schema_version: "1.0"
+spec_source: "docs/analises/eventos/tamo_junto_2025/planning/00_docx_as_spec.md"
+
+requirements:
+  - requirement_id: "REQ-PUBLICO-001"
+    item_docx: "Publico do evento (controle de acesso - entradas validadas)"
+    target_field: "attendance_access_control.entries_validated"
+    calculation_rule: "SUM(entries_validated) por evento_dia_sessao"
+    sources:
+      - source_id: "pdf_access_control_2025_12_13"
+        location: "pagina 1 / tabela Presencas"
+    validations:
+      - rule_id: "VAL-PUBLICO-001"
+        rule_type: "not_null"
+        severity: "error"
+        expression: "entries_validated IS NOT NULL"
+
+  - requirement_id: "REQ-OPTIN-001"
+    item_docx: "Dinamica de vendas (pre-venda) - shows (Opt-in aceitos)"
+    target_field: "optin_transactions.optin_accepted"
+    calculation_rule: "SUM(optin_accepted) por evento_dia_sessao"
+    sources:
+      - source_id: "xlsx_optin_aceitos_2025_12"
+        location: "aba Vendas / colunas data_compra,sessao"
+    validations:
+      - rule_id: "VAL-OPTIN-001"
+        rule_type: "reconciliation"
+        severity: "error"
+        expression: "optin_accepted >= 0"
+
+marts:
+  - mart_name: "mart_report_show_day_summary"
+    grain: "evento_dia_sessao"
+    description: "Resumo por sessao de show."
+    requirement_ids:
+      - "REQ-PUBLICO-001"
+      - "REQ-OPTIN-001"
+    output_fields:
+      - field: "entries_validated"
+        source: "public.attendance_access_control.entries_validated"
+        rule: "Soma por sessao"
+      - field: "optin_accepted"
+        source: "public.optin_transactions.optin_accepted"
+        rule: "Soma por sessao"

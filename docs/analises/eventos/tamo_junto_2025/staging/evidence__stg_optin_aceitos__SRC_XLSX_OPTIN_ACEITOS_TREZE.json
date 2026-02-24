@@ -1,0 +1,51 @@
+{
+  "extractor": "extract_xlsx_optin_aceitos",
+  "source_id": "SRC_XLSX_OPTIN_ACEITOS_TREZE",
+  "source_path": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\TAMO JUNTO BB 13.12 - Opt-In POR EVENTO (aceitos)v5.xlsx",
+  "started_at": "2026-02-10T21:07:59.801860+00:00",
+  "finished_at": "2026-02-10T21:08:00.175355+00:00",
+  "status": "OK",
+  "notes": [],
+  "stats": {
+    "file_snapshot": {
+      "sha256": "eab7a87804aa7214d4d26eaeb8176159a973daf04f481b8450712fe0a8a84327",
+      "size_bytes": 301265,
+      "mtime_utc": "2026-02-06T17:08:16.999339+00:00"
+    },
+    "sheet": "01.1 - Opt-In Aceitos",
+    "header_row": 3,
+    "max_col": 24,
+    "rows_extracted": 1947,
+    "include_pii": false,
+    "outputs": {
+      "csv": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_optin_aceitos__SRC_XLSX_OPTIN_ACEITOS_TREZE.csv",
+      "jsonl": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_optin_aceitos__SRC_XLSX_OPTIN_ACEITOS_TREZE.raw.jsonl"
+    },
+    "header": [
+      "Evento",
+      "Sessao",
+      "Dt Hr Compra",
+      "Opt In",
+      "Opt In ID",
+      "Opt-in Status",
+      "Canal Venda",
+      "Metodo Entrega",
+      "Nome",
+      "Sobrenome",
+      "Email",
+      "CPF",
+      "Endereco Rua",
+      "Endereco Numero",
+      "Bairro",
+      "CIDADE",
+      "Estado",
+      "CEP",
+      "TELEFONE",
+      "Dt Nascimento",
+      "Genero",
+      "Cod Promocional",
+      "INGRESSO",
+      "Qtd Ingresso"
+    ]
+  }
+}

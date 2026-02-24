@@ -1,0 +1,45 @@
+{
+  "extractor": "extract_xlsx_leads_festival",
+  "source_id": "SRC_XLSX_LEADS_FESTIVAL_ESPORTES",
+  "source_path": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\LEADS FESTIVAL DE ESPORTES 25.xlsx",
+  "started_at": "2026-02-10T21:08:00.213646+00:00",
+  "finished_at": "2026-02-10T21:08:00.284508+00:00",
+  "status": "OK",
+  "notes": [],
+  "stats": {
+    "file_snapshot": {
+      "sha256": "953ad23f635ddc68ed310dd22aac847345a6d8dc8cbce70fc2d9eefa71df6d38",
+      "size_bytes": 68481,
+      "mtime_utc": "2026-02-06T17:08:16.622841+00:00"
+    },
+    "sheet": "Entidades",
+    "header_row": 1,
+    "max_col": 18,
+    "rows_extracted": 717,
+    "include_pii": false,
+    "outputs": {
+      "csv": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_leads_festival__SRC_XLSX_LEADS_FESTIVAL_ESPORTES.csv",
+      "jsonl": "npbb\\docs\\analises\\eventos\\tamo_junto_2025\\staging\\stg_leads_festival__SRC_XLSX_LEADS_FESTIVAL_ESPORTES.raw.jsonl"
+    },
+    "header": [
+      "Nome",
+      "Sobrenome",
+      "RG",
+      "CPF",
+      "Sexo",
+      "Email",
+      "Telefone",
+      "Evento",
+      "CPFPromotor",
+      "NomePromotor",
+      "DataNascimento",
+      "Cep",
+      "Estado",
+      "Cidade",
+      "DataCriacao",
+      "Acoes",
+      "Interesses",
+      "AreaAtuacao"
+    ]
+  }
+}

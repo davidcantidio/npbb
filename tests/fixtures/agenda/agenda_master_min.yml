@@ -1,0 +1,30 @@
+version: 1
+
+sessions:
+  - event_id: 2025
+    session_date: 2025-12-12
+    start_at: 2025-12-12T10:00:00-03:00
+    type: diurno_gratuito
+    name: TMJ 2025 - Programacao Diurna 12/12
+    session_key: TMJ2025_20251212_DIURNO
+
+  - event_id: 2025
+    session_date: 2025-12-12
+    start_at: 2025-12-12T20:00:00-03:00
+    type: noturno_show
+    name: TMJ 2025 - Show 12/12
+    session_key: TMJ2025_20251212_SHOW
+
+  - event_id: 2025
+    session_date: 2025-12-13
+    start_at: 2025-12-13T20:00:00-03:00
+    type: noturno_show
+    name: TMJ 2025 - Show 13/12
+    session_key: TMJ2025_20251213_SHOW
+
+  - event_id: 2025
+    session_date: 2025-12-14
+    start_at: 2025-12-14T20:00:00-03:00
+    type: noturno_show
+    name: TMJ 2025 - Show 14/12
+    session_key: TMJ2025_20251214_SHOW

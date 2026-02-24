@@ -1,0 +1,260 @@
+version: 1
+description: "Contratos de output para views mart_report_* do TMJ 2025."
+views:
+  - name: mart_report_healthcheck
+    description: "View minima para validar pipeline de apply/contract."
+    columns:
+      - name: section_key
+        type: text
+      - name: status
+        type: text
+      - name: generated_at
+        type: text
+  - name: mart_report_attendance_by_session
+    description: "Attendance por sessao para DOCX (controle de acesso)."
+    columns:
+      - name: event_id
+        type: integer
+      - name: session_id
+        type: integer
+      - name: session_key
+        type: text
+      - name: session_name
+        type: text
+      - name: session_type
+        type: text
+      - name: session_date
+        type: text
+      - name: session_start_at
+        type: text
+      - name: ingressos_validos
+        type: integer
+      - name: presentes
+        type: integer
+      - name: ausentes
+        type: integer
+      - name: invalidos
+        type: integer
+      - name: bloqueados
+        type: integer
+      - name: comparecimento_pct
+        type: real
+      - name: metric_type
+        type: text
+      - name: audience_measure
+        type: text
+      - name: session_rank
+        type: integer
+  - name: mart_report_presale_curves
+    description: "Serie diaria e acumulada de pre-venda por sessao (opt-in)."
+    columns:
+      - name: event_id
+        type: integer
+      - name: session_id
+        type: integer
+      - name: session_key
+        type: text
+      - name: session_name
+        type: text
+      - name: session_type
+        type: text
+      - name: session_date
+        type: text
+      - name: session_start_at
+        type: text
+      - name: purchase_day
+        type: text
+      - name: tx_count_day
+        type: integer
+      - name: tickets_qty_day
+        type: integer
+      - name: buyers_unique_day
+        type: integer
+      - name: tickets_qty_cum
+        type: integer
+      - name: tx_count_cum
+        type: integer
+      - name: metric_type
+        type: text
+      - name: audience_measure
+        type: text
+      - name: recorte_observacao
+        type: text
+      - name: row_rank
+        type: integer
+  - name: mart_report_presale_ops
+    description: "Indicadores operacionais por sessao para recorte de opt-in."
+    columns:
+      - name: event_id
+        type: integer
+      - name: session_id
+        type: integer
+      - name: session_key
+        type: text
+      - name: session_name
+        type: text
+      - name: session_type
+        type: text
+      - name: session_date
+        type: text
+      - name: session_start_at
+        type: text
+      - name: tx_count_total
+        type: integer
+      - name: tickets_qty_total
+        type: integer
+      - name: buyers_unique_total
+        type: integer
+      - name: purchase_day_first
+        type: text
+      - name: purchase_day_last
+        type: text
+      - name: avg_tickets_per_tx
+        type: real
+      - name: avg_tickets_per_buyer
+        type: real
+      - name: buyers_multi_purchase_count
+        type: integer
+      - name: buyers_multi_purchase_pct
+        type: real
+      - name: has_person_key
+        type: integer
+      - name: metric_type
+        type: text
+      - name: audience_measure
+        type: text
+      - name: recorte_observacao
+        type: text
+      - name: session_rank
+        type: integer
+  - name: mart_report_bb_share
+    description: "Share de segmentos canonicos BB por sessao (proxy em opt-in)."
+    columns:
+      - name: event_id
+        type: integer
+      - name: session_id
+        type: integer
+      - name: session_key
+        type: text
+      - name: session_name
+        type: text
+      - name: session_type
+        type: text
+      - name: session_date
+        type: text
+      - name: session_start_at
+        type: text
+      - name: segment_canonical
+        type: text
+      - name: tx_count
+        type: integer
+      - name: tickets_qty
+        type: integer
+      - name: buyers_unique
+        type: integer
+      - name: tickets_qty_total
+        type: integer
+      - name: share_pct
+        type: real
+      - name: source_ids
+        type: text
+      - name: metric_type
+        type: text
+      - name: audience_measure
+        type: text
+      - name: recorte_observacao
+        type: text
+      - name: row_rank
+        type: integer
+  - name: mart_report_sources
+    description: "Fontes e ultimo status de ingestao para secao metodologica."
+    columns:
+      - name: source_pk
+        type: integer
+      - name: source_id
+        type: text
+      - name: source_kind
+        type: text
+      - name: source_uri
+        type: text
+      - name: source_display_name
+        type: text
+      - name: source_is_active
+        type: integer
+      - name: file_sha256
+        type: text
+      - name: file_size_bytes
+        type: integer
+      - name: file_mtime_utc
+        type: text
+      - name: latest_ingestion_id
+        type: integer
+      - name: latest_status
+        type: text
+      - name: latest_started_at
+        type: text
+      - name: latest_finished_at
+        type: text
+      - name: latest_extractor_name
+        type: text
+      - name: latest_records_read
+        type: integer
+      - name: latest_records_loaded
+        type: integer
+      - name: latest_notes
+        type: text
+      - name: latest_error_message
+        type: text
+      - name: latest_created_at
+        type: text
+      - name: limitation_note
+        type: text
+      - name: evidence_note
+        type: text
+      - name: audience_measure
+        type: text
+      - name: row_rank
+        type: integer
+  - name: mart_report_show_day_summary
+    description: "Status por dia/sessao de show com reguas de acesso, opt-in e vendas."
+    columns:
+      - name: dia
+        type: text
+      - name: event_id
+        type: integer
+      - name: session_id
+        type: integer
+      - name: sessao
+        type: text
+      - name: session_key
+        type: text
+      - name: session_type
+        type: text
+      - name: session_start_at
+        type: text
+      - name: status_access_control
+        type: text
+      - name: status_optin
+        type: text
+      - name: status_ticket_sales
+        type: text
+      - name: entradas_validadas
+        type: integer
+      - name: ingressos_validos
+        type: integer
+      - name: optin_tx_count
+        type: integer
+      - name: sold_total
+        type: integer
+      - name: net_sold_total
+        type: integer
+      - name: source_ids_access_control
+        type: text
+      - name: source_ids_optin
+        type: text
+      - name: source_ids_ticket_sales
+        type: text
+      - name: observacoes
+        type: text
+      - name: row_rank
+        type: integer

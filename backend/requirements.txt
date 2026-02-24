@@ -39,4 +39,10 @@ watchfiles==1.1.1
 websockets==15.0.1
 openpyxl==3.1.5
 python-docx==1.1.2
+python-pptx==1.0.2
+lxml==5.4.0
+Pillow==11.3.0
+XlsxWriter==3.2.0
+pypdf==5.1.0
+pdfplumber==0.11.5
 python-multipart==0.0.9

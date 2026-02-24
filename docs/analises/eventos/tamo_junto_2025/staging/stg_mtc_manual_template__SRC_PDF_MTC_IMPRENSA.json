@@ -1,0 +1,17 @@
+{
+  "source_id": "SRC_PDF_MTC_IMPRENSA",
+  "template_kind": "MTC",
+  "requested_items": [
+    {
+      "metric_key": "mtc.press.clippings_summary",
+      "description": "Press/clipping summary KPIs and breakdowns shown in the report.",
+      "location_raw": "",
+      "evidence": "",
+      "value_raw": null
+    }
+  ],
+  "notes": [
+    "This is an assisted template. Fill location_raw with page reference and evidence with table/figure title.",
+    "If a detailed clipping base exists, prefer ingesting the detailed base instead of copying aggregates."
+  ]
+}

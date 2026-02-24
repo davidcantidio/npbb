@@ -23,7 +23,10 @@ from app.schemas.publicidade_import import (
     PublicidadeImportValidateResponse,
 )
 from app.services.imports.alias_service import find_alias, upsert_alias
-from app.services.imports.domain_publicidade import PUBLICIDADE_DOMAIN_SPEC
+from app.services.imports.domain_publicidade import (
+    PUBLICIDADE_DOMAIN_SPEC,
+    canonical_publicidade_field_name,
+)
 from app.services.imports.file_reader import (
     DEFAULT_IMPORT_MAX_BYTES,
     ImportFileError,
@@ -100,6 +103,19 @@ def _validate_domain_mapping_or_400(mappings: list[PublicidadeImportMapping]) ->
     )
 
 
+def _normalize_mapping_fields(mappings: list[PublicidadeImportMapping]) -> list[PublicidadeImportMapping]:
+    normalized: list[PublicidadeImportMapping] = []
+    for mapping in mappings:
+        normalized.append(
+            PublicidadeImportMapping(
+                coluna=mapping.coluna,
+                campo=canonical_publicidade_field_name(mapping.campo),
+                confianca=mapping.confianca,
+            )
+        )
+    return normalized
+
+
 @router.post("/import/upload")
 @router.post("/import/upload/")
 def validar_upload_publicidade(
@@ -167,6 +183,7 @@ def validar_mapeamento_publicidade(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
+    mappings = _normalize_mapping_fields(mappings)
     _validate_domain_mapping_or_400(mappings)
     return PublicidadeImportValidateResponse(ok=True)
 
@@ -192,6 +209,7 @@ def importar_publicidade(
             field="mappings_json",
         )
 
+    mappings = _normalize_mapping_fields(mappings)
     _validate_domain_mapping_or_400(mappings)
     try:
         return run_publicidade_import(
@@ -244,6 +262,7 @@ def buscar_alias_publicidade(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
+    field_name = canonical_publicidade_field_name(field_name) or field_name
     if field_name not in PUBLICIDADE_DOMAIN_SPEC.field_names():
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
@@ -271,7 +290,8 @@ def criar_alias_publicidade(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
-    if payload.field_name not in PUBLICIDADE_DOMAIN_SPEC.field_names():
+    field_name = canonical_publicidade_field_name(payload.field_name) or payload.field_name
+    if field_name not in PUBLICIDADE_DOMAIN_SPEC.field_names():
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
             code="INVALID_ALIAS_FIELD",
@@ -296,7 +316,7 @@ def criar_alias_publicidade(
         alias = upsert_alias(
             session,
             domain=PUBLICIDADE_DOMAIN_SPEC.domain,
-            field_name=payload.field_name,
+            field_name=field_name,
             source_value=payload.valor_origem,
             canonical_value=canonical_value,
             canonical_ref_id=payload.canonical_ref_id,

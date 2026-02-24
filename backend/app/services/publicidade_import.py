@@ -12,7 +12,11 @@ from sqlmodel import Session, select
 from app.models.models import EventPublicity, Evento, PublicityImportStaging
 from app.schemas.publicidade_import import PublicidadeImportError, PublicidadeImportMapping, PublicidadeImportReport
 from app.services.imports.alias_service import find_alias
-from app.services.imports.domain_publicidade import PUBLICIDADE_DOMAIN_SPEC, normalize_publicidade_value
+from app.services.imports.domain_publicidade import (
+    PUBLICIDADE_DOMAIN_SPEC,
+    canonical_publicidade_field_name,
+    normalize_publicidade_value,
+)
 from app.services.imports.file_reader import DEFAULT_IMPORT_MAX_BYTES, iter_data_rows, read_file_sample
 
 MAX_ERROR_ROWS = 300
@@ -29,9 +33,9 @@ def run_publicidade_import(
     preview, ext = read_file_sample(file, sample_rows=20, max_bytes=max_bytes)
     filename = file.filename or preview.filename or ""
     mapping_by_index = {
-        index: str(mapping.campo)
+        index: str(canonical_publicidade_field_name(mapping.campo))
         for index, mapping in enumerate(mappings)
-        if mapping.campo
+        if canonical_publicidade_field_name(mapping.campo)
     }
     received_rows = 0
     valid_rows = 0
@@ -82,7 +86,7 @@ def run_publicidade_import(
                     source_row_hash=source_row_hash,
                     codigo_projeto=str(normalized["codigo_projeto"]),
                     projeto=str(normalized["projeto"]),
-                    data_vinculacao=normalized["data_vinculacao"],  # type: ignore[arg-type]
+                    data_vinculacao=normalized["data_veiculacao"],  # type: ignore[arg-type]
                     meio=str(normalized["meio"]),
                     veiculo=str(normalized["veiculo"]),
                     uf=str(normalized["uf"]),
@@ -109,7 +113,7 @@ def run_publicidade_import(
             existing = session.exec(
                 select(EventPublicity).where(
                     EventPublicity.publicity_project_code == str(normalized["codigo_projeto"]),
-                    EventPublicity.linked_at == normalized["data_vinculacao"],  # type: ignore[arg-type]
+                    EventPublicity.linked_at == normalized["data_veiculacao"],  # type: ignore[arg-type]
                     EventPublicity.medium == str(normalized["meio"]),
                     EventPublicity.vehicle == str(normalized["veiculo"]),
                     EventPublicity.uf == str(normalized["uf"]),
@@ -140,7 +144,7 @@ def run_publicidade_import(
             event_id=event_id,
             publicity_project_code=str(normalized["codigo_projeto"]),
             publicity_project_name=str(normalized["projeto"]),
-            linked_at=normalized["data_vinculacao"],  # type: ignore[arg-type]
+            linked_at=normalized["data_veiculacao"],  # type: ignore[arg-type]
             medium=str(normalized["meio"]),
             vehicle=str(normalized["veiculo"]),
             uf=str(normalized["uf"]),
@@ -175,13 +179,16 @@ def _normalize_payload(raw_payload: dict[str, str]) -> tuple[dict[str, object], 
     errors: list[tuple[str, str, str | None]] = []
 
     for field_name, raw_value in raw_payload.items():
-        value = normalize_publicidade_value(field_name, raw_value)
-        if value is None and (raw_value or "").strip() and field_name == "data_vinculacao":
-            errors.append((field_name, "Formato de data invalido. Use DD/MM/YYYY ou YYYY-MM-DD.", raw_value))
+        canonical_field_name = canonical_publicidade_field_name(field_name) or field_name
+        value = normalize_publicidade_value(canonical_field_name, raw_value)
+        if value is None and (raw_value or "").strip() and canonical_field_name == "data_veiculacao":
+            errors.append(
+                (canonical_field_name, "Formato de data invalido. Use DD/MM/YYYY ou YYYY-MM-DD.", raw_value)
+            )
             continue
         if value is None:
             continue
-        normalized[field_name] = value
+        normalized[canonical_field_name] = value
 
     for field in PUBLICIDADE_DOMAIN_SPEC.fields:
         if not field.required:
@@ -261,7 +268,7 @@ def _resolve_event_id(session: Session, *, codigo_projeto: str) -> int | None:
 
 
 def _natural_key(normalized: dict[str, object]) -> tuple[object, ...]:
-    linked_at = normalized.get("data_vinculacao")
+    linked_at = normalized.get("data_veiculacao")
     assert isinstance(linked_at, date)
     return (
         str(normalized["codigo_projeto"]),

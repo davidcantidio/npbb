@@ -23,9 +23,17 @@ PUBLICIDADE_DOMAIN_SPEC = ImportDomainSpec(
             kind="text",
         ),
         ImportFieldSpec(
-            name="data_vinculacao",
+            name="data_veiculacao",
             required=True,
-            aliases=("data vinculacao", "dt vinculacao", "linked_at"),
+            aliases=(
+                "data vinculacao",
+                "data_vinculacao",
+                "dt vinculacao",
+                "data veiculacao",
+                "data_veiculacao",
+                "dt veiculacao",
+                "linked_at",
+            ),
             kind="date",
         ),
         ImportFieldSpec(
@@ -68,11 +76,12 @@ PUBLICIDADE_DOMAIN_SPEC = ImportDomainSpec(
             uppercase=True,
         ),
     ),
-    required_key_fields=("codigo_projeto", "data_vinculacao", "meio", "veiculo", "uf", "camada"),
+    required_key_fields=("codigo_projeto", "data_veiculacao", "meio", "veiculo", "uf", "camada"),
     alias_fields=("codigo_projeto",),
 )
 
 _UPPERCASE_FIELDS = {"codigo_projeto", "meio", "uf", "camada"}
+_LEGACY_FIELD_MAP = {"data_vinculacao": "data_veiculacao"}
 
 
 def parse_import_date(value: str) -> date | None:
@@ -91,8 +100,14 @@ def normalize_publicidade_value(field_name: str, value: str) -> object | None:
     raw = (value or "").strip()
     if not raw:
         return None
-    if field_name == "data_vinculacao":
+    if field_name in {"data_veiculacao", "data_vinculacao"}:
         return parse_import_date(raw)
     if field_name in _UPPERCASE_FIELDS:
         return raw.upper()
     return raw
+
+
+def canonical_publicidade_field_name(field_name: str | None) -> str | None:
+    if field_name is None:
+        return None
+    return _LEGACY_FIELD_MAP.get(field_name, field_name)

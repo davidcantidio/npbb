@@ -522,7 +522,14 @@ function Info({ label, value }: { label: string; value: string }) {
 function TooltipQrLink({ url }: { url: string }) {
   return (
     <Stack direction="row" spacing={0.5} alignItems="center">
-      <IconButton component="a" href={url} target="_blank" rel="noreferrer" size="small">
+      <IconButton
+        component="a"
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        size="small"
+        aria-label="Abrir QR Code em nova aba"
+      >
         <QrCode2Icon fontSize="small" />
       </IconButton>
       <Link href={url} target="_blank" rel="noreferrer" underline="hover" fontSize={13}>

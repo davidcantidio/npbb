@@ -1,28 +1,29 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
-import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
+import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from "@mui/material";
 import "@fontsource-variable/roboto-flex";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Success from "./pages/Success";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
-import EventsList from "./pages/EventsList";
 import EventDetail from "./pages/EventDetail";
-import EventLeadFormConfig from "./pages/EventLeadFormConfig";
-import EventGamificacao from "./pages/EventGamificacao";
-import EventAtivacoes from "./pages/EventAtivacoes";
-import EventQuestionario from "./pages/EventQuestionario";
-import NewEvent from "./pages/NewEvent";
 import ComingSoon from "./pages/ComingSoon";
 import AtivosList from "./pages/AtivosList";
 import IngressosPortal from "./pages/IngressosPortal";
-import LeadsImport from "./pages/LeadsImport";
 import PublicidadeImport from "./pages/PublicidadeImport";
 import DashboardLeads from "./pages/DashboardLeads";
 import { AuthProvider } from "./store/auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
+
+const EventsList = lazy(() => import("./pages/EventsList"));
+const NewEvent = lazy(() => import("./pages/NewEvent"));
+const EventLeadFormConfig = lazy(() => import("./pages/EventLeadFormConfig"));
+const EventGamificacao = lazy(() => import("./pages/EventGamificacao"));
+const EventAtivacoes = lazy(() => import("./pages/EventAtivacoes"));
+const EventQuestionario = lazy(() => import("./pages/EventQuestionario"));
+const LeadsImport = lazy(() => import("./pages/LeadsImport"));
 
 const theme = createTheme({
   palette: {
@@ -56,6 +57,18 @@ const theme = createTheme({
 });
 
 function AppRoutes() {
+  const withSuspense = (element: React.ReactNode) => (
+    <Suspense
+      fallback={
+        <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
+          <CircularProgress size={28} />
+        </Box>
+      }
+    >
+      {element}
+    </Suspense>
+  );
+
   return (
     <Routes>
       <Route path="/" element={<Login />} />
@@ -75,18 +88,18 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Navigate to="/dashboard/leads" replace />} />
         <Route path="/dashboard/leads" element={<DashboardLeads />} />
 
-        <Route path="/eventos" element={<EventsList />} />
-        <Route path="/eventos/novo" element={<NewEvent />} />
-        <Route path="/eventos/:id/editar" element={<NewEvent />} />
-        <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
-        <Route path="/eventos/:id/gamificacao" element={<EventGamificacao />} />
-        <Route path="/eventos/:id/ativacoes" element={<EventAtivacoes />} />
-        <Route path="/eventos/:id/questionario" element={<EventQuestionario />} />
+        <Route path="/eventos" element={withSuspense(<EventsList />)} />
+        <Route path="/eventos/novo" element={withSuspense(<NewEvent />)} />
+        <Route path="/eventos/:id/editar" element={withSuspense(<NewEvent />)} />
+        <Route path="/eventos/:id/formulario-lead" element={withSuspense(<EventLeadFormConfig />)} />
+        <Route path="/eventos/:id/gamificacao" element={withSuspense(<EventGamificacao />)} />
+        <Route path="/eventos/:id/ativacoes" element={withSuspense(<EventAtivacoes />)} />
+        <Route path="/eventos/:id/questionario" element={withSuspense(<EventQuestionario />)} />
         <Route path="/eventos/:id" element={<EventDetail />} />
 
         <Route path="/ativos" element={<AtivosList />} />
         <Route path="/ingressos" element={<IngressosPortal />} />
-        <Route path="/leads" element={<LeadsImport />} />
+        <Route path="/leads" element={withSuspense(<LeadsImport />)} />
         <Route path="/publicidade" element={<PublicidadeImport />} />
         <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
       </Route>

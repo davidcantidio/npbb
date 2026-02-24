@@ -86,7 +86,7 @@ def _default_mappings() -> list[dict]:
     return [
         {"coluna": "Codigo Projeto", "campo": "codigo_projeto", "confianca": 0.9},
         {"coluna": "Projeto", "campo": "projeto", "confianca": 0.9},
-        {"coluna": "Data Vinculacao", "campo": "data_vinculacao", "confianca": 0.9},
+        {"coluna": "Data Vinculacao", "campo": "data_veiculacao", "confianca": 0.9},
         {"coluna": "Meio", "campo": "meio", "confianca": 0.9},
         {"coluna": "Veiculo", "campo": "veiculo", "confianca": 0.9},
         {"coluna": "UF", "campo": "uf", "confianca": 0.9},
@@ -118,6 +118,26 @@ def test_publicidade_validate_mapping_returns_structured_error(client, engine):
     payload = response.json()
     assert payload["detail"]["code"] == "MAPPING_MISSING_REQUIRED_FIELDS"
     assert "missing_required_fields" in payload["detail"]
+
+
+def test_publicidade_validate_mapping_accepts_legacy_data_vinculacao(client, engine):
+    user = seed_user(engine, email="legacy-campo@example.com")
+    token = login_and_get_token(client, user.email, "senha123")
+
+    mappings = _default_mappings()
+    for item in mappings:
+        if item["coluna"] == "Data Vinculacao":
+            item["campo"] = "data_vinculacao"
+            break
+
+    response = client.post(
+        "/publicidade/import/validate",
+        headers=_headers(token),
+        json=mappings,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
 
 
 def test_publicidade_import_is_idempotent_for_same_file(client, engine):

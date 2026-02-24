@@ -69,6 +69,26 @@ Relatorio esperado:
 - `upsert_inserted`, `upsert_updated`
 - `unresolved_event_id`, `errors`
 
+### Smoke API (MCP equivalente)
+Use o script para validar login + preview + validate + import real + reimport idempotente:
+```powershell
+Set-Location npbb\backend
+$env:NPBB_BASE_URL = "http://localhost:8000"
+$env:NPBB_TEST_EMAIL = "seu.email@dominio"
+$env:NPBB_TEST_PASSWORD = "sua_senha"
+$env:NPBB_SMOKE_TIMEOUT_SEC = "20"
+python -m scripts.smoke_publicidade_import
+```
+
+Artefatos:
+- stdout com resumo das assercoes;
+- `reports/publicidade_smoke/<timestamp>.json`.
+
+Diagnostico rapido:
+- `404` em `/publicidade/*` => backend stale/errado em runtime.
+- `401` => problema de autenticacao/token.
+- `400`/`422` => arquivo/mapeamento invalido.
+
 ## 3) Dashboard de Leads
 ### UI
 - Rota: `/dashboard/leads`

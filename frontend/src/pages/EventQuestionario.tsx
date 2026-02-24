@@ -30,41 +30,15 @@ import {
   type EventoRead,
   type QuestionarioEstrutura,
 } from "../services/eventos";
+import { getEventApiErrorCode, getEventApiErrorMessage } from "../services/http_event_messages";
 import { useAuth } from "../store/auth";
 
 function getApiErrorCode(err: unknown): string | null {
-  const message = (err as any)?.message;
-  if (typeof message != "string" || !message) return null;
-  try {
-    const parsed = JSON.parse(message);
-    if (parsed && typeof parsed.code == "string") return parsed.code;
-  } catch {
-    // ignore
-  }
-  if (message.includes("EVENTO_NOT_FOUND")) return "EVENTO_NOT_FOUND";
-  if (message.includes("FORBIDDEN")) return "FORBIDDEN";
-  return null;
+  return getEventApiErrorCode(err);
 }
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
-  const code = getApiErrorCode(err);
-  if (code == "EVENTO_NOT_FOUND") return "Evento nao encontrado ou voce nao tem permissao para acessa-lo.";
-  if (code == "FORBIDDEN") return "Voce nao tem permissao para realizar esta acao.";
-
-  const message = (err as any)?.message;
-  if (typeof message != "string" || !message.trim()) return fallback;
-  if (message == "Failed to fetch") {
-    return "Nao foi possivel conectar a API. Verifique se o backend esta rodando e se o CORS permite este endereco.";
-  }
-
-  try {
-    const parsed = JSON.parse(message);
-    if (parsed && typeof parsed.message == "string" && parsed.message.trim()) return parsed.message;
-  } catch {
-    // ignore
-  }
-
-  return message;
+  return getEventApiErrorMessage(err, fallback);
 }
 
 type EditorId = string;

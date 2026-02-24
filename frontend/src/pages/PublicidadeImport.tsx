@@ -44,7 +44,7 @@ export default function PublicidadeImport() {
     { value: "", label: "Ignorar" },
     { value: "codigo_projeto", label: "Codigo do projeto (obrigatorio)" },
     { value: "projeto", label: "Projeto (obrigatorio)" },
-    { value: "data_vinculacao", label: "Data de vinculacao (obrigatorio)" },
+    { value: "data_veiculacao", label: "Data de veiculacao (obrigatorio)" },
     { value: "meio", label: "Meio (obrigatorio)" },
     { value: "veiculo", label: "Veiculo (obrigatorio)" },
     { value: "uf", label: "UF (obrigatorio)" },
@@ -195,7 +195,7 @@ export default function PublicidadeImport() {
             Publicidade
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Importacao assistida de vinculacoes de publicidade
+            Importacao assistida de veiculacoes de publicidade
           </Typography>
         </Box>
         <Button variant="contained" sx={{ textTransform: "none", fontWeight: 700 }} component="label">
@@ -228,7 +228,7 @@ export default function PublicidadeImport() {
               Mapeamento de colunas
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
-              Obrigatorios: codigo_projeto, projeto, data_vinculacao, meio, veiculo, uf e camada.
+              Obrigatorios: codigo_projeto, projeto, data_veiculacao, meio, veiculo, uf e camada.
             </Typography>
 
             <ImportMappingTable

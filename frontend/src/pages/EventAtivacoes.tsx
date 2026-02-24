@@ -27,7 +27,6 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
@@ -43,52 +42,22 @@ import {
   type EventoRead,
   type Gamificacao,
 } from "../services/eventos";
+import { ApiError } from "../services/http";
+import { getEventApiErrorCode, getEventApiErrorMessage } from "../services/http_event_messages";
 import { useAuth } from "../store/auth";
 
 function getApiErrorCode(err: unknown): string | null {
-  const message = (err as any)?.message;
-  if (typeof message !== "string" || !message) return null;
-  try {
-    const parsed = JSON.parse(message);
-    if (parsed && typeof parsed.code === "string") return parsed.code;
-  } catch {
-    // ignore
-  }
-  if (message.includes("EVENTO_NOT_FOUND")) return "EVENTO_NOT_FOUND";
-  if (message.includes("FORBIDDEN")) return "FORBIDDEN";
-  return null;
+  return getEventApiErrorCode(err);
 }
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
-  const code = getApiErrorCode(err);
-  if (code === "EVENTO_NOT_FOUND") return "Evento nao encontrado ou voce nao tem permissao para acessa-lo.";
-  if (code === "FORBIDDEN") return "Voce nao tem permissao para realizar esta acao.";
-
-  const message = (err as any)?.message;
-  if (typeof message !== "string" || !message.trim()) return fallback;
-  if (message === "Failed to fetch") {
-    return "Nao foi possivel conectar a API. Verifique se o backend esta rodando e se o CORS permite este endereco.";
-  }
-
-  try {
-    const parsed = JSON.parse(message);
-    if (parsed && typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
-  } catch {
-    // ignore
-  }
-
-  return message;
+  return getEventApiErrorMessage(err, fallback);
 }
 
 function getApiErrorExtra(err: unknown): any {
-  const message = (err as any)?.message;
-  if (typeof message !== "string" || !message) return null;
-  try {
-    const parsed = JSON.parse(message);
-    return parsed?.extra ?? null;
-  } catch {
-    return null;
-  }
+  if (!(err instanceof ApiError)) return null;
+  if (!err.body || typeof err.body !== "object") return null;
+  return (err.body as any)?.extra ?? null;
 }
 
 type CreateForm = {
@@ -513,21 +482,6 @@ export default function EventAtivacoes() {
                             onClick={() => setViewing(item)}
                           >
                             <VisibilityOutlinedIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            aria-label="Editar"
-                            size="small"
-                            color="success"
-                            disabled={!canAct || isBusy}
-                            onClick={() =>
-                              setSnackbar({
-                                open: true,
-                                message: "Edicao sera implementada no proximo ticket.",
-                                severity: "info",
-                              })
-                            }
-                          >
-                            <EditOutlinedIcon fontSize="small" />
                           </IconButton>
                           <IconButton
                             aria-label="Excluir"

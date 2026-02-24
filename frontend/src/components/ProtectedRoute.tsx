@@ -7,17 +7,22 @@ type Props = {
   children: React.ReactNode;
 };
 
+/**
+ * Guards authenticated routes and triggers a session refresh when needed.
+ * @param params.children Route element tree that requires authentication.
+ * @returns Protected content when session is valid, otherwise redirect/loading states.
+ */
 export function ProtectedRoute({ children }: Props) {
-  const { token, user, loading, refresh } = useAuth();
+  const { token, user, loading, refreshing, refresh } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    if (token && !user && !loading) {
+    if (token && !user && !loading && !refreshing) {
       refresh();
     }
-  }, [token, user, loading, refresh]);
+  }, [token, user, loading, refreshing, refresh]);
 
-  if (loading || (token && !user)) {
+  if (loading || refreshing) {
     return (
       <Box
         sx={{
@@ -38,6 +43,10 @@ export function ProtectedRoute({ children }: Props) {
   }
 
   if (!token) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

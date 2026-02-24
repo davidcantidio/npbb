@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import logging
 import os
@@ -164,8 +165,13 @@ def _process_batch(
             updated += len(update_objects)
         session.commit()
         return created, updated, skipped, has_errors
-    except IntegrityError:
+    except Exception as exc:
         session.rollback()
+        has_errors = True
+        logger.warning(
+            "Lead import bulk fallback activated detail=%s",
+            sanitize_exception(exc),
+        )
 
     for item in batch:
         if not item:
@@ -211,7 +217,16 @@ def _process_batch(
                 row_number,
                 sanitize_exception(exc),
             )
-    session.commit()
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        has_errors = True
+        logger.warning(
+            "Lead import batch commit error detail=%s",
+            sanitize_exception(exc),
+        )
+        return created, updated, skipped + sum(1 for item in batch if item), has_errors
     return created, updated, skipped, has_errors
 
 
@@ -681,14 +696,18 @@ def _read_csv_sample(file: UploadFile, max_rows: int) -> dict:
     delimiter = _detect_csv_delimiter(sample_text)
 
     file.file.seek(0)
-    reader = csv.reader(file.file, delimiter=delimiter)
+    text_stream = io.TextIOWrapper(file.file, encoding="utf-8-sig", errors="ignore", newline="")
+    reader = csv.reader(text_stream, delimiter=delimiter)
     rows: list[list[str]] = []
-    for row in reader:
-        if row is None:
-            continue
-        rows.append([cell.strip() for cell in row])
-        if len(rows) >= max_rows + 1:
-            break
+    try:
+        for row in reader:
+            if row is None:
+                continue
+            rows.append([cell.strip() for cell in row])
+            if len(rows) >= max_rows + 1:
+                break
+    finally:
+        text_stream.detach()
 
     start_index = _detect_data_start_index(rows)
     headers = rows[start_index] if rows else []
@@ -733,11 +752,15 @@ def _read_xlsx_rows(file: UploadFile) -> list[list[str]]:
 
 def _iter_csv_data_rows(file: UploadFile, delimiter: str, start_index: int) -> Iterator[list[str]]:
     file.file.seek(0)
-    reader = csv.reader(file.file, delimiter=delimiter)
-    for idx, row in enumerate(reader):
-        if idx <= start_index:
-            continue
-        yield [cell.strip() for cell in row]
+    text_stream = io.TextIOWrapper(file.file, encoding="utf-8-sig", errors="ignore", newline="")
+    reader = csv.reader(text_stream, delimiter=delimiter)
+    try:
+        for idx, row in enumerate(reader):
+            if idx <= start_index:
+                continue
+            yield [cell.strip() for cell in row]
+    finally:
+        text_stream.detach()
 
 
 def _iter_xlsx_data_rows(file: UploadFile, start_index: int) -> Iterator[list[str]]:
@@ -1142,6 +1165,7 @@ def importar_leads(
     mappings_json: str = Form(...),
     fonte_origem: str | None = Form(None),
     enriquecer_cep: bool = Form(False),
+    session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
@@ -1190,84 +1214,83 @@ def importar_leads(
     batch_stats: list[dict[str, int]] = []
     batch_index = 0
 
-    with Session(get_session().__next__().bind) as session:
-        _log_memory_usage("start")
-        batch: list[tuple[dict[str, object], int] | None] = []
-        key_to_index: dict[str, int] = {}
-        for offset, row in enumerate(row_iter):
-            if not row:
+    _log_memory_usage("start")
+    batch: list[tuple[dict[str, object], int] | None] = []
+    key_to_index: dict[str, int] = {}
+    for offset, row in enumerate(row_iter):
+        if not row:
+            continue
+        payload: dict[str, object] = {}
+        for idx, field in mapping_by_index.items():
+            if idx >= len(row):
                 continue
-            payload: dict[str, object] = {}
-            for idx, field in mapping_by_index.items():
-                if idx >= len(row):
-                    continue
-                payload[field] = coerce_field(field, row[idx])
+            payload[field] = coerce_field(field, row[idx])
 
-            if enriquecer_cep:
-                cep = payload.get("cep")
-                if isinstance(cep, str) and cep:
-                    cep_data = _fetch_cep_data(cep)
-                    if cep_data:
-                        for key, value in cep_data.items():
-                            if value and not payload.get(key):
-                                payload[key] = value
+        if enriquecer_cep:
+            cep = payload.get("cep")
+            if isinstance(cep, str) and cep:
+                cep_data = _fetch_cep_data(cep)
+                if cep_data:
+                    for key, value in cep_data.items():
+                        if value and not payload.get(key):
+                            payload[key] = value
 
-            if "fonte_origem" in Lead.model_fields and fonte_origem:
-                payload["fonte_origem"] = fonte_origem
-            if isinstance(payload.get("data_compra"), datetime):
-                payload["data_compra_data"] = payload["data_compra"].date()
-                payload["data_compra_hora"] = payload["data_compra"].time()
+        if "fonte_origem" in Lead.model_fields and fonte_origem:
+            payload["fonte_origem"] = fonte_origem
+        if isinstance(payload.get("data_compra"), datetime):
+            payload["data_compra_data"] = payload["data_compra"].date()
+            payload["data_compra_hora"] = payload["data_compra"].time()
 
-            row_number = start_index + 2 + offset
-            key = _dedupe_key(payload)
-            if key:
-                prev_idx = key_to_index.get(key)
-                if prev_idx is not None:
-                    batch[prev_idx] = None
-                key_to_index[key] = len(batch)
-            batch.append((payload, row_number))
-            if len(batch) < BATCH_SIZE:
-                continue
+        row_number = start_index + 2 + offset
+        key = _dedupe_key(payload)
+        if key:
+            prev_idx = key_to_index.get(key)
+            if prev_idx is not None:
+                batch[prev_idx] = None
+            key_to_index[key] = len(batch)
+        batch.append((payload, row_number))
+        if len(batch) < BATCH_SIZE:
+            continue
 
-            batch_total = sum(1 for item in batch if item)
-            batch_created, batch_updated, batch_skipped, batch_has_errors = _process_batch(session, batch)
-            created += batch_created
-            updated += batch_updated
-            skipped += batch_skipped
-            total += batch_total
-            batch_stats.append(
-                {
-                    "batch": batch_index,
-                    "created": batch_created,
-                    "updated": batch_updated,
-                    "skipped": batch_skipped,
-                    "has_errors": batch_has_errors,
-                }
-            )
-            _log_memory_usage("batch", batch_index)
-            batch_index += 1
-            batch = []
-            key_to_index = {}
+        batch_total = sum(1 for item in batch if item)
+        batch_created, batch_updated, batch_skipped, batch_has_errors = _process_batch(session, batch)
+        created += batch_created
+        updated += batch_updated
+        skipped += batch_skipped
+        total += batch_total
+        batch_stats.append(
+            {
+                "batch": batch_index,
+                "created": batch_created,
+                "updated": batch_updated,
+                "skipped": batch_skipped,
+                "has_errors": batch_has_errors,
+            }
+        )
+        _log_memory_usage("batch", batch_index)
+        batch_index += 1
+        batch = []
+        key_to_index = {}
 
-        if batch:
-            batch_total = sum(1 for item in batch if item)
-            batch_created, batch_updated, batch_skipped, batch_has_errors = _process_batch(session, batch)
-            created += batch_created
-            updated += batch_updated
-            skipped += batch_skipped
-            total += batch_total
-            batch_stats.append(
-                {
-                    "batch": batch_index,
-                    "created": batch_created,
-                    "updated": batch_updated,
-                    "skipped": batch_skipped,
-                    "has_errors": batch_has_errors,
-                }
-            )
-            _log_memory_usage("batch", batch_index)
+    if batch:
+        batch_total = sum(1 for item in batch if item)
+        batch_created, batch_updated, batch_skipped, batch_has_errors = _process_batch(session, batch)
+        created += batch_created
+        updated += batch_updated
+        skipped += batch_skipped
+        total += batch_total
+        batch_stats.append(
+            {
+                "batch": batch_index,
+                "created": batch_created,
+                "updated": batch_updated,
+                "skipped": batch_skipped,
+                "has_errors": batch_has_errors,
+            }
+        )
+        _log_memory_usage("batch", batch_index)
 
-        _log_memory_usage("end")
+    _log_memory_usage("end")
 
     batch_stats.sort(key=lambda item: item["batch"])
     batches_total = len(batch_stats)

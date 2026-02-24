@@ -1,10 +1,16 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+import { fetchWithAuth, handleApiResponse } from "./http";
 
+/**
+ * Credentials payload used to authenticate a user.
+ */
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
+/**
+ * Authenticated user returned by backend auth endpoints.
+ */
 export interface LoginUser {
   id: number;
   email: string;
@@ -16,34 +22,41 @@ export interface LoginUser {
   agencia_id?: number | null;
 }
 
+/**
+ * Authentication response with access token and user profile.
+ */
 export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: LoginUser;
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) {
-    const detail = (data as any)?.detail ?? res.statusText;
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-  }
-  return data as T;
-}
-
+/**
+ * Authenticates a user and returns access token plus profile payload.
+ * @param payload Login credentials.
+ * @returns Token and user profile from backend.
+ * @throws Error When backend rejects credentials or network request fails.
+ */
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  const res = await fetchWithAuth("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    retries: 0,
   });
-  return handleResponse<LoginResponse>(res);
+  return handleApiResponse<LoginResponse>(res);
 }
 
+/**
+ * Loads authenticated user profile from current access token.
+ * @param token Bearer token used for authorization.
+ * @returns Current authenticated user data.
+ * @throws Error When token is invalid/expired or request fails.
+ */
 export async function getMe(token: string): Promise<LoginUser> {
-  const res = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+  const res = await fetchWithAuth("/auth/me", {
+    token,
+    retries: 0,
   });
-  return handleResponse<LoginUser>(res);
+  return handleApiResponse<LoginUser>(res);
 }

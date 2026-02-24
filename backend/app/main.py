@@ -17,8 +17,14 @@ from app.routers.gamificacao import router as gamificacao_router
 from app.routers.checkin_sem_qr_public import router as checkin_sem_qr_public_router
 from app.routers.landing_public import router as landing_public_router
 from app.routers.leads import router as leads_router
+from app.routers.publicidade import router as publicidade_router
 from app.routers.ingressos import router as ingressos_router
 from app.routers.usuarios import router as usuarios_router
+from app.routers.ingestion_registry import router as ingestion_registry_router
+from app.routers.ingestao_inteligente import router as ingestao_inteligente_router
+from app.routers.internal_catalog import router as internal_catalog_router
+from app.routers.internal_health import router as internal_health_router
+from app.routers.data_quality import router as data_quality_router
 
 app = FastAPI(title="NPBB API")
 
@@ -155,5 +161,11 @@ app.include_router(ativacao_router)
 app.include_router(ativos_router)
 app.include_router(ingressos_router)
 app.include_router(leads_router)
+app.include_router(publicidade_router)
 app.include_router(landing_public_router)
 app.include_router(checkin_sem_qr_public_router)
+app.include_router(ingestion_registry_router)
+app.include_router(ingestao_inteligente_router)
+app.include_router(internal_catalog_router)
+app.include_router(internal_health_router)
+app.include_router(data_quality_router)

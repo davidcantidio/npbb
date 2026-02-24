@@ -26,6 +26,7 @@ class DataHealthRead(BaseModel):
 class EventoListItem(BaseModel):
     id: int
     qr_code_url: Optional[str] = None
+    external_project_code: Optional[str] = None
     nome: str
     investimento: Optional[Decimal] = None
 
@@ -53,6 +54,7 @@ class EventoRead(BaseModel):
     thumbnail: Optional[str] = None
     divisao_demandante_id: Optional[int] = None
     qr_code_url: Optional[str] = None
+    external_project_code: Optional[str] = None
 
     nome: str
     descricao: Optional[str] = None
@@ -110,6 +112,7 @@ class EventoCreate(BaseModel):
     thumbnail: Optional[str] = None
     divisao_demandante_id: int | None = None
     qr_code_url: Optional[str] = None
+    external_project_code: Optional[str] = None
 
     data_inicio_prevista: date
     data_fim_prevista: Optional[date] = None
@@ -153,6 +156,7 @@ class EventoUpdate(BaseModel):
     thumbnail: str | None = None
     divisao_demandante_id: int | None = None
     qr_code_url: str | None = None
+    external_project_code: str | None = None
 
     data_inicio_prevista: date | None = None
     data_fim_prevista: date | None = None

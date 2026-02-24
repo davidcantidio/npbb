@@ -483,6 +483,10 @@ def _build_evento_payload_from_row(row: list[str], header_index: dict[str, int])
     if qr_code_url:
         data["qr_code_url"] = qr_code_url
 
+    external_project_code = _normalize_str(_get_csv_value(row, header_index, "external_project_code"))
+    if external_project_code:
+        data["external_project_code"] = external_project_code
+
     data_inicio_realizada = _parse_csv_date_optional(
         _get_csv_value(row, header_index, "data_inicio_realizada"), "data_inicio_realizada"
     )
@@ -1078,6 +1082,7 @@ def criar_evento(
         thumbnail=_normalize_str(payload.thumbnail),
         divisao_demandante_id=payload.divisao_demandante_id,
         qr_code_url=_normalize_str(payload.qr_code_url),
+        external_project_code=_normalize_str(payload.external_project_code),
         nome=_normalize_str(payload.nome) or "",
         descricao=_normalize_str(payload.descricao),
         investimento=payload.investimento,
@@ -1304,6 +1309,8 @@ def atualizar_evento(
         data["thumbnail"] = _normalize_str(data["thumbnail"])
     if "qr_code_url" in data:
         data["qr_code_url"] = _normalize_str(data["qr_code_url"])
+    if "external_project_code" in data:
+        data["external_project_code"] = _normalize_str(data["external_project_code"])
 
     for key, value in data.items():
         setattr(evento, key, value)

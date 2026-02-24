@@ -23,6 +23,7 @@ import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -60,6 +61,7 @@ export default function AppLayout() {
       { label: "Eventos", to: "/eventos", icon: <EventRoundedIcon /> },
       { label: "Ativos", to: "/ativos", icon: <ConfirmationNumberRoundedIcon /> },
       { label: "Leads", to: "/leads", icon: <PeopleAltRoundedIcon /> },
+      { label: "Publicidade", to: "/publicidade", icon: <CampaignRoundedIcon /> },
       { label: "Cupons", to: "/cupons", icon: <LocalOfferRoundedIcon /> },
     ],
     [],

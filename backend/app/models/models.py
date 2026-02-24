@@ -5,7 +5,8 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, DateTime, Numeric, UniqueConstraint
+from sqlalchemy import Column, DateTime, Numeric, Text, UniqueConstraint
+from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
@@ -211,6 +212,8 @@ class Evento(SQLModel, table=True):
     # Divisao demandante (lookup table).
     divisao_demandante_id: Optional[int] = Field(default=None, foreign_key="divisao_demandante.id")
     qr_code_url: Optional[str] = Field(default=None, max_length=500)
+    # Codigo externo para reconciliacao de imports (ex.: publicidade).
+    external_project_code: Optional[str] = Field(default=None, max_length=120, index=True)
 
     nome: str = Field(max_length=100)
     descricao: Optional[str] = Field(default=None, max_length=240)
@@ -389,6 +392,88 @@ class LeadAlias(SQLModel, table=True):
     )
 
     evento: Optional["Evento"] = Relationship()
+
+
+class PublicityImportStaging(SQLModel, table=True):
+    __tablename__ = "publicity_import_staging"
+    __table_args__ = (
+        UniqueConstraint("source_file", "source_row_hash", name="uq_publicity_import_staging_file_hash"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_file: str = Field(max_length=260, index=True)
+    source_row_hash: str = Field(max_length=64, index=True)
+    imported_at: datetime = Field(default_factory=now_utc, index=True)
+
+    codigo_projeto: str = Field(max_length=120)
+    projeto: str = Field(max_length=200)
+    data_vinculacao: date
+    meio: str = Field(max_length=120)
+    veiculo: str = Field(max_length=160)
+    uf: str = Field(max_length=8)
+    uf_extenso: Optional[str] = Field(default=None, max_length=80)
+    municipio: Optional[str] = Field(default=None, max_length=160)
+    camada: str = Field(max_length=120)
+
+    normalized_payload: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+
+class EventPublicity(SQLModel, table=True):
+    __tablename__ = "event_publicity"
+    __table_args__ = (
+        UniqueConstraint(
+            "publicity_project_code",
+            "linked_at",
+            "medium",
+            "vehicle",
+            "uf",
+            "layer",
+            name="uq_event_publicity_natural_key",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
+
+    publicity_project_code: str = Field(max_length=120)
+    publicity_project_name: str = Field(max_length=200)
+    linked_at: date = Field(index=True)
+    medium: str = Field(max_length=120)
+    vehicle: str = Field(max_length=160)
+    uf: str = Field(max_length=8)
+    uf_name: Optional[str] = Field(default=None, max_length=80)
+    municipality: Optional[str] = Field(default=None, max_length=160)
+    layer: str = Field(max_length=120)
+
+    source_file: Optional[str] = Field(default=None, max_length=260)
+    source_row_hash: Optional[str] = Field(default=None, max_length=64)
+
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
+
+    evento: Optional["Evento"] = Relationship()
+
+
+class ImportAlias(SQLModel, table=True):
+    __tablename__ = "import_alias"
+    __table_args__ = (
+        UniqueConstraint("domain", "field_name", "source_normalized", name="uq_import_alias_domain_field_source"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    domain: str = Field(max_length=64)
+    field_name: str = Field(max_length=80)
+    source_value: str = Field(max_length=255)
+    source_normalized: str = Field(max_length=255)
+    canonical_value: Optional[str] = Field(default=None, max_length=255)
+    canonical_ref_id: Optional[int] = Field(default=None, index=True)
+
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
 
 
 # =========================
@@ -720,3 +805,433 @@ class FormularioLeadCampo(SQLModel, table=True):
     ordem: int
 
     config: Optional[FormularioLeadConfig] = Relationship(back_populates="campos")
+
+
+# =========================
+# INGESTION REGISTRY / CATALOGO DE FONTES (TMJ / ETL)
+# =========================
+
+
+class SourceKind(str, Enum):
+    """Tipos de fonte suportados pelo pipeline de fechamento/ETL."""
+
+    DOCX = "DOCX"
+    PDF = "PDF"
+    XLSX = "XLSX"
+    PPTX = "PPTX"
+    CSV = "CSV"
+    MANUAL = "MANUAL"
+    OTHER = "OTHER"
+
+
+class IngestionStatus(str, Enum):
+    """Status padronizado de execucao de ingestao."""
+
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+
+class Source(SQLModel, table=True):
+    """Registro canonico de uma fonte (arquivo/artefato) no catalogo de ingestao."""
+
+    __tablename__ = "source"
+
+    # `source_id` e a chave estavel usada no fechamento (ex.: SRC_PDF_ACESSO_NOTURNO_TREZE).
+    source_id: str = Field(primary_key=True, max_length=160)
+    kind: SourceKind
+    uri: str = Field(max_length=800)
+
+    display_name: Optional[str] = Field(default=None, max_length=200)
+
+    # Snapshot de arquivo (melhor-esforco). Pode ficar nulo para fontes nao-arquivo.
+    file_sha256: Optional[str] = Field(default=None, max_length=64)
+    file_size_bytes: Optional[int] = Field(default=None)
+    file_mtime_utc: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
+
+    ingestions: List["IngestionRun"] = Relationship(
+        sa_relationship=relationship(
+            "app.models.models.IngestionRun",
+            back_populates="source",
+        )
+    )
+
+
+class IngestionRun(SQLModel, table=True):
+    """Uma execucao de ingestao para uma fonte.
+
+    A regra operacional e: qualquer carga deve registrar uma execucao com status e logs,
+    mesmo quando falhar.
+    """
+
+    __tablename__ = "ingestion"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_id: str = Field(foreign_key="source.source_id", index=True)
+
+    pipeline: Optional[str] = Field(default=None, max_length=80)
+    status: IngestionStatus = Field(default=IngestionStatus.RUNNING)
+
+    started_at: datetime = Field(default_factory=now_utc)
+    finished_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+    file_sha256: Optional[str] = Field(default=None, max_length=64)
+    file_size_bytes: Optional[int] = Field(default=None)
+
+    log_text: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    error_message: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+    source: Optional["Source"] = Relationship(
+        sa_relationship=relationship(
+            "app.models.models.Source",
+            back_populates="ingestions",
+        )
+    )
+
+
+class MetricLineage(SQLModel, table=True):
+    """Lineage de metricas: liga uma metrica agregada a uma fonte + local + evidencia.
+
+    Observacao: valores numericos devem viver nas tabelas canonicas/marts. Esta tabela
+    serve para auditoria, rastreabilidade e para o gerador de relatorio exibir "Fonte:".
+    """
+
+    __tablename__ = "metric_lineage"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    metric_key: str = Field(max_length=200, index=True)
+    docx_section: Optional[str] = Field(default=None, max_length=240)
+
+    source_id: str = Field(foreign_key="source.source_id", index=True)
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestion.id", index=True)
+
+    location_raw: str = Field(max_length=200)
+    location_norm: Optional[str] = Field(default=None, max_length=200)
+    evidence: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+    source: Optional[Source] = Relationship()
+    ingestion: Optional[IngestionRun] = Relationship()
+
+
+# =========================
+# TMJ / ETL - CANONICAL (NORMALIZACAO E REGRAS DE METRICA)
+# =========================
+
+
+class EventSessionType(str, Enum):
+    """Tipos canonicos de sessao para fechamento (granularidade dia/sessao)."""
+
+    DIURNO_GRATUITO = "DIURNO_GRATUITO"
+    NOTURNO_SHOW = "NOTURNO_SHOW"
+    OUTRO = "OUTRO"
+
+
+class BbRelationshipSegment(str, Enum):
+    """Segmentos canonicos (proxy) para relacionamento BB, derivados de categorias de ingresso."""
+
+    CLIENTE_BB = "CLIENTE_BB"
+    CARTAO_BB = "CARTAO_BB"
+    FUNCIONARIO_BB = "FUNCIONARIO_BB"
+    PUBLICO_GERAL = "PUBLICO_GERAL"
+    OUTRO = "OUTRO"
+    DESCONHECIDO = "DESCONHECIDO"
+
+
+class EventSession(SQLModel, table=True):
+    """Dimensao de sessoes do evento (dia/sessao), para ligar fatos a um `session_id` consistente."""
+
+    __tablename__ = "event_sessions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
+
+    # Chave estavel (ex.: TMJ2025_20251213_SHOW).
+    session_key: str = Field(max_length=120, unique=True, index=True)
+
+    session_name: str = Field(max_length=200)
+    session_type: EventSessionType = Field(index=True)
+
+    # `session_date` e obrigatorio para suportar agregacoes por dia.
+    session_date: date = Field(index=True)
+
+    session_start_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    session_end_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+    # Fonte que define a existencia (ou a "verdade") da sessao.
+    source_of_truth_source_id: Optional[str] = Field(
+        default=None, foreign_key="source.source_id", index=True
+    )
+
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
+
+
+class AttendanceAccessControl(SQLModel, table=True):
+    """Fato de controle de acesso por sessao (entradas validadas e derivados)."""
+
+    __tablename__ = "attendance_access_control"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "session_id",
+            name="uq_attendance_access_control_source_session",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: int = Field(foreign_key="event_sessions.id", index=True)
+
+    source_id: str = Field(foreign_key="source.source_id", index=True, max_length=160)
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestion.id", index=True)
+
+    ingressos_validos: Optional[int] = None
+    invalidos: Optional[int] = None
+    bloqueados: Optional[int] = None
+    presentes: Optional[int] = None
+    ausentes: Optional[int] = None
+    comparecimento_pct: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(7, 4), nullable=True)
+    )
+
+    pdf_page: Optional[int] = None
+    evidence: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+class OptinTransaction(SQLModel, table=True):
+    """Fato de opt-in (Eventim) em granularidade transacional, com minimizacao de PII."""
+
+    __tablename__ = "optin_transactions"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "sheet_name",
+            "row_number",
+            name="uq_optin_transactions_source_sheet_row",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: int = Field(foreign_key="event_sessions.id", index=True)
+
+    source_id: str = Field(foreign_key="source.source_id", index=True, max_length=160)
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestion.id", index=True)
+
+    sheet_name: Optional[str] = Field(default=None, max_length=120)
+    row_number: Optional[int] = None
+
+    purchase_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    purchase_date: Optional[date] = Field(default=None, index=True)
+
+    opt_in_text: Optional[str] = Field(default=None, max_length=200)
+    opt_in_id: Optional[str] = Field(default=None, max_length=80)
+    opt_in_status: Optional[str] = Field(default=None, max_length=80)
+
+    sales_channel: Optional[str] = Field(default=None, max_length=160)
+    delivery_method: Optional[str] = Field(default=None, max_length=160)
+
+    ticket_category_raw: Optional[str] = Field(default=None, max_length=200)
+    ticket_category_norm: Optional[str] = Field(default=None, max_length=200, index=True)
+    ticket_qty: Optional[int] = None
+
+    cpf_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+    email_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+    person_key_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+class TicketCategorySegmentMap(SQLModel, table=True):
+    """Mapeamento auditavel: categoria de ingresso -> segmento BB canonical."""
+
+    __tablename__ = "ticket_category_segment_map"
+    __table_args__ = (
+        UniqueConstraint(
+            "ticket_category_norm",
+            name="uq_ticket_category_segment_map_ticket_category_norm",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    ticket_category_raw: str = Field(max_length=200)
+    ticket_category_norm: str = Field(max_length=200, index=True)
+
+    segment: BbRelationshipSegment = Field(index=True)
+
+    inferred: bool = Field(default=True)
+    inference_rule: Optional[str] = Field(default=None, max_length=200)
+
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
+
+
+class TicketSales(SQLModel, table=True):
+    """Fato de vendas (quando houver fonte completa de vendidos por sessao)."""
+
+    __tablename__ = "ticket_sales"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "session_id",
+            name="uq_ticket_sales_source_session",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: int = Field(foreign_key="event_sessions.id", index=True)
+
+    source_id: str = Field(foreign_key="source.source_id", index=True, max_length=160)
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestion.id", index=True)
+
+    sold_total: Optional[int] = None
+    refunded_total: Optional[int] = None
+    net_sold_total: Optional[int] = None
+
+    location_raw: Optional[str] = Field(default=None, max_length=200)
+    evidence: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+class FestivalLead(SQLModel, table=True):
+    """Fato de leads capturados em planilhas (sem PII; chaves hash por padrao)."""
+
+    __tablename__ = "festival_leads"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "sheet_name",
+            "row_number",
+            name="uq_festival_leads_source_sheet_row",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
+    session_id: Optional[int] = Field(default=None, foreign_key="event_sessions.id", index=True)
+
+    source_id: str = Field(foreign_key="source.source_id", index=True, max_length=160)
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestion.id", index=True)
+
+    sheet_name: Optional[str] = Field(default=None, max_length=120)
+    row_number: Optional[int] = None
+
+    lead_created_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    lead_created_date: Optional[date] = Field(default=None, index=True)
+
+    cpf_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+    email_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+    person_key_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+
+    sexo: Optional[str] = Field(default=None, max_length=40)
+    estado: Optional[str] = Field(default=None, max_length=40)
+    cidade: Optional[str] = Field(default=None, max_length=120)
+
+    acoes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    interesses: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    area_atuacao: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+# =========================
+# TMJ / ETL - DATA QUALITY + OBSERVABILIDADE
+# =========================
+
+
+class DataQualityScope(str, Enum):
+    """Camada/escopo do check."""
+
+    STAGING = "STAGING"
+    CANONICAL = "CANONICAL"
+    MARTS = "MARTS"
+
+
+class DataQualitySeverity(str, Enum):
+    """Severidade do check. ERROR bloqueia geracao/publicacao; WARN alerta."""
+
+    WARN = "WARN"
+    ERROR = "ERROR"
+
+
+class DataQualityStatus(str, Enum):
+    """Resultado do check."""
+
+    PASS = "PASS"
+    FAIL = "FAIL"
+    SKIP = "SKIP"
+
+
+class IngestionEvidence(SQLModel, table=True):
+    """Resumo persistido do envelope de evidencias do extractor (layout/drift)."""
+
+    __tablename__ = "ingestion_evidence"
+    __table_args__ = (
+        UniqueConstraint("ingestion_id", "extractor", name="uq_ingestion_evidence_ingestion_extractor"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    ingestion_id: int = Field(foreign_key="ingestion.id", index=True)
+    source_id: str = Field(foreign_key="source.source_id", index=True, max_length=160)
+
+    extractor: str = Field(max_length=120)
+    evidence_status: str = Field(max_length=40)
+
+    layout_signature: Optional[str] = Field(default=None, max_length=64, index=True)
+    stats_json: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    evidence_path: Optional[str] = Field(default=None, max_length=800)
+
+    created_at: datetime = Field(default_factory=now_utc)
+
+
+class DataQualityResult(SQLModel, table=True):
+    """Resultado de um check de qualidade associado a uma execucao de ingestao."""
+
+    __tablename__ = "data_quality_result"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    ingestion_id: int = Field(foreign_key="ingestion.id", index=True)
+    source_id: Optional[str] = Field(default=None, foreign_key="source.source_id", index=True, max_length=160)
+    session_id: Optional[int] = Field(default=None, foreign_key="event_sessions.id", index=True)
+
+    scope: DataQualityScope = Field(index=True)
+    severity: DataQualitySeverity = Field(index=True)
+    status: DataQualityStatus = Field(index=True)
+
+    check_key: str = Field(max_length=220, index=True)
+    message: str = Field(max_length=500)
+    details: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+    created_at: datetime = Field(default_factory=now_utc)

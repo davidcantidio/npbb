@@ -1,0 +1,136 @@
+{
+  "generated_at": "2026-02-24T18:35:37.591Z",
+  "total_size_bytes": 1006269,
+  "top_assets": [
+    {
+      "file": "assets/vendor-mui-DicTOnr0.js",
+      "size": 326452
+    },
+    {
+      "file": "assets/vendor-react-wveATtFN.js",
+      "size": 196078
+    },
+    {
+      "file": "assets/index-D0clGLzm.js",
+      "size": 101451
+    },
+    {
+      "file": "assets/estados-cidades-DjaFPSuJ.js",
+      "size": 85832
+    },
+    {
+      "file": "assets/vendor-fa-CF-qRyZR.js",
+      "size": 53970
+    },
+    {
+      "file": "assets/roboto-flex-latin-wght-normal-n-dP9qr2.woff2",
+      "size": 34320
+    },
+    {
+      "file": "assets/vendor-DSz5okuv.js",
+      "size": 31996
+    },
+    {
+      "file": "assets/EventsList-CVQW5SQX.js",
+      "size": 24015
+    },
+    {
+      "file": "assets/roboto-flex-latin-ext-wght-normal-gysdOMcS.woff2",
+      "size": 23480
+    },
+    {
+      "file": "assets/NewEvent-DnZ3bwuQ.js",
+      "size": 20058
+    }
+  ],
+  "all_assets": [
+    {
+      "file": "assets/vendor-mui-DicTOnr0.js",
+      "size": 326452
+    },
+    {
+      "file": "assets/vendor-react-wveATtFN.js",
+      "size": 196078
+    },
+    {
+      "file": "assets/index-D0clGLzm.js",
+      "size": 101451
+    },
+    {
+      "file": "assets/estados-cidades-DjaFPSuJ.js",
+      "size": 85832
+    },
+    {
+      "file": "assets/vendor-fa-CF-qRyZR.js",
+      "size": 53970
+    },
+    {
+      "file": "assets/roboto-flex-latin-wght-normal-n-dP9qr2.woff2",
+      "size": 34320
+    },
+    {
+      "file": "assets/vendor-DSz5okuv.js",
+      "size": 31996
+    },
+    {
+      "file": "assets/EventsList-CVQW5SQX.js",
+      "size": 24015
+    },
+    {
+      "file": "assets/roboto-flex-latin-ext-wght-normal-gysdOMcS.woff2",
+      "size": 23480
+    },
+    {
+      "file": "assets/NewEvent-DnZ3bwuQ.js",
+      "size": 20058
+    },
+    {
+      "file": "assets/EventQuestionario-Czk0eNy8.js",
+      "size": 15831
+    },
+    {
+      "file": "assets/roboto-flex-cyrillic-wght-normal-BJ-nQEdz.woff2",
+      "size": 15652
+    },
+    {
+      "file": "assets/LeadsImport-BL4TZmd1.js",
+      "size": 13575
+    },
+    {
+      "file": "assets/roboto-flex-greek-wght-normal-DeN4rzfy.woff2",
+      "size": 11436
+    },
+    {
+      "file": "assets/EventAtivacoes-DghhIvAs.js",
+      "size": 10635
+    },
+    {
+      "file": "assets/roboto-flex-cyrillic-ext-wght-normal-CVcCQn0y.woff2",
+      "size": 10392
+    },
+    {
+      "file": "assets/EventGamificacao-CPoffgk5.js",
+      "size": 9795
+    },
+    {
+      "file": "assets/roboto-flex-vietnamese-wght-normal-AVFfiTln.woff2",
+      "size": 9772
+    },
+    {
+      "file": "assets/EventLeadFormConfig-DWjfmTFp.js",
+      "size": 8357
+    },
+    {
+      "file": "assets/vendor-CwmJlCc0.css",
+      "size": 1901
+    },
+    {
+      "file": "index.html",
+      "size": 737
+    },
+    {
+      "file": "assets/EventWizardStepper-puUC3ry5.js",
+      "size": 534
+    }
+  ]
+}

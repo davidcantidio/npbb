@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-02-24T19:51:48.153Z",
+  "base_url": "http://localhost:8000",
+  "steps": [
+    {
+      "step": "login",
+      "status": 200
+    },
+    {
+      "step": "create_event",
+      "status": 201
+    },
+    {
+      "step": "preview",
+      "status": 200,
+      "headers": [
+        "Email",
+        "CPF",
+        "Nome",
+        "Evento"
+      ]
+    },
+    {
+      "step": "validate",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "step": "import",
+      "status": 200,
+      "result": {
+        "filename": "smoke-leads-1771962708152.csv",
+        "total": 1,
+        "created": 1,
+        "updated": 0,
+        "skipped": 0,
+        "errors": 0,
+        "summary": {
+          "filename": "smoke-leads-1771962708152.csv",
+          "total": 1,
+          "created": 1,
+          "updated": 0,
+          "skipped": 0,
+          "errors": 0
+        },
+        "batches": [
+          {
+            "batch": 0,
+            "created": 1,
+            "updated": 0,
+            "skipped": 0,
+            "has_errors": false
+          }
+        ],
+        "batches_total": 1,
+        "batches_truncated": false
+      }
+    },
+    {
+      "step": "cleanup_event",
+      "status": 204
+    }
+  ]
+}

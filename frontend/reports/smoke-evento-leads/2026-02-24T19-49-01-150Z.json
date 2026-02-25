@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-02-24T19:48:57.804Z",
+  "base_url": "http://localhost:8000",
+  "steps": [
+    {
+      "step": "login",
+      "status": 200
+    },
+    {
+      "step": "create_event",
+      "status": 201
+    },
+    {
+      "step": "preview",
+      "status": 500,
+      "headers": []
+    },
+    {
+      "step": "cleanup_event",
+      "status": 204
+    }
+  ],
+  "error": "Falha no preview (500)."
+}

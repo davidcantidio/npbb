@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-02-24T20:05:09.072Z",
+  "base_url": "http://localhost:8000",
+  "steps": [
+    {
+      "step": "login",
+      "status": 200
+    },
+    {
+      "step": "create_event",
+      "status": 201
+    },
+    {
+      "step": "preview",
+      "status": 200,
+      "headers": [
+        "Email",
+        "CPF",
+        "Nome",
+        "Evento"
+      ]
+    },
+    {
+      "step": "validate",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "step": "import",
+      "status": 500,
+      "result": "Internal Server Error"
+    },
+    {
+      "step": "cleanup_event",
+      "status": 204
+    }
+  ],
+  "error": "Falha no import (500)."
+}

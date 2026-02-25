@@ -5,6 +5,7 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 ## Comece por aqui
 - `../README.MD` - visao geral + comandos rapidos
 - `SETUP.md` - setup completo (backend + frontend)
+- `DEPLOY_RENDER_CLOUDFLARE.md` - deploy publico (Render API + Cloudflare Pages)
 - `WORKFLOWS.md` - fluxos principais (importacao assistida por dominio, dashboard, relatorio)
 - `TROUBLESHOOTING.md` - problemas comuns e como resolver
 - `ARCHITECTURE.md` - visao rapida de modulos e fronteiras

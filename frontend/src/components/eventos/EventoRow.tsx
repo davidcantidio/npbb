@@ -94,7 +94,6 @@ export function EventoRow({
   if (missingFields.length) editParams.set("missing", missingFields.join(","));
   if (focusField) editParams.set("focus", focusField);
   const editUrl = `/eventos/${item.id}/editar${editParams.toString() ? `?${editParams}` : ""}`;
-  const hasAgencia = typeof item.agencia_id === "number" && Number.isFinite(item.agencia_id);
   const hasDiretoria = typeof item.diretoria_id === "number" && Number.isFinite(item.diretoria_id);
   const hasInvestimento =
     item.investimento !== null &&
@@ -110,10 +109,12 @@ export function EventoRow({
   const controlRadius = 10;
 
   useEffect(() => {
-    if (!hasAgencia) {
-      setAgenciaDraft("");
+    if (typeof item.agencia_id === "number" && Number.isFinite(item.agencia_id)) {
+      setAgenciaDraft(String(item.agencia_id));
+      return;
     }
-  }, [hasAgencia]);
+    setAgenciaDraft("");
+  }, [item.agencia_id]);
 
   useEffect(() => {
     if (!hasDiretoria) {
@@ -131,13 +132,21 @@ export function EventoRow({
   const agenciaSelectDisabled = Boolean(inlineUpdating) || !agencias?.length || !onInlineUpdate;
   const diretoriaSelectDisabled = Boolean(inlineUpdating) || !diretorias?.length || !onInlineUpdate;
 
-  const handleAgenciaChange = async (value: number) => {
-    if (!onInlineUpdate || !Number.isFinite(value)) return;
-    setAgenciaDraft(String(value));
+  const handleAgenciaChange = async (value: string) => {
+    if (!onInlineUpdate) return;
+    const previousDraft =
+      typeof item.agencia_id === "number" && Number.isFinite(item.agencia_id)
+        ? String(item.agencia_id)
+        : "";
+    const nextDraft = value;
+    const nextAgenciaId = value === "" ? null : Number(value);
+    if (nextAgenciaId !== null && !Number.isFinite(nextAgenciaId)) return;
+
+    setAgenciaDraft(nextDraft);
     try {
-      await onInlineUpdate(item.id, { agencia_id: value });
+      await onInlineUpdate(item.id, { agencia_id: nextAgenciaId });
     } catch {
-      setAgenciaDraft("");
+      setAgenciaDraft(previousDraft);
     }
   };
 
@@ -170,7 +179,7 @@ export function EventoRow({
   return (
     <TableRow hover>
       <TableCell sx={{ width: 180, fontSize: fieldFontSize }}>
-        {hasAgencia || !agencias?.length || !onInlineUpdate ? (
+        {!agencias?.length || !onInlineUpdate ? (
           <Typography variant="body2" sx={{ fontSize: "inherit" }}>
             {agenciaLabel || "-"}
           </Typography>
@@ -184,14 +193,10 @@ export function EventoRow({
               value={agenciaDraft}
               displayEmpty
               disabled={agenciaSelectDisabled}
-              onChange={(e) => handleAgenciaChange(Number(e.target.value))}
+              onChange={(e) => handleAgenciaChange(String(e.target.value))}
               renderValue={(value) => {
                 if (!value) {
-                  return (
-                    <Typography color="text.secondary" sx={{ fontSize: "inherit" }}>
-                      Selecionar
-                    </Typography>
-                  );
+                  return "Indefinida";
                 }
                 const selected = agencias.find((a) => String(a.id) === String(value));
                 return selected?.nome ?? String(value);
@@ -209,8 +214,8 @@ export function EventoRow({
                 "& .MuiOutlinedInput-notchedOutline": { borderRadius: controlRadius },
               }}
             >
-              <MenuItem value="" disabled sx={{ fontSize: fieldFontSize }}>
-                Selecionar
+              <MenuItem value="" sx={{ fontSize: fieldFontSize }}>
+                Indefinida
               </MenuItem>
               {agencias.map((ag) => (
                 <MenuItem key={ag.id} value={ag.id} sx={{ fontSize: fieldFontSize }}>

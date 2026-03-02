@@ -55,6 +55,10 @@ function statusChipColor(nome?: string) {
   }
 }
 
+function toAgenciaDraft(agenciaId?: number | null): string {
+  return typeof agenciaId === "number" && Number.isFinite(agenciaId) ? String(agenciaId) : "";
+}
+
 export type EventoRowProps = {
   item: EventoListItem;
   agenciaLabel?: string;
@@ -99,7 +103,7 @@ export function EventoRow({
     item.investimento !== null &&
     item.investimento !== undefined &&
     String(item.investimento).trim() !== "";
-  const [agenciaDraft, setAgenciaDraft] = useState("");
+  const [agenciaDraft, setAgenciaDraft] = useState(() => toAgenciaDraft(item.agencia_id));
   const [diretoriaDraft, setDiretoriaDraft] = useState("");
   const [investimentoDraft, setInvestimentoDraft] = useState("");
   const [investimentoEditing, setInvestimentoEditing] = useState(false);
@@ -109,11 +113,7 @@ export function EventoRow({
   const controlRadius = 10;
 
   useEffect(() => {
-    if (typeof item.agencia_id === "number" && Number.isFinite(item.agencia_id)) {
-      setAgenciaDraft(String(item.agencia_id));
-      return;
-    }
-    setAgenciaDraft("");
+    setAgenciaDraft(toAgenciaDraft(item.agencia_id));
   }, [item.agencia_id]);
 
   useEffect(() => {
@@ -134,17 +134,20 @@ export function EventoRow({
 
   const handleAgenciaChange = async (value: string) => {
     if (!onInlineUpdate) return;
-    const previousDraft =
-      typeof item.agencia_id === "number" && Number.isFinite(item.agencia_id)
-        ? String(item.agencia_id)
-        : "";
+    const currentDraft = toAgenciaDraft(item.agencia_id);
     const nextDraft = value;
+    if (nextDraft === currentDraft) return;
+
     const nextAgenciaId = value === "" ? null : Number(value);
     if (nextAgenciaId !== null && !Number.isFinite(nextAgenciaId)) return;
 
+    const previousDraft = agenciaDraft;
     setAgenciaDraft(nextDraft);
     try {
-      await onInlineUpdate(item.id, { agencia_id: nextAgenciaId });
+      const patch = (
+        nextAgenciaId === null ? { agencia_id: null } : { agencia_id: nextAgenciaId }
+      ) as unknown as EventoUpdate;
+      await onInlineUpdate(item.id, patch);
     } catch {
       setAgenciaDraft(previousDraft);
     }
@@ -218,7 +221,7 @@ export function EventoRow({
                 Indefinida
               </MenuItem>
               {agencias.map((ag) => (
-                <MenuItem key={ag.id} value={ag.id} sx={{ fontSize: fieldFontSize }}>
+                <MenuItem key={ag.id} value={String(ag.id)} sx={{ fontSize: fieldFontSize }}>
                   {ag.nome}
                 </MenuItem>
               ))}

@@ -8,76 +8,39 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
-import sys
 from typing import Any
 from uuid import uuid4
 
-try:  # pragma: no cover - import style depends on execution cwd
-    from core.contracts.s4_core import (
-        S4CanonicalContractCoreError,
-        S4CanonicalContractCoreInput,
-        execute_s4_contract_validation_main_flow,
-    )
-    from core.contracts.s4_scaffold import S4CanonicalContractScaffoldRequest
-    from core.contracts.s3_core import (
-        S3CanonicalContractCoreError,
-        S3CanonicalContractCoreInput,
-        execute_s3_contract_validation_main_flow,
-    )
-    from core.contracts.s3_scaffold import (
-        S3CanonicalContractScaffoldRequest,
-    )
-    from core.contracts.s2_core import (
-        S2CanonicalContractCoreError,
-        S2CanonicalContractCoreInput,
-        execute_s2_contract_validation_main_flow,
-    )
-    from core.contracts.s2_scaffold import (
-        S2CanonicalContractScaffoldRequest,
-    )
-    from core.contracts.s1_core import (
-        S1CanonicalContractCoreError,
-        S1CanonicalContractCoreInput,
-        execute_s1_contract_validation_main_flow,
-    )
-    from core.contracts.s1_scaffold import (
-        S1CanonicalContractScaffoldRequest,
-    )
-except ModuleNotFoundError:  # pragma: no cover
-    npbb_root = Path(__file__).resolve().parents[3]
-    if str(npbb_root) not in sys.path:
-        sys.path.insert(0, str(npbb_root))
-    from core.contracts.s4_core import (
-        S4CanonicalContractCoreError,
-        S4CanonicalContractCoreInput,
-        execute_s4_contract_validation_main_flow,
-    )
-    from core.contracts.s4_scaffold import S4CanonicalContractScaffoldRequest
-    from core.contracts.s3_core import (
-        S3CanonicalContractCoreError,
-        S3CanonicalContractCoreInput,
-        execute_s3_contract_validation_main_flow,
-    )
-    from core.contracts.s3_scaffold import (
-        S3CanonicalContractScaffoldRequest,
-    )
-    from core.contracts.s2_core import (
-        S2CanonicalContractCoreError,
-        S2CanonicalContractCoreInput,
-        execute_s2_contract_validation_main_flow,
-    )
-    from core.contracts.s2_scaffold import (
-        S2CanonicalContractScaffoldRequest,
-    )
-    from core.contracts.s1_core import (
-        S1CanonicalContractCoreError,
-        S1CanonicalContractCoreInput,
-        execute_s1_contract_validation_main_flow,
-    )
-    from core.contracts.s1_scaffold import (
-        S1CanonicalContractScaffoldRequest,
-    )
+from core.contracts.s1_core import (
+    S1CanonicalContractCoreError,
+    S1CanonicalContractCoreInput,
+    execute_s1_contract_validation_main_flow,
+)
+from core.contracts.s1_scaffold import (
+    S1CanonicalContractScaffoldRequest,
+)
+from core.contracts.s2_core import (
+    S2CanonicalContractCoreError,
+    S2CanonicalContractCoreInput,
+    execute_s2_contract_validation_main_flow,
+)
+from core.contracts.s2_scaffold import (
+    S2CanonicalContractScaffoldRequest,
+)
+from core.contracts.s3_core import (
+    S3CanonicalContractCoreError,
+    S3CanonicalContractCoreInput,
+    execute_s3_contract_validation_main_flow,
+)
+from core.contracts.s3_scaffold import (
+    S3CanonicalContractScaffoldRequest,
+)
+from core.contracts.s4_core import (
+    S4CanonicalContractCoreError,
+    S4CanonicalContractCoreInput,
+    execute_s4_contract_validation_main_flow,
+)
+from core.contracts.s4_scaffold import S4CanonicalContractScaffoldRequest
 
 
 logger = logging.getLogger("app.services.contract_validation")

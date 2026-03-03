@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
-from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.models import (
     IngestionRun,
@@ -20,8 +19,8 @@ from app.models.models import (
     Source,
     SourceKind,
     Usuario,
-    UsuarioTipo,
 )
+from app.platform.security.rbac import require_npbb_user
 from app.schemas.ingestion_registry import (
     IngestionDetailRead,
     IngestionRead,
@@ -31,16 +30,6 @@ from app.schemas.ingestion_registry import (
 
 
 router = APIRouter(prefix="/internal/registry", tags=["internal"])
-
-
-def require_npbb_user(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    """Allow access only to NPBB users."""
-    if current_user.tipo_usuario != UsuarioTipo.NPBB:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Acesso restrito a usuarios NPBB"},
-        )
-    return current_user
 
 
 @router.get("/sources", response_model=list[SourceRead])

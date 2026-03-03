@@ -39,10 +39,10 @@ ALLOWED_APPROVAL_MODES = {"single_reviewer", "dual_control", "committee"}
 
 WORKBENCH_S2_TELEMETRY_INTEGRATION_POINTS = {
     "workbench_revisao_s2_observability_module": (
-        "frontend.src.features.revisao_humana.s2_observability.build_s2_workbench_observability_event"
+        "app.modules.revisao_humana.s2_observability.build_s2_workbench_observability_event"
     ),
     "workbench_revisao_s2_core_module": (
-        "frontend.src.features.revisao_humana.s2_core.execute_workbench_revisao_s2_main_flow"
+        "app.modules.revisao_humana.s2_core.execute_workbench_revisao_s2_main_flow"
     ),
     "workbench_revisao_s2_backend_telemetry_module": (
         "backend.app.services.workbench-de-revis-o-humana-e-correspond-ncia-de-faltantes_telemetry"
@@ -51,10 +51,10 @@ WORKBENCH_S2_TELEMETRY_INTEGRATION_POINTS = {
 
 WORKBENCH_S3_TELEMETRY_INTEGRATION_POINTS = {
     "workbench_revisao_s3_observability_module": (
-        "frontend.src.features.revisao_humana.s3_observability.build_s3_workbench_observability_event"
+        "app.modules.revisao_humana.s3_observability.build_s3_workbench_observability_event"
     ),
     "workbench_revisao_s3_core_module": (
-        "frontend.src.features.revisao_humana.s3_core.execute_workbench_revisao_s3_main_flow"
+        "app.modules.revisao_humana.s3_core.execute_workbench_revisao_s3_main_flow"
     ),
     "workbench_revisao_s3_backend_telemetry_module": (
         "backend.app.services.workbench-de-revis-o-humana-e-correspond-ncia-de-faltantes_telemetry"

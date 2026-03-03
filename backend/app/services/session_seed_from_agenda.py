@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 import json
 from pathlib import Path
-import sys
 from typing import Any, Literal
 
 from sqlmodel import Session, select
@@ -26,16 +25,8 @@ from app.services.etl_registry_service import (
     register_source_from_path,
     start_ingestion_run,
 )
-
-try:  # pragma: no cover - import style depends on process cwd
-    from core.sessions import SessionType
-    from etl.transform.agenda_loader import AgendaMaster
-except ModuleNotFoundError:  # pragma: no cover
-    ROOT_DIR = Path(__file__).resolve().parents[3]
-    if str(ROOT_DIR) not in sys.path:
-        sys.path.insert(0, str(ROOT_DIR))
-    from core.sessions import SessionType
-    from etl.transform.agenda_loader import AgendaMaster
+from app.shared.sessions import SessionType
+from etl.transform.agenda_loader import AgendaMaster
 
 
 class SessionSeedFromAgendaError(ValueError):

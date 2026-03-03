@@ -9,39 +9,18 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
-from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.etl_registry import IngestionStatus, SourceKind
-from app.models.models import Usuario, UsuarioTipo
+from app.models.models import Usuario
+from app.platform.security.rbac import require_npbb_user
 from app.schemas.internal_catalog import CatalogIngestionRead, CatalogSourceRead
 from app.services.etl_catalog_queries import latest_ingestion_by_source, list_ingestion_runs
 
 
 router = APIRouter(prefix="/internal/catalog", tags=["internal"])
-
-
-def require_npbb_user(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    """Allow access only to NPBB users.
-
-    Args:
-        current_user: Authenticated user resolved from bearer token.
-
-    Returns:
-        Current authenticated user when type is NPBB.
-
-    Raises:
-        HTTPException: When user is not NPBB.
-    """
-
-    if current_user.tipo_usuario != UsuarioTipo.NPBB:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Acesso restrito a usuarios NPBB"},
-        )
-    return current_user
 
 
 def _validate_pagination(limit: int, offset: int) -> None:

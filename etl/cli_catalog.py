@@ -11,33 +11,48 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any
 
-from sqlmodel import Session
+from sqlmodel import Session, create_engine
 
-try:
-    from app.db.database import engine
-    from app.models.etl_registry import IngestionStatus, SourceKind
-    from app.services.etl_catalog_queries import (
-        CatalogSummary,
-        LatestIngestionBySourceRow,
-        latest_ingestion_by_source,
-        summarize_latest_ingestion_rows,
-    )
-except ModuleNotFoundError:
-    BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
-    if str(BACKEND_ROOT) not in sys.path:
-        sys.path.insert(0, str(BACKEND_ROOT))
-    from app.db.database import engine
-    from app.models.etl_registry import IngestionStatus, SourceKind
-    from app.services.etl_catalog_queries import (
-        CatalogSummary,
-        LatestIngestionBySourceRow,
-        latest_ingestion_by_source,
-        summarize_latest_ingestion_rows,
-    )
+STATUS_CHOICES = ("success", "failed", "partial")
+SOURCE_KIND_CHOICES = ("config", "docx", "pdf", "xlsx", "pptx", "csv", "manual", "other")
+
+
+def _ensure_backend_on_path() -> None:
+    backend_root = Path(__file__).resolve().parents[1] / "backend"
+    if str(backend_root) not in sys.path:
+        sys.path.insert(0, str(backend_root))
+
+
+def _load_catalog_dependencies():
+    try:
+        from app.models.etl_registry import IngestionStatus, SourceKind
+        from app.services.etl_catalog_queries import (
+            latest_ingestion_by_source,
+            summarize_latest_ingestion_rows,
+        )
+    except ModuleNotFoundError:
+        _ensure_backend_on_path()
+        from app.models.etl_registry import IngestionStatus, SourceKind
+        from app.services.etl_catalog_queries import (
+            latest_ingestion_by_source,
+            summarize_latest_ingestion_rows,
+        )
+
+    return IngestionStatus, SourceKind, latest_ingestion_by_source, summarize_latest_ingestion_rows
+
+
+def _resolve_database_url(database_url: str | None = None) -> str:
+    if database_url:
+        return database_url
+    env_url = os.getenv("DATABASE_URL") or os.getenv("DIRECT_URL")
+    if env_url:
+        return env_url
+    return "sqlite:///./backend/app.db"
 
 
 def _iso_or_none(value: datetime | None) -> str | None:
@@ -54,7 +69,7 @@ def _md_cell(value: Any) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ").strip() or "-"
 
 
-def _row_to_json(row: LatestIngestionBySourceRow) -> dict[str, Any]:
+def _row_to_json(row: Any) -> dict[str, Any]:
     """Convert one query row to JSON-serializable mapping."""
     return {
         "source_id": row.source_id,
@@ -73,11 +88,11 @@ def _row_to_json(row: LatestIngestionBySourceRow) -> dict[str, Any]:
 
 
 def render_catalog_markdown(
-    rows: list[LatestIngestionBySourceRow],
-    summary: CatalogSummary,
+    rows: list[Any],
+    summary: Any,
     *,
-    status_filters: list[IngestionStatus],
-    kind_filters: list[SourceKind],
+    status_filters: list[Any],
+    kind_filters: list[Any],
 ) -> str:
     """Render operational catalog report in Markdown format.
 
@@ -136,11 +151,11 @@ def render_catalog_markdown(
 
 
 def render_catalog_json(
-    rows: list[LatestIngestionBySourceRow],
-    summary: CatalogSummary,
+    rows: list[Any],
+    summary: Any,
     *,
-    status_filters: list[IngestionStatus],
-    kind_filters: list[SourceKind],
+    status_filters: list[Any],
+    kind_filters: list[Any],
 ) -> str:
     """Render operational catalog report in JSON format.
 
@@ -175,8 +190,9 @@ def run_catalog_report(
     *,
     out_md: Path | None,
     out_json: Path | None,
-    statuses: list[IngestionStatus] | None = None,
-    source_kinds: list[SourceKind] | None = None,
+    statuses: list[str] | None = None,
+    source_kinds: list[str] | None = None,
+    database_url: str | None = None,
 ) -> int:
     """Execute catalog report generation and persist output artifacts.
 
@@ -197,13 +213,18 @@ def run_catalog_report(
     if out_md is None and out_json is None:
         raise ValueError("Informe ao menos um destino: --out-md e/ou --out-json.")
 
-    statuses = statuses or []
-    source_kinds = source_kinds or []
+    IngestionStatus, SourceKind, latest_ingestion_by_source, summarize_latest_ingestion_rows = (
+        _load_catalog_dependencies()
+    )
+    status_filters = [IngestionStatus(value) for value in (statuses or [])]
+    kind_filters = [SourceKind(value) for value in (source_kinds or [])]
+    engine = create_engine(_resolve_database_url(database_url))
+
     with Session(engine) as session:
         rows = latest_ingestion_by_source(
             session,
-            statuses=statuses or None,
-            source_kinds=source_kinds or None,
+            statuses=status_filters or None,
+            source_kinds=kind_filters or None,
         )
     summary = summarize_latest_ingestion_rows(rows)
 
@@ -213,8 +234,8 @@ def run_catalog_report(
             render_catalog_markdown(
                 rows,
                 summary,
-                status_filters=statuses,
-                kind_filters=source_kinds,
+                status_filters=status_filters,
+                kind_filters=kind_filters,
             ),
             encoding="utf-8",
         )
@@ -224,8 +245,8 @@ def run_catalog_report(
             render_catalog_json(
                 rows,
                 summary,
-                status_filters=statuses,
-                kind_filters=source_kinds,
+                status_filters=status_filters,
+                kind_filters=kind_filters,
             ),
             encoding="utf-8",
         )
@@ -244,29 +265,33 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--out-md", default=None, help="Optional output markdown path.")
     report.add_argument("--out-json", default=None, help="Optional output JSON path.")
     report.add_argument(
+        "--database-url",
+        default=None,
+        help="Optional database URL override. Defaults to DATABASE_URL/DIRECT_URL/env or local SQLite.",
+    )
+    report.add_argument(
         "--status",
         action="append",
-        choices=[status.value for status in IngestionStatus],
+        choices=list(STATUS_CHOICES),
         default=None,
         help="Filter by latest ingestion status. Repeatable.",
     )
     report.add_argument(
         "--kind",
         action="append",
-        choices=[kind.value for kind in SourceKind],
+        choices=list(SOURCE_KIND_CHOICES),
         default=None,
         help="Filter by source kind. Repeatable.",
     )
 
     args = parser.parse_args(argv)
     if args.command == "catalog:report":
-        status_filters = [IngestionStatus(value) for value in (args.status or [])]
-        kind_filters = [SourceKind(value) for value in (args.kind or [])]
         return run_catalog_report(
             out_md=Path(args.out_md) if args.out_md else None,
             out_json=Path(args.out_json) if args.out_json else None,
-            statuses=status_filters,
-            source_kinds=kind_filters,
+            statuses=list(args.status or []),
+            source_kinds=list(args.kind or []),
+            database_url=args.database_url,
         )
 
     parser.error(f"Unknown command: {args.command}")

@@ -9,80 +9,41 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
-import sys
 from typing import Any
 from uuid import uuid4
 
-try:  # pragma: no cover - import style depends on execution cwd
-    from core.confidence.s1_core import (
-        S1ConfidenceCoreError,
-        S1ConfidenceCoreInput,
-        execute_s1_confidence_policy_main_flow,
-    )
-    from core.confidence.s1_scaffold import (
-        S1ConfidenceScaffoldRequest,
-    )
-    from core.confidence.s2_core import (
-        S2ConfidenceCoreError,
-        S2ConfidenceCoreInput,
-        execute_s2_confidence_policy_main_flow,
-    )
-    from core.confidence.s2_scaffold import (
-        S2ConfidenceScaffoldRequest,
-    )
-    from core.confidence.s3_core import (
-        S3ConfidenceCoreError,
-        S3ConfidenceCoreInput,
-        execute_s3_confidence_policy_main_flow,
-    )
-    from core.confidence.s3_scaffold import (
-        S3ConfidenceScaffoldRequest,
-    )
-    from core.confidence.s4_core import (
-        S4ConfidenceCoreError,
-        S4ConfidenceCoreInput,
-        execute_s4_confidence_policy_main_flow,
-    )
-    from core.confidence.s4_scaffold import (
-        S4ConfidenceScaffoldRequest,
-    )
-except ModuleNotFoundError:  # pragma: no cover
-    npbb_root = Path(__file__).resolve().parents[3]
-    if str(npbb_root) not in sys.path:
-        sys.path.insert(0, str(npbb_root))
-    from core.confidence.s1_core import (
-        S1ConfidenceCoreError,
-        S1ConfidenceCoreInput,
-        execute_s1_confidence_policy_main_flow,
-    )
-    from core.confidence.s1_scaffold import (
-        S1ConfidenceScaffoldRequest,
-    )
-    from core.confidence.s2_core import (
-        S2ConfidenceCoreError,
-        S2ConfidenceCoreInput,
-        execute_s2_confidence_policy_main_flow,
-    )
-    from core.confidence.s2_scaffold import (
-        S2ConfidenceScaffoldRequest,
-    )
-    from core.confidence.s3_core import (
-        S3ConfidenceCoreError,
-        S3ConfidenceCoreInput,
-        execute_s3_confidence_policy_main_flow,
-    )
-    from core.confidence.s3_scaffold import (
-        S3ConfidenceScaffoldRequest,
-    )
-    from core.confidence.s4_core import (
-        S4ConfidenceCoreError,
-        S4ConfidenceCoreInput,
-        execute_s4_confidence_policy_main_flow,
-    )
-    from core.confidence.s4_scaffold import (
-        S4ConfidenceScaffoldRequest,
-    )
+from core.confidence.s1_core import (
+    S1ConfidenceCoreError,
+    S1ConfidenceCoreInput,
+    execute_s1_confidence_policy_main_flow,
+)
+from core.confidence.s1_scaffold import (
+    S1ConfidenceScaffoldRequest,
+)
+from core.confidence.s2_core import (
+    S2ConfidenceCoreError,
+    S2ConfidenceCoreInput,
+    execute_s2_confidence_policy_main_flow,
+)
+from core.confidence.s2_scaffold import (
+    S2ConfidenceScaffoldRequest,
+)
+from core.confidence.s3_core import (
+    S3ConfidenceCoreError,
+    S3ConfidenceCoreInput,
+    execute_s3_confidence_policy_main_flow,
+)
+from core.confidence.s3_scaffold import (
+    S3ConfidenceScaffoldRequest,
+)
+from core.confidence.s4_core import (
+    S4ConfidenceCoreError,
+    S4ConfidenceCoreInput,
+    execute_s4_confidence_policy_main_flow,
+)
+from core.confidence.s4_scaffold import (
+    S4ConfidenceScaffoldRequest,
+)
 
 
 logger = logging.getLogger("app.services.confidence_policy")

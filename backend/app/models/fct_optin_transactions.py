@@ -34,10 +34,10 @@ class FctOptinTransaction(SQLModel, table=True):
     __table_args__ = ({"extend_existing": True},)
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="event_sessions.id", index=True)
-    source_id: str = Field(max_length=160, foreign_key="sources.source_id", index=True)
-    ingestion_id: int = Field(foreign_key="ingestions.id", index=True)
-    lineage_ref_id: int = Field(foreign_key="lineage_refs.id", index=True)
+    session_id: int = Field(foreign_key="event_sessions.id")
+    source_id: str = Field(max_length=160, foreign_key="sources.source_id")
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestions.id")
+    lineage_ref_id: Optional[int] = Field(default=None, foreign_key="lineage_refs.id", index=True)
 
     purchase_at: Optional[datetime] = Field(
         default=None,
@@ -47,4 +47,3 @@ class FctOptinTransaction(SQLModel, table=True):
     optin_status: Optional[str] = Field(default=None, max_length=80)
     qty: Optional[int] = None
     created_at: datetime = Field(default_factory=now_utc, sa_column=Column(DateTime(timezone=True)))
-

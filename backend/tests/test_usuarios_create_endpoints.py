@@ -19,6 +19,7 @@ def make_engine():
 @pytest.fixture
 def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
+    monkeypatch.setenv("USER_REGISTRATION_MODE", "public")
     engine = make_engine()
     SQLModel.metadata.create_all(engine)
     return engine
@@ -249,3 +250,33 @@ def test_usuarios_create_rejeita_matricula_duplicada(client, engine):
     assert resp_2.status_code == 409
     detail = resp_2.json()["detail"]
     assert detail["code"] == "MATRICULA_ALREADY_REGISTERED"
+
+
+def test_usuarios_create_rejeita_quando_registro_publico_fechado(client, monkeypatch):
+    monkeypatch.setenv("USER_REGISTRATION_MODE", "closed")
+    resp = client.post(
+        "/usuarios/",
+        json={"email": "user@npbb.com.br", "password": "Senha123", "tipo_usuario": "npbb"},
+    )
+    assert resp.status_code == 403
+    detail = resp.json()["detail"]
+    assert detail["code"] == "REGISTRATION_CLOSED"
+
+
+def test_usuarios_create_modo_convite_exige_token(client, monkeypatch):
+    monkeypatch.setenv("USER_REGISTRATION_MODE", "invite")
+    monkeypatch.setenv("USER_REGISTRATION_INVITE_TOKEN", "invite-secret")
+
+    denied = client.post(
+        "/usuarios/",
+        json={"email": "invite@npbb.com.br", "password": "Senha123", "tipo_usuario": "npbb"},
+    )
+    assert denied.status_code == 403
+    assert denied.json()["detail"]["code"] == "INVITE_TOKEN_INVALID"
+
+    allowed = client.post(
+        "/usuarios/",
+        headers={"x-registration-token": "invite-secret"},
+        json={"email": "invite@npbb.com.br", "password": "Senha123", "tipo_usuario": "npbb"},
+    )
+    assert allowed.status_code == 201

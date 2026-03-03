@@ -3,104 +3,68 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-import sys
 from uuid import uuid4
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
+from app.modules.revisao_humana.s1_core import (
+    S1WorkbenchCoreError,
+    S1WorkbenchCoreInput,
+    execute_workbench_revisao_s1_main_flow,
+)
+from app.modules.revisao_humana.s1_scaffold import (
+    S1WorkbenchScaffoldError,
+    S1WorkbenchScaffoldRequest,
+    build_s1_workbench_scaffold,
+)
+from app.modules.revisao_humana.s2_core import (
+    S2WorkbenchCoreError,
+    S2WorkbenchCoreInput,
+    execute_workbench_revisao_s2_main_flow,
+)
+from app.modules.revisao_humana.s2_scaffold import (
+    S2WorkbenchScaffoldError,
+    S2WorkbenchScaffoldRequest,
+    build_s2_workbench_scaffold,
+)
+from app.modules.revisao_humana.s3_core import (
+    S3WorkbenchCoreError,
+    S3WorkbenchCoreInput,
+    execute_workbench_revisao_s3_main_flow,
+)
+from app.modules.revisao_humana.s3_scaffold import (
+    S3WorkbenchScaffoldError,
+    S3WorkbenchScaffoldRequest,
+    build_s3_workbench_scaffold,
+)
+from app.modules.revisao_humana.s4_core import (
+    S4WorkbenchCoreError,
+    S4WorkbenchCoreInput,
+    execute_workbench_revisao_s4_main_flow,
+)
+from app.modules.revisao_humana.s4_scaffold import (
+    S4WorkbenchScaffoldError,
+    S4WorkbenchScaffoldRequest,
+    build_s4_workbench_scaffold,
+)
+from app.platform.security.rbac import require_npbb_user
 from app.utils.http_errors import raise_http_error
 
-try:  # pragma: no cover - import style depends on execution cwd
-    from frontend.src.features.revisao_humana.s1_core import (
-        S1WorkbenchCoreError,
-        S1WorkbenchCoreInput,
-        execute_workbench_revisao_s1_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s2_core import (
-        S2WorkbenchCoreError,
-        S2WorkbenchCoreInput,
-        execute_workbench_revisao_s2_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s3_core import (
-        S3WorkbenchCoreError,
-        S3WorkbenchCoreInput,
-        execute_workbench_revisao_s3_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s4_core import (
-        S4WorkbenchCoreError,
-        S4WorkbenchCoreInput,
-        execute_workbench_revisao_s4_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s1_scaffold import (
-        S1WorkbenchScaffoldError,
-        S1WorkbenchScaffoldRequest,
-        build_s1_workbench_scaffold,
-    )
-    from frontend.src.features.revisao_humana.s2_scaffold import (
-        S2WorkbenchScaffoldError,
-        S2WorkbenchScaffoldRequest,
-        build_s2_workbench_scaffold,
-    )
-    from frontend.src.features.revisao_humana.s3_scaffold import (
-        S3WorkbenchScaffoldError,
-        S3WorkbenchScaffoldRequest,
-        build_s3_workbench_scaffold,
-    )
-    from frontend.src.features.revisao_humana.s4_scaffold import (
-        S4WorkbenchScaffoldError,
-        S4WorkbenchScaffoldRequest,
-        build_s4_workbench_scaffold,
-    )
-except ModuleNotFoundError:  # pragma: no cover
-    npbb_root = Path(__file__).resolve().parents[3]
-    if str(npbb_root) not in sys.path:
-        sys.path.insert(0, str(npbb_root))
-    from frontend.src.features.revisao_humana.s1_core import (
-        S1WorkbenchCoreError,
-        S1WorkbenchCoreInput,
-        execute_workbench_revisao_s1_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s2_core import (
-        S2WorkbenchCoreError,
-        S2WorkbenchCoreInput,
-        execute_workbench_revisao_s2_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s3_core import (
-        S3WorkbenchCoreError,
-        S3WorkbenchCoreInput,
-        execute_workbench_revisao_s3_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s4_core import (
-        S4WorkbenchCoreError,
-        S4WorkbenchCoreInput,
-        execute_workbench_revisao_s4_main_flow,
-    )
-    from frontend.src.features.revisao_humana.s1_scaffold import (
-        S1WorkbenchScaffoldError,
-        S1WorkbenchScaffoldRequest,
-        build_s1_workbench_scaffold,
-    )
-    from frontend.src.features.revisao_humana.s2_scaffold import (
-        S2WorkbenchScaffoldError,
-        S2WorkbenchScaffoldRequest,
-        build_s2_workbench_scaffold,
-    )
-    from frontend.src.features.revisao_humana.s3_scaffold import (
-        S3WorkbenchScaffoldError,
-        S3WorkbenchScaffoldRequest,
-        build_s3_workbench_scaffold,
-    )
-    from frontend.src.features.revisao_humana.s4_scaffold import (
-        S4WorkbenchScaffoldError,
-        S4WorkbenchScaffoldRequest,
-        build_s4_workbench_scaffold,
-    )
 
-
-router = APIRouter(prefix="/internal/revisao-humana", tags=["revisao_humana"])
+router = APIRouter(
+    prefix="/internal/revisao-humana",
+    tags=["revisao_humana"],
+    dependencies=[Depends(require_npbb_user)],
+)
 logger = logging.getLogger(__name__)
+
+
+class ActorContext(BaseModel):
+    """Required actor context for internal review actions."""
+
+    actor_id: str = Field(..., min_length=1)
+    actor_role: str = Field(..., min_length=1)
 
 
 class RevisaoHumanaS1PrepareBody(BaseModel):
@@ -118,6 +82,7 @@ class RevisaoHumanaS1PrepareBody(BaseModel):
     max_queue_size: int = 1000
     auto_assignment_enabled: bool = True
     reviewer_roles: list[str] | None = None
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -136,6 +101,7 @@ class RevisaoHumanaS1ExecuteBody(BaseModel):
     max_queue_size: int = 1000
     auto_assignment_enabled: bool = True
     reviewer_roles: list[str] | None = None
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -156,6 +122,7 @@ class RevisaoHumanaS2PrepareBody(BaseModel):
     max_suggestions_per_field: int = 5
     require_evidence_for_suggestion: bool = True
     reviewer_roles: list[str] | None = None
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -176,6 +143,7 @@ class RevisaoHumanaS2ExecuteBody(BaseModel):
     max_suggestions_per_field: int = 5
     require_evidence_for_suggestion: bool = True
     reviewer_roles: list[str] | None = None
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -196,6 +164,7 @@ class RevisaoHumanaS3PrepareBody(BaseModel):
     require_justification: bool = True
     allow_partial_approval: bool = False
     auto_lock_on_conflict: bool = True
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -216,6 +185,7 @@ class RevisaoHumanaS3ExecuteBody(BaseModel):
     require_justification: bool = True
     allow_partial_approval: bool = False
     auto_lock_on_conflict: bool = True
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -239,6 +209,7 @@ class RevisaoHumanaS4PrepareBody(BaseModel):
     capture_before_after_state: bool = True
     enable_anomaly_alerts: bool = True
     reviewer_roles: list[str] | None = None
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 
@@ -262,6 +233,7 @@ class RevisaoHumanaS4ExecuteBody(BaseModel):
     capture_before_after_state: bool = True
     enable_anomaly_alerts: bool = True
     reviewer_roles: list[str] | None = None
+    actor_context: ActorContext
     correlation_id: str | None = None
 
 

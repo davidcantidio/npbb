@@ -212,6 +212,7 @@ export async function fetchWithAuth(pathOrUrl: string, options: RequestOptions =
           ...rest,
           method: resolvedMethod,
           headers: mergedHeaders,
+          credentials: rest.credentials ?? "include",
         },
         timeoutMs,
       );

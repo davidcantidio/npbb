@@ -1,7 +1,9 @@
 """Rotas de usuarios: criacao com validacao e hashing de senha."""
 
+import hmac
 import hashlib
 import logging
+import os
 import re
 import time
 
@@ -24,6 +26,7 @@ from app.schemas.usuario import UsuarioCreate, UsuarioDiretoriaUpdate, UsuarioRe
 from app.services.password_reset import PasswordResetError, request_password_reset, reset_password
 from app.utils.log_sanitize import sanitize_exception, sanitize_text
 from app.utils.security import hash_password
+from app.platform.security.rate_limit import SlidingWindowRateLimiter
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
@@ -34,6 +37,27 @@ FORGOT_PASSWORD_MESSAGE = (
 )
 PASSWORD_RESET_DELAY_SEC = 0.3
 telemetry_logger = logging.getLogger("app.telemetry")
+REGISTRATION_TOKEN_HEADER = "x-registration-token"
+
+
+def _get_env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+_registration_rate_limiter = SlidingWindowRateLimiter(
+    max_requests=_get_env_int("USER_REGISTRATION_RATE_LIMIT_MAX", 30),
+    window_seconds=_get_env_int("USER_REGISTRATION_RATE_LIMIT_WINDOW_SEC", 60),
+)
+_forgot_password_rate_limiter = SlidingWindowRateLimiter(
+    max_requests=_get_env_int("FORGOT_PASSWORD_RATE_LIMIT_MAX", 20),
+    window_seconds=_get_env_int("FORGOT_PASSWORD_RATE_LIMIT_WINDOW_SEC", 60),
+)
 
 
 def _generate_chave_c(session: Session, seed: str) -> str:
@@ -62,6 +86,63 @@ def _hash_email(email: str | None) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
+def _request_ip(request: Request | None) -> str:
+    if request and request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _enforce_rate_limit(
+    *,
+    limiter: SlidingWindowRateLimiter,
+    key: str,
+    code: str,
+    message: str,
+) -> None:
+    decision = limiter.allow(key)
+    if decision.allowed:
+        return
+    detail: dict[str, str | int] = {
+        "code": code,
+        "message": message,
+        "retry_after_seconds": decision.retry_after_seconds,
+    }
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail)
+
+
+def _enforce_registration_policy(request: Request) -> None:
+    mode = os.getenv("USER_REGISTRATION_MODE", "public").strip().lower()
+    if mode == "public":
+        return
+    if mode == "closed":
+        _raise_http(
+            status.HTTP_403_FORBIDDEN,
+            code="REGISTRATION_CLOSED",
+            message="Cadastro publico desabilitado. Solicite convite ao administrador.",
+        )
+    if mode == "invite":
+        expected_token = os.getenv("USER_REGISTRATION_INVITE_TOKEN", "").strip()
+        if not expected_token:
+            _raise_http(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="REGISTRATION_MISCONFIGURED",
+                message="Cadastro por convite indisponivel por configuracao ausente.",
+            )
+        provided_token = (request.headers.get(REGISTRATION_TOKEN_HEADER) or "").strip()
+        if not provided_token or not hmac.compare_digest(provided_token, expected_token):
+            _raise_http(
+                status.HTTP_403_FORBIDDEN,
+                code="INVITE_TOKEN_INVALID",
+                message="Convite invalido para cadastro.",
+            )
+        return
+    _raise_http(
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+        code="REGISTRATION_MODE_INVALID",
+        message="Configuracao de cadastro invalida.",
+    )
+
+
 @router.post(
     "/",
     response_model=UsuarioRead,
@@ -69,6 +150,7 @@ def _hash_email(email: str | None) -> str:
 )
 def criar_usuario(
     usuario_in: UsuarioCreate,
+    request: Request,
     session: Session = Depends(get_session),
 ):
     """Cria um novo usuario e retorna o registro sem expor a senha.
@@ -88,6 +170,13 @@ def criar_usuario(
     - Duplicados: retorna 409.
     """
     email = str(usuario_in.email).strip().lower()
+    _enforce_registration_policy(request)
+    _enforce_rate_limit(
+        limiter=_registration_rate_limiter,
+        key=f"register:{_request_ip(request)}:{_hash_email(email)}",
+        code="REGISTRATION_RATE_LIMIT_EXCEEDED",
+        message="Muitas tentativas de cadastro. Tente novamente em instantes.",
+    )
 
     if not PASSWORD_RE.match(usuario_in.password or ""):
         _raise_http(
@@ -354,6 +443,12 @@ def forgot_password(
     error_detail: str | None = None
     email_value = str(payload.email or "")
     email_hash = _hash_email(email_value)
+    _enforce_rate_limit(
+        limiter=_forgot_password_rate_limiter,
+        key=f"forgot-password:{_request_ip(request)}:{email_hash}",
+        code="FORGOT_PASSWORD_RATE_LIMIT_EXCEEDED",
+        message="Muitas solicitacoes de recuperacao. Tente novamente em instantes.",
+    )
     try:
         result = request_password_reset(session, email_value)
     except Exception as exc:

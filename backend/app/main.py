@@ -24,10 +24,22 @@ from app.routers.usuarios import router as usuarios_router
 from app.routers.ingestion_registry import router as ingestion_registry_router
 from app.routers.ingestao_inteligente import router as ingestao_inteligente_router
 from app.routers.internal_catalog import router as internal_catalog_router
+from app.routers.internal_etl import router as internal_etl_router
 from app.routers.internal_health import router as internal_health_router
 from app.routers.data_quality import router as data_quality_router
 
-app = FastAPI(title="NPBB API")
+
+def _normalize_root_path(value: str | None) -> str:
+    raw = (value or "").strip()
+    if not raw or raw == "/":
+        return ""
+    return "/" + raw.strip("/")
+
+
+app = FastAPI(
+    title="NPBB API",
+    root_path=_normalize_root_path(os.getenv("API_ROOT_PATH")),
+)
 
 frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 origins = [origin.strip() for origin in frontend_origin.split(",") if origin.strip()]
@@ -169,5 +181,6 @@ app.include_router(revisao_humana_router)
 app.include_router(ingestion_registry_router)
 app.include_router(ingestao_inteligente_router)
 app.include_router(internal_catalog_router)
+app.include_router(internal_etl_router)
 app.include_router(internal_health_router)
 app.include_router(data_quality_router)

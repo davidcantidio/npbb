@@ -1,4 +1,6 @@
-# Deploy: Render (API) + Cloudflare Pages (Frontend)
+# Legacy Deploy: Render (API) + Cloudflare Pages (Frontend)
+
+> Status: legado. O caminho oficial do projeto agora e o deploy em VPS descrito em [DEPLOY_HOSTINGER_VPS.md](/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/docs/DEPLOY_HOSTINGER_VPS.md).
 
 Este guia publica o backend FastAPI primeiro (Render) e depois o frontend React/Vite (Cloudflare Pages), usando os dominios padrao (`onrender.com` e `pages.dev`).
 

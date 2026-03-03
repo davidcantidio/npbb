@@ -13,10 +13,16 @@ from pathlib import Path
 
 import yaml
 
-from npbb.etl.extract.extract_pdf_assisted import extract_pdf_assisted
-from npbb.etl.extract.extract_pptx_slide_text import extract_pptx_slide_text
-from npbb.etl.extract.extract_xlsx_leads_festival import extract_leads_xlsx
-from npbb.etl.extract.extract_xlsx_optin_aceitos import extract_optin_xlsx
+try:  # pragma: no cover - import style depends on execution context
+    from npbb.etl.extract.extract_pdf_assisted import extract_pdf_assisted
+    from npbb.etl.extract.extract_pptx_slide_text import extract_pptx_slide_text
+    from npbb.etl.extract.extract_xlsx_leads_festival import extract_leads_xlsx
+    from npbb.etl.extract.extract_xlsx_optin_aceitos import extract_optin_xlsx
+except ModuleNotFoundError:  # local repo execution (cwd at repository root)
+    from etl.extract.extract_pdf_assisted import extract_pdf_assisted
+    from etl.extract.extract_pptx_slide_text import extract_pptx_slide_text
+    from etl.extract.extract_xlsx_leads_festival import extract_leads_xlsx
+    from etl.extract.extract_xlsx_optin_aceitos import extract_optin_xlsx
 
 
 def _load_sources_config(path: Path) -> list[dict]:
@@ -90,4 +96,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

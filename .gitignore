@@ -1,5 +1,6 @@
 # Dependências
 /node_modules/
+**/node_modules/
 
 # Build / distribuição
 /build/
@@ -17,10 +18,12 @@ yarn-error.log*
 .env
 .env.*        # se tiver outros arquivos .env.local etc
 .venv/
+**/.venv/
 
 # Python cache
 __pycache__/
 *.py[cod]
+**/__pycache__/
 
 # Cache / lock / temp / runtime data
 /.npm
@@ -43,3 +46,14 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
+
+# Artefatos locais e binários de runtime
+backend/app.db
+localhost.har
+issues.zip
+reports/**/*.docx
+**/.ruff_cache/
+**/.pytest_cache/
+**/test-results/
+frontend/playwright-report/
+frontend/test-results/playwright/

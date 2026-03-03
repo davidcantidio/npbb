@@ -39,10 +39,10 @@ class FctAttendanceAccessControl(SQLModel, table=True):
     __table_args__ = ({"extend_existing": True},)
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="event_sessions.id", index=True)
-    source_id: str = Field(max_length=160, foreign_key="sources.source_id", index=True)
-    ingestion_id: int = Field(foreign_key="ingestions.id", index=True)
-    lineage_ref_id: int = Field(foreign_key="lineage_refs.id", index=True)
+    session_id: int = Field(foreign_key="event_sessions.id")
+    source_id: str = Field(max_length=160, foreign_key="sources.source_id")
+    ingestion_id: Optional[int] = Field(default=None, foreign_key="ingestions.id")
+    lineage_ref_id: Optional[int] = Field(default=None, foreign_key="lineage_refs.id", index=True)
 
     ingressos_validos: Optional[int] = None
     presentes: Optional[int] = None

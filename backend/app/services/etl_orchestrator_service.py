@@ -14,48 +14,25 @@ from __future__ import annotations
 import importlib
 import logging
 from dataclasses import dataclass
-from pathlib import Path
-import sys
 from typing import Any
 from uuid import uuid4
 
-try:  # pragma: no cover - import style depends on execution cwd
-    from etl.orchestrator.s3_core import (
-        S3OrchestratorCoreError,
-        S3OrchestratorCoreInput,
-        execute_s3_orchestrator_main_flow,
-    )
-    from etl.orchestrator.s3_scaffold import (
-        S3OrchestratorScaffoldRequest,
-    )
-    from etl.orchestrator.s4_core import (
-        S4OrchestratorCoreError,
-        S4OrchestratorCoreInput,
-        execute_s4_orchestrator_main_flow,
-    )
-    from etl.orchestrator.s4_scaffold import (
-        S4OrchestratorScaffoldRequest,
-    )
-except ModuleNotFoundError:  # pragma: no cover
-    npbb_root = Path(__file__).resolve().parents[3]
-    if str(npbb_root) not in sys.path:
-        sys.path.insert(0, str(npbb_root))
-    from etl.orchestrator.s3_core import (
-        S3OrchestratorCoreError,
-        S3OrchestratorCoreInput,
-        execute_s3_orchestrator_main_flow,
-    )
-    from etl.orchestrator.s3_scaffold import (
-        S3OrchestratorScaffoldRequest,
-    )
-    from etl.orchestrator.s4_core import (
-        S4OrchestratorCoreError,
-        S4OrchestratorCoreInput,
-        execute_s4_orchestrator_main_flow,
-    )
-    from etl.orchestrator.s4_scaffold import (
-        S4OrchestratorScaffoldRequest,
-    )
+from etl.orchestrator.s3_core import (
+    S3OrchestratorCoreError,
+    S3OrchestratorCoreInput,
+    execute_s3_orchestrator_main_flow,
+)
+from etl.orchestrator.s3_scaffold import (
+    S3OrchestratorScaffoldRequest,
+)
+from etl.orchestrator.s4_core import (
+    S4OrchestratorCoreError,
+    S4OrchestratorCoreInput,
+    execute_s4_orchestrator_main_flow,
+)
+from etl.orchestrator.s4_scaffold import (
+    S4OrchestratorScaffoldRequest,
+)
 
 _HAS_S1_ORQ_MODULES = True
 try:  # pragma: no cover - optional while S1 ORQ modules are not restored

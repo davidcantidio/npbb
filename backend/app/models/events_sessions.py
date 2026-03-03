@@ -14,7 +14,7 @@ from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, UniqueConstraint
+from sqlalchemy import Column, DateTime, Index, UniqueConstraint
 from sqlmodel import Field
 
 from app.db.metadata import SQLModel
@@ -39,11 +39,13 @@ class Event(SQLModel, table=True):
     __tablename__ = "events"
     __table_args__ = (
         UniqueConstraint("event_key", name="uq_events_event_key"),
+        Index("ix_events_canon_event_key", "event_key"),
+        Index("ix_events_canon_event_name", "event_name"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    event_key: str = Field(max_length=120, index=True)
-    event_name: str = Field(max_length=200, index=True)
+    event_key: str = Field(max_length=120)
+    event_name: str = Field(max_length=200)
     event_start_date: Optional[date] = None
     event_end_date: Optional[date] = None
     created_at: datetime = Field(default_factory=now_utc, sa_column=Column(DateTime(timezone=True)))
@@ -68,20 +70,22 @@ class EventSession(SQLModel, table=True):
             "session_type",
             name="uq_event_sessions_event_start_type",
         ),
+        Index("ix_event_sessions_canon_event_id", "event_id"),
+        Index("ix_event_sessions_canon_session_date", "session_date"),
+        Index("ix_event_sessions_canon_session_type", "session_type"),
         {"extend_existing": True},
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    event_id: Optional[int] = Field(default=None, foreign_key="events.id", index=True)
+    event_id: Optional[int] = Field(default=None, foreign_key="events.id")
 
-    session_key: str = Field(max_length=120, index=True)
+    session_key: str = Field(max_length=120)
     session_name: str = Field(max_length=200)
-    session_type: EventSessionType = Field(index=True)
-    session_date: date = Field(index=True)
+    session_type: EventSessionType
+    session_date: date
 
     session_start_at: Optional[datetime] = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True, index=True),
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     session_end_at: Optional[datetime] = Field(
         default=None,

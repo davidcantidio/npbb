@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getMe, login as apiLogin, LoginUser } from "../services/auth";
+import { getMe, login as apiLogin, LoginUser, logout as apiLogout, refreshSession } from "../services/auth";
 
 type AuthContextValue = {
   user: LoginUser | null;
@@ -14,8 +14,6 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const TOKEN_KEY = "access_token";
-
 /**
  * Provides authentication state and session lifecycle handlers for the app.
  * @param params.children React subtree that needs auth context.
@@ -29,24 +27,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const clearSession = useCallback((message?: string) => {
-    localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
     setError(message || null);
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) {
-      setLoading(false);
-      return;
-    }
-    setToken(stored);
     setLoading(true);
-    getMe(stored)
-      .then((me) => {
+    getMe()
+      .then(async (me) => {
         setUser(me);
         setError(null);
+        try {
+          const refreshed = await refreshSession();
+          setToken(refreshed.access_token || null);
+        } catch {
+          setToken(null);
+        }
       })
       .catch((err: any) => {
         clearSession(err?.message || "Sessao invalida. Faca login novamente.");
@@ -57,23 +54,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleLogin = async (email: string, password: string) => {
     setError(null);
     const res = await apiLogin({ email, password });
-    localStorage.setItem(TOKEN_KEY, res.access_token);
     setToken(res.access_token);
     setUser(res.user);
     return res.user;
   };
 
-  const handleLogout = () => clearSession();
+  const handleLogout = () => {
+    void apiLogout().finally(() => clearSession());
+  };
 
   const refresh = useCallback(async () => {
-    if (!token) return null;
     if (refreshing) return null;
     setRefreshing(true);
     try {
-      const me = await getMe(token);
-      setUser(me);
+      const refreshed = await refreshSession(token);
+      setToken(refreshed.access_token || null);
+      setUser(refreshed.user);
       setError(null);
-      return me;
+      return refreshed.user;
     } catch (err: any) {
       clearSession(err?.message || "Sessao expirada. Faca login novamente.");
       return null;

@@ -22,9 +22,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from app.core.auth import get_current_user
 from app.db.database import get_session
-from app.models.models import Evento, Usuario, UsuarioTipo
+from app.models.models import Evento, Usuario
+from app.platform.security.rbac import require_npbb_user
 from app.utils.log_sanitize import sanitize_exception
 
 
@@ -355,16 +355,6 @@ class S1UploadResponse(BaseModel):
     proxima_acao: str
     pontos_integracao: dict[str, str]
     observabilidade: dict[str, str]
-
-
-def require_npbb_user(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    """Allow access only to NPBB users."""
-    if current_user.tipo_usuario != UsuarioTipo.NPBB:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Acesso restrito a usuarios NPBB"},
-        )
-    return current_user
 
 
 @router.post("/s1/scaffold", response_model=S1ScaffoldResponse)

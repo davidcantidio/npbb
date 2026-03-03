@@ -53,10 +53,26 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
  * @returns Current authenticated user data.
  * @throws Error When token is invalid/expired or request fails.
  */
-export async function getMe(token: string): Promise<LoginUser> {
+export async function getMe(token?: string | null): Promise<LoginUser> {
   const res = await fetchWithAuth("/auth/me", {
-    token,
+    token: token || undefined,
     retries: 0,
   });
   return handleApiResponse<LoginUser>(res);
+}
+
+export async function logout(): Promise<void> {
+  await fetchWithAuth("/auth/logout", {
+    method: "POST",
+    retries: 0,
+  });
+}
+
+export async function refreshSession(token?: string | null): Promise<LoginResponse> {
+  const res = await fetchWithAuth("/auth/refresh", {
+    method: "POST",
+    token: token || undefined,
+    retries: 0,
+  });
+  return handleApiResponse<LoginResponse>(res);
 }

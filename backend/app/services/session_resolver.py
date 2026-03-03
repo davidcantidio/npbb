@@ -9,9 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from pathlib import Path
 import re
-import sys
 from typing import Any, Mapping
 
 from sqlmodel import Session, select
@@ -22,14 +20,7 @@ from app.services.tmj_sessions import (
     get_or_create_tmj2025_session,
     tmj2025_date_from_source_id,
 )
-
-try:  # pragma: no cover - import style depends on process cwd
-    from core.sessions import SessionType, classify_session
-except ModuleNotFoundError:  # pragma: no cover
-    ROOT_DIR = Path(__file__).resolve().parents[3]
-    if str(ROOT_DIR) not in sys.path:
-        sys.path.insert(0, str(ROOT_DIR))
-    from core.sessions import SessionType, classify_session
+from app.shared.sessions import SessionType, classify_session
 
 
 _DATE_IN_TEXT_RE = re.compile(r"\b(?P<day>\d{1,2})/(?P<month>\d{1,2})(?:/(?P<year>\d{2,4}))?\b")

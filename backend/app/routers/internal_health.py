@@ -10,13 +10,13 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 
-from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.etl_registry import IngestionStatus, SourceKind
-from app.models.models import Usuario, UsuarioTipo
+from app.models.models import Usuario
+from app.platform.security.rbac import require_npbb_user
 from app.services.etl_health_queries import (
     build_health_alerts,
     build_coverage_health_payload,
@@ -28,27 +28,6 @@ from app.services.etl_health_queries import (
 
 
 router = APIRouter(prefix="/internal/health", tags=["internal"])
-
-
-def require_npbb_user(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    """Allow access only to authenticated NPBB users.
-
-    Args:
-        current_user: Authenticated user resolved from bearer token.
-
-    Returns:
-        Current user when role is NPBB.
-
-    Raises:
-        HTTPException: When user is not NPBB.
-    """
-
-    if current_user.tipo_usuario != UsuarioTipo.NPBB:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Acesso restrito a usuarios NPBB"},
-        )
-    return current_user
 
 
 def _validate_pagination(limit: int, offset: int) -> None:

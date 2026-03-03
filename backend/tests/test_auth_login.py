@@ -74,6 +74,7 @@ def test_login_success(client, engine):
     assert data["user"]["id"] == user.id
     assert data["user"]["email"] == user.email
     assert data["access_token"]
+    assert "npbb_access_token" in response.cookies
 
 
 def test_login_invalid_credentials(client, engine):
@@ -169,3 +170,42 @@ def test_me_with_valid_token(client, engine):
 def test_me_without_token(client):
     me_resp = client.get("/auth/me")
     assert me_resp.status_code == 401
+
+
+def test_me_with_cookie_token(client, engine):
+    user = seed_user(engine, email="cookie@example.com")
+    login_resp = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    cookie = login_resp.cookies.get("npbb_access_token")
+    assert cookie
+    me_resp = client.get("/auth/me", cookies={"npbb_access_token": cookie})
+    assert me_resp.status_code == 200
+    assert me_resp.json()["id"] == user.id
+
+
+def test_logout_clears_session_cookie(client, engine):
+    user = seed_user(engine, email="logout@example.com")
+    login_resp = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    cookie = login_resp.cookies.get("npbb_access_token")
+    assert cookie
+    logout_resp = client.post("/auth/logout", cookies={"npbb_access_token": cookie})
+    assert logout_resp.status_code == 204
+
+
+def test_refresh_renews_cookie(client, engine):
+    user = seed_user(engine, email="refresh@example.com")
+    login_resp = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    cookie = login_resp.cookies.get("npbb_access_token")
+    assert cookie
+    refresh_resp = client.post("/auth/refresh", cookies={"npbb_access_token": cookie})
+    assert refresh_resp.status_code == 200
+    assert refresh_resp.json()["access_token"]
+    assert refresh_resp.cookies.get("npbb_access_token")

@@ -12,8 +12,6 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
-import sys
 from typing import Any, Mapping, Optional
 
 import sqlalchemy as sa
@@ -467,13 +465,7 @@ def build_coverage_health_payload(
         ModuleNotFoundError: If coverage module cannot be imported after fallback.
     """
 
-    try:
-        from etl.validate.coverage_matrix import build_coverage_matrix_payload
-    except ModuleNotFoundError:  # pragma: no cover - runtime path fallback
-        project_root = Path(__file__).resolve().parents[3]
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
-        from etl.validate.coverage_matrix import build_coverage_matrix_payload
+    from etl.validate.coverage_matrix import build_coverage_matrix_payload
 
     return build_coverage_matrix_payload(session, event_id=event_id)
 
@@ -496,12 +488,6 @@ def build_health_alerts(
         ModuleNotFoundError: If alert module cannot be imported after fallback.
     """
 
-    try:
-        from etl.validate.alerts import alerts_to_dicts, generate_alerts
-    except ModuleNotFoundError:  # pragma: no cover - runtime path fallback
-        project_root = Path(__file__).resolve().parents[3]
-        if str(project_root) not in sys.path:
-            sys.path.insert(0, str(project_root))
-        from etl.validate.alerts import alerts_to_dicts, generate_alerts
+    from etl.validate.alerts import alerts_to_dicts, generate_alerts
 
     return alerts_to_dicts(generate_alerts(health_payload, coverage_payload))

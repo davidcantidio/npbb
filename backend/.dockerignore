@@ -1,0 +1,9 @@
+.env
+.env.*
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+app.db
+node_modules
+tests/__pycache__

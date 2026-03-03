@@ -9,80 +9,41 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
-import sys
 from typing import Any
 from uuid import uuid4
 
-try:  # pragma: no cover - import style depends on execution cwd
-    from etl.extract.ai.s1_core import (
-        S1AIExtractCoreError,
-        S1AIExtractCoreInput,
-        execute_s1_ai_extract_main_flow,
-    )
-    from etl.extract.ai.s1_scaffold import (
-        S1AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s2_scaffold import (
-        S2AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s2_core import (
-        S2AIExtractCoreError,
-        S2AIExtractCoreInput,
-        execute_s2_ai_extract_main_flow,
-    )
-    from etl.extract.ai.s3_scaffold import (
-        S3AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s4_core import (
-        S4AIExtractCoreError,
-        S4AIExtractCoreInput,
-        execute_s4_ai_extract_main_flow,
-    )
-    from etl.extract.ai.s4_scaffold import (
-        S4AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s3_core import (
-        S3AIExtractCoreError,
-        S3AIExtractCoreInput,
-        execute_s3_ai_extract_main_flow,
-    )
-except ModuleNotFoundError:  # pragma: no cover
-    npbb_root = Path(__file__).resolve().parents[3]
-    if str(npbb_root) not in sys.path:
-        sys.path.insert(0, str(npbb_root))
-    from etl.extract.ai.s1_core import (
-        S1AIExtractCoreError,
-        S1AIExtractCoreInput,
-        execute_s1_ai_extract_main_flow,
-    )
-    from etl.extract.ai.s1_scaffold import (
-        S1AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s2_scaffold import (
-        S2AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s2_core import (
-        S2AIExtractCoreError,
-        S2AIExtractCoreInput,
-        execute_s2_ai_extract_main_flow,
-    )
-    from etl.extract.ai.s3_scaffold import (
-        S3AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s4_core import (
-        S4AIExtractCoreError,
-        S4AIExtractCoreInput,
-        execute_s4_ai_extract_main_flow,
-    )
-    from etl.extract.ai.s4_scaffold import (
-        S4AIExtractScaffoldRequest,
-    )
-    from etl.extract.ai.s3_core import (
-        S3AIExtractCoreError,
-        S3AIExtractCoreInput,
-        execute_s3_ai_extract_main_flow,
-    )
+from etl.extract.ai.s1_core import (
+    S1AIExtractCoreError,
+    S1AIExtractCoreInput,
+    execute_s1_ai_extract_main_flow,
+)
+from etl.extract.ai.s1_scaffold import (
+    S1AIExtractScaffoldRequest,
+)
+from etl.extract.ai.s2_core import (
+    S2AIExtractCoreError,
+    S2AIExtractCoreInput,
+    execute_s2_ai_extract_main_flow,
+)
+from etl.extract.ai.s2_scaffold import (
+    S2AIExtractScaffoldRequest,
+)
+from etl.extract.ai.s3_core import (
+    S3AIExtractCoreError,
+    S3AIExtractCoreInput,
+    execute_s3_ai_extract_main_flow,
+)
+from etl.extract.ai.s3_scaffold import (
+    S3AIExtractScaffoldRequest,
+)
+from etl.extract.ai.s4_core import (
+    S4AIExtractCoreError,
+    S4AIExtractCoreInput,
+    execute_s4_ai_extract_main_flow,
+)
+from etl.extract.ai.s4_scaffold import (
+    S4AIExtractScaffoldRequest,
+)
 
 
 logger = logging.getLogger("app.services.etl_extract_ai")

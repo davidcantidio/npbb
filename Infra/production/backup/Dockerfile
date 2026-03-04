@@ -8,4 +8,7 @@ COPY crontab /etc/cron.template
 
 RUN chmod +x /usr/local/bin/backup.sh /usr/local/bin/start-crond.sh
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=5 \
+  CMD sh -c "ps | grep '[c]rond' >/dev/null && test -s /etc/crontabs/root"
+
 CMD ["/usr/local/bin/start-crond.sh"]

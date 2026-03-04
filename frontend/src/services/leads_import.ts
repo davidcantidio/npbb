@@ -1,4 +1,4 @@
-﻿import { API_BASE_URL, fetchWithAuth, handleApiResponse } from "./http";
+import { fetchWithAuth, handleApiResponse } from "./http";
 
 /**
  * Suggested mapping between an imported column and a canonical lead field.
@@ -26,6 +26,42 @@ export type LeadImportPreview = {
     canonical_value?: string | null;
     evento_id?: number | null;
   } | null>;
+};
+
+export type LeadImportEtlSeverity = "error" | "warning" | "info";
+
+export type LeadImportEtlDQCheckResult = {
+  check_name: string;
+  severity: LeadImportEtlSeverity;
+  affected_rows: number;
+  sample: Array<Record<string, unknown>>;
+  check_id?: string | null;
+  message?: string | null;
+};
+
+export type LeadImportEtlPreview = {
+  session_token: string;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  dq_report: LeadImportEtlDQCheckResult[];
+};
+
+// Kept for compatibility with existing imports/tests.
+export type LeadImportEtlPreviewResponse = LeadImportEtlPreview;
+
+export type LeadImportEtlResult = {
+  session_token: string;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: number;
+  strict: boolean;
+  status: "previewed" | "committed" | "expired" | "rejected";
+  dq_report: LeadImportEtlDQCheckResult[];
 };
 
 /**
@@ -75,7 +111,7 @@ export async function previewLeadImport(
   form.append("file", file);
   form.append("sample_rows", String(sampleRows));
 
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/import/preview`, {
+  const res = await fetchWithAuth("/leads/import/preview", {
     method: "POST",
     token,
     body: form,
@@ -83,6 +119,51 @@ export async function previewLeadImport(
     retries: 0,
   });
   return handleApiResponse<LeadImportPreview>(res);
+}
+
+export async function previewLeadImportEtl(
+  token: string,
+  file: File,
+  eventoId: number,
+  strict = false,
+): Promise<LeadImportEtlPreview> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("evento_id", String(eventoId));
+  form.append("strict", String(strict));
+
+  const res = await fetchWithAuth("/leads/import/etl/preview", {
+    method: "POST",
+    token,
+    body: form,
+    timeoutMs: 60_000,
+    retries: 0,
+  });
+  return handleApiResponse<LeadImportEtlPreview>(res);
+}
+
+export async function commitLeadImportEtl(
+  token: string,
+  sessionToken: string,
+  eventoId: number,
+  forceWarnings = false,
+  strict = false,
+): Promise<LeadImportEtlResult> {
+  const res = await fetchWithAuth("/leads/import/etl/commit", {
+    method: "POST",
+    token,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      session_token: sessionToken,
+      evento_id: eventoId,
+      force_warnings: forceWarnings,
+      strict,
+    }),
+    retries: 0,
+  });
+  return handleApiResponse<LeadImportEtlResult>(res);
 }
 
 /**
@@ -96,7 +177,7 @@ export async function validateLeadMapping(
   token: string,
   mappings: LeadImportSuggestion[],
 ): Promise<{ ok: boolean }> {
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/import/validate`, {
+  const res = await fetchWithAuth("/leads/import/validate", {
     method: "POST",
     token,
     headers: {
@@ -115,7 +196,7 @@ export async function validateLeadMapping(
  * @throws Error When request fails.
  */
 export async function listReferenciaEventos(token: string): Promise<Array<{ id: number; nome: string }>> {
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/referencias/eventos`, { token });
+  const res = await fetchWithAuth("/leads/referencias/eventos", { token });
   return handleApiResponse<Array<{ id: number; nome: string }>>(res);
 }
 
@@ -126,7 +207,7 @@ export async function listReferenciaEventos(token: string): Promise<Array<{ id: 
  * @throws Error When request fails.
  */
 export async function listReferenciaCidades(token: string): Promise<string[]> {
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/referencias/cidades`, { token });
+  const res = await fetchWithAuth("/leads/referencias/cidades", { token });
   return handleApiResponse<string[]>(res);
 }
 
@@ -137,7 +218,7 @@ export async function listReferenciaCidades(token: string): Promise<string[]> {
  * @throws Error When request fails.
  */
 export async function listReferenciaEstados(token: string): Promise<string[]> {
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/referencias/estados`, { token });
+  const res = await fetchWithAuth("/leads/referencias/estados", { token });
   return handleApiResponse<string[]>(res);
 }
 
@@ -148,7 +229,7 @@ export async function listReferenciaEstados(token: string): Promise<string[]> {
  * @throws Error When request fails.
  */
 export async function listReferenciaGeneros(token: string): Promise<string[]> {
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/referencias/generos`, { token });
+  const res = await fetchWithAuth("/leads/referencias/generos", { token });
   return handleApiResponse<string[]>(res);
 }
 
@@ -170,7 +251,7 @@ export async function createLeadAlias(
   canonical_value?: string | null;
   evento_id?: number | null;
 }> {
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/aliases`, {
+  const res = await fetchWithAuth("/leads/aliases", {
     method: "POST",
     token,
     headers: {
@@ -202,7 +283,7 @@ export async function runLeadImport(
   form.append("mappings_json", JSON.stringify(mappings));
   if (fonte_origem) form.append("fonte_origem", fonte_origem);
 
-  const res = await fetchWithAuth(`${API_BASE_URL}/leads/import`, {
+  const res = await fetchWithAuth("/leads/import", {
     method: "POST",
     token,
     body: form,
@@ -226,7 +307,7 @@ export async function listLeads(
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
-  const url = `${API_BASE_URL}/leads${qs.toString() ? `?${qs}` : ""}`;
+  const url = `/leads${qs.toString() ? `?${qs}` : ""}`;
 
   const res = await fetchWithAuth(url, { token });
   return handleApiResponse<LeadListResponse>(res);

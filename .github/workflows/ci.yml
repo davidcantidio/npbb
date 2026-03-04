@@ -31,39 +31,20 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Frontend lint
-        working-directory: frontend
-        run: npm run lint
-
-      - name: Frontend typecheck
-        working-directory: frontend
-        run: npm run typecheck
-
-      - name: Frontend tests
-        working-directory: frontend
-        run: npm run test -- --run
-
       - name: Install backend deps
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt ruff pip-audit
 
-      - name: Backend lint
-        working-directory: backend
-        run: ruff check app tests
+      - name: Eval integrations gate
+        run: make eval-integrations
 
-      - name: Backend tests
-        working-directory: backend
-        env:
-          SECRET_KEY: ci-secret-key
-        run: python -m pytest -q
+      - name: CI quality gate
+        run: make ci-quality
 
-      - name: Architecture guards
-        run: ./scripts/check_architecture_guards.sh
-
-      - name: Repo hygiene guards
-        run: ./scripts/check_repo_hygiene.sh
+      - name: Production stack contract guards
+        run: ./scripts/check_production_stack_contracts.sh
 
       - name: Python dependency audit
         working-directory: backend

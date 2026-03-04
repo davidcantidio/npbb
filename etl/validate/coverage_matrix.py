@@ -50,7 +50,9 @@ except ModuleNotFoundError:  # pragma: no cover
     )
 
 
-DEFAULT_DATASETS_CONFIG_PATH = Path(__file__).resolve().parent / "config" / "datasets.yml"
+DEFAULT_DATASETS_CONFIG_PATH = (
+    Path(__file__).resolve().parents[2] / "core" / "leads_etl" / "validate" / "config" / "datasets.yml"
+)
 
 
 class CoverageMatrixConfigError(ValueError):

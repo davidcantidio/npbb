@@ -1,6 +1,8 @@
 # Deploy Hostinger VPS
 
-Guia oficial para publicar o NPBB em uma VPS Hostinger com `Docker Compose`, `Postgres` local e `Cloudflare` apenas na borda no cutover final.
+Guia oficial para publicar o NPBB em uma VPS Hostinger com `Docker Compose`, `Postgres` local, frontend estatico servido diretamente pelo `nginx` e TLS com `Certbot` / Let's Encrypt.
+
+Na stack atual, o servico `nginx` cumpre o papel de edge da arquitetura.
 
 ## 1) Layout esperado na VPS
 
@@ -8,43 +10,34 @@ Guia oficial para publicar o NPBB em uma VPS Hostinger com `Docker Compose`, `Po
 /opt/npbb/app                  # clone do repositorio
 /opt/npbb/env/.env.production  # variaveis de ambiente
 /opt/npbb/backups/postgres     # dumps locais
-/opt/npbb/certs                # certificados origin do Cloudflare
+/opt/npbb/backups/archive      # copia externa montada no host
+/etc/letsencrypt               # certificados do Certbot
 ```
 
 ## 2) Bootstrap inicial da VPS
 
-Com acesso `root`:
+Use `root` apenas para o bootstrap inicial.
 
 ```bash
 apt-get update
-apt-get install -y ca-certificates curl git ufw
-
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
-
-. /etc/os-release
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
-  > /etc/apt/sources.list.d/docker.list
-
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-adduser --disabled-password --gecos "" deploy
-usermod -aG docker deploy
-install -o deploy -g deploy -d /opt/npbb/app /opt/npbb/env /opt/npbb/backups/postgres /opt/npbb/certs
-
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw --force enable
+apt-get install -y git
+rm -rf /root/npbb-bootstrap
+git clone <repo> /root/npbb-bootstrap
+bash /root/npbb-bootstrap/Infra/production/scripts/init-vps.sh
 ```
 
-Recomendado apos o bootstrap:
+Esse bootstrap:
+- instala dependencias base de host, Docker e Docker Compose plugin;
+- cria `deploy`, adiciona ao grupo `docker` e provisiona diretorios em `/opt/npbb`;
+- habilita `ufw` (`22/80/443`) e `fail2ban`.
+
+Passos obrigatorios apos o bootstrap:
 - adicionar sua chave SSH em `/home/deploy/.ssh/authorized_keys`;
-- desabilitar login por senha assim que o acesso por chave estiver funcionando.
+- validar login com `deploy`;
+- desabilitar login por senha assim que o acesso por chave estiver funcionando;
+- montar o volume externo de backup em `/opt/npbb/backups/archive`.
+
+Nao use root como fluxo normal de deploy ou operacao.
 
 ## 3) Preparar o repositorio e o env
 
@@ -52,93 +45,121 @@ Recomendado apos o bootstrap:
 sudo -u deploy git clone <repo> /opt/npbb/app
 cd /opt/npbb/app
 cp Infra/production/.env.example /opt/npbb/env/.env.production
+mkdir -p /opt/npbb/app/frontend/dist
 ```
 
 Edite `/opt/npbb/env/.env.production`:
+
 - na fase IP, mantenha:
   - `DEPLOY_MODE=ip`
   - `ENABLE_TLS=false`
-  - `VITE_API_BASE_URL=http://187.77.51.117/api`
-  - `FRONTEND_ORIGIN=http://187.77.51.117`
-  - `PUBLIC_APP_BASE_URL=http://187.77.51.117`
-  - `PUBLIC_LANDING_BASE_URL=http://187.77.51.117`
-  - `PUBLIC_API_DOC_URL=http://187.77.51.117/api/docs`
-  - `PASSWORD_RESET_URL=http://187.77.51.117/reset-password`
+  - `VITE_API_BASE_URL=http://SEU_IP/api`
+  - `FRONTEND_ORIGIN=http://SEU_IP`
+  - `PUBLIC_APP_BASE_URL=http://SEU_IP`
+  - `PUBLIC_LANDING_BASE_URL=http://SEU_IP`
+  - `PUBLIC_API_DOC_URL=http://SEU_IP/api/docs`
+  - `PASSWORD_RESET_URL=http://SEU_IP/reset-password`
   - `API_ROOT_PATH=/api`
+- para o dominio final:
+  - `DEPLOY_MODE=domain`
+  - `ENABLE_TLS=true`
+  - `APP_DOMAIN=app.seu-dominio.com`
+  - `VITE_API_BASE_URL=https://app.seu-dominio.com/api`
+  - `FRONTEND_ORIGIN=https://app.seu-dominio.com`
+  - `PUBLIC_APP_BASE_URL=https://app.seu-dominio.com`
+  - `PUBLIC_LANDING_BASE_URL=https://app.seu-dominio.com`
+  - `PUBLIC_API_DOC_URL=https://app.seu-dominio.com/api/docs`
+  - `PASSWORD_RESET_URL=https://app.seu-dominio.com/reset-password`
+  - `COOKIE_SECURE=true`
 - configure `POSTGRES_PASSWORD`, `SECRET_KEY`, `PASSWORD_RESET_TOKEN_SECRET`;
 - configure `SMTP_*` da Hostinger;
-- opcionalmente configure `SMOKE_LOGIN_EMAIL` e `SMOKE_LOGIN_PASSWORD` para smoke autenticado.
+- configure `BACKUP_EXTERNAL_HOST_DIR=/opt/npbb/backups/archive`;
+- configure `SMOKE_LOGIN_EMAIL` e `SMOKE_LOGIN_PASSWORD` se quiser smoke autenticado.
 
-## 4) Deploy da stack
+## 4) Emitir certificado TLS
+
+Depois que o DNS estiver apontando para a VPS:
+
+```bash
+certbot certonly --standalone -d app.seu-dominio.com
+```
+
+Use os paths gerados pelo Certbot no env:
+
+```bash
+TLS_CERT_PATH=/etc/letsencrypt/live/app.seu-dominio.com/fullchain.pem
+TLS_KEY_PATH=/etc/letsencrypt/live/app.seu-dominio.com/privkey.pem
+CERTS_DIR=/etc/letsencrypt
+```
+
+## 5) Deploy manual da stack
 
 No host:
 
 ```bash
 cd /opt/npbb/app
+./scripts/deploy_vps.sh --check-only /opt/npbb/env/.env.production
 ./scripts/deploy_vps.sh /opt/npbb/env/.env.production
+./scripts/check_vps_health.sh /opt/npbb/env/.env.production
+./scripts/smoke_vps.sh /opt/npbb/env/.env.production
 ```
 
 O script:
-- valida o env;
+- valida o env e contratos da stack no preflight;
+- exige `frontend/dist/index.html` sincronizado no host;
 - faz `docker compose config`;
-- builda `api`, `web` e `edge`;
-- sobe `postgres`, `api`, `web`, `edge` e `backup`.
+- builda `backend`, `nginx` e `backup`;
+- sobe `db`, `backend`, `nginx` e `backup`.
 
-## 5) Validacao da fase IP
+## 6) Deploy automatico via GitHub Actions
+
+Segredos obrigatorios em `Settings -> Secrets and variables -> Actions`:
+- `VPS_HOST`
+- `VPS_USER`
+- `VPS_SSH_KEY`
+- `VPS_PORT`
+- `VPS_DEPLOY_PATH`
+
+O workflow `.github/workflows/deploy.yml`:
+- dispara apenas quando o workflow `CI` conclui com sucesso em `main`;
+- faz checkout do `head_sha` aprovado;
+- builda `frontend/dist`;
+- sincroniza `frontend/dist` para `${VPS_DEPLOY_PATH}/frontend/dist`;
+- executa `git checkout --force <sha>` no host, `./scripts/deploy_vps.sh`, `alembic upgrade head`, `./scripts/check_vps_health.sh` e `./scripts/smoke_vps.sh`.
+
+## 7) DNS e Cloudflare
+
+Use Cloudflare apenas como DNS:
+
+1. crie registro `A` para `app` apontando para o IP da VPS;
+2. deixe o registro em modo `DNS only`;
+3. mantenha o SSL/TLS do Cloudflare desabilitado ou em modo compativel com origem direta, sem proxy.
+
+## 8) Rollback por commit SHA
+
+Rollback manual:
 
 ```bash
 cd /opt/npbb/app
-./scripts/smoke_vps.sh /opt/npbb/env/.env.production
-```
-
-Checks obrigatorios:
-- `http://187.77.51.117/api/health`
-- `http://187.77.51.117/api/docs`
-- `http://187.77.51.117/`
-- `http://187.77.51.117/eventos`
-- login e rotas autenticadas, se `SMOKE_LOGIN_*` estiverem preenchidos
-
-## 6) Restore de banco para ensaio ou cutover
-
-Veja o runbook em [RUNBOOK_RESTORE_POSTGRES_VPS.md](/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/docs/RUNBOOK_RESTORE_POSTGRES_VPS.md).
-
-## 7) Cutover final para dominio + Cloudflare
-
-Quando o dominio estiver pronto:
-
-1. Copie o certificado origin do Cloudflare para `/opt/npbb/certs/origin.crt` e `/opt/npbb/certs/origin.key`.
-2. Atualize o env:
-   - `DEPLOY_MODE=domain`
-   - `ENABLE_TLS=true`
-   - `APP_DOMAIN=app.seu-dominio.com`
-   - `API_DOMAIN=api.seu-dominio.com`
-   - `VITE_API_BASE_URL=https://api.seu-dominio.com`
-   - `FRONTEND_ORIGIN=https://app.seu-dominio.com`
-   - `PUBLIC_APP_BASE_URL=https://app.seu-dominio.com`
-   - `PUBLIC_LANDING_BASE_URL=https://app.seu-dominio.com`
-   - `PUBLIC_API_DOC_URL=https://api.seu-dominio.com/docs`
-   - `PASSWORD_RESET_URL=https://app.seu-dominio.com/reset-password`
-   - `API_ROOT_PATH=`
-   - `COOKIE_SECURE=true`
-3. Refaça o deploy:
-
-```bash
+git fetch origin
+git checkout --force <SHA_ANTERIOR>
 ./scripts/deploy_vps.sh /opt/npbb/env/.env.production
+docker compose --env-file /opt/npbb/env/.env.production -f Infra/production/docker-compose.yml exec -T backend alembic upgrade head
+./scripts/check_vps_health.sh /opt/npbb/env/.env.production
 ./scripts/smoke_vps.sh /opt/npbb/env/.env.production
 ```
 
-4. No Cloudflare:
-   - crie `A` records para `app` e `api` apontando para `187.77.51.117`;
-   - marque ambos como `proxied`;
-   - SSL/TLS em `Full (strict)`.
+Rollback via GitHub Actions:
+- reexecute o workflow de deploy apontando para um `head_sha` anterior em `main`;
+- confirme que o `dist` sincronizado e o checkout remoto correspondem ao mesmo SHA.
 
-## 8) Operacao diaria
-
-Deploy recorrente:
+## 9) Operacao diaria
 
 ```bash
 cd /opt/npbb/app
 git pull
 ./scripts/deploy_vps.sh /opt/npbb/env/.env.production
+./scripts/check_vps_health.sh /opt/npbb/env/.env.production
 ./scripts/smoke_vps.sh /opt/npbb/env/.env.production
+./scripts/restore_backup_drill.sh /opt/npbb/env/.env.production
 ```

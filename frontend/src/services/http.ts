@@ -1,5 +1,9 @@
+const rawApiBaseUrl = typeof import.meta.env.VITE_API_BASE_URL === "string"
+  ? import.meta.env.VITE_API_BASE_URL.trim()
+  : "";
+
 /** Base URL for all backend requests in frontend services. */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+export const API_BASE_URL = (rawApiBaseUrl || "/api").replace(/\/+$/, "");
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_RETRY_DELAY_MS = 400;

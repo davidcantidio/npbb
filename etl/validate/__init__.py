@@ -9,6 +9,7 @@ from .framework import (
     CheckStatus,
     Severity,
     parse_fail_on,
+    persist_check_results,
     render_report_json,
     render_report_markdown,
 )
@@ -26,7 +27,7 @@ from .checks_schema import (
 )
 from .checks_not_null import NotNullCheck, build_not_null_checks
 from .checks_duplicates import DuplicateCheck, DuplicateCheckSpec, build_duplicate_checks
-from .checks_access_control import AccessControlReconciliationCheck
+from .checks_access_control import AccessControlReconciliationCheck, AccessControlRuleFinding
 from .checks_show_access_control import MissingShowAccessControlCheck, ShowAccessControlFinding
 from .checks_show_optin import MissingShowOptInCheck, ShowOptInFinding
 from .checks_percentages import (
@@ -92,6 +93,7 @@ __all__ = [
     "CheckRunner",
     "CheckReport",
     "parse_fail_on",
+    "persist_check_results",
     "render_report_json",
     "render_report_markdown",
     "build_session_coverage_report_payload",
@@ -104,6 +106,7 @@ __all__ = [
     "DuplicateCheck",
     "DuplicateCheckSpec",
     "AccessControlReconciliationCheck",
+    "AccessControlRuleFinding",
     "MissingShowAccessControlCheck",
     "ShowAccessControlFinding",
     "MissingShowOptInCheck",

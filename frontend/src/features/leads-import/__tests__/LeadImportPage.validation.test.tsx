@@ -10,6 +10,8 @@ import {
   listReferenciaEstados,
   listReferenciaEventos,
   listReferenciaGeneros,
+  previewLeadImportEtl,
+  commitLeadImportEtl,
   previewLeadImport,
   runLeadImport,
   validateLeadMapping,
@@ -19,6 +21,8 @@ vi.mock("../../../store/auth", () => ({ useAuth: vi.fn() }));
 
 vi.mock("../../../services/leads_import", () => ({
   previewLeadImport: vi.fn(),
+  previewLeadImportEtl: vi.fn(),
+  commitLeadImportEtl: vi.fn(),
   validateLeadMapping: vi.fn(),
   runLeadImport: vi.fn(),
   listReferenciaEventos: vi.fn(),
@@ -31,6 +35,8 @@ vi.mock("../../../services/leads_import", () => ({
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedPreviewLeadImport = vi.mocked(previewLeadImport);
+const mockedPreviewLeadImportEtl = vi.mocked(previewLeadImportEtl);
+const mockedCommitLeadImportEtl = vi.mocked(commitLeadImportEtl);
 const mockedValidateLeadMapping = vi.mocked(validateLeadMapping);
 const mockedRunLeadImport = vi.mocked(runLeadImport);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
@@ -59,6 +65,26 @@ function setupDefaultMocks() {
   mockedListLeads.mockResolvedValue({ page: 1, page_size: 20, total: 0, items: [] });
   mockedValidateLeadMapping.mockResolvedValue({ ok: true });
   mockedRunLeadImport.mockResolvedValue({ filename: "ok.csv", created: 1, updated: 0, skipped: 0 });
+  mockedPreviewLeadImportEtl.mockResolvedValue({
+    session_token: "etl-1",
+    total_rows: 0,
+    valid_rows: 0,
+    invalid_rows: 0,
+    dq_report: [],
+  });
+  mockedCommitLeadImportEtl.mockResolvedValue({
+    session_token: "etl-1",
+    total_rows: 0,
+    valid_rows: 0,
+    invalid_rows: 0,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    errors: 0,
+    strict: false,
+    status: "committed",
+    dq_report: [],
+  });
   mockedCreateLeadAlias.mockResolvedValue({
     id: 1,
     tipo: "EVENTO",
@@ -73,6 +99,17 @@ describe("LeadImportPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
+  });
+
+  it("renders tabs with legacy as default", async () => {
+    render(<LeadImportPage />);
+
+    const legacyTab = await screen.findByRole("tab", { name: "Importacao" });
+    const etlTab = await screen.findByRole("tab", { name: "Importacao avancada" });
+
+    expect(legacyTab).toBeInTheDocument();
+    expect(etlTab).toBeInTheDocument();
+    expect(legacyTab).toHaveAttribute("aria-selected", "true");
   });
 
   it("blocks invalid file extension before preview request", async () => {
@@ -172,4 +209,3 @@ describe("LeadImportPage", () => {
     expect(await screen.findByText("Importacao concluida")).toBeInTheDocument();
   });
 });
-

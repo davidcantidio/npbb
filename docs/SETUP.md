@@ -4,33 +4,51 @@ Este guia cobre o setup completo. Se quiser apenas o caminho feliz, veja o READM
 
 ## TL;DR (caminho feliz)
 ```bash
+# backend (raiz do repo)
+source backend/.venv/bin/activate
+./scripts/dev_backend.sh
+
 # backend
 cd backend
-python -m venv .venv
-.\.venv\Scripts\activate
+brew install postgresql@16
+brew services start postgresql@16
+/opt/homebrew/opt/postgresql@16/bin/createdb npbb  # execute uma vez (ignore se ja existir)
+/opt/homebrew/bin/python3.12 -m venv .venv  # macOS/Homebrew
+# python -m venv .venv  # Linux/Windows
+source .venv/bin/activate  # Linux/macOS
+# .\.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 copy .env.example .env
-python -m uvicorn app.main:app --reload
+PYTHONPATH=.. python -m uvicorn app.main:app --reload
+# alternativa: ./scripts/dev_api.sh
 
 # frontend (em outro terminal)
 cd frontend
 npm install
-copy .env.example .env
+# opcional: copy .env.example .env
 npm run dev
 ```
 
 ## Pre-requisitos
 - Python **3.12**
 - Node.js **18+**
-- Postgres (ou Supabase)
+- Postgres local (Homebrew `postgresql@16`)
 
 ## Backend
+### 0) Preparar Postgres local (macOS/Homebrew)
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+/opt/homebrew/opt/postgresql@16/bin/createdb npbb  # execute uma vez (ignore se ja existir)
+```
+
 ### 1) Criar ambiente virtual e instalar deps
 ```bash
 cd backend
-python -m venv .venv
-.\.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/macOS
+/opt/homebrew/bin/python3.12 -m venv .venv  # macOS/Homebrew
+# python -m venv .venv  # Linux/Windows
+source .venv/bin/activate  # Linux/macOS
+# .\.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
@@ -43,8 +61,8 @@ copy .env.example .env  # Windows
 
 Exemplo (sem PII, substitua pelos seus valores):
 ```env
-DATABASE_URL="postgresql+psycopg2://user:password@host:5432/postgres?sslmode=require"
-DIRECT_URL="postgresql+psycopg2://user:password@host:5432/postgres?sslmode=require"
+DATABASE_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
+DIRECT_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
 SECRET_KEY="change-me"
 FRONTEND_ORIGIN="http://localhost:5173"
 EMAIL_BACKEND="console"
@@ -53,14 +71,33 @@ PASSWORD_RESET_DEBUG="false"
 
 Observacoes:
 - `DATABASE_URL` e a conexao usada pela API.
-- `DIRECT_URL` e a conexao direta para migrations/seed (recomendado no Supabase).
+- `DIRECT_URL` e a conexao direta para migrations/seed.
 - O backend aceita variaveis separadas (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`) como fallback.
 - Em testes, o backend permite SQLite se `TESTING=true` ou `PYTEST_CURRENT_TEST` estiver setado.
+- Para startup local, rode com `PYTHONPATH=..` (ou use `./scripts/dev_api.sh`) porque o backend importa o pacote compartilhado `core/`.
 
 ### 3) Rodar a API
+Opcao A (raiz do repo, oficial):
 ```bash
-python -m uvicorn app.main:app --reload
+source backend/.venv/bin/activate
+./scripts/dev_backend.sh
 ```
+
+Opcao B (dentro de `backend/`, oficial):
+```bash
+PYTHONPATH=.. python -m uvicorn app.main:app --reload
+# alternativa:
+./scripts/dev_api.sh
+```
+
+Opcao tecnica alternativa (raiz):
+```bash
+source backend/.venv/bin/activate
+PYTHONPATH=. uvicorn app.main:app --reload --app-dir backend
+```
+
+Importante:
+- `uvicorn app.main:app --reload` na raiz, sem `PYTHONPATH` e sem `--app-dir backend`, nao e suportado.
 
 ### 4) Migrations (dev)
 ```bash
@@ -88,8 +125,12 @@ copy .env.example .env  # Windows
 
 Exemplo:
 ```env
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=/api
 ```
+
+Observacao:
+- Em dev local, o Vite faz proxy de `/api/*` para `http://localhost:8000/*` (com rewrite de prefixo).  
+- Se `VITE_API_BASE_URL` nao for definido, o frontend usa `/api` por padrao.
 
 ### 3) Rodar o front
 ```bash
@@ -97,7 +138,8 @@ npm run dev
 ```
 
 ## Comandos rapidos
-- Backend: `python -m uvicorn app.main:app --reload`
+- Backend (raiz): `./scripts/dev_backend.sh`
+- Backend (pasta backend): `PYTHONPATH=.. python -m uvicorn app.main:app --reload` (ou `./scripts/dev_api.sh`)
 - Tests (backend): `python -m pytest -q`
 - Tests (frontend): `npm test -- --run`
 - Lint (frontend): `npm run lint`

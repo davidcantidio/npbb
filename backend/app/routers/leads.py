@@ -16,9 +16,9 @@ import httpx
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from openpyxl import load_workbook
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
@@ -27,12 +27,27 @@ from app.modules.leads_publicidade.application.leads_import_usecases import (
     preview_import_sample_usecase,
     validar_mapeamento_usecase,
 )
+from app.modules.leads_publicidade.application.leads_import_etl_usecases import (
+    commit_leads_with_etl,
+    import_leads_with_etl,
+)
+from app.modules.leads_publicidade.application.etl_import.exceptions import (
+    EtlImportContractError,
+    EtlImportValidationError,
+    EtlPreviewSessionConflictError,
+    EtlPreviewSessionNotFoundError,
+)
+from app.modules.leads_publicidade.application.etl_import.persistence import (
+    build_dedupe_key,
+    find_existing_lead,
+    merge_lead,
+    persist_lead_batch,
+)
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
+from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
 from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListResponse
 from app.utils.http_errors import raise_http_error
-from app.utils.log_sanitize import sanitize_exception
-from app.utils.lead_import_normalize import coerce_field
 from app.utils.text_normalize import normalize_text
 from app.utils.fuzzy_match import best_match
 
@@ -79,157 +94,22 @@ def _fetch_cep_data(cep: str) -> dict[str, str] | None:
 
 
 def _find_existing_lead(session: Session, payload: dict[str, object]) -> Lead | None:
-    email = payload.get("email")
-    cpf = payload.get("cpf")
-    if not email and not cpf:
-        return None
-
-    filters = []
-    if email and cpf:
-        filters.append(Lead.email == email)
-        filters.append(Lead.cpf == cpf)
-    elif email:
-        filters.append(Lead.email == email)
-    else:
-        filters.append(Lead.cpf == cpf)
-
-    evento_nome = payload.get("evento_nome")
-    sessao = payload.get("sessao")
-    if evento_nome is not None:
-        filters.append(Lead.evento_nome == evento_nome)
-    if sessao is not None:
-        filters.append(Lead.sessao == sessao)
-
-    return session.exec(select(Lead).where(*filters)).first()
+    return find_existing_lead(session, payload)
 
 
 def _dedupe_key(payload: dict[str, object]) -> str | None:
-    email = payload.get("email") or ""
-    cpf = payload.get("cpf") or ""
-    if not email and not cpf:
-        return None
-    evento_nome = payload.get("evento_nome") or ""
-    sessao = payload.get("sessao") or ""
-    return f"{email}|{cpf}|{evento_nome}|{sessao}"
+    return build_dedupe_key(payload)
 
 
 def _merge_lead(existing: Lead, payload: dict[str, object]) -> None:
-    for key, value in payload.items():
-        if value is None:
-            continue
-        if key in {"email", "cpf"}:
-            if getattr(existing, key):
-                continue
-            setattr(existing, key, value)
-            continue
-        if key == "fonte_origem":
-            if getattr(existing, key):
-                continue
-            setattr(existing, key, value)
-            continue
-        setattr(existing, key, value)
+    merge_lead(existing, payload)
 
 
 def _process_batch(
     session: Session,
     batch: list[tuple[dict[str, object], int] | None],
 ) -> tuple[int, int, int, bool]:
-    created = 0
-    updated = 0
-    skipped = 0
-    has_errors = False
-    new_objects: list[Lead] = []
-    update_objects: list[Lead] = []
-    lead_cache: dict[str, Lead] = {}
-
-    for item in batch:
-        if not item:
-            continue
-        payload, row_number = item
-        key = _dedupe_key(payload)
-        existing = lead_cache.get(key) if key else None
-        if existing is None:
-            existing = _find_existing_lead(session, payload)
-            if existing and key:
-                lead_cache[key] = existing
-        if existing:
-            _merge_lead(existing, payload)
-            update_objects.append(existing)
-            continue
-        new_objects.append(Lead(**payload))
-
-    try:
-        if new_objects:
-            session.bulk_save_objects(new_objects)
-            created += len(new_objects)
-        if update_objects:
-            session.add_all(update_objects)
-            updated += len(update_objects)
-        session.commit()
-        return created, updated, skipped, has_errors
-    except Exception as exc:
-        session.rollback()
-        has_errors = True
-        logger.warning(
-            "Lead import bulk fallback activated detail=%s",
-            sanitize_exception(exc),
-        )
-
-    for item in batch:
-        if not item:
-            continue
-        payload, row_number = item
-        key = _dedupe_key(payload)
-        existing = lead_cache.get(key) if key else None
-        if existing is None:
-            existing = _find_existing_lead(session, payload)
-            if existing and key:
-                lead_cache[key] = existing
-        if existing:
-            _merge_lead(existing, payload)
-            session.add(existing)
-            updated += 1
-            continue
-
-        lead = Lead(**payload)
-        try:
-            session.add(lead)
-            created += 1
-        except IntegrityError as exc:
-            session.rollback()
-            existing = _find_existing_lead(session, payload)
-            if not existing:
-                skipped += 1
-                has_errors = True
-                logger.warning(
-                    "Lead import error row=%s error=INTEGRITY_ERROR detail=%s",
-                    row_number,
-                    sanitize_exception(exc),
-                )
-                continue
-            _merge_lead(existing, payload)
-            session.add(existing)
-            updated += 1
-        except Exception as exc:
-            session.rollback()
-            skipped += 1
-            has_errors = True
-            logger.warning(
-                "Lead import error row=%s error=UNKNOWN detail=%s",
-                row_number,
-                sanitize_exception(exc),
-            )
-    try:
-        session.commit()
-    except Exception as exc:
-        session.rollback()
-        has_errors = True
-        logger.warning(
-            "Lead import batch commit error detail=%s",
-            sanitize_exception(exc),
-        )
-        return created, updated, skipped + sum(1 for item in batch if item), has_errors
-    return created, updated, skipped, has_errors
+    return persist_lead_batch(session, batch)
 
 
 def _get_env_int(name: str, default: int) -> int:
@@ -553,6 +433,66 @@ def sugerir_referencia(
 
 def _normalize_alias_value(value: str) -> str:
     return normalize_text(value)
+
+
+def _map_etl_import_error(exc: Exception) -> None:
+    if isinstance(exc, EtlPreviewSessionNotFoundError):
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="ETL_SESSION_NOT_FOUND",
+            message="session_token invalido ou expirado",
+            field="session_token",
+        )
+    if isinstance(exc, EtlPreviewSessionConflictError):
+        raise_http_error(
+            status.HTTP_409_CONFLICT,
+            code="ETL_SESSION_CONFLICT",
+            message=str(exc),
+            field="session_token",
+        )
+    if isinstance(exc, EtlImportValidationError):
+        raise_http_error(
+            status.HTTP_409_CONFLICT,
+            code="ETL_COMMIT_BLOCKED",
+            message=str(exc),
+        )
+    if isinstance(exc, EtlImportContractError):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="ETL_INVALID_INPUT",
+            message=str(exc),
+        )
+    raise exc
+
+
+def _serialize_etl_preview_response(result) -> ImportEtlPreviewResponse:
+    return ImportEtlPreviewResponse.model_validate(
+        {
+            "session_token": result.session_token,
+            "total_rows": result.total_rows,
+            "valid_rows": result.valid_rows,
+            "invalid_rows": result.invalid_rows,
+            "dq_report": [item.__dict__ for item in result.dq_report],
+        }
+    )
+
+
+def _serialize_etl_commit_response(result) -> ImportEtlResult:
+    return ImportEtlResult.model_validate(
+        {
+            "session_token": result.session_token,
+            "total_rows": result.total_rows,
+            "valid_rows": result.valid_rows,
+            "invalid_rows": result.invalid_rows,
+            "created": result.created,
+            "updated": result.updated,
+            "skipped": result.skipped,
+            "errors": result.errors,
+            "strict": result.strict,
+            "status": result.status,
+            "dq_report": [item.__dict__ for item in result.dq_report],
+        }
+    )
 
 
 @router.get("/aliases")
@@ -1113,7 +1053,7 @@ def importar_leads(
         dedupe_key=_dedupe_key,
         process_batch=_process_batch,
         fetch_cep_data=_fetch_cep_data,
-        coerce_field=coerce_field,
+        coerce_field=coerce_lead_field,
         log_memory_usage=_log_memory_usage,
         batch_size=BATCH_SIZE,
         batch_summary_limit=BATCH_SUMMARY_LIMIT,
@@ -1135,3 +1075,45 @@ def preview_import(
         session=session,
         current_user=current_user,
     )
+
+
+@router.post("/import/etl/preview", response_model=ImportEtlPreviewResponse)
+@router.post("/import/etl/preview/", response_model=ImportEtlPreviewResponse)
+async def preview_import_etl(
+    file: UploadFile = File(...),
+    evento_id: int = Form(...),
+    strict: bool = Form(False),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        result = await import_leads_with_etl(
+            file=file,
+            evento_id=evento_id,
+            db=session,
+            strict=strict,
+        )
+    except Exception as exc:
+        _map_etl_import_error(exc)
+    return _serialize_etl_preview_response(result)
+
+
+@router.post("/import/etl/commit", response_model=ImportEtlResult)
+@router.post("/import/etl/commit/", response_model=ImportEtlResult)
+async def commit_import_etl(
+    payload: ImportEtlCommitRequest,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        result = await commit_leads_with_etl(
+            session_token=payload.session_token,
+            evento_id=payload.evento_id,
+            db=session,
+            force_warnings=payload.force_warnings,
+        )
+    except Exception as exc:
+        _map_etl_import_error(exc)
+    return _serialize_etl_commit_response(result)

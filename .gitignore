@@ -25,10 +25,14 @@ __pycache__/
 *.py[cod]
 **/__pycache__/
 
+# Dumps de banco (backup local)
+*.dump
+
 # Cache / lock / temp / runtime data
 /.npm
 /.cache
 /.yarn-integrity
+.wrangler/
 *.pid
 *.seed
 *.pid.lock

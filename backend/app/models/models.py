@@ -456,6 +456,31 @@ class EventPublicity(SQLModel, table=True):
     evento: Optional["Evento"] = Relationship()
 
 
+class LeadImportEtlPreviewSession(SQLModel, table=True):
+    __tablename__ = "lead_import_etl_preview_session"
+
+    session_token: str = Field(primary_key=True, max_length=120)
+    idempotency_key: str = Field(index=True, max_length=160, unique=True)
+    evento_id: int = Field(foreign_key="evento.id", index=True)
+    evento_nome: str = Field(max_length=150)
+    filename: str = Field(max_length=255)
+    strict: bool = Field(default=False)
+    status: str = Field(default="previewed", max_length=32, index=True)
+    total_rows: int = Field(default=0)
+    valid_rows: int = Field(default=0)
+    invalid_rows: int = Field(default=0)
+    has_validation_errors: bool = Field(default=False)
+    approved_rows_json: str = Field(sa_column=Column(Text, nullable=False))
+    rejected_rows_json: str = Field(sa_column=Column(Text, nullable=False))
+    dq_report_json: str = Field(sa_column=Column(Text, nullable=False))
+    commit_result_json: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    created_at: datetime = Field(default_factory=now_utc, index=True)
+    committed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+
+
 class ImportAlias(SQLModel, table=True):
     __tablename__ = "import_alias"
     __table_args__ = (

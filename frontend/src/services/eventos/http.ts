@@ -1,4 +1,6 @@
-﻿const EVENTOS_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+﻿import { API_BASE_URL } from "../http";
+
+const EVENTOS_API_BASE_URL = API_BASE_URL;
 
 function buildAuthHeaders(token: string, headers?: HeadersInit): HeadersInit {
   if (!headers) return { Authorization: `Bearer ${token}` };

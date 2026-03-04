@@ -7,22 +7,23 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("react-router-dom") || id.includes("react-dom") || id.includes("react")) {
-            return "vendor-react";
-          }
-          if (id.includes("@mui") || id.includes("@emotion")) {
-            return "vendor-mui";
-          }
-          if (id.includes("@fortawesome")) {
-            return "vendor-fa";
-          }
-          return "vendor";
+          if (id.includes("@mui/icons-material")) return "vendor-mui-icons";
+          if (id.includes("@mui/") || id.includes("@emotion/")) return "vendor-mui";
+          if (id.includes("@fortawesome/")) return "vendor-icons";
+          return "vendor-react";
         },
       },
     },
@@ -32,5 +33,6 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     globals: true,
     clearMocks: true,
+    exclude: ["e2e/**", "node_modules/**", "dist/**"],
   },
 });

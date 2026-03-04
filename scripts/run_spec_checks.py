@@ -12,7 +12,9 @@ explicitly provided.
 from __future__ import annotations
 
 import argparse
+import subprocess
 import shutil
+import sys
 from pathlib import Path
 
 from etl.cli_spec import main as spec_cli_main
@@ -71,6 +73,11 @@ def main(argv: list[str] | None = None) -> int:
         "--update-snapshots",
         action="store_true",
         help="Update golden markdown snapshots after running extract/render.",
+    )
+    parser.add_argument(
+        "--skip-lead-etl-contract",
+        action="store_true",
+        help="Skip canonical lead ETL contract gate check.",
     )
 
     args = parser.parse_args(argv)
@@ -137,7 +144,14 @@ def main(argv: list[str] | None = None) -> int:
             gate_cmd.extend(["--required-section", section])
 
     rc_gate = _run_cli(gate_cmd)
-    return rc_gate
+    if rc_gate != 0:
+        return rc_gate
+
+    if args.skip_lead_etl_contract:
+        return 0
+
+    contract_gate = Path(__file__).resolve().parent / "check_lead_etl_contracts.py"
+    return int(subprocess.call([sys.executable, str(contract_gate)]))
 
 
 if __name__ == "__main__":

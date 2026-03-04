@@ -5,7 +5,7 @@ Plataforma para gestao de eventos, captura de leads, gamificacao e dashboards. O
 ## Arquitetura (6 bullets)
 - **Backend**: FastAPI + SQLModel + Alembic (API + regras de negocio).
 - **Frontend**: Vite + React + MUI (UI e fluxos).
-- **Banco**: Postgres via SQLAlchemy (Supabase ou Postgres local na VPS).
+- **Banco**: Postgres via SQLAlchemy (fonte oficial da producao na VPS Hostinger).
 - **Auth**: JWT (login, /auth/me, recuperacao de senha).
 - **Leads**: importacao CSV/XLSX com mapeamento assistido + tabela paginada em `/leads`.
 - **Relatorios**: dashboard agregado + geracao de DOCX (Festival TMJ 2025).
@@ -14,15 +14,36 @@ Plataforma para gestao de eventos, captura de leads, gamificacao e dashboards. O
 Backend:
 ```bash
 cd backend
-python -m venv .venv
-.\.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/macOS
-pip install -r requirements.txt
+brew install python@3.12 postgresql@16
+brew services start postgresql@16
+/opt/homebrew/opt/postgresql@16/bin/createdb npbb  # execute uma vez (ignore se ja existir)
+/opt/homebrew/bin/python3.12 -m venv .venv  # macOS/Homebrew
+# python -m venv .venv  # Linux/Windows
+source .venv/bin/activate  # Linux/macOS
+# .\.venv\Scripts\activate  # Windows
+python -m pip install -r requirements.txt
 copy .env.example .env  # Windows
 # cp .env.example .env  # Linux/macOS
-# edite .env e configure DATABASE_URL
-python -m uvicorn app.main:app --reload
+# edite .env e configure DATABASE_URL/DIRECT_URL (Postgres local)
+PYTHONPATH=.. python -m uvicorn app.main:app --reload
+# alternativa: ./scripts/dev_api.sh
 ```
+
+## Rodando da raiz do repo
+Comando oficial:
+```bash
+source backend/.venv/bin/activate
+./scripts/dev_backend.sh
+```
+
+Comando tecnico alternativo:
+```bash
+source backend/.venv/bin/activate
+PYTHONPATH=. uvicorn app.main:app --reload --app-dir backend
+```
+
+Importante:
+- `uvicorn app.main:app --reload` na raiz, sem `PYTHONPATH` e sem `--app-dir backend`, nao e suportado.
 
 Frontend:
 ```bash
@@ -67,7 +88,8 @@ npm run test:e2e
 ```
 
 ## Comandos principais
-- Backend: `python -m uvicorn app.main:app --reload`
+- Backend (raiz): `./scripts/dev_backend.sh`
+- Backend (pasta backend): `PYTHONPATH=.. python -m uvicorn app.main:app --reload` (ou `./scripts/dev_api.sh`)
 - Migrations: `alembic upgrade head`
 - Seeds (dev): `python scripts/seed_domains.py` / `python scripts/seed_sample.py`
 - Frontend: `npm run dev`
@@ -80,7 +102,7 @@ npm run test:e2e
 - `docs/ARCHITECTURE.md` - visao tecnica
 - `docs/DEPLOY_HOSTINGER_VPS.md` - deploy oficial na VPS com Docker Compose
 - `docs/RUNBOOK_RESTORE_POSTGRES_VPS.md` - restore de dump e cutover de banco
-- `docs/DEPLOY_RENDER_CLOUDFLARE.md` - fluxo legado de deploy publico
+- `docs/legacy/DEPLOY_RENDER_CLOUDFLARE.md` - fluxo legado de deploy publico
 
 ## Primeira tarefa (vibe coding)
 1) Suba backend + frontend.

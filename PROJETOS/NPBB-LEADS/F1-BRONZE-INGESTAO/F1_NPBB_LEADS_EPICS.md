@@ -20,5 +20,5 @@ Implementar a camada Bronze de ingestão de leads: upload de arquivos e registro
 
 | Epic ID | Nome | Objetivo | Status | Documento |
 |---------|------|----------|--------|------------|
-| `EPIC-F1-01` | Upload e Registro Bronze | Implementar upload e persistência de dados brutos na camada Bronze. | `todo` | [EPIC-F1-01-UPLOAD-E-REGISTRO-BRONZE.md](./EPIC-F1-01-UPLOAD-E-REGISTRO-BRONZE.md) |
+| `EPIC-F1-01` | Upload e Registro Bronze | Implementar upload e persistência de dados brutos na camada Bronze. | ✅ | [EPIC-F1-01-UPLOAD-E-REGISTRO-BRONZE.md](./EPIC-F1-01-UPLOAD-E-REGISTRO-BRONZE.md) |
 | `EPIC-F1-02` | Unificação UI Importação | Unificar a interface de importação de leads. | `todo` | [EPIC-F1-02-UNIFICACAO-UI-IMPORTACAO.md](./EPIC-F1-02-UNIFICACAO-UI-IMPORTACAO.md) |

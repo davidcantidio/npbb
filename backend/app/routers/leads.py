@@ -14,6 +14,7 @@ from collections.abc import Iterator
 import httpx
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 from sqlalchemy import func
 from sqlmodel import Session, select
@@ -21,6 +22,7 @@ from sqlmodel import Session, select
 from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
 from app.db.database import get_session
+from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
 from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
 from app.modules.leads_publicidade.application.leads_import_usecases import (
     importar_leads_usecase,
@@ -43,6 +45,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead,
     persist_lead_batch,
 )
+from app.schemas.lead_batch import LeadBatchPreviewResponse, LeadBatchRead
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
 from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
@@ -1117,3 +1120,163 @@ async def commit_import_etl(
     except Exception as exc:
         _map_etl_import_error(exc)
     return _serialize_etl_commit_response(result)
+
+
+# ---------------------------------------------------------------------------
+# Lead Batch (Bronze) endpoints
+# ---------------------------------------------------------------------------
+
+
+def _read_csv_preview(raw: bytes, max_rows: int = 3) -> dict:
+    try:
+        text = raw.decode("utf-8-sig", errors="ignore")
+    except Exception:
+        text = raw.decode("latin-1", errors="ignore")
+    delimiter = _detect_csv_delimiter(text)
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows: list[list[str]] = []
+    for row in reader:
+        rows.append([cell.strip() for cell in row])
+        if len(rows) >= max_rows + 1:
+            break
+    start_index = _detect_data_start_index(rows)
+    headers = rows[start_index] if rows else []
+    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
+    return {"headers": headers, "rows": data_rows[:max_rows], "total_rows": len(data_rows)}
+
+
+def _read_xlsx_preview(raw: bytes, max_rows: int = 3) -> dict:
+    wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+    ws = wb.worksheets[0]
+    rows: list[list[str]] = []
+    total_data = 0
+    for row in ws.iter_rows(values_only=True):
+        rows.append([("" if v is None else str(v)).strip() for v in row])
+    start_index = _detect_data_start_index(rows)
+    headers = rows[start_index] if rows else []
+    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
+    total_data = len(data_rows)
+    return {"headers": headers, "rows": data_rows[:max_rows], "total_rows": total_data}
+
+
+@router.post("/batches", response_model=LeadBatchRead, status_code=status.HTTP_201_CREATED)
+@router.post("/batches/", response_model=LeadBatchRead, status_code=status.HTTP_201_CREATED)
+def criar_batch(
+    file: UploadFile = File(...),
+    plataforma_origem: str = Form(...),
+    data_envio: str = Form(...),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    filename = file.filename or ""
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_FILE_TYPE",
+            message="Formato de arquivo invalido (use .csv ou .xlsx)",
+            field="file",
+        )
+
+    raw = file.file.read()
+    if len(raw) == 0:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Arquivo vazio",
+            field="file",
+        )
+    if len(raw) > MAX_IMPORT_FILE_BYTES:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="FILE_TOO_LARGE",
+            message="Arquivo excede o tamanho maximo permitido",
+            field="file",
+            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
+        )
+
+    from datetime import datetime as _dt
+    try:
+        parsed_data_envio = _dt.fromisoformat(data_envio)
+    except (ValueError, TypeError):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_DATE",
+            message="data_envio deve ser ISO-8601",
+            field="data_envio",
+        )
+
+    batch = LeadBatch(
+        enviado_por=current_user.id,
+        plataforma_origem=plataforma_origem,
+        data_envio=parsed_data_envio,
+        nome_arquivo_original=filename,
+        arquivo_bronze=raw,
+        stage=BatchStage.BRONZE,
+        pipeline_status=PipelineStatus.PENDING,
+    )
+    session.add(batch)
+    session.commit()
+    session.refresh(batch)
+    return LeadBatchRead.model_validate(batch, from_attributes=True)
+
+
+@router.get("/batches/{batch_id}/arquivo")
+@router.get("/batches/{batch_id}/arquivo/")
+def download_arquivo_batch(
+    batch_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message="Lote nao encontrado",
+        )
+    if not batch.arquivo_bronze:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="FILE_NOT_FOUND",
+            message="Arquivo nao encontrado no lote",
+        )
+    filename = batch.nome_arquivo_original or "arquivo"
+    ext = Path(filename).suffix.lower()
+    media_type = "text/csv" if ext == ".csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return StreamingResponse(
+        io.BytesIO(batch.arquivo_bronze),
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/batches/{batch_id}/preview", response_model=LeadBatchPreviewResponse)
+@router.get("/batches/{batch_id}/preview/", response_model=LeadBatchPreviewResponse)
+def preview_batch(
+    batch_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message="Lote nao encontrado",
+        )
+    if not batch.arquivo_bronze:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="FILE_NOT_FOUND",
+            message="Arquivo nao encontrado no lote",
+        )
+    filename = batch.nome_arquivo_original or ""
+    ext = Path(filename).suffix.lower()
+    if ext == ".csv":
+        result = _read_csv_preview(batch.arquivo_bronze)
+    else:
+        result = _read_xlsx_preview(batch.arquivo_bronze)
+    return LeadBatchPreviewResponse(**result)

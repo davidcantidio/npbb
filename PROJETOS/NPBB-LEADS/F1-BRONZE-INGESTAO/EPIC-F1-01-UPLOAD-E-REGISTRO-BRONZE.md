@@ -1,5 +1,5 @@
 # EPIC-F1-01 — Upload e Registro Bronze
-**projeto:** NPBB-LEADS | **fase:** F1 | **status:** 🔲
+**projeto:** NPBB-LEADS | **fase:** F1 | **status:** ✅
 
 ## 1. Resumo
 Criar o modelo `LeadBatch`, a migration Alembic e o endpoint POST /leads/batches
@@ -18,16 +18,16 @@ quem enviou, de qual plataforma e em que data.
 - Não quebrar a rota GET /leads existente
 
 ## 4. Definition of Done
-- [ ] Model `LeadBatch` em `backend/app/models/lead_batch.py`
-- [ ] Migration Alembic gerada e aplicável
-- [ ] POST /leads/batches implementado e testado
-- [ ] Endpoint retorna 401 sem JWT
+- [x] Model `LeadBatch` em `backend/app/models/lead_batch.py`
+- [x] Migration Alembic gerada e aplicável
+- [x] POST /leads/batches implementado e testado
+- [x] Endpoint retorna 401 sem JWT
 
 ---
 ## Issues
 
 ### NPBB-F1-01-001 — Model LeadBatch + Migration
-**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** nenhuma
 
 **Descrição:**
@@ -35,22 +35,22 @@ Criar o SQLModel `LeadBatch` com os campos definidos no PRD (seção Modelo de
 Dados), gerar a migration Alembic e validar aplicação no banco local.
 
 **Critérios de Aceitação:**
-- [ ] Classe `LeadBatch` em `backend/app/models/lead_batch.py`
-- [ ] Enum `BatchStage` com valores: bronze, silver, gold
-- [ ] `alembic upgrade head` aplica sem erro
-- [ ] `alembic downgrade -1` reverte sem erro
+- [x] Classe `LeadBatch` em `backend/app/models/lead_batch.py`
+- [x] Enum `BatchStage` com valores: bronze, silver, gold
+- [x] `alembic upgrade head` aplica sem erro
+- [x] `alembic downgrade -1` reverte sem erro
 
 **Tarefas:**
-- [ ] T1: Criar `backend/app/models/lead_batch.py` com SQLModel + campos do PRD
-- [ ] T2: Criar `backend/app/models/lead_column_alias.py`
-- [ ] T3: Criar `backend/app/models/lead_silver.py`
-- [ ] T4: Exportar novos modelos em `backend/app/models/__init__.py`
-- [ ] T5: Gerar migration: `alembic revision --autogenerate -m "add_lead_batch_silver_alias"`
-- [ ] T6: Testar `alembic upgrade head` e `downgrade -1`
+- [x] T1: Criar `backend/app/models/lead_batch.py` com SQLModel + campos do PRD
+- [x] T2: Criar `backend/app/models/lead_column_alias.py` (incluído em lead_batch.py)
+- [x] T3: Criar `backend/app/models/lead_silver.py` (incluído em lead_batch.py)
+- [x] T4: Exportar novos modelos em `backend/alembic/env.py`
+- [x] T5: Gerar migration: `alembic revision -m "add_lead_batch_silver_alias"`
+- [x] T6: Testar `alembic upgrade head` e `downgrade -1`
 
 ---
 ### NPBB-F1-01-002 — Endpoint POST /leads/batches
-**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** NPBB-F1-01-001
 
 **Descrição:**
@@ -59,16 +59,16 @@ UploadFile + metadados de envio (plataforma_origem, data_envio), salva o arquivo
 como bytea em `lead_batches.arquivo_bronze` e retorna o batch criado.
 
 **Critérios de Aceitação:**
-- [ ] POST /leads/batches aceita multipart/form-data com arquivo + metadados
-- [ ] Arquivo salvo íntegro (bytes recuperáveis via GET /leads/batches/{id}/arquivo)
-- [ ] Retorna 401 sem JWT
-- [ ] Retorna batch_id, stage=bronze, pipeline_status=pending
+- [x] POST /leads/batches aceita multipart/form-data com arquivo + metadados
+- [x] Arquivo salvo íntegro (bytes recuperáveis via GET /leads/batches/{id}/arquivo)
+- [x] Retorna 401 sem JWT
+- [x] Retorna batch_id, stage=bronze, pipeline_status=pending
 
 **Tarefas:**
-- [ ] T1: Adicionar rota POST /leads/batches com UploadFile
-- [ ] T2: Salvar bytes do arquivo em `lead_batches.arquivo_bronze`
-- [ ] T3: Adicionar rota GET /leads/batches/{id}/arquivo para download do bruto
-- [ ] T4: Escrever pytest (upload CSV, upload XLSX, sem token → 401)
+- [x] T1: Adicionar rota POST /leads/batches com UploadFile
+- [x] T2: Salvar bytes do arquivo em `lead_batches.arquivo_bronze`
+- [x] T3: Adicionar rota GET /leads/batches/{id}/arquivo para download do bruto
+- [x] T4: Escrever pytest (upload CSV, upload XLSX, sem token → 401)
 
 **Notas técnicas:**
 `arquivo_bronze` como `LargeBinary` no SQLModel. Para testes, usar

@@ -8,12 +8,14 @@ import logging
 import os
 import re
 import tracemalloc
+from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Iterator
+from urllib.parse import quote
 
 import httpx
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from openpyxl import load_workbook
 from sqlalchemy import func
 from sqlmodel import Session, select
@@ -21,6 +23,7 @@ from sqlmodel import Session, select
 from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
 from app.db.database import get_session
+from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
 from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
 from app.modules.leads_publicidade.application.leads_import_usecases import (
     importar_leads_usecase,
@@ -151,6 +154,23 @@ def _get_lead_or_404(*, session: Session, lead_id: int) -> Lead:
             message="Lead nao encontrado",
         )
     return lead
+
+
+def _get_batch_or_404(*, session: Session, batch_id: str) -> LeadBatch:
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="LEAD_BATCH_NOT_FOUND",
+            message="Lote de importacao nao encontrado",
+        )
+    return batch
+
+
+def _normalize_data_envio(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 @router.get("", response_model=LeadListResponse)
@@ -296,6 +316,90 @@ def listar_conversoes(
         select(LeadConversao).where(LeadConversao.lead_id == lead_id).order_by(LeadConversao.created_at.desc())
     ).all()
     return [LeadConversaoRead.model_validate(item, from_attributes=True) for item in conversoes]
+
+
+@router.post("/batches", status_code=status.HTTP_201_CREATED)
+@router.post("/batches/", status_code=status.HTTP_201_CREATED)
+async def criar_batch_bronze(
+    file: UploadFile = File(...),
+    plataforma_origem: str = Form(...),
+    data_envio: datetime = Form(...),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_USER",
+            message="Usuario autenticado invalido para upload",
+        )
+
+    filename = (file.filename or "").strip()
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_FILE_TYPE",
+            message="Formato de arquivo invalido (use .csv ou .xlsx)",
+            field="file",
+        )
+
+    raw_bytes = await file.read()
+    if not raw_bytes:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_FILE",
+            message="Arquivo vazio",
+            field="file",
+        )
+    if len(raw_bytes) > MAX_IMPORT_FILE_BYTES:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="FILE_TOO_LARGE",
+            message="Arquivo excede o tamanho maximo permitido",
+            field="file",
+            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
+        )
+
+    batch = LeadBatch(
+        enviado_por=int(current_user.id),
+        plataforma_origem=plataforma_origem.strip(),
+        data_envio=_normalize_data_envio(data_envio),
+        data_upload=now_utc(),
+        nome_arquivo_original=filename or "upload.bin",
+        arquivo_bronze=raw_bytes,
+        stage=BatchStage.BRONZE,
+        pipeline_status=PipelineStatus.PENDING,
+    )
+    session.add(batch)
+    session.commit()
+    session.refresh(batch)
+
+    return {
+        "batch_id": batch.id,
+        "stage": batch.stage.value if hasattr(batch.stage, "value") else str(batch.stage),
+        "pipeline_status": (
+            batch.pipeline_status.value if hasattr(batch.pipeline_status, "value") else str(batch.pipeline_status)
+        ),
+    }
+
+
+@router.get("/batches/{batch_id}/arquivo")
+@router.get("/batches/{batch_id}/arquivo/")
+def baixar_arquivo_bronze(
+    batch_id: str,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    batch = _get_batch_or_404(session=session, batch_id=batch_id)
+    filename = batch.nome_arquivo_original or f"{batch_id}.bin"
+    quoted_name = quote(filename)
+    return Response(
+        content=batch.arquivo_bronze,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{quoted_name}"'},
+    )
 
 
 @router.post("/import/upload")

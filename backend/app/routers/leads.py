@@ -39,6 +39,7 @@ from app.modules.leads_publicidade.application.etl_import.exceptions import (
     EtlPreviewSessionConflictError,
     EtlPreviewSessionNotFoundError,
 )
+from app.services.imports.file_reader import ImportFileError
 from app.modules.leads_publicidade.application.etl_import.persistence import (
     build_dedupe_key,
     find_existing_lead,
@@ -475,6 +476,22 @@ def _map_etl_import_error(exc: Exception) -> None:
             code="ETL_INVALID_INPUT",
             message=str(exc),
         )
+    if isinstance(exc, ImportFileError):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code=getattr(exc, "code", "INVALID_FILE"),
+            message=exc.message,
+            field=getattr(exc, "field", "file"),
+            extra=getattr(exc, "extra", None),
+        )
+    if isinstance(exc, ValueError):
+        logger.exception("Erro de validacao no ETL de leads: %s", exc)
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="ETL_INVALID_INPUT",
+            message=str(exc) or "Arquivo invalido. Verifique se o XLSX possui colunas CPF e Email no cabecalho.",
+        )
+    logger.exception("Erro interno no ETL de leads: %s", exc)
     raise exc
 
 

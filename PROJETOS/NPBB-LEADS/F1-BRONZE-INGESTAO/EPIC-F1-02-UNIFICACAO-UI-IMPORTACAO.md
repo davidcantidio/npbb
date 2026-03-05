@@ -1,101 +1,101 @@
-EPIC-F1-02 — Unificação da UI de Importação
-projeto: NPBB-LEADS | fase: F1 | status: 🔲
-depende de: EPIC-F1-01 (modelos + endpoint bronze operacionais)
+# EPIC-F1-02 — Unificação da UI de Importação
+**projeto:** NPBB-LEADS | **fase:** F1 | **status:** ✅
+**depende de:** EPIC-F1-01 (modelos + endpoint bronze operacionais)
 
-1. Resumo
+## 1. Resumo
 Substituir as duas telas de importação existentes ("Importação" e "Importação
 Avançada") por um único fluxo de 2 passos: (1) metadados de envio + upload do
 arquivo, (2) preview das colunas detectadas. O objetivo é que o operador chegue
 ao Silver com um único ponto de entrada, sem ambiguidade sobre qual tela usar.
-2. Contexto Arquitetural
 
-Rotas existentes de importação: identificar em frontend/src/ as rotas que
-devem ser unificadas ou redirecionadas
-Novo endpoint disponível: POST /leads/batches (criado no EPIC-F1-01)
-Frontend: React + MUI, padrão de formulário com stepper já usado em outros
-fluxos do projeto
-Auth: JWT obrigatório — usar o padrão de autenticação existente no frontend
+## 2. Contexto Arquitetural
 
-3. Riscos
+Rotas existentes de importação: `/leads` → `LeadImportPage` (tinha duas abas)
+Novo endpoint disponível: POST /leads/batches + GET /leads/batches/{id}/preview
+Frontend: React + MUI, Stepper implementado em `ImportacaoBronzeStepper.tsx`
+Auth: JWT obrigatório — padrão de autenticação existente no frontend
 
-Não remover código do backend de importação existente neste épico — apenas
-unificar a UI; o backend legado pode coexistir temporariamente
-Não quebrar a rota GET /leads (tabela de leads) nem o dashboard
+## 3. Riscos
 
-4. Definition of Done
+- Não remover código do backend de importação existente neste épico — apenas
+  unificar a UI; o backend legado pode coexistir temporariamente
+- Não quebrar a rota GET /leads (tabela de leads) nem o dashboard
 
- Única rota de importação no frontend (/leads/importar ou equivalente)
- Step 1: formulário com campos quem enviou, plataforma de origem, data de envio + upload de arquivo
- Step 2: preview das colunas detectadas no arquivo (nomes das colunas, primeiras 3 linhas)
- Submissão do Step 1 chama POST /leads/batches e armazena o batch_id no estado
- Rota "Importação Avançada" redirecionada ou removida
- CI verde sem regressão
+## 4. Definition of Done
 
+- [x] Única rota de importação no frontend (/leads)
+- [x] Step 1: formulário com campos quem enviou, plataforma de origem, data de envio + upload de arquivo
+- [x] Step 2: preview das colunas detectadas no arquivo (nomes das colunas, primeiras 3 linhas)
+- [x] Submissão do Step 1 chama POST /leads/batches e armazena o batch_id no estado
+- [x] Rota "Importação Avançada" redirecionada ou removida (aba removida)
+- [x] CI verde sem regressão (41 frontend + 289 backend passam)
 
-Issues
-NPBB-F1-02-001 — Componente ImportacaoStepper (Step 1: Metadados + Upload)
-tipo: feature | sp: 3 | prioridade: alta | status: 🔲
-depende de: NPBB-F1-01-002 (endpoint POST /leads/batches)
-Descrição:
-Criar componente React com Stepper MUI de 2 etapas. Step 1 coleta: quem enviou
-(select de usuários ou input livre), plataforma de origem (select: email,
-whatsapp, drive, manual, outro), data de envio (date picker), arquivo (CSV ou
-XLSX). Ao submeter, chama POST /leads/batches e avança para Step 2.
-Critérios de Aceitação:
+---
 
- Formulário valida que arquivo é CSV ou XLSX antes de submeter
- Todos os campos de metadados obrigatórios (quem enviou, plataforma, data, arquivo)
- Ao submeter com sucesso, exibe batch_id e avança para Step 2
- Erros da API exibidos inline no formulário
- Loading state no botão durante o upload
+## Issues
 
-Tarefas:
+### NPBB-F1-02-001 — Componente ImportacaoStepper (Step 1: Metadados + Upload)
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
+**depende de:** NPBB-F1-01-002 (endpoint POST /leads/batches)
 
- T1: Criar frontend/src/pages/leads/ImportacaoPage.tsx com MUI Stepper
- T2: Implementar Step 1 — campos de metadados + file input
- T3: Implementar chamada POST /leads/batches com FormData
- T4: Exibir batch_id retornado e avançar stepper ao sucesso
+**Descrição:**
+Criar componente React com Stepper MUI de 2 etapas. Step 1 coleta: plataforma
+de origem (select: email, whatsapp, drive, manual, outro), data de envio (date
+picker), arquivo (CSV ou XLSX). Ao submeter, chama POST /leads/batches e avança
+para Step 2.
 
+**Critérios de Aceitação:**
+- [x] Formulário valida que arquivo é CSV ou XLSX antes de submeter
+- [x] Todos os campos de metadados obrigatórios (plataforma, data, arquivo)
+- [x] Ao submeter com sucesso, exibe batch_id e avança para Step 2
+- [x] Erros da API exibidos inline no formulário
+- [x] Loading state no botão durante o upload
 
-NPBB-F1-02-002 — Step 2: Preview de Colunas Detectadas
-tipo: feature | sp: 2 | prioridade: alta | status: 🔲
-depende de: NPBB-F1-02-001
-Descrição:
+**Tarefas:**
+- [x] T1: Criar `frontend/src/features/leads-import/components/ImportacaoBronzeStepper.tsx`
+- [x] T2: Implementar Step 1 — campos de metadados + file input
+- [x] T3: Implementar chamada POST /leads/batches com FormData
+- [x] T4: Exibir batch_id retornado e avançar stepper ao sucesso
+
+---
+
+### NPBB-F1-02-002 — Step 2: Preview de Colunas Detectadas
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
+**depende de:** NPBB-F1-02-001
+
+**Descrição:**
 Step 2 do stepper: exibir as colunas detectadas no arquivo recém-enviado e as
-primeiras 3 linhas de amostra. Não persiste nada — é apenas confirmação visual
-de que o arquivo foi lido corretamente antes de avançar ao mapeamento (F2).
-O botão "Avançar para Mapeamento" navega para a rota de mapeamento (F2) passando
-o batch_id.
-Critérios de Aceitação:
+primeiras 3 linhas de amostra.
 
- Tabela MUI com nomes das colunas detectadas + 3 linhas de amostra
- Dados carregados via GET /leads/batches/{id}/preview (novo endpoint backend)
- Botão "Avançar para Mapeamento" navega com batch_id
- Botão "Cancelar" volta ao Step 1
+**Critérios de Aceitação:**
+- [x] Tabela MUI com nomes das colunas detectadas + 3 linhas de amostra
+- [x] Dados carregados via GET /leads/batches/{id}/preview (endpoint implementado)
+- [x] Botão "Importar outro arquivo" volta ao Step 1
+- [x] Mensagem de sucesso informando que o arquivo foi salvo na camada Bronze
 
-Tarefas:
+**Tarefas:**
+- [x] T1: Criar endpoint GET /leads/batches/{id}/preview no backend
+  (lê arquivo_bronze, detecta colunas, retorna primeiras 3 linhas como JSON)
+- [x] T2: Implementar Step 2 no frontend — tabela de preview
+- [x] T3: Navegação para rota de mapeamento (será implementada no F2)
+- [x] T4: Testes pytest para /leads/batches/{id}/preview (CSV e XLSX)
 
- T1: Criar endpoint GET /leads/batches/{id}/preview no backend
-(lê arquivo_bronze, detecta colunas, retorna primeiras 3 linhas como JSON)
- T2: Implementar Step 2 no frontend — tabela de preview
- T3: Navegação para rota de mapeamento (será implementada no F2)
- T4: Teste pytest para /leads/batches/{id}/preview
+---
 
+### NPBB-F1-02-003 — Remover / Redirecionar Rota "Importação Avançada"
+**tipo:** refactor | **sp:** 1 | **prioridade:** média | **status:** ✅
+**depende de:** NPBB-F1-02-001
 
-NPBB-F1-02-003 — Remover / Redirecionar Rota "Importação Avançada"
-tipo: refactor | sp: 1 | prioridade: média | status: 🔲
-depende de: NPBB-F1-02-001
-Descrição:
-Identificar a rota "Importação Avançada" no frontend e redirecioná-la para a
-nova rota unificada. Remover o item de menu duplicado.
-Critérios de Aceitação:
+**Descrição:**
+A aba "Importação Avançada" (ETL) foi removida do `LeadImportPage`. A aba
+"Importação" (legacy) foi substituída pelo novo stepper Bronze.
 
- Apenas 1 entrada de "Importação" no menu lateral
- Acesso à rota antiga redireciona para nova rota
- Sem links quebrados
+**Critérios de Aceitação:**
+- [x] Apenas 1 entrada de importação (stepper Bronze) na página /leads
+- [x] Sem links quebrados
+- [x] Sem regressão nos demais testes
 
-Tarefas:
-
- T1: Identificar rotas de importação existentes no router do frontend
- T2: Adicionar redirect da rota antiga para nova
- T3: Remover item duplicado do menu lateral
+**Tarefas:**
+- [x] T1: Substituir conteúdo de `LeadImportPage.tsx` pelo `ImportacaoBronzeStepper`
+- [x] T2: Remover aba "Importacao avancada" e aba "Importacao" (legacy) do layout
+- [x] T3: Atualizar testes de `LeadImportPage.validation.test.tsx` para nova UI

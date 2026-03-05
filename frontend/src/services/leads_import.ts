@@ -350,6 +350,54 @@ export async function runLeadImport(
   return handleApiResponse<{ filename: string; created: number; updated: number; skipped: number }>(res);
 }
 
+// ---------------------------------------------------------------------------
+// F2 — Silver mapping
+// ---------------------------------------------------------------------------
+
+export type ColumnConfidence = "exact_match" | "synonym_match" | "alias_match" | "none";
+
+export type ColumnSuggestion = {
+  coluna_original: string;
+  campo_sugerido: string | null;
+  confianca: ColumnConfidence;
+};
+
+export type ColunasResponse = {
+  batch_id: number;
+  colunas: ColumnSuggestion[];
+};
+
+export type MapearBatchPayload = {
+  evento_id: number;
+  mapeamento: Record<string, string>;
+};
+
+export type MapearBatchResult = {
+  batch_id: number;
+  silver_count: number;
+  stage: string;
+};
+
+export async function getLeadBatchColunas(token: string, batchId: number): Promise<ColunasResponse> {
+  const res = await fetchWithAuth(`/leads/batches/${batchId}/colunas`, { token });
+  return handleApiResponse<ColunasResponse>(res);
+}
+
+export async function mapearLeadBatch(
+  token: string,
+  batchId: number,
+  payload: MapearBatchPayload,
+): Promise<MapearBatchResult> {
+  const res = await fetchWithAuth(`/leads/batches/${batchId}/mapear`, {
+    method: "POST",
+    token,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    retries: 0,
+  });
+  return handleApiResponse<MapearBatchResult>(res);
+}
+
 /**
  * Lists leads with optional pagination controls.
  * @param token Bearer token used for authorization.

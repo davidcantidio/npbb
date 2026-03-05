@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -29,3 +29,32 @@ class LeadBatchPreviewResponse(BaseModel):
     headers: list[str]
     rows: list[list[str]]
     total_rows: int
+
+
+# ---------------------------------------------------------------------------
+# F2 — Silver mapping schemas
+# ---------------------------------------------------------------------------
+
+Confidence = Literal["exact_match", "synonym_match", "alias_match", "none"]
+
+
+class ColumnSuggestionRead(BaseModel):
+    coluna_original: str
+    campo_sugerido: Optional[str] = None
+    confianca: Confidence
+
+
+class ColunasResponse(BaseModel):
+    batch_id: int
+    colunas: list[ColumnSuggestionRead]
+
+
+class MapearBatchRequest(BaseModel):
+    evento_id: int
+    mapeamento: dict[str, str]
+
+
+class MapearBatchResponse(BaseModel):
+    batch_id: int
+    silver_count: int
+    stage: str

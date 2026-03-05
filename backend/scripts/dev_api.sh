@@ -17,7 +17,7 @@ if [[ "${PY_VERSION}" != "3.12" ]]; then
   exit 1
 fi
 
-export PYTHONPATH="${REPO_ROOT}:${BACKEND_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${REPO_ROOT}:${BACKEND_DIR}:${REPO_ROOT}/PROJETOS${PYTHONPATH:+:${PYTHONPATH}}"
 cd "${BACKEND_DIR}"
 
 exec "${PYTHON_BIN}" -m uvicorn app.main:app --reload --host "${UVICORN_HOST:-127.0.0.1}" --port "${UVICORN_PORT:-8000}"

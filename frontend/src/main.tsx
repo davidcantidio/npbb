@@ -24,6 +24,7 @@ const EventGamificacao = lazy(() => import("./pages/EventGamificacao"));
 const EventAtivacoes = lazy(() => import("./pages/EventAtivacoes"));
 const EventQuestionario = lazy(() => import("./pages/EventQuestionario"));
 const LeadsImport = lazy(() => import("./pages/LeadsImport"));
+const MapeamentoPage = lazy(() => import("./pages/leads/MapeamentoPage"));
 
 const theme = createTheme({
   palette: {
@@ -102,7 +103,7 @@ function AppRoutes() {
         <Route path="/leads" element={<Navigate to="/leads/importar" replace />} />
         <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
         <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
-        <Route path="/leads/mapeamento" element={<ComingSoon title="Mapeamento de Leads" />} />
+        <Route path="/leads/mapeamento" element={withSuspense(<MapeamentoPage />)} />
         <Route path="/publicidade" element={<PublicidadeImport />} />
         <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
       </Route>

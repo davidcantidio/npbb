@@ -1,5 +1,5 @@
 EPIC-F2-01 — Mapeamento de Colunas e Persistência Silver
-projeto: NPBB-LEADS | fase: F2 | status: 🔲
+projeto: NPBB-LEADS | fase: F2 | status: ✅ implementado (2026-03-05)
 depende de: F1 concluída (batch_id disponível, arquivo bronze no banco)
 
 1. Resumo
@@ -34,7 +34,7 @@ Não executar o pipeline Gold aqui — apenas persistir o Silver e atualizar o s
 
 Issues
 NPBB-F2-01-001 — Endpoint de Sugestão de Mapeamento
-tipo: feature | sp: 3 | prioridade: alta | status: 🔲
+tipo: feature | sp: 3 | prioridade: alta | status: ✅
 depende de: NPBB-F1-01-001 (modelos), NPBB-F1-02-002 (preview endpoint)
 Descrição:
 Criar GET /leads/batches/{id}/colunas que lê o arquivo bronze do lote, detecta
@@ -64,7 +64,7 @@ e from lead_pipeline.normalization import normalize_header — o PYTHONPATH
 já inclui o raiz do repo.
 
 NPBB-F2-01-002 — Endpoint de Confirmação do Mapeamento + Persistência Silver
-tipo: feature | sp: 5 | prioridade: alta | status: 🔲
+tipo: feature | sp: 5 | prioridade: alta | status: ✅
 depende de: NPBB-F2-01-001
 Descrição:
 Criar POST /leads/batches/{id}/mapear que recebe o mapeamento confirmado pelo
@@ -92,7 +92,7 @@ Tarefas:
 
 
 NPBB-F2-01-003 — UI de Mapeamento de Colunas
-tipo: feature | sp: 3 | prioridade: alta | status: 🔲
+tipo: feature | sp: 3 | prioridade: alta | status: ✅
 depende de: NPBB-F2-01-001, NPBB-F2-01-002
 Descrição:
 Criar página de mapeamento que o operador acessa após o Step 2 do upload.

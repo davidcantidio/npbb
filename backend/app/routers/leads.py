@@ -45,7 +45,15 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead,
     persist_lead_batch,
 )
-from app.schemas.lead_batch import LeadBatchPreviewResponse, LeadBatchRead
+from app.services.lead_mapping import mapear_batch, suggest_column_mapping
+from app.schemas.lead_batch import (
+    ColunasResponse,
+    ColumnSuggestionRead,
+    LeadBatchPreviewResponse,
+    LeadBatchRead,
+    MapearBatchRequest,
+    MapearBatchResponse,
+)
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
 from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
@@ -1287,3 +1295,99 @@ def preview_batch(
     else:
         result = _read_xlsx_preview(batch.arquivo_bronze)
     return LeadBatchPreviewResponse(**result)
+
+
+# ---------------------------------------------------------------------------
+# F2 — Silver mapping endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/batches/{batch_id}/colunas", response_model=ColunasResponse)
+@router.get("/batches/{batch_id}/colunas/", response_model=ColunasResponse)
+def sugerir_mapeamento_colunas(
+    batch_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message="Lote nao encontrado",
+        )
+
+    try:
+        suggestions = suggest_column_mapping(batch_id=batch_id, db=session)
+    except ValueError as exc:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message=str(exc),
+        )
+
+    return ColunasResponse(
+        batch_id=batch_id,
+        colunas=[
+            ColumnSuggestionRead(
+                coluna_original=s.coluna_original,
+                campo_sugerido=s.campo_sugerido,
+                confianca=s.confianca,
+            )
+            for s in suggestions
+        ],
+    )
+
+
+@router.post("/batches/{batch_id}/mapear", response_model=MapearBatchResponse, status_code=status.HTTP_200_OK)
+@router.post("/batches/{batch_id}/mapear/", response_model=MapearBatchResponse, status_code=status.HTTP_200_OK)
+def confirmar_mapeamento(
+    batch_id: int,
+    payload: MapearBatchRequest,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message="Lote nao encontrado",
+        )
+
+    if not payload.mapeamento:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_MAPPING",
+            message="mapeamento nao pode ser vazio",
+            field="mapeamento",
+        )
+
+    if not current_user.id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_USER",
+            message="Usuario autenticado invalido",
+        )
+
+    try:
+        result = mapear_batch(
+            batch_id=batch_id,
+            evento_id=payload.evento_id,
+            mapeamento=payload.mapeamento,
+            user_id=int(current_user.id),
+            db=session,
+        )
+    except ValueError as exc:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message=str(exc),
+        )
+
+    return MapearBatchResponse(
+        batch_id=result.batch_id,
+        silver_count=result.silver_count,
+        stage=result.stage,
+    )

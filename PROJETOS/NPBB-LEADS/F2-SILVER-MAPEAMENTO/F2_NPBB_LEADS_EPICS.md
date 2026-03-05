@@ -12,12 +12,12 @@ aliases de coluna para reuso futuro.
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F2-01 | Mapeamento e Persistência Silver | Backend de mapeamento + persistência silver + aliases | F1 concluída | 🔲 | `EPIC-F2-01-MAPEAMENTO-E-PERSISTENCIA-SILVER.md` |
+| EPIC-F2-01 | Mapeamento e Persistência Silver | Backend de mapeamento + persistência silver + aliases | F1 concluída | ✅ | `EPIC-F2-01-MAPEAMENTO-E-PERSISTENCIA-SILVER.md` |
 
 ## Definition of Done da Fase
-- [ ] Endpoint de preview de colunas com sugestão automática
-- [ ] Operador confirma mapeamento e vincula evento
-- [ ] Dados persistidos em `leads_silver` com batch_id e row_index
-- [ ] Aliases salvos em `lead_column_aliases`
-- [ ] Stage do lote atualizado para `silver`
-- [ ] CI verde
+- [x] Endpoint de preview de colunas com sugestão automática
+- [x] Operador confirma mapeamento e vincula evento
+- [x] Dados persistidos em `leads_silver` com batch_id e row_index
+- [x] Aliases salvos em `lead_column_aliases`
+- [x] Stage do lote atualizado para `silver`
+- [x] CI verde (13 testes passando)

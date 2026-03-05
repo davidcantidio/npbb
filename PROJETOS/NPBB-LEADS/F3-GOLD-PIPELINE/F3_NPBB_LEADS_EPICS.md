@@ -11,7 +11,7 @@ normalizar e validar os dados, promover os leads aprovados para a tabela `leads`
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F3-01 | Pipeline Tratamento Gold | Integrar lead_pipeline + promoção Gold + relatório | F2 concluída | 🔲 | `EPIC-F3-01-PIPELINE-TRATAMENTO-GOLD.md` |
+| EPIC-F3-01 | Pipeline Tratamento Gold | Integrar lead_pipeline + promoção Gold + relatório | F2 concluída | ✅ | `EPIC-F3-01-PIPELINE-TRATAMENTO-GOLD.md` |
 
 ## Definition of Done da Fase
 - [ ] `run_pipeline()` integrado como background task FastAPI

@@ -353,6 +353,7 @@ class Lead(SQLModel, table=True):
     ingresso_tipo: Optional[str] = Field(default=None, max_length=160)
     ingresso_qtd: Optional[int] = None
     fonte_origem: Optional[str] = Field(default=None, max_length=80)
+    batch_id: Optional[int] = Field(default=None, foreign_key="lead_batches.id", index=True)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
     cupons: List["Cupom"] = Relationship(back_populates="lead")

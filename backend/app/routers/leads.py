@@ -13,7 +13,7 @@ from collections.abc import Iterator
 
 import httpx
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 from sqlalchemy import func
@@ -46,9 +46,11 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     persist_lead_batch,
 )
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
+from app.services.lead_pipeline_service import executar_pipeline_gold
 from app.schemas.lead_batch import (
     ColunasResponse,
     ColumnSuggestionRead,
+    ExecutarPipelineResponse,
     LeadBatchPreviewResponse,
     LeadBatchRead,
     MapearBatchRequest,
@@ -1391,3 +1393,64 @@ def confirmar_mapeamento(
         silver_count=result.silver_count,
         stage=result.stage,
     )
+
+
+# ---------------------------------------------------------------------------
+# F3 — Gold pipeline endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/batches/{batch_id}", response_model=LeadBatchRead)
+@router.get("/batches/{batch_id}/", response_model=LeadBatchRead)
+def get_batch(
+    batch_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message="Lote nao encontrado",
+        )
+    return LeadBatchRead.model_validate(batch, from_attributes=True)
+
+
+@router.post(
+    "/batches/{batch_id}/executar-pipeline",
+    response_model=ExecutarPipelineResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@router.post(
+    "/batches/{batch_id}/executar-pipeline/",
+    response_model=ExecutarPipelineResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    include_in_schema=False,
+)
+async def disparar_pipeline(
+    batch_id: int,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    batch = session.get(LeadBatch, batch_id)
+    if not batch:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="BATCH_NOT_FOUND",
+            message="Lote nao encontrado",
+        )
+
+    if batch.stage != BatchStage.SILVER:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_STAGE",
+            message="Pipeline Gold so pode ser disparado em lotes com stage=silver",
+            extra={"stage_atual": batch.stage},
+        )
+
+    background_tasks.add_task(executar_pipeline_gold, batch_id)
+    return ExecutarPipelineResponse(batch_id=batch_id, status="queued")

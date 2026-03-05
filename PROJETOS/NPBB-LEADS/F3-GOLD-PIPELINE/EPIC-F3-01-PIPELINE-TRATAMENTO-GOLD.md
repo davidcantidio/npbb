@@ -1,5 +1,5 @@
 EPIC-F3-01 — Pipeline de Tratamento Gold
-projeto: NPBB-LEADS | fase: F3 | status: 🔲
+projeto: NPBB-LEADS | fase: F3 | status: ✅
 depende de: F2 concluída (leads_silver preenchido, stage=silver)
 
 1. Resumo
@@ -44,7 +44,7 @@ mapear diferenças antes de inserir
 
 Issues
 NPBB-F3-01-001 — Serviço de Execução do Pipeline (Backend)
-tipo: feature | sp: 5 | prioridade: alta | status: 🔲
+tipo: feature | sp: 5 | prioridade: alta | status: ✅
 depende de: NPBB-F2-01-002 (leads_silver existentes)
 Descrição:
 Criar backend/app/services/lead_pipeline_service.py com função
@@ -83,7 +83,7 @@ result = await loop.run_in_executor(None, run_pipeline, config)
 Importar run_pipeline direto — PYTHONPATH já inclui raiz do repo.
 
 NPBB-F3-01-002 — Endpoint POST /leads/batches/{id}/executar-pipeline
-tipo: feature | sp: 2 | prioridade: alta | status: 🔲
+tipo: feature | sp: 2 | prioridade: alta | status: ✅
 depende de: NPBB-F3-01-001
 Descrição:
 Criar endpoint que valida que o lote está em stage=silver e dispara a função
@@ -105,7 +105,7 @@ Tarefas:
 
 
 NPBB-F3-01-003 — UI de Status do Pipeline e Relatório
-tipo: feature | sp: 3 | prioridade: alta | status: 🔲
+tipo: feature | sp: 3 | prioridade: alta | status: ✅
 depende de: NPBB-F3-01-002
 Descrição:
 Criar página (ou modal) de acompanhamento do lote que exibe: stage atual,

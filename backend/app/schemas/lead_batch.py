@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -20,6 +20,7 @@ class LeadBatchRead(BaseModel):
     stage: BatchStage
     evento_id: Optional[int] = None
     pipeline_status: PipelineStatus
+    pipeline_report: Optional[dict[str, Any]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -58,3 +59,12 @@ class MapearBatchResponse(BaseModel):
     batch_id: int
     silver_count: int
     stage: str
+
+
+# ---------------------------------------------------------------------------
+# F3 — Gold pipeline schemas
+# ---------------------------------------------------------------------------
+
+class ExecutarPipelineResponse(BaseModel):
+    batch_id: int
+    status: str  # "queued"

@@ -81,7 +81,37 @@ export type LeadBatch = {
   stage: "bronze" | "silver" | "gold";
   evento_id: number | null;
   pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail";
+  pipeline_report: PipelineReport | null;
   created_at: string;
+};
+
+export type PipelineReport = {
+  lote_id: string;
+  run_timestamp: string;
+  totals: {
+    raw_rows: number;
+    valid_rows: number;
+    discarded_rows: number;
+  };
+  quality_metrics: {
+    cpf_invalid_discarded: number;
+    telefone_invalid: number;
+    data_evento_invalid: number;
+    data_nascimento_invalid: number;
+    duplicidades_cpf_evento: number;
+    cidade_fora_mapeamento: number;
+  };
+  gate: {
+    status: "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
+    decision: "promote" | "hold";
+    fail_reasons: string[];
+    warnings: string[];
+  };
+};
+
+export type ExecutarPipelineResult = {
+  batch_id: number;
+  status: "queued";
 };
 
 export type LeadBatchPreview = {
@@ -396,6 +426,23 @@ export async function mapearLeadBatch(
     retries: 0,
   });
   return handleApiResponse<MapearBatchResult>(res);
+}
+
+export async function getLeadBatch(token: string, batchId: number): Promise<LeadBatch> {
+  const res = await fetchWithAuth(`/leads/batches/${batchId}`, { token, retries: 0 });
+  return handleApiResponse<LeadBatch>(res);
+}
+
+export async function executarPipeline(
+  token: string,
+  batchId: number,
+): Promise<ExecutarPipelineResult> {
+  const res = await fetchWithAuth(`/leads/batches/${batchId}/executar-pipeline`, {
+    method: "POST",
+    token,
+    retries: 0,
+  });
+  return handleApiResponse<ExecutarPipelineResult>(res);
 }
 
 /**

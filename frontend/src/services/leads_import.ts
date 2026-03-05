@@ -94,6 +94,21 @@ export type LeadListResponse = {
   items: LeadListItem[];
 };
 
+// ── Bronze batch types ─────────────────────────────────────────────────────
+
+export type LeadBatchCreateResponse = {
+  batch_id: string;
+  stage: "bronze" | "silver" | "gold";
+  pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail";
+};
+
+export type LeadBatchPreviewResponse = {
+  batch_id: string;
+  nome_arquivo: string;
+  colunas: string[];
+  amostras: string[][];
+};
+
 /**
  * Uploads a lead file and returns parsed preview metadata and suggestions.
  * @param token Bearer token used for authorization.
@@ -311,4 +326,41 @@ export async function listLeads(
 
   const res = await fetchWithAuth(url, { token });
   return handleApiResponse<LeadListResponse>(res);
+}
+
+/**
+ * Uploads a CSV/XLSX file with sender metadata and registers it as a Bronze batch.
+ */
+export async function createLeadBatch(
+  token: string,
+  payload: {
+    file: File;
+    plataforma_origem: string;
+    data_envio: string;
+  },
+): Promise<LeadBatchCreateResponse> {
+  const form = new FormData();
+  form.append("file", payload.file);
+  form.append("plataforma_origem", payload.plataforma_origem);
+  form.append("data_envio", payload.data_envio);
+  const res = await fetchWithAuth("/leads/batches", {
+    method: "POST",
+    body: form,
+    token,
+    timeoutMs: 60_000,
+  });
+  return handleApiResponse<LeadBatchCreateResponse>(res);
+}
+
+/**
+ * Fetches detected column names and up to 3 sample rows for a Bronze batch.
+ */
+export async function getLeadBatchPreview(
+  token: string,
+  batchId: string,
+): Promise<LeadBatchPreviewResponse> {
+  const res = await fetchWithAuth(`/leads/batches/${encodeURIComponent(batchId)}/preview`, {
+    token,
+  });
+  return handleApiResponse<LeadBatchPreviewResponse>(res);
 }

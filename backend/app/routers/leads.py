@@ -402,6 +402,56 @@ def baixar_arquivo_bronze(
     )
 
 
+@router.get("/batches/{batch_id}/preview")
+@router.get("/batches/{batch_id}/preview/")
+def preview_batch_bronze(
+    batch_id: str,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Return detected column names and up to 3 sample rows for a Bronze batch."""
+    _ = current_user
+    batch = _get_batch_or_404(session=session, batch_id=batch_id)
+    filename = batch.nome_arquivo_original or ""
+    ext = Path(filename).suffix.lower()
+    raw = batch.arquivo_bronze
+
+    try:
+        if ext == ".xlsx":
+            wb = load_workbook(filename=io.BytesIO(raw), read_only=True, data_only=True)
+            ws = wb.active
+            rows_iter = ws.iter_rows(values_only=True)
+            header_row = next(rows_iter, None)
+            columns: list[str] = [str(c) if c is not None else "" for c in (header_row or [])]
+            samples: list[list[str]] = []
+            for row in rows_iter:
+                if len(samples) >= 3:
+                    break
+                samples.append([str(c) if c is not None else "" for c in row])
+        else:
+            text = raw.decode("utf-8", errors="replace")
+            reader = csv.DictReader(io.StringIO(text))
+            columns = list(reader.fieldnames or [])
+            samples = []
+            for row in reader:
+                if len(samples) >= 3:
+                    break
+                samples.append([row.get(c, "") for c in columns])
+    except Exception as exc:
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code="PREVIEW_PARSE_ERROR",
+            message=f"Nao foi possivel ler o arquivo: {exc}",
+        )
+
+    return {
+        "batch_id": batch_id,
+        "nome_arquivo": filename,
+        "colunas": columns,
+        "amostras": samples,
+    }
+
+
 @router.post("/import/upload")
 @router.post("/import/upload/")
 def validar_upload_import(

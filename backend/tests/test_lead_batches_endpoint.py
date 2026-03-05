@@ -155,3 +155,67 @@ def test_lead_batch_endpoints_require_auth(client: TestClient, engine) -> None:
     client.cookies.clear()
     raw = client.get(f"/leads/batches/{batch_id}/arquivo")
     assert raw.status_code == 401
+
+
+def test_preview_csv_batch_returns_columns_and_samples(client: TestClient, engine) -> None:
+    user = seed_user(engine, email="preview_csv@example.com")
+    token = login_and_get_token(client, user.email, "[REDACTED]")
+    auth = {"Authorization": f"Bearer {token}"}
+
+    csv_bytes = b"nome,email,cpf\nJoao Silva,joao@ex.com,12345678901\nMaria Souza,maria@ex.com,98765432100\n"
+    upload = client.post(
+        "/leads/batches",
+        headers=auth,
+        files={"file": ("leads.csv", BytesIO(csv_bytes), "text/csv")},
+        data={"plataforma_origem": "email", "data_envio": "2026-03-04T10:00:00Z"},
+    )
+    batch_id = upload.json()["batch_id"]
+
+    preview = client.get(f"/leads/batches/{batch_id}/preview", headers=auth)
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["batch_id"] == batch_id
+    assert body["colunas"] == ["nome", "email", "cpf"]
+    assert len(body["amostras"]) == 2
+    assert body["amostras"][0] == ["Joao Silva", "joao@ex.com", "12345678901"]
+
+
+def test_preview_xlsx_batch_returns_columns_and_samples(client: TestClient, engine) -> None:
+    user = seed_user(engine, email="preview_xlsx@example.com")
+    token = login_and_get_token(client, user.email, "[REDACTED]")
+    auth = {"Authorization": f"Bearer {token}"}
+
+    xlsx_bytes = _make_xlsx_bytes()
+    upload = client.post(
+        "/leads/batches",
+        headers=auth,
+        files={"file": ("leads.xlsx", BytesIO(xlsx_bytes), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"plataforma_origem": "manual", "data_envio": "2026-03-04T10:00:00Z"},
+    )
+    batch_id = upload.json()["batch_id"]
+
+    preview = client.get(f"/leads/batches/{batch_id}/preview", headers=auth)
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["colunas"] == ["Email", "CPF"]
+    assert len(body["amostras"]) >= 1
+    assert body["amostras"][0][0] == "xlsx@example.com"
+
+
+def test_preview_batch_requires_auth(client: TestClient, engine) -> None:
+    user = seed_user(engine, email="preview_auth@example.com")
+    token = login_and_get_token(client, user.email, "[REDACTED]")
+    auth = {"Authorization": f"Bearer {token}"}
+
+    csv_bytes = b"a,b\n1,2\n"
+    upload = client.post(
+        "/leads/batches",
+        headers=auth,
+        files={"file": ("f.csv", BytesIO(csv_bytes), "text/csv")},
+        data={"plataforma_origem": "email", "data_envio": "2026-03-04T10:00:00Z"},
+    )
+    batch_id = upload.json()["batch_id"]
+
+    client.cookies.clear()
+    preview = client.get(f"/leads/batches/{batch_id}/preview")
+    assert preview.status_code == 401

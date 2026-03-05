@@ -64,6 +64,32 @@ export type LeadImportEtlResult = {
   dq_report: LeadImportEtlDQCheckResult[];
 };
 
+export type CreateLeadBatchPayload = {
+  plataforma_origem: string;
+  data_envio: string;
+  quem_enviou?: string;
+  file: File;
+};
+
+export type LeadBatch = {
+  id: number;
+  enviado_por: number;
+  plataforma_origem: string;
+  data_envio: string;
+  data_upload: string;
+  nome_arquivo_original: string;
+  stage: "bronze" | "silver" | "gold";
+  evento_id: number | null;
+  pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail";
+  created_at: string;
+};
+
+export type LeadBatchPreview = {
+  headers: string[];
+  rows: string[][];
+  total_rows: number;
+};
+
 /**
  * Lead representation used in frontend listing tables.
  */
@@ -119,6 +145,37 @@ export async function previewLeadImport(
     retries: 0,
   });
   return handleApiResponse<LeadImportPreview>(res);
+}
+
+export async function createLeadBatch(
+  token: string,
+  payload: CreateLeadBatchPayload,
+): Promise<LeadBatch> {
+  const form = new FormData();
+  form.append("file", payload.file);
+  form.append("plataforma_origem", payload.plataforma_origem);
+  form.append("data_envio", payload.data_envio);
+  if (payload.quem_enviou) {
+    // Campo reservado para evolucao futura do contrato de API.
+    form.append("quem_enviou", payload.quem_enviou);
+  }
+
+  const res = await fetchWithAuth("/leads/batches", {
+    method: "POST",
+    token,
+    body: form,
+    timeoutMs: 60_000,
+    retries: 0,
+  });
+  return handleApiResponse<LeadBatch>(res);
+}
+
+export async function getLeadBatchPreview(token: string, batchId: number): Promise<LeadBatchPreview> {
+  const res = await fetchWithAuth(`/leads/batches/${batchId}/preview`, {
+    token,
+    retries: 0,
+  });
+  return handleApiResponse<LeadBatchPreview>(res);
 }
 
 export async function previewLeadImportEtl(

@@ -1,5 +1,5 @@
-﻿import LeadImportPage from "../features/leads-import/LeadImportPage";
+import ImportacaoPage from "./leads/ImportacaoPage";
 
 export default function LeadsImport() {
-  return <LeadImportPage />;
+  return <ImportacaoPage />;
 }

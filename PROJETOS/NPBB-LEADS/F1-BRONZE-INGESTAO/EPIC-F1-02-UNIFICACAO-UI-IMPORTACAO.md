@@ -1,5 +1,5 @@
 EPIC-F1-02 — Unificação da UI de Importação
-projeto: NPBB-LEADS | fase: F1 | status: 🔲
+projeto: NPBB-LEADS | fase: F1 | status: ✅
 depende de: EPIC-F1-01 (modelos + endpoint bronze operacionais)
 
 1. Resumo
@@ -34,7 +34,7 @@ Não quebrar a rota GET /leads (tabela de leads) nem o dashboard
 
 Issues
 NPBB-F1-02-001 — Componente ImportacaoStepper (Step 1: Metadados + Upload)
-tipo: feature | sp: 3 | prioridade: alta | status: 🔲
+tipo: feature | sp: 3 | prioridade: alta | status: ✅
 depende de: NPBB-F1-01-002 (endpoint POST /leads/batches)
 Descrição:
 Criar componente React com Stepper MUI de 2 etapas. Step 1 coleta: quem enviou
@@ -43,22 +43,22 @@ whatsapp, drive, manual, outro), data de envio (date picker), arquivo (CSV ou
 XLSX). Ao submeter, chama POST /leads/batches e avança para Step 2.
 Critérios de Aceitação:
 
- Formulário valida que arquivo é CSV ou XLSX antes de submeter
- Todos os campos de metadados obrigatórios (quem enviou, plataforma, data, arquivo)
- Ao submeter com sucesso, exibe batch_id e avança para Step 2
- Erros da API exibidos inline no formulário
- Loading state no botão durante o upload
+- [x] Formulário valida que arquivo é CSV ou XLSX antes de submeter
+- [x] Todos os campos de metadados obrigatórios (quem enviou, plataforma, data, arquivo)
+- [x] Ao submeter com sucesso, exibe batch_id e avança para Step 2
+- [x] Erros da API exibidos inline no formulário
+- [x] Loading state no botão durante o upload
 
 Tarefas:
 
- T1: Criar frontend/src/pages/leads/ImportacaoPage.tsx com MUI Stepper
- T2: Implementar Step 1 — campos de metadados + file input
- T3: Implementar chamada POST /leads/batches com FormData
- T4: Exibir batch_id retornado e avançar stepper ao sucesso
+- [x] T1: Criar frontend/src/pages/leads/ImportacaoPage.tsx com MUI Stepper
+- [x] T2: Implementar Step 1 — campos de metadados + file input
+- [x] T3: Implementar chamada POST /leads/batches com FormData
+- [x] T4: Exibir batch_id retornado e avançar stepper ao sucesso
 
 
 NPBB-F1-02-002 — Step 2: Preview de Colunas Detectadas
-tipo: feature | sp: 2 | prioridade: alta | status: 🔲
+tipo: feature | sp: 2 | prioridade: alta | status: ✅
 depende de: NPBB-F1-02-001
 Descrição:
 Step 2 do stepper: exibir as colunas detectadas no arquivo recém-enviado e as
@@ -68,34 +68,33 @@ O botão "Avançar para Mapeamento" navega para a rota de mapeamento (F2) passan
 o batch_id.
 Critérios de Aceitação:
 
- Tabela MUI com nomes das colunas detectadas + 3 linhas de amostra
- Dados carregados via GET /leads/batches/{id}/preview (novo endpoint backend)
- Botão "Avançar para Mapeamento" navega com batch_id
- Botão "Cancelar" volta ao Step 1
+- [x] Tabela MUI com nomes das colunas detectadas + 3 linhas de amostra
+- [x] Dados carregados via GET /leads/batches/{id}/preview
+- [x] Botão "Avançar para Mapeamento" navega com batch_id
+- [x] Botão "Cancelar" volta ao Step 1
 
 Tarefas:
 
- T1: Criar endpoint GET /leads/batches/{id}/preview no backend
-(lê arquivo_bronze, detecta colunas, retorna primeiras 3 linhas como JSON)
- T2: Implementar Step 2 no frontend — tabela de preview
- T3: Navegação para rota de mapeamento (será implementada no F2)
- T4: Teste pytest para /leads/batches/{id}/preview
+- [x] T1: Endpoint `GET /leads/batches/{id}/preview` validado no backend
+- [x] T2: Implementar Step 2 no frontend — tabela de preview
+- [x] T3: Navegação para rota de mapeamento (handoff para F2)
+- [x] T4: Cobertura de backend para `/leads/batches/{id}/preview` existente em `backend/tests/test_lead_batch_endpoints.py`
 
 
 NPBB-F1-02-003 — Remover / Redirecionar Rota "Importação Avançada"
-tipo: refactor | sp: 1 | prioridade: média | status: 🔲
+tipo: refactor | sp: 1 | prioridade: média | status: ✅
 depende de: NPBB-F1-02-001
 Descrição:
 Identificar a rota "Importação Avançada" no frontend e redirecioná-la para a
 nova rota unificada. Remover o item de menu duplicado.
 Critérios de Aceitação:
 
- Apenas 1 entrada de "Importação" no menu lateral
- Acesso à rota antiga redireciona para nova rota
- Sem links quebrados
+- [x] Apenas 1 entrada de "Importação" no menu lateral
+- [x] Acesso à rota antiga redireciona para nova rota
+- [x] Sem links quebrados
 
 Tarefas:
 
- T1: Identificar rotas de importação existentes no router do frontend
- T2: Adicionar redirect da rota antiga para nova
- T3: Remover item duplicado do menu lateral
+- [x] T1: Identificar rotas de importação existentes no router do frontend
+- [x] T2: Adicionar redirect da rota antiga para nova
+- [x] T3: Remover item duplicado do menu lateral

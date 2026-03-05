@@ -99,7 +99,10 @@ function AppRoutes() {
 
         <Route path="/ativos" element={<AtivosList />} />
         <Route path="/ingressos" element={<IngressosPortal />} />
-        <Route path="/leads" element={withSuspense(<LeadsImport />)} />
+        <Route path="/leads" element={<Navigate to="/leads/importar" replace />} />
+        <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
+        <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
+        <Route path="/leads/mapeamento" element={<ComingSoon title="Mapeamento de Leads" />} />
         <Route path="/publicidade" element={<PublicidadeImport />} />
         <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
       </Route>

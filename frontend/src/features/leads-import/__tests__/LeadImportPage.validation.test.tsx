@@ -1,25 +1,21 @@
-﻿import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LeadImportPage from "../LeadImportPage";
 import { useAuth } from "../../../store/auth";
 import {
-  createLeadAlias,
+  createLeadBatch,
+  getLeadBatchPreview,
   listLeads,
-  listReferenciaCidades,
-  listReferenciaEstados,
-  listReferenciaEventos,
-  listReferenciaGeneros,
-  previewLeadImportEtl,
-  commitLeadImportEtl,
-  previewLeadImport,
-  runLeadImport,
-  validateLeadMapping,
 } from "../../../services/leads_import";
 
 vi.mock("../../../store/auth", () => ({ useAuth: vi.fn() }));
 
 vi.mock("../../../services/leads_import", () => ({
+  createLeadBatch: vi.fn(),
+  getLeadBatchPreview: vi.fn(),
+  listLeads: vi.fn(),
+  // keep legacy exports for other consumers that still import them
   previewLeadImport: vi.fn(),
   previewLeadImportEtl: vi.fn(),
   commitLeadImportEtl: vi.fn(),
@@ -29,26 +25,17 @@ vi.mock("../../../services/leads_import", () => ({
   listReferenciaCidades: vi.fn(),
   listReferenciaEstados: vi.fn(),
   listReferenciaGeneros: vi.fn(),
-  listLeads: vi.fn(),
   createLeadAlias: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
-const mockedPreviewLeadImport = vi.mocked(previewLeadImport);
-const mockedPreviewLeadImportEtl = vi.mocked(previewLeadImportEtl);
-const mockedCommitLeadImportEtl = vi.mocked(commitLeadImportEtl);
-const mockedValidateLeadMapping = vi.mocked(validateLeadMapping);
-const mockedRunLeadImport = vi.mocked(runLeadImport);
-const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
-const mockedListReferenciaCidades = vi.mocked(listReferenciaCidades);
-const mockedListReferenciaEstados = vi.mocked(listReferenciaEstados);
-const mockedListReferenciaGeneros = vi.mocked(listReferenciaGeneros);
+const mockedCreateLeadBatch = vi.mocked(createLeadBatch);
+const mockedGetLeadBatchPreview = vi.mocked(getLeadBatchPreview);
 const mockedListLeads = vi.mocked(listLeads);
-const mockedCreateLeadAlias = vi.mocked(createLeadAlias);
 
 function setupDefaultMocks() {
   mockedUseAuth.mockReturnValue({
-    token: "token",
+    token: "test-token",
     user: { id: 1, email: "demo@npbb.com.br", tipo_usuario: "admin" },
     loading: false,
     refreshing: false,
@@ -57,155 +44,175 @@ function setupDefaultMocks() {
     login: vi.fn(),
     logout: vi.fn(),
   });
-
-  mockedListReferenciaEventos.mockResolvedValue([{ id: 55, nome: "Evento Alvo" }]);
-  mockedListReferenciaCidades.mockResolvedValue(["Sao Paulo"]);
-  mockedListReferenciaEstados.mockResolvedValue(["SP"]);
-  mockedListReferenciaGeneros.mockResolvedValue(["Masculino"]);
   mockedListLeads.mockResolvedValue({ page: 1, page_size: 20, total: 0, items: [] });
-  mockedValidateLeadMapping.mockResolvedValue({ ok: true });
-  mockedRunLeadImport.mockResolvedValue({ filename: "ok.csv", created: 1, updated: 0, skipped: 0 });
-  mockedPreviewLeadImportEtl.mockResolvedValue({
-    session_token: "etl-1",
-    total_rows: 0,
-    valid_rows: 0,
-    invalid_rows: 0,
-    dq_report: [],
-  });
-  mockedCommitLeadImportEtl.mockResolvedValue({
-    session_token: "etl-1",
-    total_rows: 0,
-    valid_rows: 0,
-    invalid_rows: 0,
-    created: 0,
-    updated: 0,
-    skipped: 0,
-    errors: 0,
-    strict: false,
-    status: "committed",
-    dq_report: [],
-  });
-  mockedCreateLeadAlias.mockResolvedValue({
-    id: 1,
-    tipo: "EVENTO",
-    valor_origem: "Evento Alvo",
-    valor_normalizado: "evento alvo",
-    canonical_value: null,
-    evento_id: 55,
-  });
 }
 
-describe("LeadImportPage", () => {
+describe("LeadImportPage — Bronze Stepper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultMocks();
   });
 
-  it("renders tabs with legacy as default", async () => {
+  it("renders the import page with step 1 visible", async () => {
     render(<LeadImportPage />);
 
-    const legacyTab = await screen.findByRole("tab", { name: "Importacao" });
-    const etlTab = await screen.findByRole("tab", { name: "Importacao avancada" });
-
-    expect(legacyTab).toBeInTheDocument();
-    expect(etlTab).toBeInTheDocument();
-    expect(legacyTab).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByText("Importar arquivo")).toBeInTheDocument();
+    expect(screen.getByText("Metadados e Upload")).toBeInTheDocument();
+    expect(screen.getByText("Preview de Colunas")).toBeInTheDocument();
+    expect(screen.getByText("Plataforma de origem")).toBeInTheDocument();
+    expect(screen.getByText("Informações de envio")).toBeInTheDocument();
   });
 
-  it("blocks invalid file extension before preview request", async () => {
-    mockedPreviewLeadImport.mockResolvedValue({
-      filename: "valid.csv",
-      headers: [],
-      rows: [],
-      delimiter: ";",
-      start_index: 0,
-      suggestions: [],
-      samples_by_column: [],
-    });
-
-    const { container } = render(<LeadImportPage />);
-
+  it("does NOT render the old 'Importacao avancada' tab", async () => {
+    render(<LeadImportPage />);
     await waitFor(() => {
-      expect(mockedListLeads).toHaveBeenCalled();
+      expect(screen.queryByRole("tab", { name: /importacao avancada/i })).not.toBeInTheDocument();
     });
-
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const user = userEvent.setup();
-    const invalidFile = new File(["invalid"], "leads.csv", { type: "text/plain" });
-
-    await user.upload(input, invalidFile);
-
-    expect(mockedPreviewLeadImport).not.toHaveBeenCalled();
-    expect(await screen.findByText("Tipo MIME nao suportado para importacao.")).toBeInTheDocument();
   });
 
-  it("blocks double submit while import is in progress", async () => {
-    mockedPreviewLeadImport.mockResolvedValue({
-      filename: "valid.csv",
-      headers: ["Email", "CPF"],
-      rows: [["a@a.com", "12345678901"]],
-      delimiter: ";",
-      start_index: 0,
-      suggestions: [
-        { coluna: "Email", campo: "email", confianca: 1 },
-        { coluna: "CPF", campo: "cpf", confianca: 1 },
+  it("shows validation error when required fields are missing on submit", async () => {
+    render(<LeadImportPage />);
+    const user = userEvent.setup();
+
+    const submitButton = screen.getByRole("button", { name: "Enviar arquivo" });
+    await user.click(submitButton);
+
+    expect(await screen.findByText("Selecione a plataforma de origem.")).toBeInTheDocument();
+    expect(mockedCreateLeadBatch).not.toHaveBeenCalled();
+  });
+
+  it("shows error when file is missing but platform and date are filled", async () => {
+    render(<LeadImportPage />);
+    const user = userEvent.setup();
+
+    const platformSelect = screen.getByRole("combobox", { name: /plataforma de origem/i });
+    await user.click(platformSelect);
+    const emailOption = await screen.findByRole("option", { name: "E-mail" });
+    await user.click(emailOption);
+
+    fireEvent.change(screen.getByLabelText(/data de envio/i), { target: { value: "2026-01-15" } });
+
+    await user.click(screen.getByRole("button", { name: "Enviar arquivo" }));
+
+    expect(await screen.findByText("Selecione um arquivo CSV ou XLSX.")).toBeInTheDocument();
+    expect(mockedCreateLeadBatch).not.toHaveBeenCalled();
+  });
+
+  it("advances to step 2 on successful upload showing column preview", async () => {
+    mockedCreateLeadBatch.mockResolvedValue({
+      batch_id: "batch-uuid-123",
+      stage: "bronze",
+      pipeline_status: "pending",
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      batch_id: "batch-uuid-123",
+      nome_arquivo: "leads.csv",
+      colunas: ["nome", "email", "cpf"],
+      amostras: [
+        ["Joao Silva", "joao@exemplo.com", "12345678901"],
+        ["Maria Souza", "maria@exemplo.com", "98765432100"],
       ],
-      samples_by_column: [["a@a.com"], ["12345678901"]],
     });
-
-    let resolveValidate!: (value: { ok: boolean }) => void;
-    const validatePromise = new Promise<{ ok: boolean }>((resolve) => {
-      resolveValidate = (value) => resolve(value);
-    });
-    mockedValidateLeadMapping.mockReturnValueOnce(validatePromise);
 
     const { container } = render(<LeadImportPage />);
     const user = userEvent.setup();
 
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    await user.upload(input, new File(["x"], "leads.csv", { type: "text/csv" }));
+    const platformSelect = screen.getByRole("combobox", { name: /plataforma de origem/i });
+    await user.click(platformSelect);
+    const emailOption = await screen.findByRole("option", { name: "E-mail" });
+    await user.click(emailOption);
 
-    const importButton = await screen.findByRole("button", { name: "Importar" });
-    fireEvent.click(importButton);
+    fireEvent.change(screen.getByLabelText(/data de envio/i), { target: { value: "2026-01-15" } });
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = new File(["nome,email,cpf\nJoao Silva,joao@exemplo.com,12345678901"], "leads.csv", {
+      type: "text/csv",
+    });
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(screen.getByRole("button", { name: "Enviar arquivo" }));
 
     await waitFor(() => {
-      expect(importButton).toBeDisabled();
+      expect(mockedCreateLeadBatch).toHaveBeenCalledWith("test-token", {
+        file: csvFile,
+        plataforma_origem: "email",
+        data_envio: expect.any(String),
+      });
     });
 
-    fireEvent.click(importButton);
-
-    resolveValidate({ ok: true });
-
-    await waitFor(() => {
-      expect(mockedRunLeadImport).toHaveBeenCalledTimes(1);
-    });
+    expect(await screen.findByText(/Preview — leads\.csv/)).toBeInTheDocument();
+    expect(screen.getByText("nome")).toBeInTheDocument();
+    expect(screen.getByText("email")).toBeInTheDocument();
+    expect(screen.getByText("cpf")).toBeInTheDocument();
+    expect(screen.getByText("batch-uuid-123")).toBeInTheDocument();
+    expect(
+      screen.getByText("Arquivo salvo com sucesso na camada Bronze. O mapeamento de colunas estará disponível na fase Silver."),
+    ).toBeInTheDocument();
   });
 
-  it("shows non-blocking alias warning when alias persistence fails", async () => {
-    mockedPreviewLeadImport.mockResolvedValue({
-      filename: "valid.csv",
-      headers: ["Evento"],
-      rows: [["Evento Alvo"]],
-      delimiter: ";",
-      start_index: 0,
-      suggestions: [{ coluna: "Evento", campo: "evento_nome", confianca: 1 }],
-      samples_by_column: [["Evento Alvo"]],
-    });
-
-    mockedCreateLeadAlias.mockRejectedValueOnce(new Error("alias-failed"));
+  it("shows API error inline when createLeadBatch fails", async () => {
+    mockedCreateLeadBatch.mockRejectedValue(new Error("Servidor indisponivel"));
 
     const { container } = render(<LeadImportPage />);
     const user = userEvent.setup();
 
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    await user.upload(input, new File(["x"], "leads.csv", { type: "text/csv" }));
+    const platformSelect = screen.getByRole("combobox", { name: /plataforma de origem/i });
+    await user.click(platformSelect);
+    const emailOption = await screen.findByRole("option", { name: "E-mail" });
+    await user.click(emailOption);
 
-    await user.click(await screen.findByRole("button", { name: "Importar" }));
+    fireEvent.change(screen.getByLabelText(/data de envio/i), { target: { value: "2026-01-15" } });
 
-    expect(
-      await screen.findByText(/correspondencia\(s\) de alias nao foram salvas/i),
-    ).toBeInTheDocument();
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File(["x"], "leads.csv", { type: "text/csv" })],
+      },
+    });
 
-    expect(await screen.findByText("Importacao concluida")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Enviar arquivo" }));
+
+    expect(await screen.findByText("Servidor indisponivel")).toBeInTheDocument();
+    expect(screen.queryByText(/Preview — leads\.csv/)).not.toBeInTheDocument();
+  });
+
+  it("resets stepper when 'Importar outro arquivo' is clicked", async () => {
+    mockedCreateLeadBatch.mockResolvedValue({
+      batch_id: "batch-uuid-456",
+      stage: "bronze",
+      pipeline_status: "pending",
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      batch_id: "batch-uuid-456",
+      nome_arquivo: "dados.xlsx",
+      colunas: ["A", "B"],
+      amostras: [["val1", "val2"]],
+    });
+
+    const { container } = render(<LeadImportPage />);
+    const user = userEvent.setup();
+
+    const platformSelect = screen.getByRole("combobox", { name: /plataforma de origem/i });
+    await user.click(platformSelect);
+    const whatsappOption = await screen.findByRole("option", { name: "WhatsApp" });
+    await user.click(whatsappOption);
+
+    fireEvent.change(screen.getByLabelText(/data de envio/i), { target: { value: "2026-02-01" } });
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File(["x"], "dados.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })],
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Enviar arquivo" }));
+
+    await screen.findByText(/Preview — dados\.xlsx/);
+
+    await user.click(screen.getByRole("button", { name: "Importar outro arquivo" }));
+
+    expect(screen.getByText("Informações de envio")).toBeInTheDocument();
+    expect(screen.queryByText(/Preview — dados\.xlsx/)).not.toBeInTheDocument();
   });
 });

@@ -1,17 +1,16 @@
-import { Box, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
-import { useCallback, useState } from "react";
+import { Box, Paper, Stack, Typography } from "@mui/material";
+import { useCallback } from "react";
 import { useAuth } from "../../store/auth";
 import { LeadListTable } from "./components/LeadListTable";
-import { LeadImportEtlTab } from "./containers/LeadImportEtlTab";
-import { LeadImportLegacyTab } from "./containers/LeadImportLegacyTab";
+import { ImportacaoBronzeStepper } from "./components/ImportacaoBronzeStepper";
 import { useLeadsTable } from "./hooks/useLeadsTable";
 
 /**
- * Page container for assisted lead import and lead listing.
+ * Unified lead import page — Bronze ingestion stepper + lead listing.
+ * Replaces the previous dual-tab "Importacao / Importacao Avancada" layout.
  */
 export default function LeadImportPage() {
   const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState<"legacy" | "etl">("legacy");
 
   const {
     leads,
@@ -43,19 +42,16 @@ export default function LeadImportPage() {
       </Stack>
 
       <Paper elevation={1} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
-        <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)} sx={{ mb: 3 }}>
-          <Tab value="legacy" label="Importacao" />
-          <Tab value="etl" label="Importacao avancada" />
-        </Tabs>
-
-        {activeTab === "legacy" ? (
-          <LeadImportLegacyTab
-            token={token}
-            onImportSuccess={refresh}
-            onResetLeadsPage={handleResetLeadsPage}
-          />
-        ) : null}
-        {activeTab === "etl" ? <LeadImportEtlTab token={token} /> : null}
+        <Typography variant="h6" fontWeight={700} mb={3}>
+          Importar arquivo
+        </Typography>
+        <ImportacaoBronzeStepper
+          token={token}
+          onBatchCreated={() => {
+            handleResetLeadsPage();
+            refresh();
+          }}
+        />
       </Paper>
 
       <Paper elevation={1} sx={{ mt: 3, borderRadius: 3, overflow: "hidden" }}>

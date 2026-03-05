@@ -12,11 +12,11 @@ from app.models.lead_batch import BatchStage, PipelineStatus
 
 class LeadBatchRead(BaseModel):
     id: int
-    enviado_por: Optional[int] = None
-    plataforma_origem: Optional[str] = None
-    data_envio: Optional[datetime] = None
+    enviado_por: int
+    plataforma_origem: str
+    data_envio: datetime
     data_upload: datetime
-    nome_arquivo_original: Optional[str] = None
+    nome_arquivo_original: str
     stage: BatchStage
     evento_id: Optional[int] = None
     pipeline_status: PipelineStatus

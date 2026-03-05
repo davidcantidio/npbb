@@ -8,9 +8,9 @@ Tables:
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from sqlalchemy import Column, DateTime, LargeBinary, Text
+from sqlalchemy import JSON, Column, DateTime, LargeBinary, UniqueConstraint
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
@@ -38,22 +38,22 @@ class LeadBatch(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    enviado_por: Optional[int] = Field(default=None, foreign_key="usuario.id")
-    plataforma_origem: Optional[str] = Field(default=None, max_length=60)
-    data_envio: Optional[datetime] = Field(
-        default=None, sa_column=Column(DateTime(timezone=True))
+    enviado_por: int = Field(foreign_key="usuario.id", index=True)
+    plataforma_origem: str = Field(max_length=80)
+    data_envio: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
     )
     data_upload: datetime = Field(default_factory=now_utc)
-    nome_arquivo_original: Optional[str] = Field(default=None, max_length=500)
+    nome_arquivo_original: str = Field(max_length=255)
 
-    arquivo_bronze: Optional[bytes] = Field(
-        default=None, sa_column=Column(LargeBinary, nullable=True)
+    arquivo_bronze: bytes = Field(
+        sa_column=Column(LargeBinary, nullable=False)
     )
 
     stage: BatchStage = Field(default=BatchStage.BRONZE)
-    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id")
-    pipeline_status: PipelineStatus = Field(default=PipelineStatus.PENDING)
-    pipeline_report: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
+    pipeline_status: PipelineStatus = Field(default=PipelineStatus.PENDING, index=True)
+    pipeline_report: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON, nullable=True))
 
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(
@@ -65,23 +65,33 @@ class LeadBatch(SQLModel, table=True):
 
 class LeadColumnAlias(SQLModel, table=True):
     __tablename__ = "lead_column_aliases"
+    __table_args__ = (
+        UniqueConstraint(
+            "nome_coluna_original",
+            "plataforma_origem",
+            name="uq_lead_column_aliases_coluna_plataforma",
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     nome_coluna_original: str = Field(max_length=255)
     campo_canonico: str = Field(max_length=100)
-    plataforma_origem: Optional[str] = Field(default=None, max_length=60)
-    criado_por: Optional[int] = Field(default=None, foreign_key="usuario.id")
+    plataforma_origem: str = Field(max_length=80, index=True)
+    criado_por: int = Field(foreign_key="usuario.id", index=True)
     created_at: datetime = Field(default_factory=now_utc)
 
 
 class LeadSilver(SQLModel, table=True):
     __tablename__ = "leads_silver"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "row_index", name="uq_leads_silver_batch_row"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     batch_id: int = Field(foreign_key="lead_batches.id", index=True)
-    row_index: int
-    dados_brutos: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
-    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id")
+    row_index: int = Field(index=True)
+    dados_brutos: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    evento_id: int = Field(foreign_key="evento.id", index=True)
 
     created_at: datetime = Field(default_factory=now_utc)
 

@@ -1168,6 +1168,13 @@ def criar_batch(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
+    if not current_user.id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_USER",
+            message="Usuario autenticado invalido para upload",
+        )
+
     filename = file.filename or ""
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_IMPORT_EXTENSIONS:
@@ -1207,8 +1214,8 @@ def criar_batch(
         )
 
     batch = LeadBatch(
-        enviado_por=current_user.id,
-        plataforma_origem=plataforma_origem,
+        enviado_por=int(current_user.id),
+        plataforma_origem=plataforma_origem.strip(),
         data_envio=parsed_data_envio,
         nome_arquivo_original=filename,
         arquivo_bronze=raw,

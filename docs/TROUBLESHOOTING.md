@@ -81,3 +81,11 @@ Remove-Item -Recurse -Force frontend/node_modules
 ## 14) Tests falham por SQLite
 **Sintoma:** erro de conexao no pytest.
 **Solucao:** exporte `TESTING=true` ou configure `DATABASE_URL` para um banco de teste.
+
+## 15) "Tempo de requisicao excedido" ao fazer login
+**Sintoma:** ao tentar logar, a mensagem "Tempo limite da requisicao excedido." aparece.
+**Causas comuns:**
+- Backend nao esta rodando ou nao e acessivel: confira se o backend esta em `http://localhost:8000` (dev) ou na URL configurada em `VITE_API_BASE_URL`.
+- `VITE_API_BASE_URL` incorreto: em dev local, use `/api` ou deixe sem definir (o Vite faz proxy para o backend). Em producao, verifique se aponta para o backend correto.
+- Cold start do backend ou banco: a primeira requisicao apos inatividade pode demorar. O timeout do login foi aumentado para 45s.
+**Solucao:** suba o backend com `./scripts/dev_backend.sh`, confira se o PostgreSQL esta rodando e se `VITE_API_BASE_URL` esta correto no `.env` do frontend.

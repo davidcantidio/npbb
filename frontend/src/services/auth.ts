@@ -37,12 +37,16 @@ export interface LoginResponse {
  * @returns Token and user profile from backend.
  * @throws Error When backend rejects credentials or network request fails.
  */
+/** Timeout maior para login: cold start do backend e conexão com DB podem demorar. */
+const LOGIN_TIMEOUT_MS = 45_000;
+
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const res = await fetchWithAuth("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     retries: 0,
+    timeoutMs: LOGIN_TIMEOUT_MS,
   });
   return handleApiResponse<LoginResponse>(res);
 }

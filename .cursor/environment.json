@@ -1,0 +1,19 @@
+{
+  "install": "sudo pg_ctlcluster 16 main start && cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && cd ../frontend && npm install",
+  "terminals": [
+    {
+      "name": "Backend",
+      "command": "sudo pg_ctlcluster 16 main start && cd backend && source .venv/bin/activate && PYTHONPATH=/workspace:/workspace/backend python -m uvicorn app.main:app --reload --port 8000"
+    },
+    {
+      "name": "Frontend",
+      "command": "cd frontend && npm run dev"
+    }
+  ],
+  "secrets": [
+    "DATABASE_URL",
+    "DIRECT_URL",
+    "SECRET_KEY",
+    "SEED_PASSWORD"
+  ]
+}

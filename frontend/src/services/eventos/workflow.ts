@@ -1,4 +1,4 @@
-﻿import { handleDeleteResponse, handleResponse, requestWithAuth } from "./http";
+import { handleDeleteResponse, handleResponse, requestWithAuth } from "./http";
 
 export type QuestionarioOpcao = {
   id?: number;
@@ -65,6 +65,9 @@ export type Ativacao = {
   descricao?: string | null;
   mensagem_qrcode?: string | null;
   gamificacao_id?: number | null;
+  landing_url?: string | null;
+  qr_code_url?: string | null;
+  url_promotor?: string | null;
   redireciona_pesquisa: boolean;
   checkin_unico: boolean;
   termo_uso: boolean;

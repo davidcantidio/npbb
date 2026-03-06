@@ -12,6 +12,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  InputAdornment,
   MenuItem,
   Paper,
   Snackbar,
@@ -26,6 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { Link as RouterLink, useParams } from "react-router-dom";
@@ -149,6 +151,49 @@ export default function EventAtivacoes() {
 
   const nomeNormalized = normalizeText(createForm.nome);
   const nomeRequiredError = createAttempted && !nomeNormalized;
+
+  const copyToClipboard = async (text: string | null | undefined, label: string) => {
+    const value = String(text || "").trim();
+    if (!value) {
+      setSnackbar({ open: true, message: `Sem ${label.toLowerCase()} para copiar.`, severity: "info" });
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        setSnackbar({ open: true, message: `${label} copiado.`, severity: "success" });
+        return;
+      }
+    } catch {
+      // fallback abaixo
+    }
+
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "0";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setSnackbar({
+        open: true,
+        message: ok ? `${label} copiado.` : `Nao foi possivel copiar ${label.toLowerCase()}.`,
+        severity: ok ? "success" : "error",
+      });
+    } catch {
+      setSnackbar({
+        open: true,
+        message: `Nao foi possivel copiar ${label.toLowerCase()}.`,
+        severity: "error",
+      });
+    }
+  };
 
   const handleCreate = async () => {
     if (!token || !isValidEventoId) return;
@@ -549,6 +594,68 @@ export default function EventAtivacoes() {
               <Typography variant="body2">
                 <strong>Gera cupom:</strong> {viewing.gera_cupom ? "Sim" : "Nao"}
               </Typography>
+              <Alert severity="info" variant="outlined">
+                Para quem nao consegue ler QR Code, o promotor pode digitar ou compartilhar a URL abaixo.
+              </Alert>
+              <TextField
+                label="Landing publica"
+                value={viewing.landing_url || ""}
+                fullWidth
+                InputProps={{
+                  readOnly: true,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        edge="end"
+                        aria-label="Copiar landing publica"
+                        onClick={() => copyToClipboard(viewing.landing_url, "Landing publica")}
+                      >
+                        <ContentCopyIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="URL alternativa do promotor"
+                value={viewing.url_promotor || ""}
+                fullWidth
+                InputProps={{
+                  readOnly: true,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        edge="end"
+                        aria-label="Copiar URL alternativa do promotor"
+                        onClick={() => copyToClipboard(viewing.url_promotor, "URL alternativa do promotor")}
+                      >
+                        <ContentCopyIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {viewing.qr_code_url ? (
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 700 }}>
+                    QR Code da ativacao
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={viewing.qr_code_url}
+                    alt={`QR Code da ativacao ${viewing.nome}`}
+                    sx={{
+                      width: 180,
+                      height: 180,
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      bgcolor: "common.white",
+                      p: 1,
+                    }}
+                  />
+                </Box>
+              ) : null}
             </Stack>
           ) : null}
         </DialogContent>

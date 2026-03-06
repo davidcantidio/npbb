@@ -1,4 +1,4 @@
-﻿import {
+import {
   EVENTOS_API_BASE_URL,
   handleDeleteResponse,
   handleResponse,
@@ -39,6 +39,10 @@ export type DataHealth = {
 export type EventoRead = {
   id: number;
   thumbnail?: string | null;
+  template_override?: string | null;
+  hero_image_url?: string | null;
+  cta_personalizado?: string | null;
+  descricao_curta?: string | null;
   divisao_demandante_id?: number | null;
   qr_code_url?: string | null;
   nome: string;
@@ -81,6 +85,10 @@ export type EventoCreate = {
   territorio_ids?: number[];
   status_id?: number;
   thumbnail?: string | null;
+  template_override?: string | null;
+  hero_image_url?: string | null;
+  cta_personalizado?: string | null;
+  descricao_curta?: string | null;
   divisao_demandante_id?: number | null;
   qr_code_url?: string | null;
   data_inicio_prevista: string;

@@ -33,6 +33,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    const isPublicLandingRoute =
+      pathname.startsWith("/landing/") || pathname.startsWith("/checkin-sem-qr/");
+    if (isPublicLandingRoute) {
+      setLoading(false);
+      setRefreshing(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     getMe()
       .then(async (me) => {

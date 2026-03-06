@@ -26,6 +26,7 @@ const EventQuestionario = lazy(() => import("./pages/EventQuestionario"));
 const LeadsImport = lazy(() => import("./pages/LeadsImport"));
 const MapeamentoPage = lazy(() => import("./pages/leads/MapeamentoPage"));
 const PipelineStatusPage = lazy(() => import("./pages/leads/PipelineStatusPage"));
+const EventLandingPage = lazy(() => import("./pages/EventLandingPage"));
 
 const theme = createTheme({
   palette: {
@@ -73,6 +74,8 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/landing/eventos/:eventId" element={withSuspense(<EventLandingPage />)} />
+      <Route path="/landing/ativacoes/:ativacaoId" element={withSuspense(<EventLandingPage />)} />
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/novo-usuario" element={<Register />} />

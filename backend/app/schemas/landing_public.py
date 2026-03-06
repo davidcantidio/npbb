@@ -54,13 +54,14 @@ class LandingFormRead(BaseModel):
 class LandingBrandRead(BaseModel):
     tagline: str
     versao_logo: str
-    url_hero_image: str
+    url_hero_image: str | None = None
     hero_alt: str
 
 
 class LandingEventRead(BaseModel):
     id: int
     nome: str
+    cta_personalizado: str | None = None
     descricao: str | None = None
     descricao_curta: str | None = None
     data_inicio: date | None = None
@@ -75,8 +76,26 @@ class LandingAccessRead(BaseModel):
     url_promotor: str | None = None
 
 
+class LandingAtivacaoRead(BaseModel):
+    id: int
+    nome: str
+    descricao: str | None = None
+    mensagem_qrcode: str | None = None
+
+
+class GamificacaoPublicSchema(BaseModel):
+    id: int
+    nome: str
+    descricao: str
+    premio: str
+    titulo_feedback: str
+    texto_feedback: str
+
+
 class LandingPageRead(BaseModel):
     ativacao_id: int | None = None
+    ativacao: LandingAtivacaoRead | None = None
+    gamificacoes: list[GamificacaoPublicSchema] = Field(default_factory=list)
     evento: LandingEventRead
     template: LandingTemplateConfigRead
     formulario: LandingFormRead
@@ -123,6 +142,7 @@ class LandingSubmitResponse(BaseModel):
     lead_id: int
     event_id: int
     ativacao_id: int | None = None
+    ativacao_lead_id: int | None = None
     mensagem_sucesso: str
 
 

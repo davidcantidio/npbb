@@ -601,13 +601,20 @@ class Investimento(SQLModel, table=True):
 
 class AtivacaoLead(SQLModel, table=True):
     __tablename__ = "ativacao_lead"
+    __table_args__ = (
+        UniqueConstraint("ativacao_id", "lead_id", name="uq_ativacao_lead_ativacao_id_lead_id"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     ativacao_id: int = Field(foreign_key="ativacao.id")
     lead_id: int = Field(foreign_key="lead.id", index=True)
+    gamificacao_id: Optional[int] = Field(default=None, foreign_key="gamificacao.id")
+    gamificacao_completed: Optional[bool] = Field(default=False)
+    gamificacao_completed_at: Optional[datetime] = Field(default=None)
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")
+    gamificacao: Optional[Gamificacao] = Relationship()
 
 
 class EventoLandingCustomizationAudit(SQLModel, table=True):

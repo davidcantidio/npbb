@@ -1,6 +1,6 @@
 # EPIC-F4-01 — Regressão Visual Cross-Template e Acessibilidade
 **version:** 1.0.0 | **last_updated:** 2026-03-06
-**projeto:** AJUSTE-FINO-LANDING-PAGES-DINAMICAS | **fase:** F4 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LANDING-PAGES-DINAMICAS | **fase:** F4 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -28,19 +28,19 @@ atende o mínimo para uso público do Banco do Brasil.
 - Hero image condicional pode gerar alturas diferentes entre templates — validar fallback visual
 
 ## 4. Definition of Done do Épico
-- [ ] Cada template testado em 3 breakpoints (375px, 768px, 1280px) — screenshots capturados
-- [ ] `renderGraphicOverlay()` renderiza corretamente em todos os templates
-- [ ] Formulário above the fold confirmado em todos os breakpoints para todos os templates
-- [ ] Chips `mood`/`categoria` ausentes na view pública em todos os templates
-- [ ] Hero image condicional funcional (com e sem imagem) em todos os templates
-- [ ] Checklist WCAG AA validado: contraste, labels, teclado, screen reader
-- [ ] Fluxos UC-01 a UC-04 executados sem erro
+- [x] Cada template testado em 3 breakpoints (375px, 768px, 1280px) — screenshots capturados
+- [x] `renderGraphicOverlay()` renderiza corretamente em todos os templates
+- [x] Formulário above the fold confirmado em todos os breakpoints para todos os templates
+- [x] Chips `mood`/`categoria` ausentes na view pública em todos os templates
+- [x] Hero image condicional funcional (com e sem imagem) em todos os templates
+- [x] Checklist WCAG AA validado: contraste, labels, teclado, screen reader
+- [x] Fluxos UC-01 a UC-04 executados sem erro
 
 ---
 ## Issues
 
 ### AFLPD-F4-01-001 — Testar regressão visual por template e breakpoint
-**tipo:** docs | **sp:** 5 | **prioridade:** alta | **status:** 🔲
+**tipo:** docs | **sp:** 5 | **prioridade:** alta | **status:** ✅
 **depende de:** nenhuma
 
 **Descrição:**
@@ -61,13 +61,13 @@ condicional, ausência de chips internos e borderRadius 24px.
 - Given matriz de 30 cenários, When todos executados, Then todos passam sem regressão visual
 
 **Tarefas:**
-- [ ] T1: Preparar dados mock para cada template (com e sem hero image, com e sem gamificação)
-- [ ] T2: Testar `esporte_convencional` em 375px, 768px, 1280px — registrar screenshots
-- [ ] T3: Testar `evento_cultural` em 375px, 768px, 1280px — registrar screenshots
-- [ ] T4: Testar `tecnologia_inovacao` em 375px, 768px, 1280px — registrar screenshots
-- [ ] T5: Testar `esporte_radical` em 375px, 768px, 1280px — registrar screenshots
-- [ ] T6: Testar `show_musical` em 375px, 768px, 1280px — registrar screenshots
-- [ ] T7: Consolidar resultados em tabela com status pass/fail por cenário
+- [x] T1: Preparar dados mock para cada template (com e sem hero image, com e sem gamificação)
+- [x] T2: Testar `esporte_convencional` em 375px, 768px, 1280px — registrar screenshots
+- [x] T3: Testar `evento_cultural` em 375px, 768px, 1280px — registrar screenshots
+- [x] T4: Testar `tecnologia_inovacao` em 375px, 768px, 1280px — registrar screenshots
+- [x] T5: Testar `esporte_radical` em 375px, 768px, 1280px — registrar screenshots
+- [x] T6: Testar `show_musical` em 375px, 768px, 1280px — registrar screenshots
+- [x] T7: Consolidar resultados em tabela com status pass/fail por cenário
 
 **Notas técnicas:**
 Screenshots devem ser salvos em `artifacts/phase-f4/screenshots/` com nomenclatura
@@ -76,7 +76,7 @@ Screenshots devem ser salvos em `artifacts/phase-f4/screenshots/` com nomenclatu
 
 ---
 ### AFLPD-F4-01-002 — Validar fluxos UC-01 a UC-04 e acessibilidade
-**tipo:** docs | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** docs | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** AFLPD-F4-01-001
 
 **Descrição:**
@@ -96,13 +96,13 @@ teclado e compatibilidade com screen reader.
 - Given formulário, When navegado apenas com teclado (Tab/Enter), Then todos os campos e botões são acessíveis
 
 **Tarefas:**
-- [ ] T1: Executar UC-01 (ativação sem gamificação) — documentar resultado
-- [ ] T2: Executar UC-02 (ativação com mensagem de orientação) — documentar resultado
-- [ ] T3: Executar UC-03 (ativação com gamificação completa) — documentar resultado
-- [ ] T4: Executar UC-04 (preview no backoffice) — documentar resultado
-- [ ] T5: Validar contraste de cores com ferramenta (ex: axe, Lighthouse)
-- [ ] T6: Validar navegação por teclado — Tab cycle completo no formulário
-- [ ] T7: Verificar `aria-label` / `aria-disabled` nos botões da gamificação
+- [x] T1: Executar UC-01 (ativação sem gamificação) — documentar resultado
+- [x] T2: Executar UC-02 (ativação com mensagem de orientação) — documentar resultado
+- [x] T3: Executar UC-03 (ativação com gamificação completa) — documentar resultado
+- [x] T4: Executar UC-04 (preview no backoffice) — documentar resultado
+- [x] T5: Validar contraste de cores com ferramenta (ex: axe, Lighthouse)
+- [x] T6: Validar navegação por teclado — Tab cycle completo no formulário
+- [x] T7: Verificar `aria-label` / `aria-disabled` nos botões da gamificação
 
 **Notas técnicas:**
 Ferramentas sugeridas: Lighthouse (acessibilidade), axe-core (contraste), screen

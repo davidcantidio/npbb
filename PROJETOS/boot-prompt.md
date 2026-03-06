@@ -101,6 +101,8 @@ Se PROSSEGUIR: avance para implementação.
 
 ## IMPLEMENTAÇÃO
 
+**Princípios de código (obrigatórios):** Antes de escrever qualquer linha, pense na arquitetura. Priorize modularidade, manutenibilidade ao longo do tempo e evite arquivos e funções monolíticas. Aplique boas práticas: responsabilidade única por módulo/função, baixo acoplamento, alta coesão, nomes claros e testabilidade. Código que cresce sem estrutura vira dívida técnica.
+
 Execute as issues na ordem definida no arquivo do EPIC.
 
 Para cada issue:

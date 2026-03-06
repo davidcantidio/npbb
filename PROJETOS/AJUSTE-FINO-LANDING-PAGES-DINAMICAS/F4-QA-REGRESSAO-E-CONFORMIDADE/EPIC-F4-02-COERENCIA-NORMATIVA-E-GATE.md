@@ -1,6 +1,6 @@
 # EPIC-F4-02 — Coerência Normativa e Gate de Fase
 **version:** 1.0.0 | **last_updated:** 2026-03-06
-**projeto:** AJUSTE-FINO-LANDING-PAGES-DINAMICAS | **fase:** F4 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LANDING-PAGES-DINAMICAS | **fase:** F4 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -17,7 +17,7 @@ testado e validado.
 - Critérios de aceite: PRD seção 09 (LPD-REDESIGN-01 a LPD-REDESIGN-05)
 - Testes backend: `backend/tests/`
 - Testes frontend: `frontend/src/` (ou diretório de testes do frontend)
-- Artefato de evidência: `artifacts/phase-f4/validation-summary.md`
+- Artefato de evidência: `artifacts/phase-f4/aflpd-validation-summary.md`
 - Governança: `PROJETOS/COMUM/SCRUM-GOV.md`, `PROJETOS/COMUM/DECISION-PROTOCOL.md`
 
 ## 3. Riscos e Armadilhas
@@ -27,11 +27,11 @@ testado e validado.
 - Gate `hold` requer lista de ações corretivas — não pode ser genérico
 
 ## 4. Definition of Done do Épico
-- [ ] Cada critério de aceite do PRD (LPD-REDESIGN-01 a LPD-REDESIGN-05) verificado com resultado ✅ ou ❌
-- [ ] Cobertura de testes: ao menos 1 teste e2e cobrindo fluxo formulário → gamificação
-- [ ] Testes de contrato de API verificados (request/response match schemas)
-- [ ] `artifacts/phase-f4/validation-summary.md` gerado com status de cada épico F1–F4
-- [ ] Decisão `promote | hold` documentada com justificativa
+- [x] Cada critério de aceite do PRD (LPD-REDESIGN-01 a LPD-REDESIGN-05) verificado com resultado ✅ ou ❌
+- [x] Cobertura de testes: ao menos 1 teste e2e cobrindo fluxo formulário → gamificação
+- [x] Testes de contrato de API verificados (request/response match schemas)
+- [x] `artifacts/phase-f4/aflpd-validation-summary.md` gerado com status de cada épico F1–F4
+- [x] Decisão `promote | hold` documentada com justificativa
 
 ---
 ## Issues
@@ -119,12 +119,12 @@ issues abertas, e decisão fundamentada `promote` ou `hold`.
 - Given documento completo, When revisado, Then decisão `promote` ou `hold` presente com justificativa de no mínimo 3 frases
 
 **Tarefas:**
-- [ ] T1: Criar `artifacts/phase-f4/validation-summary.md` com template estruturado
-- [ ] T2: Preencher seção "Status por Épico" com resultado de cada épico F1–F4
-- [ ] T3: Preencher seção "Critérios de Aceite" com tabela de resultados
-- [ ] T4: Preencher seção "Cobertura de Testes" com resultado da suíte
-- [ ] T5: Preencher seção "Issues Abertas" com lista de pendências (se houver)
-- [ ] T6: Redigir seção "Decisão" com `promote` ou `hold`, justificativa e ações necessárias
+- [x] T1: Criar `artifacts/phase-f4/aflpd-validation-summary.md` com template estruturado
+- [x] T2: Preencher seção "Status por Épico" com resultado de cada épico F1–F4
+- [x] T3: Preencher seção "Critérios de Aceite" com tabela de resultados
+- [x] T4: Preencher seção "Cobertura de Testes" com resultado da suíte
+- [x] T5: Preencher seção "Issues Abertas" com lista de pendências (se houver)
+- [x] T6: Redigir seção "Decisão" com `promote` ou `hold`, justificativa e ações necessárias
 
 **Notas técnicas:**
 O documento é a evidência formal para o PO tomar a decisão final de go/no-go. Deve
@@ -134,6 +134,6 @@ pós-deploy.
 
 ## 5. Notas de Implementação Globais
 - Este épico é exclusivamente documental — nenhum código produzido
-- O artefato `validation-summary.md` é a entrega principal da fase
+- O artefato `aflpd-validation-summary.md` é a entrega principal da fase
 - A decisão final (`promote`/`hold`) é do PO — o épico apenas fornece a evidência
 - Após decisão `promote`, as 4 fases devem ser movidas para `feito/` conforme SCRUM-GOV

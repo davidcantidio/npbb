@@ -24,6 +24,7 @@ class LeadRow(BaseModel):
     email: str | None = None
     telefone: str | None = None
     cpf: str | None = None
+    rg: str | None = None
     data_nascimento: date | None = None
     evento_nome: str | None = None
     sessao: str | None = None
@@ -34,6 +35,7 @@ class LeadRow(BaseModel):
     metodo_entrega: str | None = None
     endereco_rua: str | None = None
     endereco_numero: str | None = None
+    complemento: str | None = None
     bairro: str | None = None
     cep: str | None = None
     cidade: str | None = None

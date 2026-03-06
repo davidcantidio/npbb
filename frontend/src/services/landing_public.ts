@@ -47,13 +47,14 @@ export type LandingForm = {
 export type LandingBrand = {
   tagline: string;
   versao_logo: string;
-  url_hero_image: string;
+  url_hero_image?: string | null;
   hero_alt: string;
 };
 
 export type LandingEvent = {
   id: number;
   nome: string;
+  cta_personalizado?: string | null;
   descricao?: string | null;
   descricao_curta?: string | null;
   data_inicio?: string | null;
@@ -68,8 +69,26 @@ export type LandingAccess = {
   url_promotor?: string | null;
 };
 
+export type LandingAtivacaoInfo = {
+  id: number;
+  nome: string;
+  descricao?: string | null;
+  mensagem_qrcode?: string | null;
+};
+
+export type GamificacaoPublic = {
+  id: number;
+  nome: string;
+  descricao: string;
+  premio: string;
+  titulo_feedback: string;
+  texto_feedback: string;
+};
+
 export type LandingPageData = {
   ativacao_id?: number | null;
+  ativacao?: LandingAtivacaoInfo | null;
+  gamificacoes?: GamificacaoPublic[];
   evento: LandingEvent;
   template: LandingTemplateConfig;
   formulario: LandingForm;
@@ -98,7 +117,29 @@ export type LandingSubmitResponse = {
   lead_id: number;
   event_id: number;
   ativacao_id?: number | null;
+  ativacao_lead_id?: number | null;
   mensagem_sucesso: string;
+};
+
+export type GamificacaoState = "presenting" | "active" | "completed";
+
+export type GamificacaoBlockProps = {
+  gamificacoes: GamificacaoPublic[];
+  leadSubmitted: boolean;
+  onComplete: (gamificacaoId: number) => Promise<void> | void;
+  onReset: () => void;
+};
+
+export type GamificacaoCompletePayload = {
+  gamificacao_id: number;
+  gamificacao_completed: boolean;
+};
+
+export type GamificacaoCompleteResponse = {
+  ativacao_lead_id: number;
+  gamificacao_id: number;
+  gamificacao_completed: boolean;
+  gamificacao_completed_at?: string | null;
 };
 
 export type LandingAnalyticsTrackPayload = {
@@ -142,4 +183,17 @@ export async function trackLandingAnalytics(payload: LandingAnalyticsTrackPayloa
     retries: 0,
   });
   await handleApiResponse(res);
+}
+
+export async function completeGamificacao(
+  ativacaoLeadId: number,
+  payload: GamificacaoCompletePayload,
+): Promise<GamificacaoCompleteResponse> {
+  const res = await fetchWithAuth(`/ativacao-leads/${ativacaoLeadId}/gamificacao`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    retries: 0,
+  });
+  return handleApiResponse<GamificacaoCompleteResponse>(res);
 }

@@ -12,6 +12,7 @@ from app.models.models import (
     Ativacao,
     AtivacaoLead,
     Evento,
+    Gamificacao,
     LandingAnalyticsEvent,
     Lead,
     StatusEvento,
@@ -162,6 +163,7 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
     payload = resp.json()
     assert payload["ativacao_id"] == ativacao_id
     assert payload["evento"]["nome"] == "BB Summit 2026"
+    assert payload["evento"]["cta_personalizado"] == "Fazer inscricao"
     assert payload["evento"]["descricao_curta"] == "Conteudo executivo e networking com o BB."
     assert payload["template"]["categoria"] == "corporativo"
     assert payload["template"]["cta_text"] == "Fazer inscricao"
@@ -174,6 +176,57 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
     assert payload["acesso"]["qr_code_url"].startswith("data:image/svg+xml;base64,")
     assert payload["template"]["cta_experiment_enabled"] is False
     assert payload["template"]["cta_variants"] == []
+    assert payload["ativacao"]["nome"] == "Captacao Principal"
+
+
+def test_public_landing_por_evento_retorna_hero_nulo_e_ativacao_nula_quando_nao_customizado(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Corporativo")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Forum BB Sem Hero",
+            cta_personalizado=None,
+            hero_image_url=None,
+        )
+        evento_id = evento.id
+
+    resp = client.get(f"/eventos/{evento_id}/landing")
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert payload["ativacao_id"] is None
+    assert payload["ativacao"] is None
+    assert payload["evento"]["cta_personalizado"] is None
+    assert payload["marca"]["url_hero_image"] is None
+
+
+def test_public_landing_por_ativacao_normaliza_descricao_e_mensagem_qrcode(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao.descricao = "  Ponto principal de captacao.  "
+        ativacao.mensagem_qrcode = "  Escaneie o QR para validar o cadastro.  "
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/ativacoes/{ativacao_id}/landing")
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert payload["ativacao"]["descricao"] == "Ponto principal de captacao."
+    assert payload["ativacao"]["mensagem_qrcode"] == "Escaneie o QR para validar o cadastro."
 
 
 def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
@@ -338,3 +391,354 @@ def test_evento_create_update_e_get_expoem_campos_da_fase_1(client, engine):
     assert fetched["template_override"] == "corporativo"
     assert fetched["hero_image_url"] == "https://example.com/hero-tech.webp"
     assert fetched["descricao_curta"] == "Resumo revisado"
+
+
+# ---------------------------------------------------------------------------
+# EPIC-F2-02 — Extensão payload landing + endpoint gamificação
+# ---------------------------------------------------------------------------
+
+
+def seed_gamificacao(session: Session, *, evento_id: int) -> Gamificacao:
+    gam = Gamificacao(
+        evento_id=evento_id,
+        nome="Roleta da Sorte",
+        descricao="Gire a roleta e ganhe premios.",
+        premio="Copo BB exclusivo",
+        titulo_feedback="Parabens!",
+        texto_feedback="Voce ganhou um copo BB exclusivo. Retire no stand.",
+    )
+    session.add(gam)
+    session.commit()
+    session.refresh(gam)
+    return gam
+
+
+def test_landing_payload_inclui_gamificacoes_quando_ativacao_tem_gamificacao(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Esporte")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="BB Run")
+        gam = seed_gamificacao(session, evento_id=evento.id)
+        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Stand BB")
+        ativacao.gamificacao_id = gam.id
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/ativacoes/{ativacao_id}/landing")
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert "gamificacoes" in payload
+    assert len(payload["gamificacoes"]) == 1
+    g = payload["gamificacoes"][0]
+    assert g["nome"] == "Roleta da Sorte"
+    assert g["descricao"] == "Gire a roleta e ganhe premios."
+    assert g["premio"] == "Copo BB exclusivo"
+    assert g["titulo_feedback"] == "Parabens!"
+    assert g["texto_feedback"] == "Voce ganhou um copo BB exclusivo. Retire no stand."
+
+    assert payload["ativacao"]["nome"] == "Stand BB"
+    assert payload["evento"]["nome"] == "BB Run"
+    assert payload["template"] is not None
+    assert payload["formulario"] is not None
+    assert payload["marca"] is not None
+    assert payload["acesso"] is not None
+
+
+def test_landing_payload_gamificacoes_vazio_quando_ativacao_sem_gamificacao(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Corporativo")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="BB Forum")
+        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Balcao")
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/ativacoes/{ativacao_id}/landing")
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert payload["gamificacoes"] == []
+    assert payload["ativacao"]["nome"] == "Balcao"
+
+
+def test_submit_retorna_ativacao_lead_id(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Hackathon BB 2")
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao_id = ativacao.id
+
+    resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Joao",
+            "email": "joao@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert resp.status_code == 201
+    payload = resp.json()
+    assert "ativacao_lead_id" in payload
+    assert isinstance(payload["ativacao_lead_id"], int)
+    assert payload["ativacao_lead_id"] > 0
+
+
+def test_submit_repetido_nao_duplica_ativacao_lead(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Hackathon BB 3")
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao_id = ativacao.id
+
+    body = {
+        "nome": "Laura",
+        "email": "laura@example.com",
+        "consentimento_lgpd": True,
+    }
+    resp1 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
+    resp2 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
+
+    assert resp1.status_code == 201
+    assert resp2.status_code == 201
+    assert resp1.json()["ativacao_lead_id"] == resp2.json()["ativacao_lead_id"]
+
+    with Session(engine) as session:
+        links = session.exec(
+            select(AtivacaoLead)
+            .where(AtivacaoLead.ativacao_id == ativacao_id)
+        ).all()
+        assert len(links) == 1
+
+
+def test_gamificacao_complete_sucesso(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Show")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Festival BB 2")
+        gam = seed_gamificacao(session, evento_id=evento.id)
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao.gamificacao_id = gam.id
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
+        ativacao_id = ativacao.id
+        gam_id = gam.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Ana",
+            "email": "ana@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert submit_resp.status_code == 201
+    ativacao_lead_id = submit_resp.json()["ativacao_lead_id"]
+
+    resp = client.post(
+        f"/ativacao-leads/{ativacao_lead_id}/gamificacao",
+        json={"gamificacao_id": gam_id, "gamificacao_completed": True},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ativacao_lead_id"] == ativacao_lead_id
+    assert data["gamificacao_id"] == gam_id
+    assert data["gamificacao_completed"] is True
+    assert data["gamificacao_completed_at"] is not None
+
+    with Session(engine) as session:
+        al = session.get(AtivacaoLead, ativacao_lead_id)
+        assert al is not None
+        assert al.gamificacao_id == gam_id
+        assert al.gamificacao_completed is True
+        assert al.gamificacao_completed_at is not None
+
+
+def test_gamificacao_complete_404_quando_ativacao_lead_inexistente(client, engine):
+    resp = client.post(
+        "/ativacao-leads/999999/gamificacao",
+        json={"gamificacao_id": 1, "gamificacao_completed": True},
+    )
+    assert resp.status_code == 404
+
+
+def test_gamificacao_complete_400_quando_gamificacao_id_invalido(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Cultura")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="CCBB Exp")
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        lead = Lead(
+            nome="Pedro",
+            email="pedro@example.com",
+            evento_nome=evento.nome,
+            cidade="Brasilia",
+            estado="DF",
+            fonte_origem="landing_publica",
+            opt_in="aceito",
+            opt_in_flag=True,
+        )
+        session.add(lead)
+        session.flush()
+        al = AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id)
+        session.add(al)
+        session.commit()
+        session.refresh(al)
+        al_id = al.id
+
+    resp = client.post(
+        f"/ativacao-leads/{al_id}/gamificacao",
+        json={"gamificacao_id": 999999, "gamificacao_completed": True},
+    )
+    assert resp.status_code == 400
+
+
+def test_gamificacao_complete_400_quando_ativacao_sem_gamificacao_configurada(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Cultura")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="CCBB Exp 2")
+        gam = seed_gamificacao(session, evento_id=evento.id)
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao_id = ativacao.id
+        gam_id = gam.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Pedro",
+            "email": "pedro2@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert submit_resp.status_code == 201
+    ativacao_lead_id = submit_resp.json()["ativacao_lead_id"]
+
+    resp = client.post(
+        f"/ativacao-leads/{ativacao_lead_id}/gamificacao",
+        json={"gamificacao_id": gam_id, "gamificacao_completed": True},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "GAMIFICACAO_OUT_OF_SCOPE"
+
+
+def test_gamificacao_complete_idempotente(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tech")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="BB Inova")
+        gam = seed_gamificacao(session, evento_id=evento.id)
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao.gamificacao_id = gam.id
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
+        ativacao_id = ativacao.id
+        gam_id = gam.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Carlos",
+            "email": "carlos@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    ativacao_lead_id = submit_resp.json()["ativacao_lead_id"]
+
+    body = {"gamificacao_id": gam_id, "gamificacao_completed": True}
+    resp1 = client.post(f"/ativacao-leads/{ativacao_lead_id}/gamificacao", json=body)
+    resp2 = client.post(f"/ativacao-leads/{ativacao_lead_id}/gamificacao", json=body)
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert resp1.json()["gamificacao_id"] == resp2.json()["gamificacao_id"]
+    assert resp1.json()["gamificacao_completed_at"] == resp2.json()["gamificacao_completed_at"]
+
+    with Session(engine) as session:
+        links = session.exec(
+            select(AtivacaoLead).where(AtivacaoLead.id == ativacao_lead_id)
+        ).all()
+        assert len(links) == 1
+
+
+def test_gamificacao_complete_400_quando_gamificacao_de_outro_evento(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Esporte")
+        evento_a = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento A")
+        evento_b = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento B")
+
+        gam_a = seed_gamificacao(session, evento_id=evento_a.id)
+        gam_b = seed_gamificacao(session, evento_id=evento_b.id)
+
+        ativacao_a = seed_ativacao(session, evento_id=evento_a.id, nome="Ativacao A")
+        ativacao_a.gamificacao_id = gam_a.id
+        session.add(ativacao_a)
+        session.commit()
+        session.refresh(ativacao_a)
+        ativacao_a_id = ativacao_a.id
+        gam_b_id = gam_b.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_a_id}/submit",
+        json={
+            "nome": "Julia",
+            "email": "julia@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert submit_resp.status_code == 201
+    ativacao_lead_id = submit_resp.json()["ativacao_lead_id"]
+
+    resp = client.post(
+        f"/ativacao-leads/{ativacao_lead_id}/gamificacao",
+        json={"gamificacao_id": gam_b_id, "gamificacao_completed": True},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "GAMIFICACAO_OUT_OF_SCOPE"
+
+
+def test_gamificacao_complete_limpa_timestamp_quando_completed_false(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Cultura")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Festival Cultural")
+        gam = seed_gamificacao(session, evento_id=evento.id)
+        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Ativacao Cultura")
+        ativacao.gamificacao_id = gam.id
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
+        ativacao_id = ativacao.id
+        gam_id = gam.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Marina",
+            "email": "marina@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert submit_resp.status_code == 201
+    ativacao_lead_id = submit_resp.json()["ativacao_lead_id"]
+
+    complete_resp = client.post(
+        f"/ativacao-leads/{ativacao_lead_id}/gamificacao",
+        json={"gamificacao_id": gam_id, "gamificacao_completed": True},
+    )
+    assert complete_resp.status_code == 200
+    assert complete_resp.json()["gamificacao_completed_at"] is not None
+
+    uncomplete_resp = client.post(
+        f"/ativacao-leads/{ativacao_lead_id}/gamificacao",
+        json={"gamificacao_id": gam_id, "gamificacao_completed": False},
+    )
+    assert uncomplete_resp.status_code == 200
+    assert uncomplete_resp.json()["gamificacao_completed"] is False
+    assert uncomplete_resp.json()["gamificacao_completed_at"] is None

@@ -110,7 +110,7 @@ Retorna a configuracao do Formulario de Lead do evento.
     { "nome_campo": "Nome", "obrigatorio": true, "ordem": 0 }
   ],
   "urls": {
-    "url_landing": "http://localhost:8000/landing/eventos/123",
+    "url_landing": "http://localhost:5173/landing/eventos/123",
     "url_checkin_sem_qr": "http://localhost:8000/checkin-sem-qr/eventos/123",
     "url_questionario": "http://localhost:8000/questionario/eventos/123",
     "url_api": "http://localhost:8000/docs"
@@ -185,20 +185,23 @@ curl -X PUT "http://localhost:8000/evento/123/form-config" \
 O objeto `urls` e preenchido pelo backend via `app/utils/urls.py`.
 
 Prioridades (MVP):
-- `PUBLIC_LANDING_BASE_URL`: base publica do backend para landing/check-in sem QR/questionario (ex.: `https://api.seudominio.com`)
+- `PUBLIC_APP_BASE_URL`: base publica do frontend para landing/promotor (ex.: `https://app.seudominio.com`)
+  - fallback: primeiro origin de `FRONTEND_ORIGIN`
+  - fallback final (dev): `http://localhost:5173`
+- `PUBLIC_LANDING_BASE_URL`: base publica do backend para check-in sem QR/questionario (ex.: `https://api.seudominio.com`)
   - fallback: `${request.base_url}`
   - fallback final (dev): `http://localhost:8000`
 - `PUBLIC_API_DOC_URL`: override opcional para `urls.url_api`
   - se nao definido: usa `${request.base_url}/docs` (Swagger do backend)
 
 Padroes:
-- `url_landing`: `{PUBLIC_LANDING_BASE_URL}/landing/eventos/{evento_id}`
+- `url_landing`: `{PUBLIC_APP_BASE_URL}/landing/eventos/{evento_id}`
 - `url_checkin_sem_qr`: `{PUBLIC_LANDING_BASE_URL}/checkin-sem-qr/eventos/{evento_id}`
 - `url_questionario`: `{PUBLIC_LANDING_BASE_URL}/questionario/eventos/{evento_id}`
 - `url_api`: `http://localhost:8000/docs` (dev; pode variar conforme ambiente)
 
 Exemplo de landing publica (dev):
-- `http://localhost:8000/landing/eventos/123`
+- `http://localhost:5173/landing/eventos/123`
 
 ---
 

@@ -409,7 +409,7 @@ def test_evento_form_config_retorna_default_quando_nao_existe(client, engine):
         {"nome_campo": "Telefone", "obrigatorio": False, "ordem": 3},
         {"nome_campo": "Estado", "obrigatorio": False, "ordem": 5},
     ]
-    assert payload["urls"]["url_landing"] == f"http://testserver/landing/eventos/{evento_id}"
+    assert payload["urls"]["url_landing"] == f"http://localhost:5173/landing/eventos/{evento_id}"
     assert (
         payload["urls"]["url_checkin_sem_qr"]
         == f"http://testserver/checkin-sem-qr/eventos/{evento_id}"
@@ -419,6 +419,41 @@ def test_evento_form_config_retorna_default_quando_nao_existe(client, engine):
     )
     assert payload["urls"]["url_api"] == "http://testserver/docs"
     assert "url_landing" not in payload
+
+
+def test_evento_form_config_split_origin_usa_front_no_landing(client, engine, monkeypatch):
+    monkeypatch.delenv("PUBLIC_APP_BASE_URL", raising=False)
+    monkeypatch.delenv("PUBLIC_LANDING_BASE_URL", raising=False)
+    monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:5173")
+
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "split-eventos@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Split Origin",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "split-eventos@example.com", "Senha123!")
+    resp = client.get(
+        f"/evento/{evento_id}/form-config", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["urls"]["url_landing"] == f"http://localhost:5173/landing/eventos/{evento_id}"
+    assert (
+        payload["urls"]["url_checkin_sem_qr"]
+        == f"http://testserver/checkin-sem-qr/eventos/{evento_id}"
+    )
+    assert payload["urls"]["url_questionario"] == f"http://testserver/questionario/eventos/{evento_id}"
 
 
 def test_evento_form_config_retorna_config_e_campos_ordenados(client, engine):

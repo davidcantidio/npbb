@@ -12,6 +12,17 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class AtivacaoLeadRead(BaseModel):
+    id: int
+    ativacao_id: int
+    lead_id: int
+    gamificacao_id: int | None = None
+    gamificacao_completed: bool | None = False
+    gamificacao_completed_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 def _normalize_required(text: str, *, field_name: str) -> str:
     value = (text or "").strip()
     if not value:

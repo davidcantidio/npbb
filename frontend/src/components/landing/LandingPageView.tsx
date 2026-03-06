@@ -20,10 +20,12 @@ import {
 import { alpha } from "@mui/material/styles";
 
 import type {
+  GamificacaoPublic,
   LandingField,
   LandingPageData,
   LandingSubmitResponse,
 } from "../../services/landing_public";
+import GamificacaoBlock from "./GamificacaoBlock";
 import { resolveLandingContent, type ResolvedLandingContent } from "./landingContent";
 
 type FormState = Record<string, string>;
@@ -46,7 +48,14 @@ type LandingPageViewProps = {
   onConsentimentoChange?: (checked: boolean) => void;
   onSubmit?: () => void;
   onReset?: () => void;
+  gamificacao?: LandingGamificacaoConfig;
   checklist?: LandingPreviewChecklistItem[];
+};
+
+type LandingGamificacaoConfig = {
+  leadSubmitted: boolean;
+  onComplete: (gamificacaoId: number) => Promise<void> | void;
+  onReset: () => void;
 };
 
 type LayoutVisualSpec = {
@@ -102,6 +111,12 @@ type BrandSummaryCardProps = {
   isPreview: boolean;
 };
 
+type LandingGamificacaoSectionProps = {
+  gamificacoes: GamificacaoPublic[];
+  isPreview: boolean;
+  gamificacao?: LandingGamificacaoConfig;
+};
+
 function isDarkColor(value?: string | null) {
   const token = String(value || "").trim().toUpperCase();
   return ["#07111F", "#140F2E", "#1E293B", "#0F172A"].includes(token);
@@ -109,9 +124,24 @@ function isDarkColor(value?: string | null) {
 
 export function formatDateRange(start?: string | null, end?: string | null) {
   const formatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  const parseDate = (value?: string | null) => {
+    if (!value?.trim()) return null;
+    const normalized = value.trim();
+    const localDateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+    if (localDateMatch) {
+      const [, year, month, day] = localDateMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
   if (!start && !end) return "Data a confirmar";
-  const startLabel = start ? formatter.format(new Date(start)) : null;
-  const endLabel = end ? formatter.format(new Date(end)) : null;
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
+  const startLabel = startDate ? formatter.format(startDate) : null;
+  const endLabel = endDate ? formatter.format(endDate) : null;
   if (startLabel && endLabel) return `${startLabel} - ${endLabel}`;
   return startLabel || endLabel || "Data a confirmar";
 }
@@ -729,6 +759,25 @@ function PreviewChecklistCard({ checklist, primaryColor }: { checklist: LandingP
   );
 }
 
+function LandingGamificacaoSection({ gamificacoes, isPreview, gamificacao }: LandingGamificacaoSectionProps) {
+  if (!gamificacoes.length) return null;
+
+  const effectiveLeadSubmitted = isPreview ? false : (gamificacao?.leadSubmitted ?? false);
+  const onComplete = isPreview ? (() => undefined) : (gamificacao?.onComplete ?? (() => undefined));
+  const onReset = isPreview ? (() => undefined) : (gamificacao?.onReset ?? (() => undefined));
+
+  return (
+    <Container maxWidth="lg" sx={{ pb: { xs: 4, md: 6 } }}>
+      <GamificacaoBlock
+        gamificacoes={gamificacoes}
+        leadSubmitted={effectiveLeadSubmitted}
+        onComplete={onComplete}
+        onReset={onReset}
+      />
+    </Container>
+  );
+}
+
 export default function LandingPageView({
   data,
   mode = "public",
@@ -741,6 +790,7 @@ export default function LandingPageView({
   onConsentimentoChange,
   onSubmit,
   onReset,
+  gamificacao,
   checklist = [],
 }: LandingPageViewProps) {
   const theme = buildLandingTheme(data);
@@ -835,6 +885,12 @@ export default function LandingPageView({
             </Stack>
           </Box>
         </Container>
+
+        <LandingGamificacaoSection
+          gamificacoes={data.gamificacoes ?? []}
+          isPreview={isPreview}
+          gamificacao={gamificacao}
+        />
 
         {!isPreview ? (
           <Box sx={{ borderTop: `1px solid ${alpha(data.template.color_primary, 0.12)}`, py: 4 }}>

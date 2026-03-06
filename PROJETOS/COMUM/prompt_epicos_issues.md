@@ -68,6 +68,7 @@ Cada arquivo de épico deve ter:
 
 ### Regras de conteúdo
 - Nenhum placeholder como `"..."`, `"<texto>"` ou `"TODO"` — todo campo deve ter conteúdo real derivado do PRD.
+- Ao planejar épicos e issues: considerar arquitetura modular, manutenibilidade e evitar monolitos (arquivos/funções grandes demais); priorizar responsabilidade única, baixo acoplamento e alta coesão.
 - Issues de épicos diferentes não se referenciam diretamente — dependências entre épicos passam apenas pelo `EPICS.md` da fase.
 - O plano TDD de cada issue deve mencionar arquivos reais do repositório (ex: `tests/core/test_column_normalize.py`, `backend/tests/test_leads_import_etl_endpoint.py`).
 - Critérios de aceitação devem ser verificáveis por um agente automatizado ou por inspeção direta de output — sem critérios subjetivos.

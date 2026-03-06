@@ -43,6 +43,7 @@ last_updated: "2026-03-03"
 - resultado de negocio verificavel definido
 - Definition of Done especifica evidencia consolidada
 - dependencias declaradas sem acoplamento indevido a outros epicos
+- decisao arquitetural considerada: modularidade, manutenibilidade e evitacao de monolitos
 
 ### Issue
 
@@ -50,6 +51,7 @@ last_updated: "2026-03-03"
 - plano TDD definido em `Red`, `Green`, `Refactor`
 - criterios de aceitacao no formato `Given/When/Then`
 - tamanho compativel com `SPRINT-LIMITS.md`
+- abordagem arquitetural considerada: responsabilidade unica, baixo acoplamento, funcoes e arquivos nao monoliticos
 
 ### Microtask
 

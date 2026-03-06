@@ -3,6 +3,7 @@ import { Alert, CircularProgress, Container, Stack, Typography } from "@mui/mate
 import { useParams } from "react-router-dom";
 
 import {
+  completeGamificacao,
   getLandingByAtivacao,
   getLandingByEvento,
   trackLandingAnalytics,
@@ -29,6 +30,8 @@ export default function EventLandingPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState<LandingSubmitResponse | null>(null);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const [ativacaoLeadId, setAtivacaoLeadId] = useState<number | null>(null);
   const [lastSubmittedEmail, setLastSubmittedEmail] = useState<string | null>(null);
   const formStartTracked = useRef(false);
   const ctaExposureTracked = useRef(false);
@@ -53,6 +56,16 @@ export default function EventLandingPage() {
 
   useEffect(() => {
     let active = true;
+    setFormState({});
+    setConsentimento(false);
+    setSubmitError(null);
+    setSaving(false);
+    setSubmitted(null);
+    setLeadSubmitted(false);
+    setAtivacaoLeadId(null);
+    setLastSubmittedEmail(null);
+    formStartTracked.current = false;
+    ctaExposureTracked.current = false;
     setLoading(true);
     setError(null);
 
@@ -175,7 +188,10 @@ export default function EventLandingPage() {
         landing_session_id: sessionId,
         consentimento_lgpd: consentimento,
       });
+      const nextAtivacaoLeadId = response.ativacao_lead_id ?? null;
       setSubmitted(response);
+      setLeadSubmitted(Boolean(nextAtivacaoLeadId));
+      setAtivacaoLeadId(nextAtivacaoLeadId);
       setLastSubmittedEmail(email);
       setSubmitError(null);
       trackLandingAnalytics({
@@ -194,11 +210,29 @@ export default function EventLandingPage() {
     }
   };
 
+  const handleGamificacaoComplete = async (gamificacaoId: number) => {
+    if (!ativacaoLeadId) {
+      throw new Error("Nao foi possivel identificar seu cadastro para concluir a gamificacao.");
+    }
+    try {
+      await completeGamificacao(ativacaoLeadId, {
+        gamificacao_id: gamificacaoId,
+        gamificacao_completed: true,
+      });
+    } catch (err) {
+      throw new Error(toApiErrorMessage(err, "Nao foi possivel registrar sua participacao na gamificacao."));
+    }
+  };
+
   const handleReset = () => {
     setSubmitted(null);
     setSubmitError(null);
     setConsentimento(false);
     setFormState({});
+    setLeadSubmitted(false);
+    setAtivacaoLeadId(null);
+    setLastSubmittedEmail(null);
+    formStartTracked.current = false;
   };
 
   return (
@@ -229,6 +263,11 @@ export default function EventLandingPage() {
           onConsentimentoChange={setConsentimento}
           onSubmit={handleSubmit}
           onReset={handleReset}
+          gamificacao={{
+            leadSubmitted,
+            onComplete: handleGamificacaoComplete,
+            onReset: handleReset,
+          }}
         />
       )}
     </>

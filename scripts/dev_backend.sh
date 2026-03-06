@@ -10,7 +10,7 @@ if [[ ! -x "${PYTHON_BIN}" ]]; then
   exit 1
 fi
 
-export PYTHONPATH="${REPO_ROOT}:${REPO_ROOT}/backend:${REPO_ROOT}/PROJETOS${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${REPO_ROOT}:${REPO_ROOT}/backend${PYTHONPATH:+:${PYTHONPATH}}"
 cd "${REPO_ROOT}"
 
 exec "${PYTHON_BIN}" -m uvicorn app.main:app --reload --app-dir backend --host "${UVICORN_HOST:-127.0.0.1}" --port "${UVICORN_PORT:-8000}"

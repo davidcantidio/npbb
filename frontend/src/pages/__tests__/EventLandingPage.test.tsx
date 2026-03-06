@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import EventLandingPage from "../EventLandingPage";
 import {
+  completeGamificacao,
   getLandingByAtivacao,
   getLandingByEvento,
   trackLandingAnalytics,
@@ -13,6 +14,7 @@ import {
 } from "../../services/landing_public";
 
 vi.mock("../../services/landing_public", () => ({
+  completeGamificacao: vi.fn(),
   getLandingByAtivacao: vi.fn(),
   getLandingByEvento: vi.fn(),
   trackLandingAnalytics: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("../../services/landing_experiments", () => ({
   },
 }));
 
+const mockedCompleteGamificacao = vi.mocked(completeGamificacao);
 const mockedGetLandingByAtivacao = vi.mocked(getLandingByAtivacao);
 const mockedGetLandingByEvento = vi.mocked(getLandingByEvento);
 const mockedTrackLandingAnalytics = vi.mocked(trackLandingAnalytics);
@@ -34,6 +37,12 @@ const mockedSubmitLandingForm = vi.mocked(submitLandingForm);
 
 const landingFixture: LandingPageData = {
   ativacao_id: 1,
+  ativacao: {
+    id: 1,
+    nome: "Stand Principal",
+    descricao: "Venha conhecer as novidades do BB.",
+    mensagem_qrcode: "Escaneie o QR code no totem para se cadastrar.",
+  },
   evento: {
     id: 10,
     nome: "BB Summit 2026",
@@ -107,6 +116,16 @@ const landingFixture: LandingPageData = {
     qr_code_url: "data:image/svg+xml;base64,PHN2Zy8+",
     url_promotor: "https://npbb.example/landing/ativacoes/1",
   },
+  gamificacoes: [
+    {
+      id: 321,
+      nome: "Quiz BB",
+      descricao: "Responda as perguntas no stand.",
+      premio: "Brinde oficial",
+      titulo_feedback: "Participacao concluida",
+      texto_feedback: "Obrigado por concluir a gamificacao.",
+    },
+  ],
 };
 
 const culturalLandingFixture: LandingPageData = {
@@ -167,10 +186,17 @@ describe("EventLandingPage", () => {
     mockedGetLandingByAtivacao.mockResolvedValue(landingFixture);
     mockedGetLandingByEvento.mockResolvedValue(landingFixture);
     mockedTrackLandingAnalytics.mockResolvedValue();
+    mockedCompleteGamificacao.mockResolvedValue({
+      ativacao_lead_id: 444,
+      gamificacao_id: 321,
+      gamificacao_completed: true,
+      gamificacao_completed_at: "2026-04-10T12:00:00Z",
+    });
     mockedSubmitLandingForm.mockResolvedValue({
       lead_id: 99,
       event_id: 10,
       ativacao_id: 1,
+      ativacao_lead_id: 444,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
     });
   });
@@ -185,7 +211,8 @@ describe("EventLandingPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("BB Summit 2026")).toBeInTheDocument();
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.getByText("Escaneie o QR code no totem para se cadastrar.")).toBeInTheDocument();
     await user.type(screen.getByLabelText(/nome \*/i), "Maria");
     await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -223,7 +250,7 @@ describe("EventLandingPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("BB Summit 2026")).toBeInTheDocument();
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
     await user.type(screen.getByLabelText(/nome \*/i), "Joao");
     await user.type(screen.getByLabelText(/email \*/i), "joao@example.com");
     await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
@@ -269,5 +296,113 @@ describe("EventLandingPage", () => {
         expect.objectContaining({ event_name: "cta_exposure" }),
       ),
     );
+  });
+
+  it("habilita e conclui gamificacao apos submit com ativacao_lead_id", async () => {
+    const user = userEvent.setup();
+
+    mockedSubmitLandingForm.mockResolvedValueOnce({
+      lead_id: 77,
+      event_id: 10,
+      ativacao_id: 1,
+      ativacao_lead_id: 777,
+      mensagem_sucesso: "Cadastro realizado com sucesso.",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/landing/ativacoes/1"]}>
+        <Routes>
+          <Route path="/landing/ativacoes/:ativacaoId" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/nome \*/i), "Maria");
+    await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+    expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
+
+    const participarButton = await screen.findByRole("button", { name: /quero participar/i });
+    expect(participarButton).toBeEnabled();
+    await user.click(participarButton);
+    await user.click(await screen.findByRole("button", { name: /conclui/i }));
+
+    await waitFor(() =>
+      expect(mockedCompleteGamificacao).toHaveBeenCalledWith(777, {
+        gamificacao_id: 321,
+        gamificacao_completed: true,
+      }),
+    );
+    expect(await screen.findByRole("button", { name: /nova pessoa/i })).toBeInTheDocument();
+  });
+
+  it("nao chama API de gamificacao quando submit nao retorna ativacao_lead_id", async () => {
+    const user = userEvent.setup();
+
+    mockedSubmitLandingForm.mockResolvedValueOnce({
+      lead_id: 88,
+      event_id: 10,
+      ativacao_id: 1,
+      ativacao_lead_id: null,
+      mensagem_sucesso: "Cadastro realizado com sucesso.",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/landing/ativacoes/1"]}>
+        <Routes>
+          <Route path="/landing/ativacoes/:ativacaoId" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/nome \*/i), "Rafa");
+    await user.type(screen.getByLabelText(/email \*/i), "rafa@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+    expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: /quero participar/i }));
+    await user.click(await screen.findByRole("button", { name: /conclui/i }));
+
+    expect(mockedCompleteGamificacao).not.toHaveBeenCalled();
+    expect(await screen.findByText(/nao foi possivel identificar seu cadastro/i)).toBeInTheDocument();
+  });
+
+  it("reseta formulario e gamificacao ao clicar em Nova pessoa", async () => {
+    const user = userEvent.setup();
+
+    mockedSubmitLandingForm.mockResolvedValueOnce({
+      lead_id: 66,
+      event_id: 10,
+      ativacao_id: 1,
+      ativacao_lead_id: 666,
+      mensagem_sucesso: "Cadastro realizado com sucesso.",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/landing/ativacoes/1"]}>
+        <Routes>
+          <Route path="/landing/ativacoes/:ativacaoId" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/nome \*/i), "Bia");
+    await user.type(screen.getByLabelText(/email \*/i), "bia@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+    expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: /quero participar/i }));
+    await user.click(await screen.findByRole("button", { name: /conclui/i }));
+    await user.click(await screen.findByRole("button", { name: /nova pessoa/i }));
+
+    expect(await screen.findByLabelText(/nome \*/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /quero participar/i })).toBeDisabled();
+    expect(screen.queryByText("Cadastro realizado com sucesso.")).not.toBeInTheDocument();
   });
 });

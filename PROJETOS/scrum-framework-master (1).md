@@ -134,6 +134,15 @@ Uma issue **deve** ser dividida quando qualquer uma das condições for verdadei
 - Toca mais de 2 camadas arquiteturais (ex: banco + API + UI)
 - Tem mais de 3 critérios de aceitação independentes entre si
 
+### 3.4 Princípios de Código
+
+Antes de escrever código, pensar na arquitetura. Priorizar:
+- **Modularidade:** responsabilidade única por módulo/função; evitar arquivos e funções monolíticas
+- **Manutenibilidade:** legibilidade, nomes claros, baixo acoplamento, alta coesão
+- **Boas práticas:** DRY, separação de concerns, testabilidade, extensibilidade sem quebrar o existente
+
+Código que cresce sem estrutura vira dívida técnica. O engenheiro deve aplicar esses princípios em toda implementação.
+
 ---
 
 ## PARTE 4 — WORK-ORDER-SPEC: Contrato de Work Order para OpenClaw
@@ -493,6 +502,7 @@ Objetivos não negociáveis:
 - Tarefas atômicas — executáveis por uma pessoa em 1 sessão
 - Critérios de aceitação verificáveis (comportamento, não intenção)
 - Issues ≥ 8 SP devem ser divididas antes de apresentar
+- Ao planejar issues: considerar arquitetura modular, manutenibilidade e evitar monolitos (arquivos/funções grandes demais)
 
 Estrutura obrigatória (Markdown puro — template 6.3):
 1. Cabeçalho completo
@@ -552,6 +562,11 @@ Objetivos não negociáveis:
 - Manter ou aumentar testabilidade
 - Registrar qualquer desvio necessário como proposta de DECISÃO (Parte 2)
 - Ao final: atualizar status da issue para ✅ no arquivo do épico
+
+Princípios de código (pensar na arquitetura antes de codificar):
+- Modularidade: responsabilidade única por módulo/função, evitar arquivos e funções monolíticas
+- Manutenibilidade: código legível, nomes claros, baixo acoplamento, alta coesão
+- Boas práticas: DRY, separação de concerns, testabilidade, extensibilidade sem quebrar o existente
 
 Estrutura obrigatória da resposta:
 1. Escopo da issue compreendido (1–3 frases de confirmação)

@@ -362,7 +362,7 @@ export default function EventLeadFormConfig() {
         ok: heroCustomizado,
         helper: heroCustomizado
           ? "O evento possui uma imagem de hero configurada manualmente."
-          : "Sem URL dedicada. O preview esta usando a arte placeholder derivada do template.",
+          : "Sem URL dedicada. O preview esta usando o fallback visual em gradiente.",
       },
       {
         label: "CTA principal",

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import base64
 import unicodedata
-from html import escape
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.models import (
@@ -17,6 +16,7 @@ from app.models.models import (
     FormularioLandingTemplate,
     FormularioLeadCampo,
     FormularioLeadConfig,
+    Gamificacao,
     LandingAnalyticsEvent,
     Lead,
     SubtipoEvento,
@@ -24,10 +24,12 @@ from app.models.models import (
     now_utc,
 )
 from app.schemas.landing_public import (
+    GamificacaoPublicSchema,
     LandingAccessRead,
     LandingAnalyticsSummaryRead,
     LandingAnalyticsTrackRequest,
     LandingAnalyticsVariantSummaryRead,
+    LandingAtivacaoRead,
     LandingBrandRead,
     LandingExperimentVariantRead,
     LandingEventRead,
@@ -291,22 +293,6 @@ def _build_cta_variants(*, category: str, has_custom_cta: bool) -> tuple[bool, l
     )
 
 
-def _build_hero_placeholder_data_url(*, title: str, subtitle: str, primary: str, secondary: str) -> str:
-    svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">'
-        f'<rect width="1600" height="900" fill="{primary}"/>'
-        f'<circle cx="1320" cy="160" r="220" fill="{secondary}" opacity="0.9"/>'
-        f'<circle cx="220" cy="760" r="260" fill="{secondary}" opacity="0.2"/>'
-        '<rect x="96" y="96" width="420" height="96" rx="24" fill="#FFFFFF" opacity="0.14"/>'
-        f'<text x="120" y="168" fill="#FFFFFF" font-size="44" font-family="Arial, sans-serif" font-weight="700">{escape(title)}</text>'
-        f'<text x="120" y="248" fill="#FFFFFF" font-size="72" font-family="Arial, sans-serif" font-weight="800">{escape(subtitle)}</text>'
-        '<text x="120" y="332" fill="#FFFFFF" font-size="28" font-family="Arial, sans-serif">Landing dinamica Banco do Brasil</text>'
-        "</svg>"
-    )
-    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
-    return f"data:image/svg+xml;base64,{encoded}"
-
-
 def _get_tipo_nome(session: Session, evento: Evento) -> str | None:
     if evento.tipo_id is None:
         return None
@@ -442,6 +428,61 @@ def get_landing_fields(
     return default_fields, None
 
 
+def _build_submit_url(*, evento_id: int, ativacao: Ativacao | None) -> str:
+    if ativacao and ativacao.id is not None:
+        return f"/landing/ativacoes/{ativacao.id}/submit"
+    return f"/landing/eventos/{evento_id}/submit"
+
+
+def _persist_ativacao_public_urls_if_changed(
+    session: Session,
+    *,
+    ativacao: Ativacao | None,
+    backend_base_url: str | None,
+) -> None:
+    if ativacao is None:
+        return
+    if not hydrate_ativacao_public_urls(ativacao, backend_base_url=backend_base_url):
+        return
+    ativacao.updated_at = now_utc()
+    session.add(ativacao)
+    session.commit()
+    session.refresh(ativacao)
+
+
+def _build_ativacao_info(ativacao: Ativacao | None) -> LandingAtivacaoRead | None:
+    if ativacao is None:
+        return None
+    return LandingAtivacaoRead(
+        id=ativacao.id or 0,
+        nome=ativacao.nome,
+        descricao=(ativacao.descricao or "").strip() or None,
+        mensagem_qrcode=(ativacao.mensagem_qrcode or "").strip() or None,
+    )
+
+
+def _build_gamificacoes_for_ativacao(
+    session: Session, *, ativacao: Ativacao | None
+) -> list[GamificacaoPublicSchema]:
+    if ativacao is None or not ativacao.gamificacao_id:
+        return []
+
+    gamificacao = session.get(Gamificacao, ativacao.gamificacao_id)
+    if gamificacao is None:
+        return []
+
+    return [
+        GamificacaoPublicSchema(
+            id=gamificacao.id or 0,
+            nome=gamificacao.nome,
+            descricao=gamificacao.descricao,
+            premio=gamificacao.premio,
+            titulo_feedback=gamificacao.titulo_feedback,
+            texto_feedback=gamificacao.texto_feedback,
+        )
+    ]
+
+
 def build_landing_payload(
     session: Session,
     *,
@@ -452,33 +493,30 @@ def build_landing_payload(
     fields, template_name = get_landing_fields(session, evento=evento)
     template = get_template_config(session, evento=evento, template_name=template_name)
     template_data = TEMPLATE_REGISTRY[template.categoria]
-    hero_url = (evento.hero_image_url or "").strip() or _build_hero_placeholder_data_url(
-        title=evento.nome,
-        subtitle=template.tema,
-        primary=template.color_primary,
-        secondary=template.color_secondary,
-    )
+    hero_url = (evento.hero_image_url or "").strip() or None
 
     required_keys = [field.key for field in fields if field.required]
     optional_keys = [field.key for field in fields if not field.required]
-    submit_url = (
-        f"/landing/ativacoes/{ativacao.id}/submit"
-        if ativacao and ativacao.id is not None
-        else f"/landing/eventos/{evento.id}/submit"
+    submit_url = _build_submit_url(evento_id=evento.id or 0, ativacao=ativacao)
+
+    _persist_ativacao_public_urls_if_changed(
+        session,
+        ativacao=ativacao,
+        backend_base_url=backend_base_url,
     )
 
-    if ativacao and hydrate_ativacao_public_urls(ativacao, backend_base_url=backend_base_url):
-        ativacao.updated_at = now_utc()
-        session.add(ativacao)
-        session.commit()
-        session.refresh(ativacao)
-
     event_urls = build_evento_public_urls(evento.id or 0, backend_base_url=backend_base_url)
+    ativacao_info = _build_ativacao_info(ativacao)
+    gamificacoes = _build_gamificacoes_for_ativacao(session, ativacao=ativacao)
+
     return LandingPageRead(
         ativacao_id=ativacao.id if ativacao else None,
+        ativacao=ativacao_info,
+        gamificacoes=gamificacoes,
         evento=LandingEventRead(
             id=evento.id or 0,
             nome=evento.nome,
+            cta_personalizado=(evento.cta_personalizado or "").strip() or None,
             descricao=evento.descricao,
             descricao_curta=(evento.descricao_curta or "").strip() or evento.descricao,
             data_inicio=evento.data_inicio_realizada or evento.data_inicio_prevista,
@@ -515,6 +553,115 @@ def build_landing_payload(
     )
 
 
+def _find_existing_landing_lead(
+    session: Session,
+    *,
+    evento: Evento,
+    ativacao: Ativacao | None,
+    email: str | None,
+) -> Lead | None:
+    if not email:
+        return None
+
+    if ativacao and ativacao.id is not None:
+        return session.exec(
+            select(Lead)
+            .join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
+            .where(AtivacaoLead.ativacao_id == ativacao.id)
+            .where(func.lower(Lead.email) == email)
+        ).first()
+
+    return session.exec(
+        select(Lead)
+        .where(func.lower(Lead.email) == email)
+        .where(Lead.evento_nome == evento.nome)
+    ).first()
+
+
+def _create_landing_lead(
+    session: Session,
+    *,
+    evento: Evento,
+    payload: LandingSubmitRequest,
+    email: str | None,
+) -> Lead:
+    lead = Lead(
+        nome=payload.nome,
+        sobrenome=payload.sobrenome,
+        email=email,
+        telefone=payload.telefone,
+        cpf=payload.cpf,
+        data_nascimento=payload.data_nascimento,
+        evento_nome=evento.nome,
+        cidade=evento.cidade,
+        estado=(payload.estado or evento.estado or "").strip() or None,
+        endereco_rua=payload.endereco,
+        genero=payload.genero,
+        metodo_entrega=payload.area_de_atuacao,
+        fonte_origem="landing_publica",
+        opt_in="aceito",
+        opt_in_flag=True,
+    )
+    session.add(lead)
+    session.flush()
+    return lead
+
+
+def _ensure_ativacao_lead_link(
+    session: Session,
+    *,
+    ativacao: Ativacao | None,
+    lead: Lead,
+) -> AtivacaoLead | None:
+    if ativacao is None or ativacao.id is None or lead.id is None:
+        return None
+
+    ativacao_lead = session.exec(
+        select(AtivacaoLead)
+        .where(AtivacaoLead.ativacao_id == ativacao.id)
+        .where(AtivacaoLead.lead_id == lead.id)
+    ).first()
+    if ativacao_lead is None:
+        ativacao_lead = AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id)
+        try:
+            with session.begin_nested():
+                session.add(ativacao_lead)
+                session.flush()
+        except IntegrityError:
+            ativacao_lead = session.exec(
+                select(AtivacaoLead)
+                .where(AtivacaoLead.ativacao_id == ativacao.id)
+                .where(AtivacaoLead.lead_id == lead.id)
+            ).first()
+            if ativacao_lead is None:
+                raise
+    return ativacao_lead
+
+
+def _track_submit_success_analytics_if_needed(
+    session: Session,
+    *,
+    evento: Evento,
+    ativacao: Ativacao | None,
+    payload: LandingSubmitRequest,
+) -> None:
+    if not (payload.cta_variant_id or payload.landing_session_id):
+        return
+
+    template_config = get_template_config(session, evento=evento)
+    session.add(
+        LandingAnalyticsEvent(
+            event_id=evento.id or 0,
+            ativacao_id=ativacao.id if ativacao else None,
+            categoria=template_config.categoria,
+            tema=template_config.tema,
+            event_name=ANALYTICS_EVENT_SUBMIT_SUCCESS,
+            cta_variant_id=payload.cta_variant_id,
+            landing_session_id=payload.landing_session_id,
+        )
+    )
+
+
 def submit_landing_lead(
     session: Session,
     *,
@@ -524,72 +671,42 @@ def submit_landing_lead(
     success_message: str,
 ) -> LandingSubmitResponse:
     email = str(payload.email).strip().lower() if payload.email else None
-    existing_lead = None
-
-    if ativacao and ativacao.id is not None and email:
-        existing_lead = session.exec(
-            select(Lead)
-            .join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
-            .where(AtivacaoLead.ativacao_id == ativacao.id)
-            .where(func.lower(Lead.email) == email)
-        ).first()
-    elif email:
-        existing_lead = session.exec(
-            select(Lead)
-            .where(func.lower(Lead.email) == email)
-            .where(Lead.evento_nome == evento.nome)
-        ).first()
+    existing_lead = _find_existing_landing_lead(
+        session,
+        evento=evento,
+        ativacao=ativacao,
+        email=email,
+    )
 
     if not existing_lead:
-        existing_lead = Lead(
-            nome=payload.nome,
-            sobrenome=payload.sobrenome,
+        existing_lead = _create_landing_lead(
+            session,
+            evento=evento,
+            payload=payload,
             email=email,
-            telefone=payload.telefone,
-            cpf=payload.cpf,
-            data_nascimento=payload.data_nascimento,
-            evento_nome=evento.nome,
-            cidade=evento.cidade,
-            estado=(payload.estado or evento.estado or "").strip() or None,
-            endereco_rua=payload.endereco,
-            genero=payload.genero,
-            metodo_entrega=payload.area_de_atuacao,
-            fonte_origem="landing_publica",
-            opt_in="aceito",
-            opt_in_flag=True,
         )
-        session.add(existing_lead)
-        session.flush()
 
-    if ativacao and ativacao.id is not None and existing_lead.id is not None:
-        existing_link = session.exec(
-            select(AtivacaoLead)
-            .where(AtivacaoLead.ativacao_id == ativacao.id)
-            .where(AtivacaoLead.lead_id == existing_lead.id)
-        ).first()
-        if not existing_link:
-            session.add(AtivacaoLead(ativacao_id=ativacao.id, lead_id=existing_lead.id))
-
-    template_config = get_template_config(session, evento=evento)
-    if payload.cta_variant_id or payload.landing_session_id:
-        session.add(
-            LandingAnalyticsEvent(
-                event_id=evento.id or 0,
-                ativacao_id=ativacao.id if ativacao else None,
-                categoria=template_config.categoria,
-                tema=template_config.tema,
-                event_name=ANALYTICS_EVENT_SUBMIT_SUCCESS,
-                cta_variant_id=payload.cta_variant_id,
-                landing_session_id=payload.landing_session_id,
-            )
-        )
+    ativacao_lead = _ensure_ativacao_lead_link(
+        session,
+        ativacao=ativacao,
+        lead=existing_lead,
+    )
+    _track_submit_success_analytics_if_needed(
+        session,
+        evento=evento,
+        ativacao=ativacao,
+        payload=payload,
+    )
 
     session.commit()
     session.refresh(existing_lead)
+    if ativacao_lead:
+        session.refresh(ativacao_lead)
     return LandingSubmitResponse(
         lead_id=existing_lead.id or 0,
         event_id=evento.id or 0,
         ativacao_id=ativacao.id if ativacao else None,
+        ativacao_lead_id=ativacao_lead.id if ativacao_lead else None,
         mensagem_sucesso=success_message,
     )
 

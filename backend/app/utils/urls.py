@@ -44,7 +44,7 @@ def get_public_landing_base_url(*, backend_base_url: str | None = None) -> str:
     Preferencia:
     1) PUBLIC_LANDING_BASE_URL
     2) backend_base_url (request.base_url)
-    3) PUBLIC_APP_BASE_URL (fallback)
+    3) PUBLIC_APP_BASE_URL (fallback tecnico)
     """
     base = os.getenv("PUBLIC_LANDING_BASE_URL")
     if base:
@@ -60,7 +60,7 @@ def build_evento_public_urls(
     """Gera URLs publicas relacionadas a um evento.
 
     Padroes MVP:
-    - landing:      {PUBLIC_LANDING_BASE_URL}/landing/eventos/{evento_id}
+    - landing:      {PUBLIC_APP_BASE_URL}/landing/eventos/{evento_id}
     - check-in sem QR: {PUBLIC_LANDING_BASE_URL}/checkin-sem-qr/eventos/{evento_id}
     - questionario: {PUBLIC_LANDING_BASE_URL}/questionario/eventos/{evento_id}
     - api-doc:      {backend_base_url}/docs (fallback: {PUBLIC_APP_BASE_URL}/docs)
@@ -68,7 +68,7 @@ def build_evento_public_urls(
     app_base = get_public_app_base_url()
     landing_base = get_public_landing_base_url(backend_base_url=backend_base_url)
 
-    url_landing = f"{landing_base}/landing/eventos/{evento_id}"
+    url_landing = f"{app_base}/landing/eventos/{evento_id}"
     url_checkin_sem_qr = f"{landing_base}/checkin-sem-qr/eventos/{evento_id}"
     url_questionario = f"{landing_base}/questionario/eventos/{evento_id}"
 
@@ -90,9 +90,15 @@ def build_evento_public_urls(
 def build_ativacao_public_urls(
     ativacao_id: int, *, backend_base_url: str | None = None
 ) -> dict[str, str]:
-    """Gera URLs publicas relacionadas a uma ativacao."""
+    """Gera URLs publicas relacionadas a uma ativacao.
+
+    Padroes MVP:
+    - landing/publica-promotor: {PUBLIC_APP_BASE_URL}/landing/ativacoes/{ativacao_id}
+    - check-in sem QR: {PUBLIC_LANDING_BASE_URL}/checkin-sem-qr/ativacoes/{ativacao_id}
+    """
+    app_base = get_public_app_base_url()
     landing_base = get_public_landing_base_url(backend_base_url=backend_base_url)
-    landing_url = f"{landing_base}/landing/ativacoes/{ativacao_id}"
+    landing_url = f"{app_base}/landing/ativacoes/{ativacao_id}"
     return {
         "landing_url": landing_url,
         "url_promotor": landing_url,

@@ -24,6 +24,7 @@ import type {
   LandingPageData,
   LandingSubmitResponse,
 } from "../../services/landing_public";
+import { resolveLandingContent, type ResolvedLandingContent } from "./landingContent";
 
 type FormState = Record<string, string>;
 
@@ -59,6 +60,46 @@ type LayoutVisualSpec = {
   buttonVariant: "contained" | "outlined";
   buttonColor: "primary" | "secondary";
   buttonStyles?: Record<string, unknown>;
+};
+
+type HeroContextCardProps = {
+  data: LandingPageData;
+  layout: LayoutVisualSpec;
+  isPreview: boolean;
+};
+
+type HeroMediaCardProps = {
+  data: LandingPageData;
+  layout: LayoutVisualSpec;
+  heroImageUrl: string | null;
+  isPreview: boolean;
+};
+
+type LandingFormCardProps = {
+  data: LandingPageData;
+  content: ResolvedLandingContent;
+  layout: LayoutVisualSpec;
+  isPreview: boolean;
+  formState: FormState;
+  consentimento: boolean;
+  submitError: string | null;
+  saving: boolean;
+  submitted: LandingSubmitResponse | null;
+  onInputChange?: (key: string, value: string) => void;
+  onConsentimentoChange?: (checked: boolean) => void;
+  onSubmit?: () => void;
+  onReset?: () => void;
+};
+
+type AboutEventCardProps = {
+  data: LandingPageData;
+  aboutDescription: string;
+  pageTextColor: string;
+};
+
+type BrandSummaryCardProps = {
+  data: LandingPageData;
+  isPreview: boolean;
 };
 
 function isDarkColor(value?: string | null) {
@@ -188,6 +229,15 @@ function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
   };
 }
 
+function getCardPaperSx(primaryColor: string, withShadow = false) {
+  return {
+    p: { xs: 3, md: 4 },
+    borderRadius: 3,
+    border: `1px solid ${alpha(primaryColor, 0.12)}`,
+    ...(withShadow ? { boxShadow: `0 24px 60px ${alpha(primaryColor, 0.12)}` } : {}),
+  };
+}
+
 function renderGraphicOverlay(data: LandingPageData) {
   const primary = data.template.color_primary;
   const secondary = data.template.color_secondary;
@@ -298,6 +348,387 @@ function renderGraphicOverlay(data: LandingPageData) {
   );
 }
 
+function LandingHeader({ data, isPreview }: { data: LandingPageData; isPreview: boolean }) {
+  return (
+    <Stack direction="row" spacing={1.5} alignItems="center">
+      <Box
+        component="img"
+        src="/logo-bb.svg"
+        alt="Banco do Brasil"
+        sx={{
+          width: 48,
+          height: 48,
+          borderRadius: 2,
+          boxShadow: `0 12px 24px ${alpha("#000000", 0.18)}`,
+        }}
+      />
+      <Box>
+        <Typography variant="subtitle2" sx={{ opacity: 0.82 }}>
+          Banco do Brasil
+        </Typography>
+        {isPreview ? (
+          <Typography variant="caption" sx={{ opacity: 0.78 }}>
+            {data.template.tema}
+          </Typography>
+        ) : null}
+      </Box>
+    </Stack>
+  );
+}
+
+function HeroContextCard({ data, layout, isPreview }: HeroContextCardProps) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        p: { xs: 3, md: 4 },
+        borderRadius: 3,
+        bgcolor: layout.heroTextCardBackground,
+        border: `1px solid ${layout.heroTextCardBorder}`,
+        backdropFilter: "blur(10px)",
+        zIndex: 1,
+      }}
+    >
+      <Stack spacing={2.5}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="flex-start" flexWrap="wrap">
+          {isPreview && data.template.categoria === "esporte_radical" ? (
+            <Chip
+              label="Radical"
+              size="small"
+              sx={{
+                bgcolor: alpha(data.template.color_primary, 0.9),
+                color: "#FFFFFF",
+                fontWeight: 800,
+              }}
+            />
+          ) : null}
+          {isPreview ? (
+            <Chip
+              label={data.template.mood}
+              sx={{
+                bgcolor: alpha(data.template.color_secondary, 0.92),
+                color: "#0F172A",
+                fontWeight: 800,
+                maxWidth: "100%",
+              }}
+            />
+          ) : null}
+          <Chip
+            label={formatDateRange(data.evento.data_inicio, data.evento.data_fim)}
+            variant="outlined"
+            sx={{
+              color: "inherit",
+              borderColor: alpha(layout.heroTextColor, 0.28),
+              bgcolor: alpha("#FFFFFF", isDarkColor(layout.heroTextColor) ? 0.04 : 0.4),
+            }}
+          />
+          {isPreview ? (
+            <Chip
+              label={`Categoria: ${data.template.categoria}`}
+              variant="outlined"
+              sx={{ color: "inherit", borderColor: alpha(layout.heroTextColor, 0.24) }}
+            />
+          ) : null}
+        </Stack>
+
+        <Typography
+          variant="h1"
+          sx={{
+            fontSize: {
+              xs:
+                data.template.hero_layout === "editorial" || data.template.hero_layout === "full-bleed"
+                  ? "2.35rem"
+                  : "2.5rem",
+              md:
+                data.template.hero_layout === "editorial" || data.template.hero_layout === "full-bleed"
+                  ? "4rem"
+                  : "3.7rem",
+            },
+            maxWidth: 760,
+          }}
+        >
+          {data.evento.nome}
+        </Typography>
+
+        <Typography
+          variant="h6"
+          sx={{
+            maxWidth: data.template.hero_layout === "editorial" ? 740 : 680,
+            opacity: 0.92,
+            fontSize: data.template.hero_layout === "editorial" ? { xs: "1rem", md: "1.15rem" } : undefined,
+          }}
+        >
+          {data.evento.descricao_curta || data.evento.descricao || "Cadastre-se para participar desta experiencia BB."}
+        </Typography>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
+          <Chip
+            label={`${data.evento.cidade} - ${data.evento.estado}`}
+            variant="outlined"
+            sx={{ color: "inherit", borderColor: alpha(layout.heroTextColor, 0.28) }}
+          />
+          {isPreview && data.ativacao_id ? (
+            <Chip
+              label={`Ativacao #${data.ativacao_id}`}
+              variant="outlined"
+              sx={{ color: "inherit", borderColor: alpha(layout.heroTextColor, 0.28) }}
+            />
+          ) : null}
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+function HeroMediaCard({ data, layout, heroImageUrl, isPreview }: HeroMediaCardProps) {
+  if (heroImageUrl) {
+    return (
+      <Box
+        sx={{
+          position: "relative",
+          minHeight: layout.imageMinHeight,
+          borderRadius: 3,
+          overflow: "hidden",
+          boxShadow: `0 24px 60px ${alpha("#000000", 0.18)}`,
+          border: `1px solid ${alpha("#FFFFFF", 0.2)}`,
+        }}
+      >
+        <Box
+          component="img"
+          data-testid="landing-hero-image"
+          src={heroImageUrl}
+          alt={data.marca.hero_alt}
+          loading={isPreview ? "lazy" : "eager"}
+          sx={{
+            width: "100%",
+            height: "100%",
+            minHeight: layout.imageMinHeight,
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background:
+              data.template.hero_layout === "dark-overlay"
+                ? `linear-gradient(180deg, ${alpha("#07111F", 0.18)} 0%, ${alpha("#07111F", 0.68)} 100%)`
+                : `linear-gradient(180deg, transparent 25%, ${alpha("#000000", 0.26)} 100%)`,
+          }}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      data-testid="landing-hero-fallback"
+      sx={{
+        minHeight: layout.imageMinHeight,
+        borderRadius: 3,
+        background: layout.heroBackground,
+        border: `1px solid ${alpha("#FFFFFF", 0.2)}`,
+      }}
+    />
+  );
+}
+
+function LandingFormCard({
+  data,
+  content,
+  layout,
+  isPreview,
+  formState,
+  consentimento,
+  submitError,
+  saving,
+  submitted,
+  onInputChange,
+  onConsentimentoChange,
+  onSubmit,
+  onReset,
+}: LandingFormCardProps) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        order: { xs: -1, md: 0 },
+        ...getCardPaperSx(data.template.color_primary, true),
+        bgcolor: "background.paper",
+      }}
+    >
+      {!submitted ? (
+        <Stack spacing={2.5}>
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              {content.formTitle}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {content.formSubtitle}
+            </Typography>
+          </Box>
+
+          {content.calloutMessage ? <Alert severity="info">{content.calloutMessage}</Alert> : null}
+
+          {submitError ? <Alert severity="error">{submitError}</Alert> : null}
+
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            }}
+          >
+            {data.formulario.campos.map((field) => (
+              <TextField
+                key={field.key}
+                fullWidth
+                required={field.required}
+                disabled={isPreview}
+                type={field.input_type}
+                label={getFieldLabel(field)}
+                value={formState[field.key] || ""}
+                onChange={(event) => onInputChange?.(field.key, event.target.value)}
+                autoComplete={field.autocomplete || undefined}
+                placeholder={field.placeholder || undefined}
+                multiline={field.key === "interesses"}
+                minRows={field.key === "interesses" ? 3 : undefined}
+                sx={{
+                  gridColumn: field.key === "interesses" || field.key === "endereco" ? "1 / -1" : undefined,
+                }}
+              />
+            ))}
+          </Box>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={consentimento}
+                disabled={isPreview}
+                onChange={(_, checked) => onConsentimentoChange?.(checked)}
+              />
+            }
+            label={
+              <Typography variant="body2" color="text.secondary">
+                {data.formulario.lgpd_texto}{" "}
+                <Link href={data.formulario.privacy_policy_url} target="_blank" rel="noreferrer">
+                  Politica de privacidade
+                </Link>
+                .
+              </Typography>
+            }
+          />
+
+          <Button
+            size="large"
+            variant={layout.buttonVariant}
+            color={layout.buttonColor}
+            onClick={isPreview ? undefined : onSubmit}
+            disabled={isPreview || saving}
+            sx={{
+              minHeight: 52,
+              ...(layout.buttonStyles || {}),
+            }}
+          >
+            {saving ? <CircularProgress size={22} color="inherit" /> : content.ctaText}
+          </Button>
+        </Stack>
+      ) : (
+        <Stack spacing={2.5}>
+          <Chip label="Cadastro concluido" sx={{ alignSelf: "flex-start", bgcolor: alpha(data.template.color_secondary, 0.9) }} />
+          <Typography variant="h5">{submitted.mensagem_sucesso}</Typography>
+          <Typography variant="body1" color="text.secondary">
+            Seu cadastro foi registrado para {data.evento.nome}. Em breve o time do BB pode entrar em contato.
+          </Typography>
+          <Button variant="outlined" onClick={onReset} sx={{ alignSelf: "flex-start" }}>
+            Cadastrar outro email
+          </Button>
+        </Stack>
+      )}
+    </Paper>
+  );
+}
+
+function AboutEventCard({ data, aboutDescription, pageTextColor }: AboutEventCardProps) {
+  return (
+    <Paper elevation={0} sx={getCardPaperSx(data.template.color_primary)}>
+      <Stack spacing={2}>
+        <Typography variant="h5">{data.template.hero_layout === "editorial" ? "Programacao e contexto" : "Sobre o evento"}</Typography>
+        <Typography variant="body1" color="text.secondary">
+          {aboutDescription}
+        </Typography>
+        <Divider />
+        <Stack spacing={1}>
+          <Typography variant="body2" color="text.secondary">
+            <strong style={{ color: pageTextColor }}>Quando:</strong> {formatDateRange(data.evento.data_inicio, data.evento.data_fim)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            <strong style={{ color: pageTextColor }}>Onde:</strong> {data.evento.cidade} - {data.evento.estado}
+          </Typography>
+          {data.acesso.url_promotor ? (
+            <Typography variant="body2" color="text.secondary">
+              <strong style={{ color: pageTextColor }}>Link do promotor:</strong> {data.acesso.url_promotor}
+            </Typography>
+          ) : null}
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+function BrandSummaryCard({ data, isPreview }: BrandSummaryCardProps) {
+  return (
+    <Paper elevation={0} sx={getCardPaperSx(data.template.color_primary)}>
+      <Stack spacing={2}>
+        <Typography variant="h6">Marca BB</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {data.marca.tagline}
+        </Typography>
+        {isPreview ? (
+          <Typography variant="body2" color="text.secondary">
+            Template: {data.template.tema} · Tom: {data.template.tone_of_voice}
+          </Typography>
+        ) : null}
+      </Stack>
+    </Paper>
+  );
+}
+
+function PreviewChecklistCard({ checklist, primaryColor }: { checklist: LandingPreviewChecklistItem[]; primaryColor: string }) {
+  if (!checklist.length) {
+    return null;
+  }
+
+  return (
+    <Paper elevation={0} sx={getCardPaperSx(primaryColor)}>
+      <Stack spacing={2}>
+        <Typography variant="h6">Checklist minimo da ativacao</Typography>
+        {checklist.map((item) => (
+          <Box
+            key={item.label}
+            sx={{
+              p: 1.5,
+              borderRadius: 3,
+              border: `1px solid ${item.ok ? alpha("#16A34A", 0.28) : alpha("#F59E0B", 0.35)}`,
+              bgcolor: item.ok ? alpha("#16A34A", 0.06) : alpha("#F59E0B", 0.08),
+            }}
+          >
+            <Typography variant="body2" fontWeight={800}>
+              {item.ok ? "OK" : "Pendente"} · {item.label}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {item.helper}
+            </Typography>
+          </Box>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
+
 export default function LandingPageView({
   data,
   mode = "public",
@@ -316,6 +747,7 @@ export default function LandingPageView({
   const layout = getLayoutVisualSpec(data);
   const pageTextColor = data.template.color_text || "#111827";
   const isPreview = mode === "preview";
+  const content = resolveLandingContent(data, isPreview);
 
   return (
     <ThemeProvider theme={theme}>
@@ -349,181 +781,42 @@ export default function LandingPageView({
                 </Alert>
               ) : null}
 
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2,
-                    bgcolor: data.template.color_secondary,
-                    color: "#1E293B",
-                    display: "grid",
-                    placeItems: "center",
-                    fontWeight: 900,
-                    letterSpacing: 1,
-                    boxShadow: `0 12px 24px ${alpha("#000000", 0.18)}`,
-                  }}
-                >
-                  BB
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ opacity: 0.82 }}>
-                    Banco do Brasil
-                  </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.78 }}>
-                    {data.template.tema}
-                  </Typography>
-                </Box>
-              </Stack>
+              <LandingHeader data={data} isPreview={isPreview} />
 
               <Box
                 sx={{
                   display: "grid",
                   gap: 3,
-                  alignItems: "stretch",
+                  alignItems: "start",
                   gridTemplateColumns: layout.heroGridColumns,
                 }}
               >
-                <Paper
-                  elevation={0}
-                  sx={{
-                    position: "relative",
-                    overflow: "hidden",
-                    p: { xs: 3, md: 4 },
-                    borderRadius: 6,
-                    bgcolor: layout.heroTextCardBackground,
-                    border: `1px solid ${layout.heroTextCardBorder}`,
-                    backdropFilter: "blur(10px)",
-                    zIndex: 1,
-                  }}
-                >
-                  <Stack spacing={2.5}>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="flex-start" flexWrap="wrap">
-                      {data.template.categoria === "esporte_radical" ? (
-                        <Chip
-                          label="Radical"
-                          size="small"
-                          sx={{
-                            bgcolor: alpha(data.template.color_primary, 0.9),
-                            color: "#FFFFFF",
-                            fontWeight: 800,
-                          }}
-                        />
-                      ) : null}
-                      <Chip
-                        label={data.template.mood}
-                        sx={{
-                          bgcolor: alpha(data.template.color_secondary, 0.92),
-                          color: "#0F172A",
-                          fontWeight: 800,
-                          maxWidth: "100%",
-                        }}
-                      />
-                      <Chip
-                        label={formatDateRange(data.evento.data_inicio, data.evento.data_fim)}
-                        variant="outlined"
-                        sx={{
-                          color: "inherit",
-                          borderColor: alpha(layout.heroTextColor, 0.28),
-                          bgcolor: alpha("#FFFFFF", isDarkColor(layout.heroTextColor) ? 0.04 : 0.4),
-                        }}
-                      />
-                      {isPreview ? (
-                        <Chip
-                          label={`Categoria: ${data.template.categoria}`}
-                          variant="outlined"
-                          sx={{ color: "inherit", borderColor: alpha(layout.heroTextColor, 0.24) }}
-                        />
-                      ) : null}
-                    </Stack>
+                <Stack spacing={3}>
+                  <HeroContextCard data={data} layout={layout} isPreview={isPreview} />
+                  <HeroMediaCard data={data} layout={layout} heroImageUrl={content.heroImageUrl} isPreview={isPreview} />
+                </Stack>
 
-                    <Typography
-                      variant="h1"
-                      sx={{
-                        fontSize: {
-                          xs:
-                            data.template.hero_layout === "editorial" || data.template.hero_layout === "full-bleed"
-                              ? "2.35rem"
-                              : "2.5rem",
-                          md:
-                            data.template.hero_layout === "editorial" || data.template.hero_layout === "full-bleed"
-                              ? "4rem"
-                              : "3.7rem",
-                        },
-                        maxWidth: 760,
-                      }}
-                    >
-                      {data.evento.nome}
-                    </Typography>
-
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        maxWidth: data.template.hero_layout === "editorial" ? 740 : 680,
-                        opacity: 0.92,
-                        fontSize: data.template.hero_layout === "editorial" ? { xs: "1rem", md: "1.15rem" } : undefined,
-                      }}
-                    >
-                      {data.evento.descricao_curta || data.evento.descricao || "Cadastre-se para participar desta experiencia BB."}
-                    </Typography>
-
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
-                      <Chip
-                        label={`${data.evento.cidade} - ${data.evento.estado}`}
-                        variant="outlined"
-                        sx={{ color: "inherit", borderColor: alpha(layout.heroTextColor, 0.28) }}
-                      />
-                      {data.ativacao_id ? (
-                        <Chip
-                          label={`Ativacao #${data.ativacao_id}`}
-                          variant="outlined"
-                          sx={{ color: "inherit", borderColor: alpha(layout.heroTextColor, 0.28) }}
-                        />
-                      ) : null}
-                    </Stack>
-                  </Stack>
-                </Paper>
-
-                <Box
-                  sx={{
-                    position: "relative",
-                    minHeight: layout.imageMinHeight,
-                    borderRadius: 6,
-                    overflow: "hidden",
-                    boxShadow: `0 24px 60px ${alpha("#000000", 0.18)}`,
-                    border: `1px solid ${alpha("#FFFFFF", 0.2)}`,
-                  }}
-                >
-                  <Box
-                    component="img"
-                    src={data.marca.url_hero_image}
-                    alt={data.marca.hero_alt}
-                    loading={isPreview ? "lazy" : "eager"}
-                    sx={{
-                      width: "100%",
-                      height: "100%",
-                      minHeight: layout.imageMinHeight,
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      inset: 0,
-                      background:
-                        data.template.hero_layout === "dark-overlay"
-                          ? `linear-gradient(180deg, ${alpha("#07111F", 0.18)} 0%, ${alpha("#07111F", 0.68)} 100%)`
-                          : `linear-gradient(180deg, transparent 25%, ${alpha("#000000", 0.26)} 100%)`,
-                    }}
-                  />
-                </Box>
+                <LandingFormCard
+                  data={data}
+                  content={content}
+                  layout={layout}
+                  isPreview={isPreview}
+                  formState={formState}
+                  consentimento={consentimento}
+                  submitError={submitError}
+                  saving={saving}
+                  submitted={submitted}
+                  onInputChange={onInputChange}
+                  onConsentimentoChange={onConsentimentoChange}
+                  onSubmit={onSubmit}
+                  onReset={onReset}
+                />
               </Box>
             </Stack>
           </Container>
         </Box>
 
-        <Container maxWidth="lg" sx={{ mt: { xs: -4, md: -8 }, pb: isPreview ? 0 : 8 }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
           <Box
             sx={{
               display: "grid",
@@ -532,193 +825,13 @@ export default function LandingPageView({
               gridTemplateColumns: layout.contentGridColumns,
             }}
           >
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 3, md: 4 },
-                borderRadius: 6,
-                border: `1px solid ${alpha(data.template.color_primary, 0.12)}`,
-                boxShadow: `0 24px 60px ${alpha(data.template.color_primary, 0.12)}`,
-              }}
-            >
-              {!submitted ? (
-                <Stack spacing={2.5}>
-                  <Box>
-                    <Typography variant="h5" gutterBottom>
-                      {data.template.cta_text}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {isPreview
-                        ? "Preview do formulario publicado para este evento."
-                        : "Preencha os dados abaixo para receber novidades e ativar sua participacao."}
-                    </Typography>
-                  </Box>
-
-                  {submitError ? <Alert severity="error">{submitError}</Alert> : null}
-
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gap: 2,
-                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                    }}
-                  >
-                    {data.formulario.campos.map((field) => (
-                      <TextField
-                        key={field.key}
-                        fullWidth
-                        required={field.required}
-                        disabled={isPreview}
-                        type={field.input_type}
-                        label={getFieldLabel(field)}
-                        value={formState[field.key] || ""}
-                        onChange={(event) => onInputChange?.(field.key, event.target.value)}
-                        autoComplete={field.autocomplete || undefined}
-                        placeholder={field.placeholder || undefined}
-                        multiline={field.key === "interesses"}
-                        minRows={field.key === "interesses" ? 3 : undefined}
-                        sx={{
-                          gridColumn: field.key === "interesses" || field.key === "endereco" ? "1 / -1" : undefined,
-                        }}
-                      />
-                    ))}
-                  </Box>
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={consentimento}
-                        disabled={isPreview}
-                        onChange={(_, checked) => onConsentimentoChange?.(checked)}
-                      />
-                    }
-                    label={
-                      <Typography variant="body2" color="text.secondary">
-                        {data.formulario.lgpd_texto}{" "}
-                        <Link href={data.formulario.privacy_policy_url} target="_blank" rel="noreferrer">
-                          Politica de privacidade
-                        </Link>
-                        .
-                      </Typography>
-                    }
-                  />
-
-                  <Button
-                    size="large"
-                    variant={layout.buttonVariant}
-                    color={layout.buttonColor}
-                    onClick={isPreview ? undefined : onSubmit}
-                    disabled={isPreview || saving}
-                    sx={{
-                      minHeight: 52,
-                      ...(layout.buttonStyles || {}),
-                    }}
-                  >
-                    {saving ? <CircularProgress size={22} color="inherit" /> : data.template.cta_text}
-                  </Button>
-                </Stack>
-              ) : (
-                <Stack spacing={2.5}>
-                  <Chip
-                    label="Cadastro concluido"
-                    sx={{ alignSelf: "flex-start", bgcolor: alpha(data.template.color_secondary, 0.9) }}
-                  />
-                  <Typography variant="h5">{submitted.mensagem_sucesso}</Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Seu cadastro foi registrado para {data.evento.nome}. Em breve o time do BB pode entrar em contato.
-                  </Typography>
-                  <Button variant="outlined" onClick={onReset} sx={{ alignSelf: "flex-start" }}>
-                    Cadastrar outro email
-                  </Button>
-                </Stack>
-              )}
-            </Paper>
+            {content.aboutDescription ? (
+              <AboutEventCard data={data} aboutDescription={content.aboutDescription} pageTextColor={pageTextColor} />
+            ) : null}
 
             <Stack spacing={3}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 3, md: 4 },
-                  borderRadius: 6,
-                  border: `1px solid ${alpha(data.template.color_primary, 0.12)}`,
-                }}
-              >
-                <Stack spacing={2}>
-                  <Typography variant="h5">
-                    {data.template.hero_layout === "editorial" ? "Programacao e contexto" : "Sobre o evento"}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    {data.evento.descricao_curta || data.evento.descricao || "Acompanhe esta ativacao especial do Banco do Brasil."}
-                  </Typography>
-                  <Divider />
-                  <Stack spacing={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong style={{ color: pageTextColor }}>Quando:</strong>{" "}
-                      {formatDateRange(data.evento.data_inicio, data.evento.data_fim)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong style={{ color: pageTextColor }}>Onde:</strong> {data.evento.cidade} - {data.evento.estado}
-                    </Typography>
-                    {data.acesso.url_promotor ? (
-                      <Typography variant="body2" color="text.secondary">
-                        <strong style={{ color: pageTextColor }}>Link do promotor:</strong> {data.acesso.url_promotor}
-                      </Typography>
-                    ) : null}
-                  </Stack>
-                </Stack>
-              </Paper>
-
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 3, md: 4 },
-                  borderRadius: 6,
-                  border: `1px solid ${alpha(data.template.color_primary, 0.12)}`,
-                }}
-              >
-                <Stack spacing={2}>
-                  <Typography variant="h6">Marca BB</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {data.marca.tagline}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Template: {data.template.tema} · Tom: {data.template.tone_of_voice}
-                  </Typography>
-                </Stack>
-              </Paper>
-
-              {checklist.length ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 3, md: 4 },
-                    borderRadius: 6,
-                    border: `1px solid ${alpha(data.template.color_primary, 0.12)}`,
-                  }}
-                >
-                  <Stack spacing={2}>
-                    <Typography variant="h6">Checklist minimo da ativacao</Typography>
-                    {checklist.map((item) => (
-                      <Box
-                        key={item.label}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 3,
-                          border: `1px solid ${item.ok ? alpha("#16A34A", 0.28) : alpha("#F59E0B", 0.35)}`,
-                          bgcolor: item.ok ? alpha("#16A34A", 0.06) : alpha("#F59E0B", 0.08),
-                        }}
-                      >
-                        <Typography variant="body2" fontWeight={800}>
-                          {item.ok ? "OK" : "Pendente"} · {item.label}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {item.helper}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Paper>
-              ) : null}
+              <BrandSummaryCard data={data} isPreview={isPreview} />
+              <PreviewChecklistCard checklist={checklist} primaryColor={data.template.color_primary} />
             </Stack>
           </Box>
         </Container>
@@ -734,19 +847,15 @@ export default function LandingPageView({
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Box
+                    component="img"
+                    src="/logo-bb.svg"
+                    alt="Banco do Brasil"
                     sx={{
                       width: 40,
                       height: 40,
                       borderRadius: 2,
-                      bgcolor: data.template.color_secondary,
-                      color: "#1E293B",
-                      display: "grid",
-                      placeItems: "center",
-                      fontWeight: 900,
                     }}
-                  >
-                    BB
-                  </Box>
+                  />
                   <Typography variant="body2" color="text.secondary">
                     {data.marca.tagline}
                   </Typography>

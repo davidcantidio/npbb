@@ -52,6 +52,10 @@ class EventoListItem(BaseModel):
 class EventoRead(BaseModel):
     id: int
     thumbnail: Optional[str] = None
+    template_override: Optional[str] = None
+    hero_image_url: Optional[str] = None
+    cta_personalizado: Optional[str] = None
+    descricao_curta: Optional[str] = None
     divisao_demandante_id: Optional[int] = None
     qr_code_url: Optional[str] = None
     external_project_code: Optional[str] = None
@@ -110,6 +114,10 @@ class EventoCreate(BaseModel):
     status_id: int | None = None
 
     thumbnail: Optional[str] = None
+    template_override: Optional[str] = Field(default=None, max_length=50)
+    hero_image_url: Optional[str] = None
+    cta_personalizado: Optional[str] = Field(default=None, max_length=200)
+    descricao_curta: Optional[str] = Field(default=None, max_length=500)
     divisao_demandante_id: int | None = None
     qr_code_url: Optional[str] = None
     external_project_code: Optional[str] = None
@@ -154,6 +162,10 @@ class EventoUpdate(BaseModel):
     status_id: int | None = None
 
     thumbnail: str | None = None
+    template_override: str | None = Field(default=None, max_length=50)
+    hero_image_url: str | None = None
+    cta_personalizado: str | None = Field(default=None, max_length=200)
+    descricao_curta: str | None = Field(default=None, max_length=500)
     divisao_demandante_id: int | None = None
     qr_code_url: str | None = None
     external_project_code: str | None = None

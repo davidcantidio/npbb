@@ -85,3 +85,16 @@ def build_evento_public_urls(
         "url_questionario": url_questionario,
         "url_api": url_api,
     }
+
+
+def build_ativacao_public_urls(
+    ativacao_id: int, *, backend_base_url: str | None = None
+) -> dict[str, str]:
+    """Gera URLs publicas relacionadas a uma ativacao."""
+    landing_base = get_public_landing_base_url(backend_base_url=backend_base_url)
+    landing_url = f"{landing_base}/landing/ativacoes/{ativacao_id}"
+    return {
+        "landing_url": landing_url,
+        "url_promotor": landing_url,
+        "url_checkin_sem_qr": f"{landing_base}/checkin-sem-qr/ativacoes/{ativacao_id}",
+    }

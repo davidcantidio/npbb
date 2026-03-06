@@ -33,6 +33,9 @@ class AtivacaoRead(BaseModel):
     descricao: str | None = None
     mensagem_qrcode: str | None = None
     gamificacao_id: int | None = None
+    landing_url: str | None = None
+    qr_code_url: str | None = None
+    url_promotor: str | None = None
 
     redireciona_pesquisa: bool
     checkin_unico: bool

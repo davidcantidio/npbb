@@ -174,6 +174,10 @@ def criar_evento_usecase(payload: EventoCreate, session: Session, current_user: 
 
     evento = Evento(
         thumbnail=_normalize_str(payload.thumbnail),
+        template_override=_normalize_str(payload.template_override),
+        hero_image_url=_normalize_str(payload.hero_image_url),
+        cta_personalizado=_normalize_str(payload.cta_personalizado),
+        descricao_curta=_normalize_str(payload.descricao_curta),
         divisao_demandante_id=payload.divisao_demandante_id,
         qr_code_url=_normalize_str(payload.qr_code_url),
         external_project_code=_normalize_str(payload.external_project_code),
@@ -351,6 +355,14 @@ def atualizar_evento_usecase(
         data["estado"] = _normalize_estado(data["estado"])
     if "thumbnail" in data:
         data["thumbnail"] = _normalize_str(data["thumbnail"])
+    if "template_override" in data:
+        data["template_override"] = _normalize_str(data["template_override"])
+    if "hero_image_url" in data:
+        data["hero_image_url"] = _normalize_str(data["hero_image_url"])
+    if "cta_personalizado" in data:
+        data["cta_personalizado"] = _normalize_str(data["cta_personalizado"])
+    if "descricao_curta" in data:
+        data["descricao_curta"] = _normalize_str(data["descricao_curta"])
     if "qr_code_url" in data:
         data["qr_code_url"] = _normalize_str(data["qr_code_url"])
     if "external_project_code" in data:

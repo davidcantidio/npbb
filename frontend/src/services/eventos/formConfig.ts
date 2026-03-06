@@ -1,4 +1,4 @@
-﻿import { handleResponse, requestWithAuth } from "./http";
+import { handleResponse, requestWithAuth } from "./http";
 
 export type FormularioTemplate = {
   id: number;
@@ -31,11 +31,12 @@ export type UpdateEventoFormConfigPayload = {
 };
 
 export const FORMULARIO_CAMPOS_POSSIVEIS_FALLBACK = [
-  "CPF",
   "Nome",
-  "Sobrenome",
-  "Telefone",
   "Email",
+  "CPF",
+  "Telefone",
+  "Sobrenome",
+  "Estado",
   "Data de nascimento",
   "Endereco",
   "Interesses",

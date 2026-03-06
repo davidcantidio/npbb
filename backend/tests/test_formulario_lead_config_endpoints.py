@@ -152,11 +152,11 @@ def test_form_config_get_retorna_default_quando_nao_existe(client, engine):
     assert payload["evento_id"] == evento_id
     assert payload["template_id"] is None
     assert payload["campos"] == [
-        {"nome_campo": "CPF", "obrigatorio": True, "ordem": 0},
-        {"nome_campo": "Nome", "obrigatorio": True, "ordem": 1},
-        {"nome_campo": "Sobrenome", "obrigatorio": False, "ordem": 2},
-        {"nome_campo": "Email", "obrigatorio": True, "ordem": 4},
-        {"nome_campo": "Data de nascimento", "obrigatorio": True, "ordem": 5},
+        {"nome_campo": "Nome", "obrigatorio": True, "ordem": 0},
+        {"nome_campo": "Email", "obrigatorio": True, "ordem": 1},
+        {"nome_campo": "CPF", "obrigatorio": False, "ordem": 2},
+        {"nome_campo": "Telefone", "obrigatorio": False, "ordem": 3},
+        {"nome_campo": "Estado", "obrigatorio": False, "ordem": 5},
     ]
     assert payload["urls"]["url_landing"] == f"http://testserver/landing/eventos/{evento_id}"
     assert (

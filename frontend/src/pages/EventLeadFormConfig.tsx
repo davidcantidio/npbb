@@ -21,15 +21,27 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
+  getEvento,
   getEventoFormConfig,
   getFormularioCamposPossiveis,
   listFormularioTemplates,
+  updateEvento,
   updateEventoFormConfig,
   type EventoFormConfig,
   type FormularioTemplate,
 } from "../services/eventos";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
+
+const TEMPLATE_OVERRIDE_OPTIONS = [
+  "generico",
+  "corporativo",
+  "esporte_convencional",
+  "esporte_radical",
+  "show_musical",
+  "evento_cultural",
+  "tecnologia",
+] as const;
 
 export default function EventLeadFormConfig() {
   const { id } = useParams();
@@ -42,6 +54,17 @@ export default function EventLeadFormConfig() {
   const [camposObrigatorios, setCamposObrigatorios] = useState<Record<string, boolean>>({});
   const [templates, setTemplates] = useState<FormularioTemplate[]>([]);
   const [templateId, setTemplateId] = useState<number | null>(null);
+  const [landingMeta, setLandingMeta] = useState<{
+    template_override: string;
+    hero_image_url: string;
+    cta_personalizado: string;
+    descricao_curta: string;
+  }>({
+    template_override: "",
+    hero_image_url: "",
+    cta_personalizado: "",
+    descricao_curta: "",
+  });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,15 +163,22 @@ export default function EventLeadFormConfig() {
     setLoading(true);
     setError(null);
     try {
-      const [configRes, templatesRes, camposRes] = await Promise.all([
+      const [configRes, templatesRes, camposRes, eventoRes] = await Promise.all([
         getEventoFormConfig(token, eventoId),
         listFormularioTemplates(token).catch(() => []),
         getFormularioCamposPossiveis(token),
+        getEvento(token, eventoId),
       ]);
       setConfig(configRes);
       setTemplates(templatesRes);
       setCamposPossiveis(camposRes);
       setTemplateId(configRes.template_id ?? null);
+      setLandingMeta({
+        template_override: eventoRes.template_override ?? "",
+        hero_image_url: eventoRes.hero_image_url ?? "",
+        cta_personalizado: eventoRes.cta_personalizado ?? "",
+        descricao_curta: eventoRes.descricao_curta ?? "",
+      });
 
       const catalogByLower = new Map(camposRes.map((nome) => [nome.trim().toLowerCase(), nome.trim()]));
       const initialAtivos = new Set<string>();
@@ -200,9 +230,21 @@ export default function EventLeadFormConfig() {
         template_id: templateId ?? null,
         campos: camposPayload,
       });
+      const updatedEvento = await updateEvento(token, eventoId, {
+        template_override: landingMeta.template_override.trim() || null,
+        hero_image_url: landingMeta.hero_image_url.trim() || null,
+        cta_personalizado: landingMeta.cta_personalizado.trim() || null,
+        descricao_curta: landingMeta.descricao_curta.trim() || null,
+      });
 
       setConfig(updated);
       setTemplateId(updated.template_id ?? null);
+      setLandingMeta({
+        template_override: updatedEvento.template_override ?? "",
+        hero_image_url: updatedEvento.hero_image_url ?? "",
+        cta_personalizado: updatedEvento.cta_personalizado ?? "",
+        descricao_curta: updatedEvento.descricao_curta ?? "",
+      });
 
       const catalogByLower = new Map(camposPossiveis.map((nome) => [nome.trim().toLowerCase(), nome.trim()]));
       const nextAtivos = new Set<string>();
@@ -227,7 +269,16 @@ export default function EventLeadFormConfig() {
     } finally {
       setSaving(false);
     }
-  }, [token, eventoId, templateId, camposPossiveis, camposPossiveisUniq, camposAtivos, camposObrigatorios]);
+  }, [
+    token,
+    eventoId,
+    templateId,
+    camposPossiveis,
+    camposPossiveisUniq,
+    camposAtivos,
+    camposObrigatorios,
+    landingMeta,
+  ]);
 
   useEffect(() => {
     load();
@@ -321,6 +372,62 @@ export default function EventLeadFormConfig() {
               <Typography variant="caption" color="text.secondary" display="block" sx={{ pt: 0.5 }}>
                 Trocar tema altera a selecao local ate clicar em "Salvar".
               </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900} gutterBottom>
+                Contexto da landing
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Personalize o comportamento inicial da landing publica da Fase 1.
+              </Typography>
+              <Stack spacing={2}>
+                <Autocomplete
+                  freeSolo
+                  options={[...TEMPLATE_OVERRIDE_OPTIONS]}
+                  value={landingMeta.template_override}
+                  onChange={(_, value) =>
+                    setLandingMeta((prev) => ({ ...prev, template_override: value ?? "" }))
+                  }
+                  onInputChange={(_, value) =>
+                    setLandingMeta((prev) => ({ ...prev, template_override: value }))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Template override"
+                      placeholder="Deixe em branco para usar a resolucao automatica"
+                    />
+                  )}
+                />
+                <TextField
+                  label="Hero image URL"
+                  value={landingMeta.hero_image_url}
+                  onChange={(event) =>
+                    setLandingMeta((prev) => ({ ...prev, hero_image_url: event.target.value }))
+                  }
+                  placeholder="https://..."
+                  fullWidth
+                />
+                <TextField
+                  label="CTA personalizado"
+                  value={landingMeta.cta_personalizado}
+                  onChange={(event) =>
+                    setLandingMeta((prev) => ({ ...prev, cta_personalizado: event.target.value }))
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="Descricao curta"
+                  value={landingMeta.descricao_curta}
+                  onChange={(event) =>
+                    setLandingMeta((prev) => ({ ...prev, descricao_curta: event.target.value }))
+                  }
+                  multiline
+                  minRows={3}
+                  fullWidth
+                />
+              </Stack>
             </Box>
 
             <Box>

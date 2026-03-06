@@ -171,7 +171,7 @@ export default function PipelineStatusPage() {
         stopPolling();
       }
     } catch (err) {
-      setError(toApiErrorMessage(err));
+      setError(toApiErrorMessage(err, "Erro ao carregar o status do lote."));
       stopPolling();
     }
   };
@@ -215,7 +215,7 @@ export default function PipelineStatusPage() {
       await fetchBatch();
       startPolling();
     } catch (err) {
-      setError(toApiErrorMessage(err));
+      setError(toApiErrorMessage(err, "Erro ao executar o pipeline."));
     } finally {
       setRunning(false);
     }

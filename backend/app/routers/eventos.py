@@ -72,6 +72,12 @@ from app.schemas.questionario import (
     QuestionarioEstruturaWrite,
     QuestionarioPaginaRead,
 )
+from app.services.formulario_lead_catalog import (
+    FORMULARIO_CAMPOS_CATALOGO,
+    FORMULARIO_CAMPOS_DEFAULT,
+    FORMULARIO_CAMPOS_ORDEM_BY_LOWER,
+)
+from app.services.landing_pages import hydrate_ativacao_public_urls
 from app.services.questionario import load_questionario_estrutura, replace_questionario_estrutura
 from app.services.data_health import compute_event_data_health, compute_event_missing_fields_details
 from app.utils.http_errors import raise_http_error
@@ -80,33 +86,6 @@ from app.utils.urls import build_evento_public_urls
 
 router = APIRouter(prefix="/evento", tags=["evento"])
 telemetry_logger = logging.getLogger("app.telemetry")
-
-FORMULARIO_CAMPOS_CATALOGO = [
-    "CPF",
-    "Nome",
-    "Sobrenome",
-    "Telefone",
-    "Email",
-    "Data de nascimento",
-    "Endereco",
-    "Interesses",
-    "Genero",
-    "Area de atuacao",
-]
-
-FORMULARIO_CAMPOS_ORDEM_BY_LOWER = {
-    nome.lower(): index for index, nome in enumerate(FORMULARIO_CAMPOS_CATALOGO)
-}
-
-# Defaults (MVP) quando ainda nao existe config persistida para o evento.
-# Screenshot/UX: CPF, Nome, Sobrenome, Email e Data de nascimento ativos; Sobrenome opcional.
-FORMULARIO_CAMPOS_DEFAULT: list[tuple[str, bool]] = [
-    ("CPF", True),
-    ("Nome", True),
-    ("Sobrenome", False),
-    ("Email", True),
-    ("Data de nascimento", True),
-]
 
 
 def _raise_http(status_code: int, code: str, message: str, extra: dict | None = None) -> None:
@@ -1233,6 +1212,16 @@ def listar_ativacoes(
     ativacoes = session.exec(
         select(Ativacao).where(Ativacao.evento_id == evento_id).order_by(Ativacao.id)
     ).all()
+    changed = False
+    for ativacao in ativacoes:
+        changed = hydrate_ativacao_public_urls(ativacao) or changed
+    if changed:
+        for ativacao in ativacoes:
+            ativacao.updated_at = now_utc()
+            session.add(ativacao)
+        session.commit()
+        for ativacao in ativacoes:
+            session.refresh(ativacao)
     return [AtivacaoRead.model_validate(a, from_attributes=True) for a in ativacoes]
 
 
@@ -1290,6 +1279,11 @@ def criar_ativacao(
     session.commit()
 
     session.refresh(ativacao)
+    if hydrate_ativacao_public_urls(ativacao):
+        ativacao.updated_at = now_utc()
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
     return AtivacaoRead.model_validate(ativacao, from_attributes=True)
 
 

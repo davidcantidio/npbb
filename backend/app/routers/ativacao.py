@@ -23,6 +23,7 @@ from app.models.models import (
     now_utc,
 )
 from app.schemas.ativacao import AtivacaoRead, AtivacaoUpdate
+from app.services.landing_pages import hydrate_ativacao_public_urls
 from app.utils.http_errors import raise_http_error
 
 router = APIRouter(prefix="/ativacao", tags=["ativacao"])
@@ -112,6 +113,11 @@ def atualizar_ativacao(
     session.commit()
 
     session.refresh(ativacao)
+    if hydrate_ativacao_public_urls(ativacao):
+        ativacao.updated_at = now_utc()
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
     return AtivacaoRead.model_validate(ativacao, from_attributes=True)
 
 

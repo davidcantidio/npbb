@@ -209,6 +209,10 @@ class Evento(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     thumbnail: Optional[str] = Field(default=None, max_length=500)
+    template_override: Optional[str] = Field(default=None, max_length=50)
+    hero_image_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    cta_personalizado: Optional[str] = Field(default=None, max_length=200)
+    descricao_curta: Optional[str] = Field(default=None, max_length=500)
     # Divisao demandante (lookup table).
     divisao_demandante_id: Optional[int] = Field(default=None, foreign_key="divisao_demandante.id")
     qr_code_url: Optional[str] = Field(default=None, max_length=500)
@@ -515,6 +519,9 @@ class Ativacao(SQLModel, table=True):
     descricao: Optional[str] = Field(default=None, max_length=240)
     evento_id: int = Field(foreign_key="evento.id")
     gamificacao_id: Optional[int] = Field(default=None, foreign_key="gamificacao.id")
+    landing_url: Optional[str] = Field(default=None, max_length=500)
+    qr_code_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    url_promotor: Optional[str] = Field(default=None, max_length=500)
 
     valor: Optional[Decimal] = Field(default=None, sa_column=Column(Numeric(12, 2)))
 

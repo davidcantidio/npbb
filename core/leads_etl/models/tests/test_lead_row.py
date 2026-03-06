@@ -46,6 +46,7 @@ def test_lead_row_freezes_documented_inventory() -> None:
         "data_criacao",
         "data_compra_data",
         "data_compra_hora",
+        "batch_id",
     }
     assert all(reason.strip() for reason in LEAD_ROW_EXCLUDED_FIELDS.values())
 

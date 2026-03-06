@@ -39,6 +39,7 @@ LEAD_ROW_EXCLUDED_FIELDS: Final[dict[str, str]] = {
     "data_criacao": "Timestamp de persistencia/auditoria, definido fora do contrato.",
     "data_compra_data": "Campo derivado de persistencia a partir de data_compra.",
     "data_compra_hora": "Campo derivado de persistencia a partir de data_compra.",
+    "batch_id": "FK para lead_batches; metadado de persistencia, definido fora do contrato.",
 }
 
 

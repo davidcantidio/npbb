@@ -8,6 +8,8 @@ from sqlmodel import Session
 from app.db.database import get_session
 from app.models.models import Ativacao, Evento
 from app.schemas.landing_public import (
+    LandingAnalyticsTrackRequest,
+    LandingAnalyticsTrackResponse,
     LandingPageRead,
     LandingSubmitRequest,
     LandingSubmitResponse,
@@ -17,6 +19,7 @@ from app.services.landing_pages import (
     build_landing_payload,
     get_template_config,
     hydrate_ativacao_public_urls,
+    track_landing_analytics,
     submit_landing_lead,
 )
 from app.services.landing_pages import get_event_form_config as get_event_form_config_service
@@ -157,3 +160,12 @@ def get_ativacao_qr_code(
         session.refresh(ativacao)
     svg = build_qr_code_svg(ativacao.landing_url or "")
     return Response(content=svg, media_type="image/svg+xml")
+
+
+@router.post("/landing/analytics", response_model=LandingAnalyticsTrackResponse)
+def post_landing_analytics(
+    payload: LandingAnalyticsTrackRequest,
+    session: Session = Depends(get_session),
+):
+    track_landing_analytics(session, payload=payload)
+    return LandingAnalyticsTrackResponse()

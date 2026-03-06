@@ -24,11 +24,15 @@ import {
   getEvento,
   getEventoFormConfig,
   getFormularioCamposPossiveis,
+  getLandingAnalytics,
+  getLandingCustomizationAudit,
   listFormularioTemplates,
   updateEvento,
   updateEventoFormConfig,
   type EventoFormConfig,
   type FormularioTemplate,
+  type LandingAnalyticsSummary,
+  type LandingCustomizationAuditItem,
 } from "../services/eventos";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
@@ -73,6 +77,10 @@ export default function EventLeadFormConfig() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<LandingPageData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<LandingAnalyticsSummary[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditItems, setAuditItems] = useState<LandingCustomizationAuditItem[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -177,6 +185,23 @@ export default function EventLeadFormConfig() {
     }
   }, [eventoId]);
 
+  const loadGovernanceData = useCallback(async () => {
+    if (!token || !Number.isFinite(eventoId)) return;
+    setAnalyticsLoading(true);
+    setAuditLoading(true);
+    try {
+      const [analyticsRes, auditRes] = await Promise.all([
+        getLandingAnalytics(token, eventoId).catch(() => []),
+        getLandingCustomizationAudit(token, eventoId).catch(() => []),
+      ]);
+      setAnalyticsData(analyticsRes);
+      setAuditItems(auditRes);
+    } finally {
+      setAnalyticsLoading(false);
+      setAuditLoading(false);
+    }
+  }, [token, eventoId]);
+
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(eventoId)) return;
     setLoading(true);
@@ -280,6 +305,7 @@ export default function EventLeadFormConfig() {
 
       setSnackbar({ open: true, message: "ConfiguraÃ§Ã£o salva com sucesso.", severity: "success" });
       void loadPreview();
+      void loadGovernanceData();
     } catch (err: any) {
       setSnackbar({
         open: true,
@@ -299,6 +325,7 @@ export default function EventLeadFormConfig() {
     camposObrigatorios,
     landingMeta,
     loadPreview,
+    loadGovernanceData,
   ]);
 
   useEffect(() => {
@@ -308,6 +335,10 @@ export default function EventLeadFormConfig() {
   useEffect(() => {
     void loadPreview();
   }, [loadPreview]);
+
+  useEffect(() => {
+    void loadGovernanceData();
+  }, [loadGovernanceData]);
 
   const subtitle = Number.isFinite(eventoId)
     ? `Configure o tema e os campos do formulÃ¡rio do evento #${eventoId}.`
@@ -557,6 +588,85 @@ export default function EventLeadFormConfig() {
                   Nenhum preview disponivel no momento.
                 </Typography>
               )}
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900} gutterBottom>
+                Governanca e performance
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Historico de customizacoes permitidas e leitura inicial do funil por template/CTA.
+              </Typography>
+
+              <Stack spacing={2}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={800} gutterBottom>
+                    Analytics da landing
+                  </Typography>
+                  {analyticsLoading ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Carregando metricas...
+                    </Typography>
+                  ) : analyticsData.length ? (
+                    <Stack spacing={1.5}>
+                      {analyticsData.map((item) => (
+                        <Box key={`${item.categoria}-${item.tema}`} sx={{ p: 1.5, borderRadius: 2, bgcolor: "action.hover" }}>
+                          <Typography variant="body2" fontWeight={800}>
+                            {item.tema} · {item.categoria}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Views: {item.page_views} · Inicios: {item.form_starts} · Envios: {item.submit_successes} · Conversao:{" "}
+                            {(item.conversion_rate * 100).toFixed(1)}%
+                          </Typography>
+                          {item.variants.length ? (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                              Variantes:{" "}
+                              {item.variants
+                                .map(
+                                  (variant) =>
+                                    `${variant.cta_variant_id} (${variant.views} views / ${variant.successes} sucessos)`,
+                                )
+                                .join(" · ")}
+                            </Typography>
+                          ) : null}
+                        </Box>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Nenhum dado analitico registrado ainda para este evento.
+                    </Typography>
+                  )}
+                </Paper>
+
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={800} gutterBottom>
+                    Auditoria de customizacao
+                  </Typography>
+                  {auditLoading ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Carregando historico...
+                    </Typography>
+                  ) : auditItems.length ? (
+                    <Stack spacing={1.25}>
+                      {auditItems.map((item) => (
+                        <Box key={item.id} sx={{ p: 1.5, borderRadius: 2, bgcolor: "action.hover" }}>
+                          <Typography variant="body2" fontWeight={800}>
+                            {item.field_name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Antes: {item.old_value || "vazio"} · Depois: {item.new_value || "vazio"}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Nenhuma customizacao auditada ate agora.
+                    </Typography>
+                  )}
+                </Paper>
+              </Stack>
             </Box>
 
             <Box>

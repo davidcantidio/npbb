@@ -154,6 +154,27 @@ function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
     };
   }
 
+  if (heroLayout === "full-bleed") {
+    return {
+      heroBackground: `linear-gradient(180deg, ${alpha(primary, 0.12)} 0%, ${alpha(secondary, 0.08)} 45%, ${alpha(
+        primary,
+        0.18,
+      )} 100%)`,
+      heroTextColor: text || "#1F2937",
+      heroGridColumns: { xs: "1fr", md: "1fr 1fr" },
+      heroTextCardBackground: alpha("#FFFFFF", 0.92),
+      heroTextCardBorder: alpha(primary, 0.2),
+      contentGridColumns: { xs: "1fr", md: "0.95fr 1.05fr" },
+      imageMinHeight: { xs: 320, md: 540 },
+      buttonVariant: "contained",
+      buttonColor: "secondary",
+      buttonStyles: {
+        background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
+        color: "#FFFFFF",
+      },
+    };
+  }
+
   return {
     heroBackground: `linear-gradient(135deg, ${primary} 0%, ${alpha(primary, 0.92)} 52%, ${alpha(secondary, 0.58)} 100%)`,
     heroTextColor: defaultTextColor,
@@ -377,7 +398,18 @@ export default function LandingPageView({
                   }}
                 >
                   <Stack spacing={2.5}>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="flex-start">
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="flex-start" flexWrap="wrap">
+                      {data.template.categoria === "esporte_radical" ? (
+                        <Chip
+                          label="Radical"
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(data.template.color_primary, 0.9),
+                            color: "#FFFFFF",
+                            fontWeight: 800,
+                          }}
+                        />
+                      ) : null}
                       <Chip
                         label={data.template.mood}
                         sx={{
@@ -409,8 +441,14 @@ export default function LandingPageView({
                       variant="h1"
                       sx={{
                         fontSize: {
-                          xs: data.template.hero_layout === "editorial" ? "2.35rem" : "2.5rem",
-                          md: data.template.hero_layout === "editorial" ? "4rem" : "3.7rem",
+                          xs:
+                            data.template.hero_layout === "editorial" || data.template.hero_layout === "full-bleed"
+                              ? "2.35rem"
+                              : "2.5rem",
+                          md:
+                            data.template.hero_layout === "editorial" || data.template.hero_layout === "full-bleed"
+                              ? "4rem"
+                              : "3.7rem",
                         },
                         maxWidth: 760,
                       }}

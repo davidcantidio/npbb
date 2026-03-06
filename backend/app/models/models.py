@@ -60,6 +60,9 @@ class Usuario(SQLModel, table=True):
 
     funcionario: Optional["Funcionario"] = Relationship(back_populates="usuario")
     agencia: Optional["Agencia"] = Relationship(back_populates="usuarios")
+    landing_customization_audits: List["EventoLandingCustomizationAudit"] = Relationship(
+        back_populates="changed_by_user"
+    )
 
     @property
     def diretoria_id(self) -> Optional[int]:
@@ -264,6 +267,10 @@ class Evento(SQLModel, table=True):
     cotas: List["CotaCortesia"] = Relationship(back_populates="evento")
     paginas_questionario: List["QuestionarioPagina"] = Relationship(back_populates="evento")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="evento")
+    landing_customization_audits: List["EventoLandingCustomizationAudit"] = Relationship(
+        back_populates="evento"
+    )
+    landing_analytics_events: List["LandingAnalyticsEvent"] = Relationship(back_populates="evento")
 
 
 # =========================
@@ -544,6 +551,7 @@ class Ativacao(SQLModel, table=True):
     ativacao_leads: List["AtivacaoLead"] = Relationship(back_populates="ativacao")
     cupons: List["Cupom"] = Relationship(back_populates="ativacao")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="ativacao")
+    landing_analytics_events: List["LandingAnalyticsEvent"] = Relationship(back_populates="ativacao")
 
 
 class Gamificacao(SQLModel, table=True):
@@ -597,6 +605,38 @@ class AtivacaoLead(SQLModel, table=True):
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")
+
+
+class EventoLandingCustomizationAudit(SQLModel, table=True):
+    __tablename__ = "evento_landing_customization_audit"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: int = Field(foreign_key="evento.id", index=True)
+    field_name: str = Field(max_length=80)
+    old_value: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    new_value: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    changed_by_user_id: Optional[int] = Field(default=None, foreign_key="usuario.id", index=True)
+    created_at: datetime = Field(default_factory=now_utc)
+
+    evento: Optional[Evento] = Relationship(back_populates="landing_customization_audits")
+    changed_by_user: Optional[Usuario] = Relationship(back_populates="landing_customization_audits")
+
+
+class LandingAnalyticsEvent(SQLModel, table=True):
+    __tablename__ = "landing_analytics_event"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: int = Field(foreign_key="evento.id", index=True)
+    ativacao_id: Optional[int] = Field(default=None, foreign_key="ativacao.id", index=True)
+    categoria: str = Field(max_length=80, index=True)
+    tema: str = Field(max_length=80)
+    event_name: str = Field(max_length=60, index=True)
+    cta_variant_id: Optional[str] = Field(default=None, max_length=60, index=True)
+    landing_session_id: Optional[str] = Field(default=None, max_length=120, index=True)
+    created_at: datetime = Field(default_factory=now_utc, index=True)
+
+    evento: Optional[Evento] = Relationship(back_populates="landing_analytics_events")
+    ativacao: Optional[Ativacao] = Relationship(back_populates="landing_analytics_events")
 
 
 class Cupom(SQLModel, table=True):

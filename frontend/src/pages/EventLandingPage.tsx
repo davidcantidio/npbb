@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, CircularProgress, Container, Stack, Typography } from "@mui/material";
 import { useParams } from "react-router-dom";
 
 import {
   getLandingByAtivacao,
   getLandingByEvento,
+  trackLandingAnalytics,
   type LandingPageData,
   type LandingSubmitResponse,
   submitLandingForm,
 } from "../services/landing_public";
+import { getLandingSessionId, selectLandingCtaVariant } from "../services/landing_experiments";
 import { toApiErrorMessage } from "../services/http";
 import LandingPageView from "../components/landing/LandingPageView";
 
@@ -28,6 +30,26 @@ export default function EventLandingPage() {
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState<LandingSubmitResponse | null>(null);
   const [lastSubmittedEmail, setLastSubmittedEmail] = useState<string | null>(null);
+  const formStartTracked = useRef(false);
+  const ctaExposureTracked = useRef(false);
+
+  const sessionId = useMemo(() => getLandingSessionId(), []);
+  const selectedVariant = useMemo(() => {
+    if (!data) return null;
+    return selectLandingCtaVariant(data, sessionId);
+  }, [data, sessionId]);
+
+  const effectiveData = useMemo<LandingPageData | null>(() => {
+    if (!data) return null;
+    if (!selectedVariant) return data;
+    return {
+      ...data,
+      template: {
+        ...data.template,
+        cta_text: selectedVariant.text,
+      },
+    };
+  }, [data, selectedVariant]);
 
   useEffect(() => {
     let active = true;
@@ -63,9 +85,48 @@ export default function EventLandingPage() {
     };
   }, [resolvedAtivacaoId, resolvedEventId]);
 
+  useEffect(() => {
+    if (!effectiveData) return;
+    trackLandingAnalytics({
+      event_id: effectiveData.evento.id,
+      ativacao_id: effectiveData.ativacao_id ?? undefined,
+      categoria: effectiveData.template.categoria,
+      tema: effectiveData.template.tema,
+      event_name: "page_view",
+      cta_variant_id: selectedVariant?.id ?? null,
+      landing_session_id: sessionId,
+    }).catch(() => {});
+  }, [effectiveData, selectedVariant?.id, sessionId]);
+
+  useEffect(() => {
+    if (!effectiveData || ctaExposureTracked.current) return;
+    ctaExposureTracked.current = true;
+    trackLandingAnalytics({
+      event_id: effectiveData.evento.id,
+      ativacao_id: effectiveData.ativacao_id ?? undefined,
+      categoria: effectiveData.template.categoria,
+      tema: effectiveData.template.tema,
+      event_name: "cta_exposure",
+      cta_variant_id: selectedVariant?.id ?? null,
+      landing_session_id: sessionId,
+    }).catch(() => {});
+  }, [effectiveData, selectedVariant?.id, sessionId]);
+
   const handleInputChange = (key: string, value: string) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
     setSubmitError(null);
+    if (!formStartTracked.current && data) {
+      formStartTracked.current = true;
+      trackLandingAnalytics({
+        event_id: data.evento.id,
+        ativacao_id: data.ativacao_id ?? undefined,
+        categoria: data.template.categoria,
+        tema: data.template.tema,
+        event_name: "form_start",
+        cta_variant_id: selectedVariant?.id ?? null,
+        landing_session_id: sessionId,
+      }).catch(() => {});
+    }
   };
 
   const handleSubmit = async () => {
@@ -86,6 +147,16 @@ export default function EventLandingPage() {
       return;
     }
 
+    trackLandingAnalytics({
+      event_id: data.evento.id,
+      ativacao_id: data.ativacao_id ?? undefined,
+      categoria: data.template.categoria,
+      tema: data.template.tema,
+      event_name: "submit_attempt",
+      cta_variant_id: selectedVariant?.id ?? null,
+      landing_session_id: sessionId,
+    }).catch(() => {});
+
     setSaving(true);
     try {
       const response = await submitLandingForm(data.formulario.submit_url, {
@@ -100,11 +171,22 @@ export default function EventLandingPage() {
         interesses: formState.interesses,
         genero: formState.genero,
         area_de_atuacao: formState.area_de_atuacao,
+        cta_variant_id: selectedVariant?.id,
+        landing_session_id: sessionId,
         consentimento_lgpd: consentimento,
       });
       setSubmitted(response);
       setLastSubmittedEmail(email);
       setSubmitError(null);
+      trackLandingAnalytics({
+        event_id: data.evento.id,
+        ativacao_id: data.ativacao_id ?? undefined,
+        categoria: data.template.categoria,
+        tema: data.template.tema,
+        event_name: "submit_success",
+        cta_variant_id: selectedVariant?.id ?? null,
+        landing_session_id: sessionId,
+      }).catch(() => {});
     } catch (err) {
       setSubmitError(toApiErrorMessage(err, "Nao foi possivel enviar seus dados. Tente novamente."));
     } finally {
@@ -130,13 +212,13 @@ export default function EventLandingPage() {
             </Typography>
           </Stack>
         </Container>
-      ) : error || !data ? (
+      ) : error || !effectiveData ? (
         <Container maxWidth="sm" sx={{ py: 12 }}>
           <Alert severity="error">{error || "Landing nao encontrada."}</Alert>
         </Container>
       ) : (
         <LandingPageView
-          data={data}
+          data={effectiveData}
           mode="public"
           formState={formState}
           consentimento={consentimento}

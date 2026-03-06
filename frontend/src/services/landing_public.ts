@@ -13,6 +13,14 @@ export type LandingTemplateConfig = {
   cta_variant: string;
   graphics_style: string;
   tone_of_voice: string;
+  cta_experiment_enabled: boolean;
+  cta_variants: LandingCtaVariant[];
+};
+
+export type LandingCtaVariant = {
+  id: string;
+  label: string;
+  text: string;
 };
 
 export type LandingField = {
@@ -81,6 +89,8 @@ export type LandingSubmitPayload = {
   interesses?: string;
   genero?: string;
   area_de_atuacao?: string;
+  cta_variant_id?: string;
+  landing_session_id?: string;
   consentimento_lgpd: boolean;
 };
 
@@ -89,6 +99,16 @@ export type LandingSubmitResponse = {
   event_id: number;
   ativacao_id?: number | null;
   mensagem_sucesso: string;
+};
+
+export type LandingAnalyticsTrackPayload = {
+  event_id: number;
+  ativacao_id?: number | null;
+  categoria: string;
+  tema: string;
+  event_name: string;
+  cta_variant_id?: string | null;
+  landing_session_id?: string | null;
 };
 
 export async function getLandingByEvento(eventoId: number): Promise<LandingPageData> {
@@ -112,4 +132,14 @@ export async function submitLandingForm(
     retries: 0,
   });
   return handleApiResponse<LandingSubmitResponse>(res);
+}
+
+export async function trackLandingAnalytics(payload: LandingAnalyticsTrackPayload): Promise<void> {
+  const res = await fetchWithAuth("/landing/analytics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    retries: 0,
+  });
+  await handleApiResponse(res);
 }

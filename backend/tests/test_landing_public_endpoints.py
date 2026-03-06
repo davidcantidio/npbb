@@ -12,6 +12,7 @@ from app.models.models import (
     Ativacao,
     AtivacaoLead,
     Evento,
+    LandingAnalyticsEvent,
     Lead,
     StatusEvento,
     TipoEvento,
@@ -171,6 +172,8 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
     assert payload["acesso"]["landing_url"] == f"http://testserver/landing/ativacoes/{ativacao_id}"
     assert payload["acesso"]["url_promotor"] == f"http://testserver/landing/ativacoes/{ativacao_id}"
     assert payload["acesso"]["qr_code_url"].startswith("data:image/svg+xml;base64,")
+    assert payload["template"]["cta_experiment_enabled"] is False
+    assert payload["template"]["cta_variants"] == []
 
 
 def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
@@ -238,6 +241,45 @@ def test_public_template_config_e_qr_code_endpoint(client, engine):
     assert qr_resp.status_code == 200
     assert qr_resp.headers["content-type"].startswith("image/svg+xml")
     assert "<svg" in qr_resp.text
+
+
+def test_public_landing_supports_cta_variants_and_analytics_tracking(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Show")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Festival BB",
+            template_override="show_musical",
+        )
+        evento_id = evento.id
+
+    landing_resp = client.get(f"/eventos/{evento_id}/landing")
+    assert landing_resp.status_code == 200
+    payload = landing_resp.json()
+    assert payload["template"]["categoria"] == "show_musical"
+    assert payload["template"]["cta_experiment_enabled"] is True
+    assert len(payload["template"]["cta_variants"]) >= 2
+
+    analytics_resp = client.post(
+        "/landing/analytics",
+        json={
+            "event_id": evento_id,
+            "categoria": "show_musical",
+            "tema": "Show",
+            "event_name": "page_view",
+            "cta_variant_id": "show_a",
+            "landing_session_id": "sessao-a",
+        },
+    )
+    assert analytics_resp.status_code == 200
+
+    with Session(engine) as session:
+        events = session.exec(select(LandingAnalyticsEvent)).all()
+        assert len(events) == 1
+        assert events[0].cta_variant_id == "show_a"
 
 
 def test_evento_create_update_e_get_expoem_campos_da_fase_1(client, engine):

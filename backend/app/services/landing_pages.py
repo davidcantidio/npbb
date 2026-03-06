@@ -13,9 +13,11 @@ from app.models.models import (
     Ativacao,
     AtivacaoLead,
     Evento,
+    EventoLandingCustomizationAudit,
     FormularioLandingTemplate,
     FormularioLeadCampo,
     FormularioLeadConfig,
+    LandingAnalyticsEvent,
     Lead,
     SubtipoEvento,
     TipoEvento,
@@ -23,7 +25,11 @@ from app.models.models import (
 )
 from app.schemas.landing_public import (
     LandingAccessRead,
+    LandingAnalyticsSummaryRead,
+    LandingAnalyticsTrackRequest,
+    LandingAnalyticsVariantSummaryRead,
     LandingBrandRead,
+    LandingExperimentVariantRead,
     LandingEventRead,
     LandingFieldRead,
     LandingFormRead,
@@ -42,6 +48,12 @@ from app.utils.urls import build_ativacao_public_urls, build_evento_public_urls
 
 PRIVACY_POLICY_URL = "https://www.bb.com.br/site/privacidade-e-lgpd/"
 BRAND_TAGLINE = "Banco do Brasil. Pra tudo que voce imaginar."
+
+ANALYTICS_EVENT_PAGE_VIEW = "page_view"
+ANALYTICS_EVENT_FORM_START = "form_start"
+ANALYTICS_EVENT_SUBMIT_ATTEMPT = "submit_attempt"
+ANALYTICS_EVENT_SUBMIT_SUCCESS = "submit_success"
+ANALYTICS_EVENT_CTA_EXPOSURE = "cta_exposure"
 
 TEMPLATE_REGISTRY: dict[str, dict[str, str]] = {
     "generico": {
@@ -162,6 +174,37 @@ CATEGORY_ALIASES = {
     "corporativo": "corporativo",
 }
 
+CTA_VARIANT_REGISTRY: dict[str, list[dict[str, str]]] = {
+    "generico": [
+        {"id": "generic_a", "label": "Padrao A", "text": "Quero participar"},
+        {"id": "generic_b", "label": "Padrao B", "text": "Faca sua inscricao"},
+    ],
+    "corporativo": [
+        {"id": "corp_a", "label": "Corporativo A", "text": "Confirmar presenca"},
+        {"id": "corp_b", "label": "Corporativo B", "text": "Fazer inscricao"},
+    ],
+    "esporte_convencional": [
+        {"id": "sport_a", "label": "Esporte A", "text": "Cadastre-se na acao"},
+        {"id": "sport_b", "label": "Esporte B", "text": "Quero receber novidades"},
+    ],
+    "esporte_radical": [
+        {"id": "radical_a", "label": "Radical A", "text": "Quero fazer parte"},
+        {"id": "radical_b", "label": "Radical B", "text": "Inscreva-se agora"},
+    ],
+    "show_musical": [
+        {"id": "show_a", "label": "Show A", "text": "Cadastre-se na experiencia"},
+        {"id": "show_b", "label": "Show B", "text": "Quero receber novidades"},
+    ],
+    "evento_cultural": [
+        {"id": "cultural_a", "label": "Cultural A", "text": "Cadastre-se para saber mais"},
+        {"id": "cultural_b", "label": "Cultural B", "text": "Quero receber novidades"},
+    ],
+    "tecnologia": [
+        {"id": "tech_a", "label": "Tech A", "text": "Cadastre-se para acompanhar"},
+        {"id": "tech_b", "label": "Tech B", "text": "Quero receber novidades"},
+    ],
+}
+
 SUBTIPO_KEYWORDS = {
     "skate": "esporte_radical",
     "surfe": "esporte_radical",
@@ -217,6 +260,17 @@ def _resolve_category_alias(value: str | None) -> str | None:
     return None
 
 
+def normalize_template_override_input(value: str | None) -> str | None:
+    token = _normalize_token(value)
+    if not token:
+        return None
+    return _resolve_category_alias(token)
+
+
+def get_allowed_template_overrides() -> list[str]:
+    return sorted(TEMPLATE_REGISTRY.keys())
+
+
 def _match_keywords(value: str | None, mapping: dict[str, str]) -> str | None:
     token = _normalize_token(value)
     if not token:
@@ -225,6 +279,16 @@ def _match_keywords(value: str | None, mapping: dict[str, str]) -> str | None:
         if keyword in token:
             return category
     return None
+
+
+def _build_cta_variants(*, category: str, has_custom_cta: bool) -> tuple[bool, list[LandingExperimentVariantRead]]:
+    if has_custom_cta:
+        return False, []
+    items = CTA_VARIANT_REGISTRY.get(category, [])
+    return (
+        len(items) > 1,
+        [LandingExperimentVariantRead(id=item["id"], label=item["label"], text=item["text"]) for item in items],
+    )
 
 
 def _build_hero_placeholder_data_url(*, title: str, subtitle: str, primary: str, secondary: str) -> str:
@@ -309,7 +373,14 @@ def get_template_config(
 ) -> LandingTemplateConfigRead:
     category = resolve_template_category(session, evento=evento, template_name=template_name)
     raw = dict(TEMPLATE_REGISTRY.get(category, TEMPLATE_REGISTRY["generico"]))
-    raw["cta_text"] = (evento.cta_personalizado or "").strip() or raw["cta_text"]
+    custom_cta = (evento.cta_personalizado or "").strip()
+    raw["cta_text"] = custom_cta or raw["cta_text"]
+    cta_experiment_enabled, cta_variants = _build_cta_variants(
+        category=category,
+        has_custom_cta=bool(custom_cta),
+    )
+    raw["cta_experiment_enabled"] = cta_experiment_enabled
+    raw["cta_variants"] = cta_variants
     raw.pop("success_message", None)
     return LandingTemplateConfigRead(**raw)
 
@@ -499,6 +570,20 @@ def submit_landing_lead(
         if not existing_link:
             session.add(AtivacaoLead(ativacao_id=ativacao.id, lead_id=existing_lead.id))
 
+    template_config = get_template_config(session, evento=evento)
+    if payload.cta_variant_id or payload.landing_session_id:
+        session.add(
+            LandingAnalyticsEvent(
+                event_id=evento.id or 0,
+                ativacao_id=ativacao.id if ativacao else None,
+                categoria=template_config.categoria,
+                tema=template_config.tema,
+                event_name=ANALYTICS_EVENT_SUBMIT_SUCCESS,
+                cta_variant_id=payload.cta_variant_id,
+                landing_session_id=payload.landing_session_id,
+            )
+        )
+
     session.commit()
     session.refresh(existing_lead)
     return LandingSubmitResponse(
@@ -507,3 +592,101 @@ def submit_landing_lead(
         ativacao_id=ativacao.id if ativacao else None,
         mensagem_sucesso=success_message,
     )
+
+
+def track_landing_analytics(session: Session, *, payload: LandingAnalyticsTrackRequest) -> None:
+    session.add(
+        LandingAnalyticsEvent(
+            event_id=payload.event_id,
+            ativacao_id=payload.ativacao_id,
+            categoria=payload.categoria,
+            tema=payload.tema,
+            event_name=payload.event_name,
+            cta_variant_id=payload.cta_variant_id,
+            landing_session_id=payload.landing_session_id,
+        )
+    )
+    session.commit()
+
+
+def list_landing_customization_audits(
+    session: Session, *, event_id: int, limit: int = 50
+) -> list[EventoLandingCustomizationAudit]:
+    return session.exec(
+        select(EventoLandingCustomizationAudit)
+        .where(EventoLandingCustomizationAudit.event_id == event_id)
+        .order_by(EventoLandingCustomizationAudit.created_at.desc(), EventoLandingCustomizationAudit.id.desc())
+        .limit(limit)
+    ).all()
+
+
+def summarize_landing_analytics(session: Session, *, event_id: int) -> list[LandingAnalyticsSummaryRead]:
+    rows = session.exec(
+        select(LandingAnalyticsEvent).where(LandingAnalyticsEvent.event_id == event_id)
+    ).all()
+    grouped: dict[tuple[str, str], dict[str, object]] = {}
+
+    for row in rows:
+        key = (row.categoria, row.tema)
+        bucket = grouped.setdefault(
+            key,
+            {
+                "page_views": 0,
+                "form_starts": 0,
+                "submit_attempts": 0,
+                "submit_successes": 0,
+                "variants": {},
+            },
+        )
+        if row.event_name == ANALYTICS_EVENT_PAGE_VIEW:
+            bucket["page_views"] = int(bucket["page_views"]) + 1
+        elif row.event_name == ANALYTICS_EVENT_FORM_START:
+            bucket["form_starts"] = int(bucket["form_starts"]) + 1
+        elif row.event_name == ANALYTICS_EVENT_SUBMIT_ATTEMPT:
+            bucket["submit_attempts"] = int(bucket["submit_attempts"]) + 1
+        elif row.event_name == ANALYTICS_EVENT_SUBMIT_SUCCESS:
+            bucket["submit_successes"] = int(bucket["submit_successes"]) + 1
+
+        if row.cta_variant_id:
+            variants = bucket["variants"]
+            assert isinstance(variants, dict)
+            variant_bucket = variants.setdefault(
+                row.cta_variant_id,
+                {"views": 0, "submits": 0, "successes": 0},
+            )
+            if row.event_name in {ANALYTICS_EVENT_PAGE_VIEW, ANALYTICS_EVENT_CTA_EXPOSURE}:
+                variant_bucket["views"] += 1
+            elif row.event_name == ANALYTICS_EVENT_SUBMIT_ATTEMPT:
+                variant_bucket["submits"] += 1
+            elif row.event_name == ANALYTICS_EVENT_SUBMIT_SUCCESS:
+                variant_bucket["successes"] += 1
+
+    summaries: list[LandingAnalyticsSummaryRead] = []
+    for (categoria, tema), bucket in grouped.items():
+        page_views = int(bucket["page_views"])
+        submit_successes = int(bucket["submit_successes"])
+        conversion_rate = round((submit_successes / page_views) if page_views else 0.0, 4)
+        variants = bucket["variants"]
+        assert isinstance(variants, dict)
+        summaries.append(
+            LandingAnalyticsSummaryRead(
+                event_id=event_id,
+                categoria=categoria,
+                tema=tema,
+                page_views=page_views,
+                form_starts=int(bucket["form_starts"]),
+                submit_attempts=int(bucket["submit_attempts"]),
+                submit_successes=submit_successes,
+                conversion_rate=conversion_rate,
+                variants=[
+                    LandingAnalyticsVariantSummaryRead(
+                        cta_variant_id=variant_id,
+                        views=counts["views"],
+                        submits=counts["submits"],
+                        successes=counts["successes"],
+                    )
+                    for variant_id, counts in sorted(variants.items())
+                ],
+            )
+        )
+    return sorted(summaries, key=lambda item: (item.categoria, item.tema))

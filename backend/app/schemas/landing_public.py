@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+
+class LandingExperimentVariantRead(BaseModel):
+    id: str
+    label: str
+    text: str
 
 
 class LandingTemplateConfigRead(BaseModel):
@@ -20,6 +26,8 @@ class LandingTemplateConfigRead(BaseModel):
     cta_variant: str
     graphics_style: str
     tone_of_voice: str
+    cta_experiment_enabled: bool = False
+    cta_variants: list[LandingExperimentVariantRead] = Field(default_factory=list)
 
 
 class LandingFieldRead(BaseModel):
@@ -88,6 +96,8 @@ class LandingSubmitRequest(BaseModel):
     interesses: str | None = Field(default=None, max_length=200)
     genero: str | None = Field(default=None, max_length=40)
     area_de_atuacao: str | None = Field(default=None, max_length=160)
+    cta_variant_id: str | None = Field(default=None, max_length=60)
+    landing_session_id: str | None = Field(default=None, max_length=120)
     consentimento_lgpd: bool
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -114,3 +124,50 @@ class LandingSubmitResponse(BaseModel):
     event_id: int
     ativacao_id: int | None = None
     mensagem_sucesso: str
+
+
+class LandingAnalyticsTrackRequest(BaseModel):
+    event_id: int
+    ativacao_id: int | None = None
+    categoria: str
+    tema: str
+    event_name: str
+    cta_variant_id: str | None = Field(default=None, max_length=60)
+    landing_session_id: str | None = Field(default=None, max_length=120)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class LandingAnalyticsTrackResponse(BaseModel):
+    status: str = "ok"
+
+
+class LandingAnalyticsVariantSummaryRead(BaseModel):
+    cta_variant_id: str
+    views: int
+    submits: int
+    successes: int
+
+
+class LandingAnalyticsSummaryRead(BaseModel):
+    event_id: int
+    categoria: str
+    tema: str
+    page_views: int
+    form_starts: int
+    submit_attempts: int
+    submit_successes: int
+    conversion_rate: float
+    variants: list[LandingAnalyticsVariantSummaryRead] = Field(default_factory=list)
+
+
+class EventoLandingCustomizationAuditRead(BaseModel):
+    id: int
+    event_id: int
+    field_name: str
+    old_value: str | None = None
+    new_value: str | None = None
+    changed_by_user_id: int | None = None
+    created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)

@@ -25,6 +25,35 @@ export type EventoFormConfig = {
   urls: EventoFormConfigUrls;
 };
 
+export type LandingCustomizationAuditItem = {
+  id: number;
+  event_id: number;
+  field_name: string;
+  old_value?: string | null;
+  new_value?: string | null;
+  changed_by_user_id?: number | null;
+  created_at?: string | null;
+};
+
+export type LandingAnalyticsVariantSummary = {
+  cta_variant_id: string;
+  views: number;
+  submits: number;
+  successes: number;
+};
+
+export type LandingAnalyticsSummary = {
+  event_id: number;
+  categoria: string;
+  tema: string;
+  page_views: number;
+  form_starts: number;
+  submit_attempts: number;
+  submit_successes: number;
+  conversion_rate: number;
+  variants: LandingAnalyticsVariantSummary[];
+};
+
 export type UpdateEventoFormConfigPayload = {
   template_id?: number | null;
   campos?: FormularioCampo[];
@@ -116,4 +145,20 @@ export async function getFormularioCamposPossiveis(token: string): Promise<strin
   } catch {
     return [...FORMULARIO_CAMPOS_POSSIVEIS_FALLBACK];
   }
+}
+
+export async function getLandingCustomizationAudit(
+  token: string,
+  eventoId: number,
+): Promise<LandingCustomizationAuditItem[]> {
+  const res = await requestWithAuth(`/evento/${eventoId}/landing-customizations/audit`, { token });
+  return handleResponse<LandingCustomizationAuditItem[]>(res);
+}
+
+export async function getLandingAnalytics(
+  token: string,
+  eventoId: number,
+): Promise<LandingAnalyticsSummary[]> {
+  const res = await requestWithAuth(`/evento/${eventoId}/landing-analytics`, { token });
+  return handleResponse<LandingAnalyticsSummary[]>(res);
 }

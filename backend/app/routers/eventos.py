@@ -23,6 +23,7 @@ from app.models.models import (
     DivisaoDemandante,
     Diretoria,
     Evento,
+    EventoLandingCustomizationAudit,
     EventoTag,
     EventoTerritorio,
     FormularioLandingTemplate,
@@ -66,6 +67,7 @@ from app.schemas.formulario_lead import (
     FormularioLeadConfigRead,
     FormularioLeadConfigUpsert,
 )
+from app.schemas.landing_public import EventoLandingCustomizationAuditRead, LandingAnalyticsSummaryRead
 from app.schemas.gamificacao import GamificacaoCreate, GamificacaoRead
 from app.schemas.questionario import (
     QuestionarioEstruturaRead,
@@ -77,7 +79,11 @@ from app.services.formulario_lead_catalog import (
     FORMULARIO_CAMPOS_DEFAULT,
     FORMULARIO_CAMPOS_ORDEM_BY_LOWER,
 )
-from app.services.landing_pages import hydrate_ativacao_public_urls
+from app.services.landing_pages import (
+    hydrate_ativacao_public_urls,
+    list_landing_customization_audits,
+    summarize_landing_analytics,
+)
 from app.services.questionario import load_questionario_estrutura, replace_questionario_estrutura
 from app.services.data_health import compute_event_data_health, compute_event_missing_fields_details
 from app.utils.http_errors import raise_http_error
@@ -1319,6 +1325,38 @@ def obter_evento(
     return read.model_copy(
         update={"tag_ids": list(tag_ids), "territorio_ids": list(territorio_ids)}
     )
+
+
+@router.get("/{evento_id}/landing-customizations/audit", response_model=list[EventoLandingCustomizationAuditRead])
+def listar_landing_customization_audit(
+    evento_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=200),
+):
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+    items = list_landing_customization_audits(session, event_id=evento_id, limit=limit)
+    return [EventoLandingCustomizationAuditRead.model_validate(item, from_attributes=True) for item in items]
+
+
+@router.get("/{evento_id}/landing-analytics", response_model=list[LandingAnalyticsSummaryRead])
+def obter_landing_analytics(
+    evento_id: int,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
+    return summarize_landing_analytics(session, event_id=evento_id)
 
 
 @router.get("/{evento_id}/missing-fields")

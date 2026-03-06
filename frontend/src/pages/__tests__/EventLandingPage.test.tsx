@@ -7,6 +7,7 @@ import EventLandingPage from "../EventLandingPage";
 import {
   getLandingByAtivacao,
   getLandingByEvento,
+  trackLandingAnalytics,
   submitLandingForm,
   type LandingPageData,
 } from "../../services/landing_public";
@@ -14,11 +15,21 @@ import {
 vi.mock("../../services/landing_public", () => ({
   getLandingByAtivacao: vi.fn(),
   getLandingByEvento: vi.fn(),
+  trackLandingAnalytics: vi.fn(),
   submitLandingForm: vi.fn(),
+}));
+
+vi.mock("../../services/landing_experiments", () => ({
+  getLandingSessionId: () => "landing-test-session-123",
+  selectLandingCtaVariant: (d: LandingPageData) => {
+    const v = d.template.cta_variants?.[0];
+    return v ?? null;
+  },
 }));
 
 const mockedGetLandingByAtivacao = vi.mocked(getLandingByAtivacao);
 const mockedGetLandingByEvento = vi.mocked(getLandingByEvento);
+const mockedTrackLandingAnalytics = vi.mocked(trackLandingAnalytics);
 const mockedSubmitLandingForm = vi.mocked(submitLandingForm);
 
 const landingFixture: LandingPageData = {
@@ -46,6 +57,8 @@ const landingFixture: LandingPageData = {
     cta_variant: "outlined",
     graphics_style: "grid",
     tone_of_voice: "attention",
+    cta_experiment_enabled: false,
+    cta_variants: [],
   },
   formulario: {
     event_id: 10,
@@ -116,6 +129,35 @@ const culturalLandingFixture: LandingPageData = {
     cta_variant: "outlined",
     graphics_style: "organic",
     tone_of_voice: "attention",
+    cta_experiment_enabled: false,
+    cta_variants: [],
+  },
+};
+
+const showLandingFixture: LandingPageData = {
+  ...landingFixture,
+  evento: {
+    ...landingFixture.evento,
+    nome: "Festival BB Noite Viva",
+  },
+  template: {
+    categoria: "show_musical",
+    tema: "Show",
+    mood: "Vibrante, noturno e memoravel.",
+    cta_text: "Quero receber novidades",
+    color_primary: "#735CC6",
+    color_secondary: "#FF6E91",
+    color_background: "#140F2E",
+    color_text: "#F8FAFC",
+    hero_layout: "dark-overlay",
+    cta_variant: "gradient",
+    graphics_style: "dynamic",
+    tone_of_voice: "enthusiasm",
+    cta_experiment_enabled: true,
+    cta_variants: [
+      { id: "show_a", label: "Show A", text: "Cadastre-se na experiencia" },
+      { id: "show_b", label: "Show B", text: "Quero receber novidades" },
+    ],
   },
 };
 
@@ -124,6 +166,7 @@ describe("EventLandingPage", () => {
     vi.clearAllMocks();
     mockedGetLandingByAtivacao.mockResolvedValue(landingFixture);
     mockedGetLandingByEvento.mockResolvedValue(landingFixture);
+    mockedTrackLandingAnalytics.mockResolvedValue();
     mockedSubmitLandingForm.mockResolvedValue({
       lead_id: 99,
       event_id: 10,
@@ -161,9 +204,12 @@ describe("EventLandingPage", () => {
         interesses: undefined,
         genero: undefined,
         area_de_atuacao: undefined,
+        cta_variant_id: undefined,
+        landing_session_id: expect.any(String),
         consentimento_lgpd: true,
       }),
     );
+    expect(mockedTrackLandingAnalytics).toHaveBeenCalled();
     expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
   });
 
@@ -201,5 +247,27 @@ describe("EventLandingPage", () => {
     expect(await screen.findByText("Mostra CCBB 2026")).toBeInTheDocument();
     expect(screen.getByText(/Programacao e contexto/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+  });
+
+  it("aplica exposicao de CTA para template musical", async () => {
+    mockedGetLandingByEvento.mockResolvedValueOnce(showLandingFixture);
+
+    render(
+      <MemoryRouter initialEntries={["/landing/eventos/10"]}>
+        <Routes>
+          <Route path="/landing/eventos/:eventId" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Festival BB Noite Viva")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /cadastre-se na experiencia|quero receber novidades/i }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockedTrackLandingAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({ event_name: "cta_exposure" }),
+      ),
+    );
   });
 });

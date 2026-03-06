@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import date
 from types import SimpleNamespace
+from urllib.parse import urlparse
 
 from fastapi import Response, status
 from sqlalchemy import func
@@ -18,6 +19,7 @@ from app.models.models import (
     DivisaoDemandante,
     Diretoria,
     Evento,
+    EventoLandingCustomizationAudit,
     EventoTag,
     EventoTerritorio,
     Funcionario,
@@ -33,6 +35,7 @@ from app.models.models import (
 )
 from app.schemas.evento import EventoCreate, EventoRead, EventoUpdate
 from app.services.data_health import compute_event_data_health
+from app.services.landing_pages import normalize_template_override_input
 from app.utils.http_errors import raise_http_error
 
 
@@ -65,6 +68,31 @@ def _normalize_str(value: str | None) -> str | None:
 def _normalize_estado(value: str | None) -> str | None:
     text = _normalize_str(value)
     return text.upper() if text else None
+
+
+def _validate_landing_customization_fields(data: dict) -> None:
+    if "template_override" in data:
+        raw = data.get("template_override")
+        normalized = normalize_template_override_input(raw)
+        if raw is not None and str(raw).strip() and normalized is None:
+            _raise_http(
+                status.HTTP_400_BAD_REQUEST,
+                code="LANDING_TEMPLATE_OVERRIDE_INVALID",
+                message="template_override fora do catalogo homologado",
+            )
+        data["template_override"] = normalized
+
+    if "hero_image_url" in data:
+        hero_image_url = data.get("hero_image_url")
+        if hero_image_url:
+            parsed = urlparse(hero_image_url)
+            allowed = parsed.scheme in {"http", "https"} or hero_image_url.startswith("data:image/")
+            if not allowed:
+                _raise_http(
+                    status.HTTP_400_BAD_REQUEST,
+                    code="LANDING_HERO_URL_INVALID",
+                    message="hero_image_url deve usar http, https ou data:image/",
+                )
 
 
 def _infer_status_nome(data_inicio_prevista: date | None, data_fim_prevista: date | None) -> str:
@@ -172,12 +200,20 @@ def criar_evento_usecase(payload: EventoCreate, session: Session, current_user: 
         status_nome = _infer_status_nome(payload.data_inicio_prevista, payload.data_fim_prevista)
         status_id = _get_status_id_by_nome(session, status_nome)
 
+    landing_data = {
+        "template_override": _normalize_str(payload.template_override),
+        "hero_image_url": _normalize_str(payload.hero_image_url),
+        "cta_personalizado": _normalize_str(payload.cta_personalizado),
+        "descricao_curta": _normalize_str(payload.descricao_curta),
+    }
+    _validate_landing_customization_fields(landing_data)
+
     evento = Evento(
         thumbnail=_normalize_str(payload.thumbnail),
-        template_override=_normalize_str(payload.template_override),
-        hero_image_url=_normalize_str(payload.hero_image_url),
-        cta_personalizado=_normalize_str(payload.cta_personalizado),
-        descricao_curta=_normalize_str(payload.descricao_curta),
+        template_override=landing_data["template_override"],
+        hero_image_url=landing_data["hero_image_url"],
+        cta_personalizado=landing_data["cta_personalizado"],
+        descricao_curta=landing_data["descricao_curta"],
         divisao_demandante_id=payload.divisao_demandante_id,
         qr_code_url=_normalize_str(payload.qr_code_url),
         external_project_code=_normalize_str(payload.external_project_code),
@@ -368,6 +404,27 @@ def atualizar_evento_usecase(
     if "external_project_code" in data:
         data["external_project_code"] = _normalize_str(data["external_project_code"])
 
+    _validate_landing_customization_fields(data)
+
+    governed_fields = ["template_override", "hero_image_url", "cta_personalizado", "descricao_curta"]
+    customization_audits: list[EventoLandingCustomizationAudit] = []
+    for field_name in governed_fields:
+        if field_name not in data:
+            continue
+        old_value = getattr(evento, field_name)
+        new_value = data.get(field_name)
+        if old_value == new_value:
+            continue
+        customization_audits.append(
+            EventoLandingCustomizationAudit(
+                event_id=evento_id,
+                field_name=field_name,
+                old_value=old_value,
+                new_value=new_value,
+                changed_by_user_id=getattr(current_user, "id", None),
+            )
+        )
+
     for key, value in data.items():
         setattr(evento, key, value)
 
@@ -390,6 +447,9 @@ def atualizar_evento_usecase(
         session.exec(sa_delete(EventoTerritorio).where(EventoTerritorio.evento_id == evento_id))
         for territorio_id in territorio_ids:
             session.add(EventoTerritorio(evento_id=evento_id, territorio_id=territorio_id))
+
+    for audit in customization_audits:
+        session.add(audit)
 
     session.commit()
     session.refresh(evento)

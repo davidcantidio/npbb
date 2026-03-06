@@ -15,9 +15,11 @@ from app.models.models import (
     DivisaoDemandante,
     Diretoria,
     Evento,
+    EventoLandingCustomizationAudit,
     FormularioLandingTemplate,
     FormularioLeadCampo,
     FormularioLeadConfig,
+    LandingAnalyticsEvent,
     StatusEvento,
     SubtipoEvento,
     Tag,
@@ -176,6 +178,92 @@ def seed_diretoria(session: Session, nome: str = "dimac") -> Diretoria:
     session.commit()
     session.refresh(diretoria)
     return diretoria
+
+
+def test_evento_update_valida_template_override_e_expoe_auditoria_e_analytics(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session, "Show")
+        user = seed_user(session, "governanca@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Festival BB",
+            cidade="Brasilia",
+            estado="DF",
+            inicio=date(2026, 5, 10),
+            fim=date(2026, 5, 11),
+        )
+        evento_id = evento.id
+        session.add(
+            LandingAnalyticsEvent(
+                event_id=evento_id,
+                categoria="show_musical",
+                tema="Show",
+                event_name="page_view",
+                cta_variant_id="show_a",
+            )
+        )
+        session.add(
+            LandingAnalyticsEvent(
+                event_id=evento_id,
+                categoria="show_musical",
+                tema="Show",
+                event_name="submit_success",
+                cta_variant_id="show_a",
+            )
+        )
+        session.commit()
+        user_id = user.id
+
+    token = login_and_get_token(client, "governanca@example.com", "Senha123!")
+    invalid_resp = client.put(
+        f"/evento/{evento_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"template_override": "fora-do-catalogo"},
+    )
+    assert invalid_resp.status_code == 400
+
+    update_resp = client.put(
+        f"/evento/{evento_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "template_override": "show_musical",
+            "hero_image_url": "https://example.com/hero-show.webp",
+            "cta_personalizado": "Quero receber novidades",
+            "descricao_curta": "Experiencia musical BB.",
+        },
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["template_override"] == "show_musical"
+
+    audit_resp = client.get(
+        f"/evento/{evento_id}/landing-customizations/audit",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert audit_resp.status_code == 200
+    audit_payload = audit_resp.json()
+    assert any(item["field_name"] == "template_override" for item in audit_payload)
+    assert any(item["changed_by_user_id"] == user_id for item in audit_payload)
+
+    analytics_resp = client.get(
+        f"/evento/{evento_id}/landing-analytics",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert analytics_resp.status_code == 200
+    analytics_payload = analytics_resp.json()
+    assert analytics_payload[0]["categoria"] == "show_musical"
+    assert analytics_payload[0]["page_views"] == 1
+    assert analytics_payload[0]["submit_successes"] == 1
+
+    with Session(engine) as session:
+        audits = session.exec(
+            select(EventoLandingCustomizationAudit).where(
+                EventoLandingCustomizationAudit.event_id == evento_id
+            )
+        ).all()
+        assert len(audits) >= 1
 
 
 def test_evento_list_paginado_e_filtros(client, engine):

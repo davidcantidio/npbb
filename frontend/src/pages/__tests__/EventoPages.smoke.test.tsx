@@ -14,6 +14,8 @@ import {
   createEventoGamificacao,
   getEvento,
   getEventoFormConfig,
+  getLandingAnalytics,
+  getLandingCustomizationAudit,
   getEventoQuestionario,
   getFormularioCamposPossiveis,
   listDiretorias,
@@ -39,6 +41,8 @@ vi.mock("../../services/eventos", () => ({
   deleteGamificacao: vi.fn(),
   exportEventosCsv: vi.fn(),
   getEvento: vi.fn(),
+  getLandingAnalytics: vi.fn(),
+  getLandingCustomizationAudit: vi.fn(),
   getEventoFormConfig: vi.fn(),
   getEventoQuestionario: vi.fn(),
   getFormularioCamposPossiveis: vi.fn(),
@@ -73,6 +77,8 @@ const mockedGetFormularioCamposPossiveis = vi.mocked(getFormularioCamposPossivei
 const mockedListFormularioTemplates = vi.mocked(listFormularioTemplates);
 const mockedUpdateEventoFormConfig = vi.mocked(updateEventoFormConfig);
 const mockedGetEvento = vi.mocked(getEvento);
+const mockedGetLandingAnalytics = vi.mocked(getLandingAnalytics);
+const mockedGetLandingCustomizationAudit = vi.mocked(getLandingCustomizationAudit);
 const mockedListEventoGamificacoes = vi.mocked(listEventoGamificacoes);
 const mockedCreateEventoGamificacao = vi.mocked(createEventoGamificacao);
 const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
@@ -151,6 +157,8 @@ describe("Evento pages smoke", () => {
         cta_variant: "outlined",
         graphics_style: "organic",
         tone_of_voice: "attention",
+        cta_experiment_enabled: false,
+        cta_variants: [],
       },
       formulario: {
         event_id: 1,
@@ -192,6 +200,30 @@ describe("Evento pages smoke", () => {
         url_promotor: "http://localhost:5173/landing/eventos/1",
       },
     } as never);
+    mockedGetLandingAnalytics.mockResolvedValue([
+      {
+        event_id: 1,
+        categoria: "evento_cultural",
+        tema: "Cultural",
+        page_views: 12,
+        form_starts: 6,
+        submit_attempts: 4,
+        submit_successes: 3,
+        conversion_rate: 0.25,
+        variants: [],
+      },
+    ] as never);
+    mockedGetLandingCustomizationAudit.mockResolvedValue([
+      {
+        id: 1,
+        event_id: 1,
+        field_name: "cta_personalizado",
+        old_value: "Quero conhecer",
+        new_value: "Quero receber novidades",
+        changed_by_user_id: 1,
+        created_at: "2026-03-06T10:00:00Z",
+      },
+    ] as never);
     mockedListEventoGamificacoes.mockResolvedValue([] as never);
     mockedCreateEventoGamificacao.mockResolvedValue({
       id: 1,
@@ -296,6 +328,8 @@ describe("Evento pages smoke", () => {
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
     expect(await screen.findByText(/Preview fiel ao contrato real da landing/i)).toBeInTheDocument();
     expect(screen.getByText(/Checklist minimo da ativacao/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Analytics da landing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Auditoria de customizacao/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(mockedUpdateEventoFormConfig).toHaveBeenCalledTimes(1));

@@ -33,13 +33,19 @@ Checkboxes (exemplo observado no sistema original):
 - Usa o mesmo contrato da landing publica (`GET /eventos/{id}/landing`).
 - Exibe hero, CTA, categoria resolvida, blocos principais e checklist minimo de ativacao.
 
-### 3.4 URLs geradas
+### 3.4 Governanca e analytics
+- O backoffice exibe historico das customizacoes controladas por evento.
+- Somente `template_override`, `hero_image_url`, `cta_personalizado` e `descricao_curta` entram no fluxo governado.
+- A tela apresenta leitura inicial de views, inicios de formulario, envios e variantes de CTA.
+- Variantes A/B usam apenas textos homologados por categoria; nao ha cadastro livre de copys experimentais.
+
+### 3.5 URLs geradas
 - URL da landing
 - URL para check-in sem QR
 - URL do questionario
 - URL da API (link para documentacao)
 
-### 3.5 Acoes
+### 3.6 Acoes
 - Botao **Salvar**
 - Botao **Atualizar preview**
 - Botao **Abrir landing publica**
@@ -89,3 +95,4 @@ Observacao (MVP): as URLs (landing/check-in sem QR/questionario) sao geradas a p
 - [x] Aba/pagina de formulario de lead no detalhe do evento
 - [x] Selecao de tema + checkboxes + secao de URLs + salvar
 - [x] Preview do template com checklist operacional, usando o contrato real da landing
+- [x] Painel de governanca com auditoria de customizacoes e leitura inicial de analytics

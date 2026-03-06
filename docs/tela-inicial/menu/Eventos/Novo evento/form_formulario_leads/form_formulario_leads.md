@@ -4,7 +4,7 @@
 **Formulario de Lead** (aba do evento)
 
 Status no novo sistema:
-- Frontend: implementado (MVP: tema + campos + URLs + salvar).
+- Frontend: implementado (tema + campos + URLs + preview operacional da landing + salvar).
 - Backend: implementado (endpoints + templates + catalogo de campos).
 
 ---
@@ -18,24 +18,31 @@ Configurar a pagina de captura (landing) e os campos do formulario de lead por e
 ---
 
 ## 3. Estrutura (proposta)
-### 3.1 Temas
-- Lista de temas (ex.: Surf, Padrao, BB Seguros).
+### 3.1 Temas e contexto da landing
+- Lista de temas/templates suportados (ex.: `generico`, `corporativo`, `esporte_convencional`, `evento_cultural`, `tecnologia`).
 - Selecao unica.
-- Preview ao lado.
+- `template_override` opcional para forcar categoria.
+- `hero_image_url`, `cta_personalizado` e `descricao_curta` ajustam a experiencia publicada.
 
 ### 3.2 Campos do formulario
 Checkboxes (exemplo observado no sistema original):
 - CPF, Nome, Sobrenome, Telefone, Email, Data de nascimento, Endereco, Interesses, Genero, Area de atuacao
 
-### 3.3 URLs geradas
+### 3.3 Preview operacional
+- Painel embutido na propria tela de configuracao.
+- Usa o mesmo contrato da landing publica (`GET /eventos/{id}/landing`).
+- Exibe hero, CTA, categoria resolvida, blocos principais e checklist minimo de ativacao.
+
+### 3.4 URLs geradas
 - URL da landing
 - URL para check-in sem QR
 - URL do questionario
 - URL da API (link para documentacao)
 
-### 3.4 Acoes
+### 3.5 Acoes
 - Botao **Salvar**
-- Botao **Salvar e visualizar** (abre preview)
+- Botao **Atualizar preview**
+- Botao **Abrir landing publica**
 
 ---
 
@@ -81,4 +88,4 @@ Observacao (MVP): as URLs (landing/check-in sem QR/questionario) sao geradas a p
 ### Frontend
 - [x] Aba/pagina de formulario de lead no detalhe do evento
 - [x] Selecao de tema + checkboxes + secao de URLs + salvar
-- [ ] Preview do template / botao "Salvar e visualizar" (backlog)
+- [x] Preview do template com checklist operacional, usando o contrato real da landing

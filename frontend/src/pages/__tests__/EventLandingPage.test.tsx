@@ -96,6 +96,29 @@ const landingFixture: LandingPageData = {
   },
 };
 
+const culturalLandingFixture: LandingPageData = {
+  ...landingFixture,
+  evento: {
+    ...landingFixture.evento,
+    nome: "Mostra CCBB 2026",
+    descricao_curta: "Exposicao, programacao e experiencias curatoriais.",
+  },
+  template: {
+    categoria: "evento_cultural",
+    tema: "Cultural",
+    mood: "Sofisticado, acessivel e inspirador.",
+    cta_text: "Quero conhecer",
+    color_primary: "#00EBD0",
+    color_secondary: "#BDB6FF",
+    color_background: "#F7FBFB",
+    color_text: "#111827",
+    hero_layout: "editorial",
+    cta_variant: "outlined",
+    graphics_style: "organic",
+    tone_of_voice: "attention",
+  },
+};
+
 describe("EventLandingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -162,5 +185,21 @@ describe("EventLandingPage", () => {
     expect(await screen.findByText(/precisa aceitar o tratamento de dados/i)).toBeInTheDocument();
     expect(mockedSubmitLandingForm).not.toHaveBeenCalled();
     expect(mockedGetLandingByEvento).toHaveBeenCalledWith(10);
+  });
+
+  it("renderiza variacao editorial para evento cultural", async () => {
+    mockedGetLandingByEvento.mockResolvedValueOnce(culturalLandingFixture);
+
+    render(
+      <MemoryRouter initialEntries={["/landing/eventos/10"]}>
+        <Routes>
+          <Route path="/landing/eventos/:eventId" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Mostra CCBB 2026")).toBeInTheDocument();
+    expect(screen.getByText(/Programacao e contexto/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
   });
 });

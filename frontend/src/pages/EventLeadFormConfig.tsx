@@ -32,6 +32,8 @@ import {
 } from "../services/eventos";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
+import LandingPageView, { type LandingPreviewChecklistItem } from "../components/landing/LandingPageView";
+import { getLandingByEvento, type LandingPageData } from "../services/landing_public";
 
 const TEMPLATE_OVERRIDE_OPTIONS = [
   "generico",
@@ -68,6 +70,9 @@ export default function EventLeadFormConfig() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<LandingPageData | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -157,6 +162,20 @@ export default function EventLeadFormConfig() {
       });
     }
   }, []);
+
+  const loadPreview = useCallback(async () => {
+    if (!Number.isFinite(eventoId)) return;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const response = await getLandingByEvento(eventoId);
+      setPreviewData(response);
+    } catch (err: any) {
+      setPreviewError(err?.message || "Erro ao carregar preview da landing.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [eventoId]);
 
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(eventoId)) return;
@@ -260,6 +279,7 @@ export default function EventLeadFormConfig() {
       setCamposObrigatorios(nextObrigatorios);
 
       setSnackbar({ open: true, message: "ConfiguraÃ§Ã£o salva com sucesso.", severity: "success" });
+      void loadPreview();
     } catch (err: any) {
       setSnackbar({
         open: true,
@@ -278,15 +298,62 @@ export default function EventLeadFormConfig() {
     camposAtivos,
     camposObrigatorios,
     landingMeta,
+    loadPreview,
   ]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    void loadPreview();
+  }, [loadPreview]);
+
   const subtitle = Number.isFinite(eventoId)
     ? `Configure o tema e os campos do formulÃ¡rio do evento #${eventoId}.`
     : "Configure o tema e os campos do formulÃ¡rio do evento.";
+
+  const previewChecklist = useMemo<LandingPreviewChecklistItem[]>(() => {
+    if (!previewData) return [];
+    const heroCustomizado = Boolean(landingMeta.hero_image_url.trim());
+    const ctaDisponivel = Boolean(previewData.template.cta_text.trim());
+    const taglineOk = previewData.marca.tagline.toLowerCase().includes("banco do brasil");
+    const lgpdOk = Boolean(previewData.formulario.privacy_policy_url);
+
+    return [
+      {
+        label: "Categoria resolvida",
+        ok: Boolean(previewData.template.categoria),
+        helper: `Categoria ativa: ${previewData.template.categoria || "fallback pendente"}.`,
+      },
+      {
+        label: "Hero da campanha",
+        ok: heroCustomizado,
+        helper: heroCustomizado
+          ? "O evento possui uma imagem de hero configurada manualmente."
+          : "Sem URL dedicada. O preview esta usando a arte placeholder derivada do template.",
+      },
+      {
+        label: "CTA principal",
+        ok: ctaDisponivel,
+        helper: ctaDisponivel
+          ? `CTA publicado: "${previewData.template.cta_text}".`
+          : "Defina um CTA personalizado ou valide o CTA padrao da categoria.",
+      },
+      {
+        label: "Tagline BB",
+        ok: taglineOk,
+        helper: taglineOk ? "Assinatura BB presente no rodape e no bloco de marca." : "Tagline BB nao encontrada.",
+      },
+      {
+        label: "Politica e LGPD",
+        ok: lgpdOk,
+        helper: lgpdOk
+          ? "Link de privacidade carregado a partir do contrato real da landing."
+          : "A landing esta sem link de politica de privacidade.",
+      },
+    ];
+  }, [landingMeta.hero_image_url, previewData]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -379,7 +446,7 @@ export default function EventLeadFormConfig() {
                 Contexto da landing
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Personalize o comportamento inicial da landing publica da Fase 1.
+                Personalize o comportamento inicial da landing publica e valide o template resolvido antes de usar a URL em campo.
               </Typography>
               <Stack spacing={2}>
                 <Autocomplete
@@ -400,6 +467,10 @@ export default function EventLeadFormConfig() {
                     />
                   )}
                 />
+                <Alert severity="info" variant="outlined">
+                  Customizacao controlada: somente `template_override`, `hero_image_url`, `cta_personalizado` e
+                  `descricao_curta` podem ser alterados sem sair do catalogo homologado da marca BB.
+                </Alert>
                 <TextField
                   label="Hero image URL"
                   value={landingMeta.hero_image_url}
@@ -428,6 +499,64 @@ export default function EventLeadFormConfig() {
                   fullWidth
                 />
               </Stack>
+            </Box>
+
+            <Box>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", md: "center" }}
+                gap={1.5}
+                mb={1.5}
+              >
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={900}>
+                    Preview da landing
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    O painel abaixo usa o mesmo contrato da landing publica para revisar hero, CTA, categoria e checklist minimo.
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Button variant="outlined" onClick={() => void loadPreview()} disabled={previewLoading}>
+                    {previewLoading ? <CircularProgress size={18} color="inherit" /> : "Atualizar preview"}
+                  </Button>
+                  {previewData?.acesso.landing_url ? (
+                    <Button
+                      component="a"
+                      href={previewData.acesso.landing_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      variant="contained"
+                    >
+                      Abrir landing publica
+                    </Button>
+                  ) : null}
+                </Stack>
+              </Stack>
+
+              {previewError ? (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  {previewError}
+                </Alert>
+              ) : null}
+
+              {previewLoading && !previewData ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={22} />
+                  <Typography variant="body2" color="text.secondary">
+                    Carregando preview...
+                  </Typography>
+                </Stack>
+              ) : previewData ? (
+                <Box sx={{ mt: 1, borderRadius: 4, overflow: "hidden", border: 1, borderColor: "divider" }}>
+                  <LandingPageView data={previewData} mode="preview" checklist={previewChecklist} />
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Nenhum preview disponivel no momento.
+                </Typography>
+              )}
             </Box>
 
             <Box>

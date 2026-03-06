@@ -27,9 +27,11 @@ import {
   updateEventoQuestionario,
 } from "../../services/eventos";
 import { listAgencias } from "../../services/agencias";
+import { getLandingByEvento } from "../../services/landing_public";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
+vi.mock("../../services/landing_public", () => ({ getLandingByEvento: vi.fn() }));
 vi.mock("../../services/eventos", () => ({
   createEventoAtivacao: vi.fn(),
   createEventoGamificacao: vi.fn(),
@@ -77,6 +79,7 @@ const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
 const mockedCreateEventoAtivacao = vi.mocked(createEventoAtivacao);
 const mockedGetEventoQuestionario = vi.mocked(getEventoQuestionario);
 const mockedUpdateEventoQuestionario = vi.mocked(updateEventoQuestionario);
+const mockedGetLandingByEvento = vi.mocked(getLandingByEvento);
 
 describe("Evento pages smoke", () => {
   beforeEach(() => {
@@ -123,6 +126,72 @@ describe("Evento pages smoke", () => {
     mockedUpdateEvento.mockResolvedValue({ id: 10 } as never);
 
     mockedGetEvento.mockResolvedValue({ id: 1, nome: "Evento QA" } as never);
+    mockedGetLandingByEvento.mockResolvedValue({
+      ativacao_id: null,
+      evento: {
+        id: 1,
+        nome: "Evento QA",
+        descricao: "Descricao completa do evento QA.",
+        descricao_curta: "Resumo do evento QA.",
+        data_inicio: "2026-03-01",
+        data_fim: "2026-03-02",
+        cidade: "Brasilia",
+        estado: "DF",
+      },
+      template: {
+        categoria: "evento_cultural",
+        tema: "Cultural",
+        mood: "Sofisticado, acessivel e inspirador.",
+        cta_text: "Quero conhecer",
+        color_primary: "#00EBD0",
+        color_secondary: "#BDB6FF",
+        color_background: "#F7FBFB",
+        color_text: "#111827",
+        hero_layout: "editorial",
+        cta_variant: "outlined",
+        graphics_style: "organic",
+        tone_of_voice: "attention",
+      },
+      formulario: {
+        event_id: 1,
+        ativacao_id: null,
+        submit_url: "/landing/eventos/1/submit",
+        campos: [
+          {
+            key: "nome",
+            label: "Nome",
+            input_type: "text",
+            required: true,
+            autocomplete: "name",
+            placeholder: "Como voce gostaria de ser chamado?",
+          },
+          {
+            key: "email",
+            label: "Email",
+            input_type: "email",
+            required: true,
+            autocomplete: "email",
+            placeholder: "voce@exemplo.com",
+          },
+        ],
+        campos_obrigatorios: ["nome", "email"],
+        campos_opcionais: [],
+        mensagem_sucesso: "Cadastro confirmado.",
+        lgpd_texto: "Ao enviar seus dados, voce concorda com o tratamento das informacoes.",
+        privacy_policy_url: "https://www.bb.com.br/site/privacidade-e-lgpd/",
+      },
+      marca: {
+        tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
+        versao_logo: "positivo",
+        url_hero_image: "data:image/svg+xml;base64,PHN2Zy8+",
+        hero_alt: "Imagem de destaque do evento Evento QA",
+      },
+      acesso: {
+        landing_url: "http://localhost:5173/landing/eventos/1",
+        qr_code_url: null,
+        url_promotor: "http://localhost:5173/landing/eventos/1",
+      },
+    } as never);
     mockedListEventoGamificacoes.mockResolvedValue([] as never);
     mockedCreateEventoGamificacao.mockResolvedValue({
       id: 1,
@@ -225,9 +294,12 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByText(/clicar em "Salvar"\./i)).toBeInTheDocument();
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Preview fiel ao contrato real da landing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Checklist minimo da ativacao/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(mockedUpdateEventoFormConfig).toHaveBeenCalledTimes(1));
+    expect(mockedGetLandingByEvento).toHaveBeenCalledWith(1);
   });
 
   it("adds a gamificacao from EventGamificacao page", async () => {

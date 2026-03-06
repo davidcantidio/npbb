@@ -126,6 +126,7 @@ export type LeadBatchPreview = {
 export type LeadListItem = {
   id: number;
   nome: string | null;
+  sobrenome: string | null;
   email: string | null;
   cpf: string | null;
   telefone: string | null;
@@ -138,6 +139,15 @@ export type LeadListItem = {
   evento_convertido_nome: string | null;
   tipo_conversao: string | null;
   data_conversao: string | null;
+  // Personal document fields
+  rg: string | null;
+  genero: string | null;
+  // Address fields
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cep: string | null;
 };
 
 /**
@@ -277,14 +287,24 @@ export async function validateLeadMapping(
 }
 
 /**
+/**
+ * Evento option returned by the reference endpoint — includes date for label formatting.
+ */
+export type ReferenciaEvento = {
+  id: number;
+  nome: string;
+  data_inicio_prevista: string | null;
+};
+
+/**
  * Lists reference events available for mapping helpers.
  * @param token Bearer token used for authorization.
- * @returns Event reference options.
+ * @returns Event reference options sorted by date descending.
  * @throws Error When request fails.
  */
-export async function listReferenciaEventos(token: string): Promise<Array<{ id: number; nome: string }>> {
+export async function listReferenciaEventos(token: string): Promise<ReferenciaEvento[]> {
   const res = await fetchWithAuth("/leads/referencias/eventos", { token });
-  return handleApiResponse<Array<{ id: number; nome: string }>>(res);
+  return handleApiResponse<ReferenciaEvento[]>(res);
 }
 
 /**

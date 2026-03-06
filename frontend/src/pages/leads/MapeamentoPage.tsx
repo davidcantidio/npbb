@@ -1,6 +1,7 @@
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -15,19 +16,26 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import QuickCreateEventoModal from "../../components/QuickCreateEventoModal";
 import { toApiErrorMessage } from "../../services/http";
 import {
   ColumnConfidence,
   ColumnSuggestion,
+  ReferenciaEvento,
   getLeadBatchColunas,
   listReferenciaEventos,
   mapearLeadBatch,
 } from "../../services/leads_import";
+import { formatEventoLabel } from "../../utils/formatters";
 import { useAuth } from "../../store/auth";
+
+/** Synthetic option id used to trigger the quick-create modal. */
+const QUICK_CREATE_ID = -1;
 
 const CANONICAL_FIELDS = [
   "nome",
@@ -63,8 +71,10 @@ export default function MapeamentoPage() {
 
   const [colunas, setColunas] = useState<ColumnSuggestion[]>([]);
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
-  const [eventos, setEventos] = useState<Array<{ id: number; nome: string }>>([]);
+  const [eventos, setEventos] = useState<ReferenciaEvento[]>([]);
   const [eventoId, setEventoId] = useState<number | "">("");
+  const [eventoInputValue, setEventoInputValue] = useState("");
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
 
   const [loadingColunas, setLoadingColunas] = useState(false);
   const [loadingEventos, setLoadingEventos] = useState(false);
@@ -94,6 +104,21 @@ export default function MapeamentoPage() {
       .catch(() => setEventos([]))
       .finally(() => setLoadingEventos(false));
   }, [token, batchId]);
+
+  const handleEventoCreated = useCallback(
+    (created: { id: number; nome: string; data_inicio_prevista?: string | null }) => {
+      const newRef: ReferenciaEvento = {
+        id: created.id,
+        nome: created.nome,
+        data_inicio_prevista: created.data_inicio_prevista ?? null,
+      };
+      setEventos((prev) => [newRef, ...prev]);
+      setEventoId(created.id);
+      setEventoInputValue(formatEventoLabel(created.nome, created.data_inicio_prevista ?? null));
+      setIsQuickCreateOpen(false);
+    },
+    [],
+  );
 
   const canConfirm = useMemo(() => {
     if (!eventoId || submitting) return false;
@@ -174,22 +199,57 @@ export default function MapeamentoPage() {
               {loadingEventos ? (
                 <CircularProgress size={20} />
               ) : (
-                <Select
-                  value={eventoId}
-                  onChange={(e) => setEventoId(e.target.value as number)}
-                  displayEmpty
-                  fullWidth
+                <Autocomplete<ReferenciaEvento, false, false, false>
+                  options={eventos}
+                  getOptionLabel={(ev) => formatEventoLabel(ev.nome, ev.data_inicio_prevista)}
+                  filterOptions={(options, state) => {
+                    const filtered = options.filter((o) =>
+                      formatEventoLabel(o.nome, o.data_inicio_prevista)
+                        .toLowerCase()
+                        .includes(state.inputValue.toLowerCase()),
+                    );
+                    if (filtered.length === 0 || state.inputValue.trim()) {
+                      filtered.push({
+                        id: QUICK_CREATE_ID,
+                        nome: "+ Criar evento rapidamente",
+                        data_inicio_prevista: null,
+                      });
+                    }
+                    return filtered;
+                  }}
+                  value={eventoId ? (eventos.find((e) => e.id === eventoId) ?? null) : null}
+                  inputValue={eventoInputValue}
+                  onInputChange={(_, value) => setEventoInputValue(value)}
+                  onChange={(_, selected) => {
+                    if (!selected) {
+                      setEventoId("");
+                      return;
+                    }
+                    if (selected.id === QUICK_CREATE_ID) {
+                      setIsQuickCreateOpen(true);
+                      return;
+                    }
+                    setEventoId(selected.id);
+                  }}
                   sx={{ maxWidth: 480 }}
-                >
-                  <MenuItem value="" disabled>
-                    Selecione o evento...
-                  </MenuItem>
-                  {eventos.map((ev) => (
-                    <MenuItem key={ev.id} value={ev.id}>
-                      {ev.nome}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Selecione ou pesquise o evento..."
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <MenuItem
+                      {...props}
+                      key={option.id}
+                      sx={option.id === QUICK_CREATE_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
+                    >
+                      {option.id === QUICK_CREATE_ID
+                        ? option.nome
+                        : formatEventoLabel(option.nome, option.data_inicio_prevista)}
                     </MenuItem>
-                  ))}
-                </Select>
+                  )}
+                />
               )}
             </Box>
 
@@ -294,6 +354,12 @@ export default function MapeamentoPage() {
           </Stack>
         </Paper>
       )}
+
+      <QuickCreateEventoModal
+        open={isQuickCreateOpen}
+        onClose={() => setIsQuickCreateOpen(false)}
+        onCreated={handleEventoCreated}
+      />
     </Box>
   );
 }

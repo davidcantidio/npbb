@@ -353,8 +353,11 @@ class Lead(SQLModel, table=True):
     opt_in_id: Optional[str] = Field(default=None, max_length=80)
     opt_in_flag: Optional[bool] = None
     metodo_entrega: Optional[str] = Field(default=None, max_length=160)
+    rg: Optional[str] = Field(default=None, max_length=30)
+    # Address fields
     endereco_rua: Optional[str] = Field(default=None, max_length=200)
     endereco_numero: Optional[str] = Field(default=None, max_length=120)
+    complemento: Optional[str] = Field(default=None, max_length=120)
     bairro: Optional[str] = Field(default=None, max_length=160)
     cep: Optional[str] = Field(default=None, max_length=20)
     cidade: Optional[str] = Field(default=None, max_length=120)

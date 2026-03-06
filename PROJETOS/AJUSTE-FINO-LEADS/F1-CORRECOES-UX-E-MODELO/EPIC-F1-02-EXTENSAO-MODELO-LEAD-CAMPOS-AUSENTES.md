@@ -7,7 +7,7 @@ last_updated: "2026-03-06"
 ---
 
 # EPIC-F1-02 — Extensão do Modelo Lead — Campos Ausentes
-**projeto:** AJUSTE-FINO-LEADS | **fase:** F1 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LEADS | **fase:** F1 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -47,7 +47,7 @@ Restaurar ao modelo de dados `Lead` os 8 campos identificados como ausentes no P
 ## Issues
 
 ### AFL-F1-02-001 — Adição de Colunas ao Modelo Lead e Migration Alembic
-**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** nenhuma
 
 **User Story:**
@@ -87,7 +87,7 @@ Campos seguem o padrão de nullable já usado no modelo. Para `genero`, usar `Op
 ---
 
 ### AFL-F1-02-002 — Atualização de Schemas de Resposta e Tipo Frontend
-**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
 **depende de:** AFL-F1-02-001
 
 **User Story:**

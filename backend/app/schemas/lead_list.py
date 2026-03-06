@@ -15,6 +15,7 @@ class LeadListQuery(BaseModel):
 class LeadListItemRead(BaseModel):
     id: int
     nome: str | None = None
+    sobrenome: str | None = None
     email: str | None = None
     cpf: str | None = None
     telefone: str | None = None
@@ -27,6 +28,15 @@ class LeadListItemRead(BaseModel):
     evento_convertido_nome: str | None = None
     tipo_conversao: str | None = None
     data_conversao: datetime | None = None
+    # Personal document fields
+    rg: str | None = None
+    genero: str | None = None
+    # Address fields
+    logradouro: str | None = None
+    numero: str | None = None
+    complemento: str | None = None
+    bairro: str | None = None
+    cep: str | None = None
 
 
 class LeadListResponse(BaseModel):

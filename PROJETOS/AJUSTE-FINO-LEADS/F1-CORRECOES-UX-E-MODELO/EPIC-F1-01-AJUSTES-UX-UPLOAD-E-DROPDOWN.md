@@ -7,7 +7,7 @@ last_updated: "2026-03-06"
 ---
 
 # EPIC-F1-01 — Ajustes de UX no Upload e Dropdown de Eventos
-**projeto:** AJUSTE-FINO-LEADS | **fase:** F1 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LEADS | **fase:** F1 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -43,7 +43,7 @@ Corrigir dois problemas de usabilidade identificados na sessão de revisão com 
 ## Issues
 
 ### AFL-F1-01-001 — Pré-preenchimento de `data_envio` no Formulário de Upload
-**tipo:** fix | **sp:** 1 | **prioridade:** média | **status:** 🔲
+**tipo:** fix | **sp:** 1 | **prioridade:** média | **status:** ✅
 **depende de:** nenhuma
 
 **User Story:**
@@ -73,7 +73,7 @@ Como operador de importação de leads, quero que o campo `data_envio` já venha
 ---
 
 ### AFL-F1-01-002 — Inclusão de `data_inicio_prevista` no Endpoint de Referência de Eventos
-**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
 **depende de:** nenhuma
 
 **User Story:**
@@ -104,7 +104,7 @@ Como operador de mapeamento de leads, quero que o endpoint de referência de eve
 ---
 
 ### AFL-F1-01-003 — Exibição de Data e Ordenação no Dropdown de Eventos
-**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
 **depende de:** AFL-F1-01-002
 
 **User Story:**

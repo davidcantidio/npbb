@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -9,9 +10,11 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  Snackbar,
   TextField,
   Typography,
 } from "@mui/material";
+import ExportGoldModal from "../components/ExportGoldModal";
 import { useAuth } from "../store/auth";
 import { listEventos, EventoListItem } from "../services/eventos";
 import { getDashboardLeadsReport, DashboardLeadsReportResponse } from "../services/dashboard_leads";
@@ -82,6 +85,12 @@ export default function DashboardLeads() {
   const [loadingReport, setLoadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<DashboardLeadsReportResponse | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "info" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
     if (!token) return;
@@ -188,7 +197,7 @@ export default function DashboardLeads() {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={12} sx={{ display: "flex", gap: 1 }}>
+            <Grid item xs={12} md={12} sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
               <Button variant="contained" onClick={applyFilters} disabled={!canApply || loadingReport}>
                 {loadingReport ? "Carregando..." : "Aplicar"}
               </Button>
@@ -199,6 +208,15 @@ export default function DashboardLeads() {
                 }
               >
                 Limpar
+              </Button>
+              <Button
+                variant="outlined"
+                color="success"
+                startIcon={<FileDownloadRoundedIcon />}
+                onClick={() => setExportModalOpen(true)}
+                sx={{ ml: "auto" }}
+              >
+                Exportar Leads Ouro
               </Button>
             </Grid>
             <Grid item xs={12}>
@@ -393,6 +411,36 @@ export default function DashboardLeads() {
           </Card>
         </>
       ) : null}
+
+      <ExportGoldModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onSuccess={() =>
+          setSnackbar({ open: true, message: "Exportação concluída!", severity: "success" })
+        }
+        onEmpty={() =>
+          setSnackbar({
+            open: true,
+            message: "Nenhum lead em fase Ouro encontrado para os filtros selecionados.",
+            severity: "info",
+          })
+        }
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -7,7 +7,7 @@ last_updated: "2026-03-06"
 ---
 
 # EPIC-F3-02 — Interface de Exportação no Dashboard
-**projeto:** AJUSTE-FINO-LEADS | **fase:** F3 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LEADS | **fase:** F3 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -43,7 +43,7 @@ Implementar no `DashboardLeads.tsx` o botão "Exportar Leads Ouro", o modal de c
 ## Issues
 
 ### AFL-F3-02-001 — Serviço Frontend de Exportação e Download via Blob
-**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
 **depende de:** AFL-F3-01-002 (endpoint disponível)
 
 **User Story:**
@@ -78,7 +78,7 @@ Como desenvolvedor frontend, quero um serviço que chame o endpoint de exportaç
 ---
 
 ### AFL-F3-02-002 — Botão e Modal de Exportação no DashboardLeads
-**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** AFL-F3-02-001
 
 **User Story:**

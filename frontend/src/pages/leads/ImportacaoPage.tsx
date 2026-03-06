@@ -46,7 +46,7 @@ export default function ImportacaoPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [quemEnviou, setQuemEnviou] = useState(user?.email ?? "");
   const [plataformaOrigem, setPlataformaOrigem] = useState("");
-  const [dataEnvio, setDataEnvio] = useState("");
+  const [dataEnvio, setDataEnvio] = useState(() => new Date().toISOString().slice(0, 10));
   const [file, setFile] = useState<File | null>(null);
   const [batch, setBatch] = useState<LeadBatch | null>(null);
   const [preview, setPreview] = useState<LeadBatchPreview | null>(null);

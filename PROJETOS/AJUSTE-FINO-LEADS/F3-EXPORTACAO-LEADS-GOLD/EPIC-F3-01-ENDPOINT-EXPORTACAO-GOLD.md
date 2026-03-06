@@ -7,7 +7,7 @@ last_updated: "2026-03-06"
 ---
 
 # EPIC-F3-01 — Endpoint e Serviço de Exportação Gold
-**projeto:** AJUSTE-FINO-LEADS | **fase:** F3 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LEADS | **fase:** F3 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -48,7 +48,7 @@ Criar o endpoint `GET /leads/export/gold` e o serviço de geração de arquivos 
 ## Issues
 
 ### AFL-F3-01-001 — Serviço de Geração de Arquivo de Exportação Gold
-**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** nenhuma
 
 **User Story:**
@@ -88,7 +88,7 @@ Colunas de exportação (PRD 4.7): Nome completo, E-mail, CPF, Telefone, Evento 
 ---
 
 ### AFL-F3-01-002 — Endpoint GET /leads/export/gold
-**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
 **depende de:** AFL-F3-01-001
 
 **User Story:**

@@ -69,13 +69,13 @@ def test_lead_row_catalog_cobre_campos_importaveis_do_modelo_lead() -> None:
     excluded_fields = set(LEAD_ROW_EXCLUDED_FIELDS)
 
     assert lead_fields == canonical_fields | excluded_fields
-    assert excluded_fields == {"id", "data_criacao", "data_compra_data", "data_compra_hora"}
+    assert excluded_fields == {"id", "data_criacao", "data_compra_data", "data_compra_hora", "batch_id"}
     assert all(reason.strip() for reason in LEAD_ROW_EXCLUDED_FIELDS.values())
 
 
 def test_lead_row_catalog_cobre_campos_expostos_na_ui_de_importacao() -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    ui_path = repo_root / "frontend/src/features/leads-import/LeadImportPage.tsx"
+    ui_path = repo_root / "frontend/src/pages/leads/ImportacaoPage.tsx"
     text = ui_path.read_text(encoding="utf-8-sig")
     ui_fields = {
         value

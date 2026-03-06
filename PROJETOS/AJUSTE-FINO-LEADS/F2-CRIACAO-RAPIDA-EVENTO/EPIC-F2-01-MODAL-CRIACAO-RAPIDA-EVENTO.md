@@ -7,7 +7,7 @@ last_updated: "2026-03-06"
 ---
 
 # EPIC-F2-01 — Modal de Criação Rápida de Evento no Mapeamento
-**projeto:** AJUSTE-FINO-LEADS | **fase:** F2 | **status:** 🔲
+**projeto:** AJUSTE-FINO-LEADS | **fase:** F2 | **status:** ✅
 
 ---
 ## 1. Resumo do Épico
@@ -43,7 +43,7 @@ Implementar um modal de criação rápida de evento acessível diretamente do dr
 ## Issues
 
 ### AFL-F2-01-001 — Componente QuickCreateEventoModal
-**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 3 | **prioridade:** alta | **status:** ✅
 **depende de:** nenhuma
 
 **User Story:**
@@ -81,7 +81,7 @@ O `estado` deve ser um Select com as 27 UFs brasileiras. O `concorrencia` tem de
 ---
 
 ### AFL-F2-01-002 — Integração do Modal com Dropdown de Mapeamento
-**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** 🔲
+**tipo:** feature | **sp:** 2 | **prioridade:** alta | **status:** ✅
 **depende de:** AFL-F2-01-001
 
 **User Story:**

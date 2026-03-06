@@ -14,6 +14,7 @@ from collections.abc import Iterator
 import httpx
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
+from fastapi import Response as FastAPIResponse
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 from sqlalchemy import func
@@ -60,6 +61,7 @@ from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
 from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
 from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListResponse
+from app.services.leads_export import generate_gold_export
 from app.utils.http_errors import raise_http_error
 from app.utils.text_normalize import normalize_text
 from app.utils.fuzzy_match import best_match
@@ -204,6 +206,13 @@ def listar_leads(
             LeadConversao.created_at,
             LeadConversao.evento_id,
             Evento.nome.label("evento_convertido_nome"),
+            Lead.rg,
+            Lead.genero,
+            Lead.endereco_rua,
+            Lead.endereco_numero,
+            Lead.complemento,
+            Lead.bairro,
+            Lead.cep,
         )
         .select_from(Lead)
         .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
@@ -232,6 +241,13 @@ def listar_leads(
         data_conversao_criada,
         evento_convertido_id,
         evento_convertido_nome,
+        rg,
+        genero,
+        endereco_rua,
+        endereco_numero,
+        complemento,
+        bairro,
+        cep,
     ) in rows:
         tipo_conversao_value = None
         if tipo_conversao is not None:
@@ -247,6 +263,7 @@ def listar_leads(
             LeadListItemRead(
                 id=int(lead_id),
                 nome=nome_completo,
+                sobrenome=sobrenome,
                 email=email,
                 cpf=cpf,
                 telefone=telefone,
@@ -259,6 +276,13 @@ def listar_leads(
                 evento_convertido_nome=evento_convertido_nome,
                 tipo_conversao=tipo_conversao_value,
                 data_conversao=data_conversao_evento or data_conversao_criada,
+                rg=rg,
+                genero=genero,
+                logradouro=endereco_rua,
+                numero=endereco_numero,
+                complemento=complemento,
+                bairro=bairro,
+                cep=cep,
             )
         )
 
@@ -376,8 +400,20 @@ def listar_referencia_eventos(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
-    eventos = session.exec(select(Evento.id, Evento.nome).order_by(Evento.nome)).all()
-    return [{"id": int(eid), "nome": nome} for eid, nome in eventos if eid is not None and nome]
+    stmt = (
+        select(Evento.id, Evento.nome, Evento.data_inicio_prevista)
+        .order_by(Evento.data_inicio_prevista.desc().nulls_last(), Evento.nome)
+    )
+    eventos = session.exec(stmt).all()
+    return [
+        {
+            "id": int(eid),
+            "nome": nome,
+            "data_inicio_prevista": str(data_inicio) if data_inicio else None,
+        }
+        for eid, nome, data_inicio in eventos
+        if eid is not None and nome
+    ]
 
 
 @router.get("/referencias/cidades")
@@ -1167,6 +1203,38 @@ def _read_xlsx_preview(raw: bytes, max_rows: int = 3) -> dict:
     data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
     total_data = len(data_rows)
     return {"headers": headers, "rows": data_rows[:max_rows], "total_rows": total_data}
+
+
+@router.get("/export/gold")
+@router.get("/export/gold/")
+def exportar_leads_gold(
+    evento_id: int | None = None,
+    formato: str = "xlsx",
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Exports Gold-stage leads as .xlsx or .csv.
+
+    Returns HTTP 204 when no leads are found for the selected filters.
+    """
+    _ = current_user
+    resultado = generate_gold_export(db=session, evento_id=evento_id, formato=formato)
+
+    if resultado is None:
+        return FastAPIResponse(status_code=204)
+
+    file_bytes, filename = resultado
+
+    if formato == "csv":
+        media_type = "text/csv; charset=utf-8"
+    else:
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    return StreamingResponse(
+        io.BytesIO(file_bytes),
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/batches", response_model=LeadBatchRead, status_code=status.HTTP_201_CREATED)

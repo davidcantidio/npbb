@@ -27,8 +27,8 @@ Corrigir problemas de usabilidade nos formulários de upload e mapeamento de lea
 
 | Epic ID | Nome | Objetivo | Status | Documento |
 |---------|------|----------|--------|-----------|
-| `EPIC-F1-01` | Ajustes de UX no Upload e Dropdown | Melhorar usabilidade do formulário de upload (data padrão) e do dropdown de eventos (exibir data). | 🔲 | [EPIC-F1-01-AJUSTES-UX-UPLOAD-E-DROPDOWN.md](./EPIC-F1-01-AJUSTES-UX-UPLOAD-E-DROPDOWN.md) |
-| `EPIC-F1-02` | Extensão do Modelo Lead — Campos Ausentes | Restaurar campos de dados pessoais e endereço ao modelo Lead com migration e schemas. | 🔲 | [EPIC-F1-02-EXTENSAO-MODELO-LEAD-CAMPOS-AUSENTES.md](./EPIC-F1-02-EXTENSAO-MODELO-LEAD-CAMPOS-AUSENTES.md) |
+| `EPIC-F1-01` | Ajustes de UX no Upload e Dropdown | Melhorar usabilidade do formulário de upload (data padrão) e do dropdown de eventos (exibir data). | ✅ | [EPIC-F1-01-AJUSTES-UX-UPLOAD-E-DROPDOWN.md](./EPIC-F1-01-AJUSTES-UX-UPLOAD-E-DROPDOWN.md) |
+| `EPIC-F1-02` | Extensão do Modelo Lead — Campos Ausentes | Restaurar campos de dados pessoais e endereço ao modelo Lead com migration e schemas. | ✅ | [EPIC-F1-02-EXTENSAO-MODELO-LEAD-CAMPOS-AUSENTES.md](./EPIC-F1-02-EXTENSAO-MODELO-LEAD-CAMPOS-AUSENTES.md) |
 
 ## Escopo desta Entrega
 

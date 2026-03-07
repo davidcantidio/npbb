@@ -47,11 +47,18 @@ def client(engine):
     app.dependency_overrides.clear()
 
 
-def seed_user(session: Session, email: str = "user@npbb.com.br", password: str = "senha123") -> Usuario:
+def seed_user(
+    session: Session,
+    email: str = "user@npbb.com.br",
+    password: str = "senha123",
+    tipo_usuario: str = "npbb",
+    agencia_id: int | None = None,
+) -> Usuario:
     user = Usuario(
         email=email,
         password_hash=hash_password(password),
-        tipo_usuario="npbb",
+        tipo_usuario=tipo_usuario,
+        agencia_id=agencia_id,
         ativo=True,
     )
     session.add(user)
@@ -60,11 +67,25 @@ def seed_user(session: Session, email: str = "user@npbb.com.br", password: str =
     return user
 
 
-def get_auth_header(client: TestClient, session: Session) -> dict[str, str]:
-    user = seed_user(session)
+def get_auth_header(
+    client: TestClient,
+    session: Session,
+    *,
+    email: str = "user@npbb.com.br",
+    password: str = "senha123",
+    tipo_usuario: str = "npbb",
+    agencia_id: int | None = None,
+) -> dict[str, str]:
+    user = seed_user(
+        session,
+        email=email,
+        password=password,
+        tipo_usuario=tipo_usuario,
+        agencia_id=agencia_id,
+    )
     response = client.post(
         "/auth/login",
-        json={"email": user.email, "password": "senha123"},
+        json={"email": user.email, "password": password},
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -252,6 +273,24 @@ def test_dashboard_age_analysis_filter_evento_id(client, engine):
     assert data["consolidado"]["top_eventos"][0]["evento_nome"] == "Evento Beta"
 
 
+def test_dashboard_age_analysis_filter_data_intervalo_inclusivo(client, engine):
+    with Session(engine) as session:
+        seed_age_analysis_data(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get(
+        "/dashboard/leads/analise-etaria?data_inicio=2026-01-10&data_fim=2026-01-10",
+        headers=headers,
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert len(data["por_evento"]) == 1
+    assert data["por_evento"][0]["evento_nome"] == "Evento Beta"
+    assert data["por_evento"][0]["base_leads"] == 1
+    assert data["consolidado"]["base_total"] == 1
+
+
 def test_dashboard_age_analysis_empty_response(client, engine):
     with Session(engine) as session:
         headers = get_auth_header(client, session)
@@ -276,3 +315,190 @@ def test_dashboard_age_analysis_requires_auth(client, engine):
 
     response = client.get("/dashboard/leads/analise-etaria")
     assert response.status_code == 401
+
+
+def test_dashboard_age_analysis_invalid_date_range_returns_422(client, engine):
+    with Session(engine) as session:
+        seed_age_analysis_data(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get(
+        "/dashboard/leads/analise-etaria?data_inicio=2026-01-31&data_fim=2026-01-01",
+        headers=headers,
+    )
+    assert response.status_code == 422
+    assert "data_fim deve ser maior/igual a data_inicio" in response.text
+
+
+def test_dashboard_age_analysis_agencia_sem_agencia_id_retorna_403(client, engine):
+    with Session(engine) as session:
+        seed_age_analysis_data(session)
+        headers = get_auth_header(
+            client,
+            session,
+            email="agencia-sem-id@npbb.com.br",
+            tipo_usuario="agencia",
+            agencia_id=None,
+        )
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 403
+    payload = response.json()
+    assert payload["detail"]["code"] == "FORBIDDEN"
+
+
+def test_dashboard_age_analysis_agencia_ve_apenas_sua_agencia(client, engine):
+    with Session(engine) as session:
+        today = date.today()
+        agencia_a = Agencia(nome="Agencia A", dominio="ag-a.com.br", lote=1)
+        agencia_b = Agencia(nome="Agencia B", dominio="ag-b.com.br", lote=2)
+        status = StatusEvento(nome="Ativo")
+        session.add_all([agencia_a, agencia_b, status])
+        session.commit()
+        session.refresh(agencia_a)
+        session.refresh(agencia_b)
+        session.refresh(status)
+
+        evento_a = Evento(
+            nome="Evento Agencia A",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Sao Paulo",
+            estado="SP",
+            agencia_id=agencia_a.id,
+            status_id=status.id,
+        )
+        evento_b = Evento(
+            nome="Evento Agencia B",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Rio",
+            estado="RJ",
+            agencia_id=agencia_b.id,
+            status_id=status.id,
+        )
+        session.add_all([evento_a, evento_b])
+        session.commit()
+        session.refresh(evento_a)
+        session.refresh(evento_b)
+
+        ativacao_a = Ativacao(nome="Ativacao A", evento_id=evento_a.id)
+        ativacao_b = Ativacao(nome="Ativacao B", evento_id=evento_b.id)
+        session.add_all([ativacao_a, ativacao_b])
+        session.commit()
+        session.refresh(ativacao_a)
+        session.refresh(ativacao_b)
+
+        lead_a = Lead(
+            nome="Lead A",
+            cpf="20000000001",
+            evento_nome=evento_a.nome,
+            data_nascimento=birthdate_for_age(23, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 1, 10, tzinfo=timezone.utc),
+        )
+        lead_b = Lead(
+            nome="Lead B",
+            cpf="20000000002",
+            evento_nome=evento_b.nome,
+            data_nascimento=birthdate_for_age(30, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 1, 10, tzinfo=timezone.utc),
+        )
+        session.add_all([lead_a, lead_b])
+        session.commit()
+        session.refresh(lead_a)
+        session.refresh(lead_b)
+
+        session.add_all(
+            [
+                AtivacaoLead(ativacao_id=ativacao_a.id, lead_id=lead_a.id),
+                AtivacaoLead(ativacao_id=ativacao_b.id, lead_id=lead_b.id),
+            ]
+        )
+        session.commit()
+
+        headers = get_auth_header(
+            client,
+            session,
+            email="agencia-a@npbb.com.br",
+            tipo_usuario="agencia",
+            agencia_id=agencia_a.id,
+        )
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["por_evento"]) == 1
+    assert data["por_evento"][0]["evento_nome"] == "Evento Agencia A"
+    assert data["consolidado"]["base_total"] == 1
+
+
+def test_dashboard_age_analysis_consolidado_conta_vinculos_mesmo_lead(client, engine):
+    with Session(engine) as session:
+        today = date.today()
+        agencia = Agencia(nome="Agencia 1", dominio="ag-vinculo.com.br", lote=1)
+        status = StatusEvento(nome="Ativo")
+        session.add_all([agencia, status])
+        session.commit()
+        session.refresh(agencia)
+        session.refresh(status)
+
+        evento_a = Evento(
+            nome="Evento Link A",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Cidade A",
+            estado="SP",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        evento_b = Evento(
+            nome="Evento Link B",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Cidade B",
+            estado="RJ",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        session.add_all([evento_a, evento_b])
+        session.commit()
+        session.refresh(evento_a)
+        session.refresh(evento_b)
+
+        ativacao_a = Ativacao(nome="Ativacao Link A", evento_id=evento_a.id)
+        ativacao_b = Ativacao(nome="Ativacao Link B", evento_id=evento_b.id)
+        session.add_all([ativacao_a, ativacao_b])
+        session.commit()
+        session.refresh(ativacao_a)
+        session.refresh(ativacao_b)
+
+        lead = Lead(
+            nome="Lead Unico",
+            cpf="30000000001",
+            evento_nome=evento_a.nome,
+            data_nascimento=birthdate_for_age(24, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 2, 1, tzinfo=timezone.utc),
+        )
+        session.add(lead)
+        session.commit()
+        session.refresh(lead)
+
+        session.add_all(
+            [
+                AtivacaoLead(ativacao_id=ativacao_a.id, lead_id=lead.id),
+                AtivacaoLead(ativacao_id=ativacao_b.id, lead_id=lead.id),
+            ]
+        )
+        session.commit()
+        headers = get_auth_header(client, session, email="vinculo@npbb.com.br")
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["por_evento"]) == 2
+    assert all(item["base_leads"] == 1 for item in data["por_evento"])
+    assert data["consolidado"]["base_total"] == 2
+    assert data["consolidado"]["faixas"]["faixa_18_25"]["volume"] == 2

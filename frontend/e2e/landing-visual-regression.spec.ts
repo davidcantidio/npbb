@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /**
  * AFLPD-F4-01-001 — Regressão Visual Cross-Template (Playwright)
@@ -11,7 +12,8 @@ import fs from "node:fs";
  * Uso: npx playwright test e2e/landing-visual-regression.spec.ts --headed
  */
 
-const SCREENSHOT_DIR = path.resolve(__dirname, "../../artifacts/phase-f4/screenshots");
+const TEST_FILE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SCREENSHOT_DIR = path.resolve(TEST_FILE_DIR, "../../artifacts/phase-f4/screenshots");
 
 const BREAKPOINTS = [
   { label: "mobile", width: 375, height: 812 },
@@ -258,6 +260,13 @@ for (const template of templateKeys) {
 
         const formButton = page.getByRole("button", { name: new RegExp(mockData.template.cta_text, "i") });
         await expect(formButton).toBeVisible();
+        if (bp.label === "mobile") {
+          const ctaBox = await formButton.boundingBox();
+          expect(ctaBox).not.toBeNull();
+          expect((ctaBox?.y ?? 0) + (ctaBox?.height ?? 0)).toBeLessThanOrEqual(bp.height + 1);
+          const scrollY = await page.evaluate(() => window.scrollY);
+          expect(scrollY).toBe(0);
+        }
 
         if (withHero) {
           await expect(page.getByTestId("landing-hero-image")).toBeVisible();

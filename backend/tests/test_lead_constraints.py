@@ -63,6 +63,29 @@ def test_lead_dedupe_por_evento_e_sessao():
             session.commit()
 
 
+def test_lead_campos_cliente_bb_e_estilo_sao_opcionais() -> None:
+    engine = make_engine()
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        lead_default = Lead(nome="Lead Sem Cruzamento")
+        lead_enriquecido = Lead(
+            nome="Lead Enriquecido",
+            is_cliente_bb=True,
+            is_cliente_estilo=False,
+        )
+
+        session.add_all([lead_default, lead_enriquecido])
+        session.commit()
+        session.refresh(lead_default)
+        session.refresh(lead_enriquecido)
+
+        assert lead_default.is_cliente_bb is None
+        assert lead_default.is_cliente_estilo is None
+        assert lead_enriquecido.is_cliente_bb is True
+        assert lead_enriquecido.is_cliente_estilo is False
+
+
 def test_lead_row_catalog_cobre_campos_importaveis_do_modelo_lead() -> None:
     lead_fields = set(Lead.model_fields)
     canonical_fields = set(LEAD_ROW_FIELDS)

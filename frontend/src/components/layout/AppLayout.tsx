@@ -17,7 +17,6 @@ import {
   useTheme,
 } from "@mui/material";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
@@ -34,9 +33,8 @@ const DRAWER_WIDTH = 240;
 
 type NavItem = {
   label: string;
-  to?: string;
+  to: string;
   icon: React.ReactNode;
-  children?: NavItem[];
 };
 
 export default function AppLayout() {
@@ -48,16 +46,10 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [navMenuAnchor, setNavMenuAnchor] = useState<null | HTMLElement>(null);
-  const [dashboardMenuAnchor, setDashboardMenuAnchor] = useState<null | HTMLElement>(null);
 
   const navItems: NavItem[] = useMemo(
     () => [
-      {
-        label: "Dashboard",
-        to: "/dashboard",
-        icon: <DashboardRoundedIcon />,
-        children: [{ label: "Leads", to: "/dashboard/leads", icon: <PeopleAltRoundedIcon /> }],
-      },
+      { label: "Dashboard", to: "/dashboard", icon: <DashboardRoundedIcon /> },
       { label: "Eventos", to: "/eventos", icon: <EventRoundedIcon /> },
       { label: "Ativos", to: "/ativos", icon: <ConfirmationNumberRoundedIcon /> },
       { label: "Leads", to: "/leads", icon: <PeopleAltRoundedIcon /> },
@@ -70,17 +62,8 @@ export default function AppLayout() {
   const isPathActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-  const isNavItemActive = (item: NavItem) => {
-    if (item.children && item.children.length > 0) {
-      return (
-        location.pathname === "/success" ||
-        location.pathname.startsWith("/dashboard") ||
-        item.children.some((child) => (child.to ? isPathActive(child.to) : false))
-      );
-    }
-    if (!item.to) return false;
-    return isPathActive(item.to);
-  };
+  const isNavItemActive = (item: NavItem) =>
+    item.to === "/dashboard" && location.pathname === "/success" ? true : isPathActive(item.to);
 
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -138,31 +121,6 @@ export default function AppLayout() {
             >
               {navItems.map((item) => {
                 const active = isNavItemActive(item);
-                if (item.children && item.children.length > 0) {
-                  return (
-                    <Button
-                      key={item.label}
-                      onClick={(e) => setDashboardMenuAnchor(e.currentTarget)}
-                      startIcon={item.icon}
-                      endIcon={<ExpandMoreRoundedIcon />}
-                      color={active ? "primary" : "inherit"}
-                      size="small"
-                      sx={{
-                        textTransform: "none",
-                        fontWeight: active ? 800 : 600,
-                        borderRadius: 2,
-                        whiteSpace: "nowrap",
-                        px: 1.5,
-                        backgroundColor: active ? "action.selected" : "transparent",
-                        "&:hover": {
-                          backgroundColor: active ? "action.selected" : "action.hover",
-                        },
-                      }}
-                    >
-                      {item.label}
-                    </Button>
-                  );
-                }
                 return (
                   <Button
                     key={item.to}
@@ -240,31 +198,6 @@ export default function AppLayout() {
             transformOrigin={{ vertical: "top", horizontal: "left" }}
           >
             {navItems.map((item) => {
-              if (item.children && item.children.length > 0) {
-                return (
-                  <Box key={item.label}>
-                    <MenuItem disabled>
-                      <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-                      <ListItemText primary={item.label} />
-                    </MenuItem>
-                    {item.children.map((child) => (
-                      <MenuItem
-                        key={child.to}
-                        selected={child.to ? isPathActive(child.to) : false}
-                        onClick={() => {
-                          setNavMenuAnchor(null);
-                          if (child.to) navigate(child.to);
-                        }}
-                        sx={{ pl: 4 }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>{child.icon}</ListItemIcon>
-                        <ListItemText primary={child.label} />
-                      </MenuItem>
-                    ))}
-                    <Divider sx={{ my: 1 }} />
-                  </Box>
-                );
-              }
               return (
                 <MenuItem
                   key={item.to}
@@ -279,26 +212,6 @@ export default function AppLayout() {
                 </MenuItem>
               );
             })}
-          </Menu>
-          <Menu
-            anchorEl={dashboardMenuAnchor}
-            open={Boolean(dashboardMenuAnchor)}
-            onClose={() => setDashboardMenuAnchor(null)}
-            anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-            transformOrigin={{ vertical: "top", horizontal: "left" }}
-          >
-            <MenuItem
-              selected={isPathActive("/dashboard/leads")}
-              onClick={() => {
-                setDashboardMenuAnchor(null);
-                navigate("/dashboard/leads");
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <PeopleAltRoundedIcon />
-              </ListItemIcon>
-              <ListItemText primary="Leads" />
-            </MenuItem>
           </Menu>
           <Menu
             anchorEl={userMenuAnchor}

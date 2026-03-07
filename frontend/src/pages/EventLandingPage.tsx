@@ -32,6 +32,9 @@ export default function EventLandingPage() {
   const [submitted, setSubmitted] = useState<LandingSubmitResponse | null>(null);
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [ativacaoLeadId, setAtivacaoLeadId] = useState<number | null>(null);
+  const [gamificacaoBusy, setGamificacaoBusy] = useState(false);
+  const [gamificacaoBlockedReason, setGamificacaoBlockedReason] = useState<string | null>(null);
+  const [gamificacaoResetVersion, setGamificacaoResetVersion] = useState(0);
   const [lastSubmittedEmail, setLastSubmittedEmail] = useState<string | null>(null);
   const formStartTracked = useRef(false);
   const ctaExposureTracked = useRef(false);
@@ -63,6 +66,9 @@ export default function EventLandingPage() {
     setSubmitted(null);
     setLeadSubmitted(false);
     setAtivacaoLeadId(null);
+    setGamificacaoBusy(false);
+    setGamificacaoBlockedReason(null);
+    setGamificacaoResetVersion((prev) => prev + 1);
     setLastSubmittedEmail(null);
     formStartTracked.current = false;
     ctaExposureTracked.current = false;
@@ -189,9 +195,15 @@ export default function EventLandingPage() {
         consentimento_lgpd: consentimento,
       });
       const nextAtivacaoLeadId = response.ativacao_lead_id ?? null;
+      const hasGamificacao = data.gamificacoes.length > 0;
       setSubmitted(response);
       setLeadSubmitted(Boolean(nextAtivacaoLeadId));
       setAtivacaoLeadId(nextAtivacaoLeadId);
+      setGamificacaoBlockedReason(
+        !nextAtivacaoLeadId && hasGamificacao
+          ? "Seu cadastro foi concluido, mas a gamificacao esta indisponivel para este envio. Clique em \"Cadastrar outro email\" e tente novamente."
+          : null,
+      );
       setLastSubmittedEmail(email);
       setSubmitError(null);
       trackLandingAnalytics({
@@ -214,6 +226,7 @@ export default function EventLandingPage() {
     if (!ativacaoLeadId) {
       throw new Error("Nao foi possivel identificar seu cadastro para concluir a gamificacao.");
     }
+    setGamificacaoBusy(true);
     try {
       await completeGamificacao(ativacaoLeadId, {
         gamificacao_id: gamificacaoId,
@@ -221,16 +234,21 @@ export default function EventLandingPage() {
       });
     } catch (err) {
       throw new Error(toApiErrorMessage(err, "Nao foi possivel registrar sua participacao na gamificacao."));
+    } finally {
+      setGamificacaoBusy(false);
     }
   };
 
   const handleReset = () => {
+    if (gamificacaoBusy) return;
     setSubmitted(null);
     setSubmitError(null);
     setConsentimento(false);
     setFormState({});
     setLeadSubmitted(false);
     setAtivacaoLeadId(null);
+    setGamificacaoBlockedReason(null);
+    setGamificacaoResetVersion((prev) => prev + 1);
     setLastSubmittedEmail(null);
     formStartTracked.current = false;
   };
@@ -265,6 +283,9 @@ export default function EventLandingPage() {
           onReset={handleReset}
           gamificacao={{
             leadSubmitted,
+            busy: gamificacaoBusy,
+            blockedReason: gamificacaoBlockedReason,
+            resetVersion: gamificacaoResetVersion,
             onComplete: handleGamificacaoComplete,
             onReset: handleReset,
           }}

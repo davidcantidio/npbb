@@ -367,6 +367,16 @@ class Lead(SQLModel, table=True):
     ingresso_tipo: Optional[str] = Field(default=None, max_length=160)
     ingresso_qtd: Optional[int] = None
     fonte_origem: Optional[str] = Field(default=None, max_length=80)
+    is_cliente_bb: Optional[bool] = Field(
+        default=None,
+        index=True,
+        description="True = cliente BB confirmado; False = nao cliente BB; NULL = cruzamento pendente.",
+    )
+    is_cliente_estilo: Optional[bool] = Field(
+        default=None,
+        index=True,
+        description="True = cliente Estilo confirmado; False = nao cliente Estilo; NULL = cruzamento pendente.",
+    )
     batch_id: Optional[int] = Field(default=None, foreign_key="lead_batches.id", index=True)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
@@ -610,7 +620,10 @@ class AtivacaoLead(SQLModel, table=True):
     lead_id: int = Field(foreign_key="lead.id", index=True)
     gamificacao_id: Optional[int] = Field(default=None, foreign_key="gamificacao.id")
     gamificacao_completed: Optional[bool] = Field(default=False)
-    gamificacao_completed_at: Optional[datetime] = Field(default=None)
+    gamificacao_completed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")

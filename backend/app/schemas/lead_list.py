@@ -31,6 +31,8 @@ class LeadListItemRead(BaseModel):
     # Personal document fields
     rg: str | None = None
     genero: str | None = None
+    is_cliente_bb: bool | None = None
+    is_cliente_estilo: bool | None = None
     # Address fields
     logradouro: str | None = None
     numero: str | None = None

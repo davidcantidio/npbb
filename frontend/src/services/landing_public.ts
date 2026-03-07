@@ -88,7 +88,7 @@ export type GamificacaoPublic = {
 export type LandingPageData = {
   ativacao_id?: number | null;
   ativacao?: LandingAtivacaoInfo | null;
-  gamificacoes?: GamificacaoPublic[];
+  gamificacoes: GamificacaoPublic[];
   evento: LandingEvent;
   template: LandingTemplateConfig;
   formulario: LandingForm;
@@ -126,6 +126,9 @@ export type GamificacaoState = "presenting" | "active" | "completed";
 export type GamificacaoBlockProps = {
   gamificacoes: GamificacaoPublic[];
   leadSubmitted: boolean;
+  busy?: boolean;
+  blockedReason?: string | null;
+  resetVersion?: number;
   onComplete: (gamificacaoId: number) => Promise<void> | void;
   onReset: () => void;
 };
@@ -152,14 +155,27 @@ export type LandingAnalyticsTrackPayload = {
   landing_session_id?: string | null;
 };
 
+type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
+  gamificacoes?: GamificacaoPublic[] | null;
+};
+
+function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPageData {
+  return {
+    ...payload,
+    gamificacoes: Array.isArray(payload.gamificacoes) ? payload.gamificacoes : [],
+  };
+}
+
 export async function getLandingByEvento(eventoId: number): Promise<LandingPageData> {
   const res = await fetchWithAuth(`/eventos/${eventoId}/landing`, { retries: 0 });
-  return handleApiResponse<LandingPageData>(res);
+  const payload = await handleApiResponse<LandingPageDataRaw>(res);
+  return normalizeLandingPageData(payload);
 }
 
 export async function getLandingByAtivacao(ativacaoId: number): Promise<LandingPageData> {
   const res = await fetchWithAuth(`/ativacoes/${ativacaoId}/landing`, { retries: 0 });
-  return handleApiResponse<LandingPageData>(res);
+  const payload = await handleApiResponse<LandingPageDataRaw>(res);
+  return normalizeLandingPageData(payload);
 }
 
 export async function submitLandingForm(

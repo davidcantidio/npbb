@@ -17,6 +17,7 @@ EXPECTED_FIELDS = (
     "email",
     "telefone",
     "cpf",
+    "rg",
     "data_nascimento",
     "evento_nome",
     "sessao",
@@ -27,6 +28,7 @@ EXPECTED_FIELDS = (
     "metodo_entrega",
     "endereco_rua",
     "endereco_numero",
+    "complemento",
     "bairro",
     "cep",
     "cidade",
@@ -36,6 +38,8 @@ EXPECTED_FIELDS = (
     "ingresso_tipo",
     "ingresso_qtd",
     "fonte_origem",
+    "is_cliente_bb",
+    "is_cliente_estilo",
 )
 
 
@@ -63,6 +67,8 @@ def test_lead_row_coerces_critical_fields_without_changing_baseline_semantics() 
             "data_compra": "2025-01-02 10:30",
             "ingresso_qtd": " 02 ",
             "opt_in_flag": "sim",
+            "is_cliente_bb": "sim",
+            "is_cliente_estilo": "nao",
             "nome": "  Alice  ",
         }
     )
@@ -76,6 +82,8 @@ def test_lead_row_coerces_critical_fields_without_changing_baseline_semantics() 
     assert row.data_compra == datetime(2025, 1, 2, 10, 30)
     assert row.ingresso_qtd == 2
     assert row.opt_in_flag is True
+    assert row.is_cliente_bb is True
+    assert row.is_cliente_estilo is False
     assert row.nome == "Alice"
 
 

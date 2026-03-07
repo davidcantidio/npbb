@@ -45,6 +45,8 @@ class LeadRow(BaseModel):
     ingresso_tipo: str | None = None
     ingresso_qtd: int | None = None
     fonte_origem: str | None = None
+    is_cliente_bb: bool | None = None
+    is_cliente_estilo: bool | None = None
 
     @field_validator(*LEAD_ROW_FIELDS, mode="before")
     @classmethod

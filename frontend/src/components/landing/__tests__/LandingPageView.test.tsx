@@ -79,6 +79,7 @@ function createLandingFixture(overrides: Partial<LandingPageData> = {}): Landing
       qr_code_url: "data:image/svg+xml;base64,PHN2Zy8+",
       url_promotor: "https://npbb.example/landing/ativacoes/1",
     },
+    gamificacoes: [],
     ...overrides,
   };
 }

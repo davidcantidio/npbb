@@ -110,6 +110,8 @@ def seed_leads(session: Session):
         cidade="Sao Paulo",
         estado="SP",
         data_criacao=datetime(2026, 1, 10, tzinfo=timezone.utc),
+        is_cliente_bb=True,
+        is_cliente_estilo=False,
     )
     lead_2 = Lead(
         nome="Bruno",
@@ -164,10 +166,14 @@ def test_listar_leads_retorna_evento_convertido_mais_recente(client, engine):
     lead_ana = items_by_email["ana@example.com"]
     assert lead_ana["evento_convertido_nome"] == "Evento B"
     assert lead_ana["tipo_conversao"] == "ACAO_EVENTO"
+    assert lead_ana["is_cliente_bb"] is True
+    assert lead_ana["is_cliente_estilo"] is False
 
     lead_carla = items_by_email["carla@example.com"]
     assert lead_carla["evento_convertido_nome"] is None
     assert lead_carla["tipo_conversao"] is None
+    assert lead_carla["is_cliente_bb"] is None
+    assert lead_carla["is_cliente_estilo"] is None
 
 
 def test_listar_leads_paginacao(client, engine):

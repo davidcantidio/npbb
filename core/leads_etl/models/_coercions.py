@@ -130,7 +130,7 @@ def coerce_lead_field(field: str, value: Any) -> Any | None:
     if name == "ingresso_qtd":
         return _coerce_ingresso_qtd(value)
 
-    if name == "opt_in_flag":
+    if name in {"opt_in_flag", "is_cliente_bb", "is_cliente_estilo"}:
         return _parse_bool(value)
 
     if name == "estado":

@@ -33,6 +33,8 @@ LEAD_ROW_FIELDS: Final[tuple[str, ...]] = (
     "ingresso_tipo",
     "ingresso_qtd",
     "fonte_origem",
+    "is_cliente_bb",
+    "is_cliente_estilo",
 )
 
 

@@ -1,4 +1,6 @@
 # Framework de Projetos Scrum — Referência Canônica
+> Documento legado em duplicidade. Para novos projetos e para o fluxo `issue-first`, use `PROJETOS/COMUM/scrum-framework-master.md` como fonte canônica.
+
 **Arquivo:** `PROJETOS/COMUM/FRAMEWORK-REF.md`  
 **Versão:** 1.0.0 | **Data:** 2026-03-03  
 **Agente executor:** OpenClaw Agent OS  

@@ -1,9 +1,9 @@
 ---
 doc_id: "WORK-ORDER-SPEC.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-03"
+last_updated: "2026-03-07"
 ---
 
 # WORK-ORDER-SPEC
@@ -21,7 +21,12 @@ work_order:
   risk_class: "operacional"
   risk_tier: "R1"
   data_sensitivity: "interna"
-  expected_output: "dq_report_preview"
+  expected_output: "issue implementation package"
+  scope:
+    unit: "issue"
+    issue_id: "ISSUE-F2-01-02-IMPLEMENTAR-ENDPOINT"
+    issue_path: "PROJETOS/MEU-PROJETO/F2-MINHA-FASE/issues/ISSUE-F2-01-02-IMPLEMENTAR-ENDPOINT.md"
+    epic_path: "PROJETOS/MEU-PROJETO/F2-MINHA-FASE/EPIC-F2-01-MINHA-CAPACIDADE.md"
   budget:
     hard_cap: "30m_cpu|1_execucao"
   status: "pending"
@@ -35,8 +40,16 @@ work_order:
 - `risk_tier`
 - `data_sensitivity`
 - `expected_output`
+- `scope.unit`
 - `budget.hard_cap`
 - `status`
+
+## Unidade de Execucao Recomendada
+
+- para trabalho de implementacao, a unidade padrao e `issue`
+- `epico` continua valido como unidade de planejamento
+- `fase` continua valida como unidade de review e gate
+- work order de execucao com side effect deve nomear `issue_id` e `issue_path` quando o projeto usar o padrao `issue-first`
 
 ## SLA Classes
 
@@ -53,7 +66,12 @@ work_order:
   risk_class: "dados"
   risk_tier: "R1"
   data_sensitivity: "dados-pessoais"
-  expected_output: "preview com contagem de linhas validas e invalidas"
+  expected_output: "implementar uma issue e atualizar seus artefatos de status"
+  scope:
+    unit: "issue"
+    issue_id: "ISSUE-F1-02-03-ETL-PREVIEW"
+    issue_path: "PROJETOS/LEAD-ETL-FUSION/F1-NUCLEO-ETL/issues/ISSUE-F1-02-03-ETL-PREVIEW.md"
+    epic_path: "PROJETOS/LEAD-ETL-FUSION/F1-NUCLEO-ETL/EPIC-F1-02-MODELO-CANONICO-LEAD-ROW.md"
   budget:
     hard_cap: "1 arquivo por execucao"
   status: "pending"
@@ -66,4 +84,6 @@ work_order:
 - `risk_tier` deve seguir a taxonomia de `DECISION-PROTOCOL.md`
 - `status` deve refletir o estado atual da execucao, nunca um estado presumido
 - output esperado deve ser verificavel por artefato, log, persistencia ou resposta de API
+- quando `scope.unit=issue`, o arquivo da issue e a fonte primaria do escopo executavel
+- `epic_path` serve como contexto de navegacao e consolidacao, nao substitui `issue_path` em projetos `issue-first`
 - quando um work order concluir o gate de uma fase, o fechamento operacional deve incluir a movimentacao da pasta da fase para `feito/` no projeto correspondente

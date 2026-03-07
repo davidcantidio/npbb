@@ -22,7 +22,7 @@ const EventLandingPage = lazy(() => import("../pages/EventLandingPage"));
 const EventLeadFormConfig = lazy(() => import("../pages/EventLeadFormConfig"));
 const EventQuestionario = lazy(() => import("../pages/EventQuestionario"));
 const EventsList = lazy(() => import("../pages/EventsList"));
-const LeadsAgeAnalysisPlaceholder = lazy(() => import("../pages/dashboard/LeadsAgeAnalysisPlaceholder"));
+const LeadsAgeAnalysisPage = lazy(() => import("../pages/dashboard/LeadsAgeAnalysisPage"));
 const LeadsImport = lazy(() => import("../pages/LeadsImport"));
 const MapeamentoPage = lazy(() => import("../pages/leads/MapeamentoPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
@@ -63,7 +63,7 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={withSuspense(<DashboardHome />)} />
           <Route path="leads" element={<Navigate to="analise-etaria" replace />} />
-          <Route path="leads/analise-etaria" element={withSuspense(<LeadsAgeAnalysisPlaceholder />)} />
+          <Route path="leads/analise-etaria" element={withSuspense(<LeadsAgeAnalysisPage />)} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
 

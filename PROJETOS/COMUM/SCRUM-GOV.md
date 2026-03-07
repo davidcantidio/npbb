@@ -1,9 +1,9 @@
 ---
 doc_id: "SCRUM-GOV.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-03"
+last_updated: "2026-03-07"
 ---
 
 # SCRUM-GOV
@@ -11,6 +11,14 @@ last_updated: "2026-03-03"
 ## Cadeia de Trabalho
 
 `PRD -> Fases -> Epicos -> Issues -> Microtasks`
+
+## Unidade Operacional Canonica
+
+- `issue` e a menor unidade documental completa para execucao
+- `EPIC-*.md` funciona como manifesto do epico e indice das issues, nao como container canonico de criterios e tarefas detalhadas
+- `SPRINT-*.md` existe apenas para selecionar e acompanhar issues; sprint nao e fonte primaria de requisitos
+- criterios de aceitacao, DoD e tarefas decupadas devem viver no arquivo da issue quando o projeto estiver no padrao `issue-first`
+- projetos legados podem manter issues embutidas no epico, mas novos projetos devem preferir `issues/ISSUE-*.md`
 
 ## Fluxo de Decomposicao
 
@@ -31,7 +39,7 @@ last_updated: "2026-03-03"
 
 ### Fase
 
-- `EPICS.md` preenchido com objetivo, gate e escopo
+- arquivo de fase preenchido com objetivo, gate, escopo e indice de epicos
 - todos os epicos da fase possuem documento proprio
 - gate de saida da fase definido de forma objetiva
 - status da fase rastreavel por evidencia
@@ -44,14 +52,21 @@ last_updated: "2026-03-03"
 - Definition of Done especifica evidencia consolidada
 - dependencias declaradas sem acoplamento indevido a outros epicos
 - decisao arquitetural considerada: modularidade, manutenibilidade e evitacao de monolitos
+- arquivo do epico referencia todas as issues do escopo por tabela ou indice navegavel
+- projetos novos devem manter as issues detalhadas em `issues/ISSUE-*.md`
 
 ### Issue
 
+- documento proprio com frontmatter padronizado
 - user story explicita
 - plano TDD definido em `Red`, `Green`, `Refactor`
 - criterios de aceitacao no formato `Given/When/Then`
+- Definition of Done da issue explicita
+- tarefas decupadas, concluiveis e sem duplicar o texto dos criterios
 - tamanho compativel com `SPRINT-LIMITS.md`
 - abordagem arquitetural considerada: responsabilidade unica, baixo acoplamento, funcoes e arquivos nao monoliticos
+- arquivos reais impactados ou testados declarados
+- artifact minimo ou evidencia verificavel declarada quando houver side effect relevante
 
 ### Microtask
 
@@ -66,6 +81,8 @@ last_updated: "2026-03-03"
 - nao vira camada estrutural do backlog
 - agrega apenas items com rastreabilidade a fase/epico/issue
 - produz status consolidado sem datas inventadas
+- referencia `issues/ISSUE-*.md` por ID e documento, sem duplicar criterios, DoD ou tarefas
+- pode existir em `sprints/SPRINT-*.md`, mas nunca substitui fase, epico ou issue como fonte de verdade
 
 ## Regras Anti Jira Inflation
 
@@ -75,6 +92,8 @@ last_updated: "2026-03-03"
 - nao criar issue que represente mais de um resultado tecnico
 - nao criar microtask que apenas repete texto da issue
 - nao referenciar dependencias entre epicos por links diretos em arquivos de epico
+- nao duplicar criterios de aceitacao ou tarefas da issue dentro de `SPRINT-*.md`
+- nao manter backlog detalhado de issue apenas no arquivo `EPIC-*.md` em projetos novos
 
 ## Regras de Arquivamento de Fase
 

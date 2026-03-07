@@ -227,7 +227,7 @@ export default function EventsList() {
       else failures.push("status");
 
       if (failures.length) {
-        setDomainsError(`Falha ao carregar dom?nios: ${failures.join(", ")}`);
+        setDomainsError(`Falha ao carregar domínios: ${failures.join(", ")}`);
       }
     } finally {
       setDomainsLoading(false);
@@ -609,8 +609,9 @@ export default function EventsList() {
   const filtersPortal = filtersContainer ? createPortal(filtersPanel, filtersContainer) : null;
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <>
       {filtersPortal}
+      <Box sx={{ width: "100%" }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -797,7 +798,7 @@ export default function EventsList() {
           />
         )}
       </Box>
-
-    </Box>
+      </Box>
+    </>
   );
 }

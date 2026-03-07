@@ -789,8 +789,9 @@ export default function AtivosList() {
   }, [groupedItems, handleOpenDelete, handleOpenModal, handleOpenIngressos, showSkeletons]);
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <>
       {filtersPortal}
+      <Box sx={{ width: "100%" }}>
       <Box
         display="flex"
         justifyContent="space-between"
@@ -1087,6 +1088,7 @@ export default function AtivosList() {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Box>
+      </Box>
+    </>
   );
 }

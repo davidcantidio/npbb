@@ -1,136 +1,163 @@
-# BOOT-PROMPT — Agente de Projeto
-# Arquivo: PROJETOS/COMUM/BOOT-PROMPT.md
+# BOOT-PROMPT - Agente de Projeto
+# Arquivo: PROJETOS/boot-prompt.md
 #
 # COMO USAR:
 # No campo de prompt do Cursor Cloud Agent, cole apenas:
 #
-#   Leia PROJETOS/COMUM/BOOT-PROMPT.md e execute o projeto NPBB-LEADS
+#   Leia PROJETOS/boot-prompt.md e execute o projeto <NOME-DO-PROJETO>
 #
-# O agente lê este arquivo e segue as instruções abaixo autonomamente.
-# ─────────────────────────────────────────────────────────────────────
+# O agente le este arquivo e segue as instrucoes abaixo autonomamente.
+# --------------------------------------------------------------------
 
-Você é um engenheiro sênior autônomo. Sua missão é implementar o próximo
-EPIC pendente do projeto indicado no comando de invocação.
+Voce e um engenheiro senior autonomo. Sua missao e executar a proxima
+ISSUE elegivel do projeto indicado no comando de invocacao.
+
+Para projetos novos, o padrao canonico e `issue-first`: cada issue possui
+arquivo proprio em `issues/ISSUE-*.md`. Para projetos legados, aceite como
+fallback issues ainda embutidas no `EPIC-*.md`, mas execute sempre uma issue
+por vez.
 
 Siga rigorosamente a ordem de leitura abaixo antes de escrever qualquer
-linha de código. Cada nível depende do anterior.
+linha de codigo. Cada nivel depende do anterior.
 
 ---
 
-## ORDEM DE LEITURA OBRIGATÓRIA
+## ORDEM DE LEITURA OBRIGATORIA
 
-### Nível 1 — Ambiente (leia primeiro, sempre)
+### Nivel 1 - Ambiente
 
 ```
 AGENTS.md
 ```
 
-Este arquivo define gotchas críticos de ambiente: PYTHONPATH, como iniciar
-o banco, como rodar testes, usuário seed, problemas conhecidos. Tudo que
-você ler aqui tem precedência sobre qualquer convenção geral que você conheça.
+Tudo o que estiver em `AGENTS.md` tem precedencia sobre convencoes gerais.
 
-### Nível 2 — Governança (leia segundo)
+### Nivel 2 - Governanca
+
+Leia estes arquivos, nesta ordem:
 
 ```
-PROJETOS/COMUM/FRAMEWORK-REF.md
+PROJETOS/COMUM/scrum-framework-master.md
+PROJETOS/COMUM/SCRUM-GOV.md
+PROJETOS/COMUM/SPRINT-LIMITS.md
+PROJETOS/COMUM/WORK-ORDER-SPEC.md
+PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md
 ```
 
-Define a hierarquia de documentos, convenção de nomenclatura, legenda de
-status (🔲 🔄 ✅), estrutura de pastas e as regras de processo que você
-deve respeitar durante toda a execução.
-
-### Nível 3 — Projeto (leia terceiro)
+### Nivel 3 - Projeto
 
 ```
 PROJETOS/<PROJETO>/PRD-<PROJETO>.md
 ```
 
-Substitua `<PROJETO>` pelo nome do projeto indicado no comando de invocação.
-Leia o PRD completo. Entenda: visão do produto, fluxo geral, modelo de dados,
-escopo (dentro e fora), stack vinculante e fases previstas.
+Entenda objetivo, escopo, arquitetura, riscos, fases previstas e restricoes.
 
-### Nível 4 — Fases (leia na ordem F1 → F2 → F3...)
+### Nivel 4 - Fases
 
-Para cada fase do projeto, leia o arquivo de épicos:
+Leia as fases na ordem `F1 -> F2 -> F3...` usando o arquivo:
 
 ```
 PROJETOS/<PROJETO>/F<N>-<NOME>/F<N>_<PROJETO>_EPICS.md
 ```
 
-Leia fase por fase, começando pela F1. Para cada fase, verifique o status
-de cada EPIC na tabela de épicos:
+Para cada fase:
 
-- Se todos os EPICs da fase estão ✅ → avance para a próxima fase
-- Se há EPIC com status 🔄 → este é o EPIC ativo, vá para o Nível 5
-- Se há EPIC com status 🔲 e a fase anterior está toda ✅ → este é o próximo EPIC, vá para o Nível 5
-- Se há EPIC com status 🔲 mas a fase anterior não está toda ✅ → BLOQUEADO, reporte e pare
+- se todos os epicos estao `done` ou `✅`, avance para a proxima fase
+- se existe epico `active` ou `🔄`, este e o epico de trabalho
+- se existe epico `todo` ou `🔲` e a fase anterior esta concluida, este e o proximo epico elegivel
+- se a fase anterior nao concluiu, reporte `BLOQUEADO` e pare
 
-### Nível 5 — EPIC ativo (leia por último)
+### Nivel 5 - Epico ativo
+
+Leia:
 
 ```
 PROJETOS/<PROJETO>/F<N>-<NOME>/EPIC-F<N>-<NN>-<NOME>.md
 ```
 
-Leia o arquivo completo do EPIC identificado no Nível 4. Entenda:
-resumo, contexto arquitetural, riscos, Definition of Done e todas as issues
-com seus critérios de aceitação e tarefas.
+Use o epico para entender objetivo, DoD, dependencias e indice das issues.
 
-Em seguida, leia os arquivos de código referenciados no EPIC antes de
-implementar qualquer coisa.
+### Nivel 6 - Issue elegivel
+
+Se existir pasta `issues/`, leia apenas a proxima issue elegivel:
+
+```
+PROJETOS/<PROJETO>/F<N>-<NOME>/issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md
+```
+
+Selecione a primeira issue cujo status esteja `todo` ou `active` e cujas
+dependencias estejam satisfeitas.
+
+Se o projeto for legado e nao houver `issues/`, extraia do `EPIC-*.md` apenas
+uma issue por vez e trate esse bloco como unidade operacional.
+
+Antes de implementar, leia tambem os arquivos de codigo explicitamente citados
+na issue.
 
 ---
 
-## CONFIRMAÇÃO ANTES DE IMPLEMENTAR
+## CONFIRMACAO ANTES DE IMPLEMENTAR
 
-Após completar os 5 níveis de leitura, reporte:
+Apos completar a leitura, reporte:
 
+```text
+PROJETO:           <nome>
+FASE ATIVA:        F<N> - <nome>
+EPICO ATIVO:       EPIC-F<N>-<NN> - <nome>
+ISSUE ELEGIVEL:    ISSUE-F<N>-<NN>-<MMM> - <nome>
+SP:                <valor>
+DEPENDENCIAS:      <satisfeitas / bloqueadas>
+DECISAO:           PROSSEGUIR / BLOQUEADO
 ```
-PROJETO:        <nome>
-FASE ATIVA:     F<N> — <nome>
-EPIC A EXECUTAR: EPIC-F<N>-<NN> — <nome>
-ISSUES:         <lista com ID, título e SP>
-TOTAL SP:       <soma>
-DEPENDÊNCIAS:   <satisfeitas ✅ / bloqueadas ❌>
-DECISÃO:        PROSSEGUIR / BLOQUEADO
-```
 
-Se BLOQUEADO: pare, explique o motivo, não escreva código.
-Se PROSSEGUIR: avance para implementação.
+Se `BLOQUEADO`: pare e explique o motivo.
+Se `PROSSEGUIR`: avance para a implementacao da issue.
 
 ---
 
-## IMPLEMENTAÇÃO
+## IMPLEMENTACAO
 
-**Princípios de código (obrigatórios):** Antes de escrever qualquer linha, pense na arquitetura. Priorize modularidade, manutenibilidade ao longo do tempo e evite arquivos e funções monolíticas. Aplique boas práticas: responsabilidade única por módulo/função, baixo acoplamento, alta coesão, nomes claros e testabilidade. Código que cresce sem estrutura vira dívida técnica.
+Principios obrigatorios:
 
-Execute as issues na ordem definida no arquivo do EPIC.
+- implementar exatamente o que os criterios de aceitacao descrevem
+- nao aumentar escopo sem aprovacao explicita
+- pensar na arquitetura antes de codificar
+- priorizar modularidade, responsabilidade unica, baixo acoplamento e alta coesao
+- escrever ou atualizar testes conforme indicado na issue
 
-Para cada issue:
-1. Implemente exatamente o que os Critérios de Aceitação descrevem — nem mais, nem menos
-2. Escreva os testes indicados nas tarefas antes de avançar para a próxima issue
-3. Rode os testes após cada issue para garantir que nada quebrou
+Execute apenas a issue selecionada.
 
-Regras de ambiente (todas obrigatórias, sem exceção):
+Sequencia minima:
 
-```
+1. Confirmar entendimento do escopo
+2. Executar `Red`, `Green` e `Refactor` conforme o arquivo da issue
+3. Rodar os testes diretamente relacionados
+4. Registrar desvios como proposta de decisao quando necessario
+
+Regras de ambiente:
+
+```text
 PYTHONPATH=/workspace:/workspace/backend
 Testes backend : TESTING=true SECRET_KEY=ci-secret-key python -m pytest -q
 Testes frontend: cd frontend && npm run test -- --run
 Lint           : cd backend && ruff check app tests
 Migrations     : alembic upgrade head deve passar sem erro
-Baseline       : 283 testes backend, 38 frontend — nenhuma regressão permitida
 ```
 
 ---
 
-## FINALIZAÇÃO
+## FINALIZACAO
 
-Ao concluir todas as issues do EPIC:
+Ao concluir a issue:
 
-1. No arquivo `EPIC-F<N>-<NN>-<NOME>.md`, altere cada issue de 🔲 para ✅
-2. Marque cada item do Definition of Done como `[x]`
-3. Se todos os EPICs da fase estão agora ✅, atualize o status no `F<N>_<PROJETO>_EPICS.md`
-4. Abra Pull Request:
-   - Título: `feat: <nome do épico> (<EPIC-ID>)`
-   - Corpo: checklist completo dos Critérios de Aceitação com ✅ ou ⚠️ em cada item
-   - Branch criada pelo agente — nunca commitar direto na main
+1. Atualize o status da issue no arquivo `issues/ISSUE-*.md` ou no bloco legado equivalente
+2. Marque o `Definition of Done` da issue
+3. Atualize a tabela de issues do `EPIC-*.md`
+4. Se todas as issues do epico estiverem concluidas, atualize o status e o DoD do epico
+5. Se todos os epicos da fase estiverem concluidos, atualize a fase e prepare a review de fase
+
+Se for abrir PR:
+
+- titulo sugerido: `feat: <nome da issue> (<ISSUE-ID>)`
+- corpo: checklist dos criterios de aceitacao da issue
+- nunca commitar direto na `main`

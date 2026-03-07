@@ -129,7 +129,7 @@ export default function EventGamificacao() {
         if (cancelled) return;
         const code = getApiErrorCode(err);
         if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
-        setError(getApiErrorMessage(err, "Erro ao carregar gamificaÃ§Ãµes."));
+        setError(getApiErrorMessage(err, "Erro ao carregar gamificações."));
       })
       .finally(() => {
         if (cancelled) return;
@@ -142,9 +142,9 @@ export default function EventGamificacao() {
   }, [token, eventoId, isValidEventoId]);
 
   const subtitle = useMemo(() => {
-    if (!isValidEventoId) return "Evento invÃ¡lido.";
-    if (evento?.nome) return `Configure as gamificaÃ§Ãµes do evento "${evento.nome}" (#${eventoId}).`;
-    return `Configure as gamificaÃ§Ãµes do evento #${eventoId}.`;
+    if (!isValidEventoId) return "Evento inválido.";
+    if (evento?.nome) return `Configure as gamificações do evento "${evento.nome}" (#${eventoId}).`;
+    return `Configure as gamificações do evento #${eventoId}.`;
   }, [evento?.nome, eventoId, isValidEventoId]);
 
   const startEdit = (item: Gamificacao) => {
@@ -190,7 +190,7 @@ export default function EventGamificacao() {
       >
         <Box>
           <Typography variant="h4" fontWeight={800}>
-            GamificaÃ§Ã£o
+            Gamificação
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {subtitle}
@@ -215,7 +215,7 @@ export default function EventGamificacao() {
               disabled={loading}
               sx={{ textTransform: "none", fontWeight: 800 }}
             >
-              PrÃ³ximo
+              Próximo
             </Button>
           </Stack>
         ) : null}
@@ -239,12 +239,12 @@ export default function EventGamificacao() {
           }}
           >
           <Typography variant="h6" fontWeight={900} gutterBottom>
-            {isEditing ? "Editar gamificaÃ§Ã£o" : "Adicionar gamificaÃ§Ã£o"}
+            {isEditing ? "Editar gamificação" : "Adicionar gamificação"}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {isEditing
-              ? `Editando a gamificaÃ§Ã£o "${editing?.nome || ""}" (#${editing?.id ?? ""}).`
-              : "Cadastre gamificaÃ§Ãµes do evento. Na etapa de AtivaÃ§Ãµes vocÃª poderÃ¡ selecionar uma delas (ou Nenhuma)."}
+              ? `Editando a gamificação "${editing?.nome || ""}" (#${editing?.id ?? ""}).`
+              : "Cadastre gamificações do evento. Na etapa de Ativações você poderá selecionar uma delas (ou Nenhuma)."}
           </Typography>
 
           {createError && (
@@ -255,7 +255,7 @@ export default function EventGamificacao() {
 
           <Stack spacing={2}>
             <TextField
-              label="Nome da gamificaÃ§Ã£o"
+              label="Nome da gamificação"
               required
               value={createForm.nome}
               inputProps={{ maxLength: MAX_LEN.nome }}
@@ -263,10 +263,10 @@ export default function EventGamificacao() {
               disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.nome)}
-              helperText={createAttempted && !normalizeText(createForm.nome) ? "Informe o nome da gamificaÃ§Ã£o." : "\u00A0"}
+              helperText={createAttempted && !normalizeText(createForm.nome) ? "Informe o nome da gamificação." : "\u00A0"}
             />
             <TextField
-              label="DescriÃ§Ã£o"
+              label="Descrição"
               required
               value={createForm.descricao}
               inputProps={{ maxLength: MAX_LEN.descricao }}
@@ -279,14 +279,14 @@ export default function EventGamificacao() {
               helperText={
                 <Box component="span" sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
                   <Box component="span">
-                    {createAttempted && !normalizeText(createForm.descricao) ? "Informe a descriÃ§Ã£o." : "\u00A0"}
+                    {createAttempted && !normalizeText(createForm.descricao) ? "Informe a descrição." : "\u00A0"}
                   </Box>
                   <Box component="span">{`${createForm.descricao.length}/${MAX_LEN.descricao} caracteres`}</Box>
                 </Box>
               }
             />
             <TextField
-              label="PrÃªmio"
+              label="Prêmio"
               required
               value={createForm.premio}
               inputProps={{ maxLength: MAX_LEN.premio }}
@@ -294,10 +294,10 @@ export default function EventGamificacao() {
               disabled={!canAct || loading || creating || saving}
               fullWidth
               error={createAttempted && !normalizeText(createForm.premio)}
-              helperText={createAttempted && !normalizeText(createForm.premio) ? "Informe o prÃªmio." : "\u00A0"}
+              helperText={createAttempted && !normalizeText(createForm.premio) ? "Informe o prêmio." : "\u00A0"}
             />
             <TextField
-              label="TÃ­tulo do feedback de sucesso"
+              label="Título do feedback de sucesso"
               required
               value={createForm.titulo_feedback}
               inputProps={{ maxLength: MAX_LEN.titulo_feedback }}
@@ -307,12 +307,12 @@ export default function EventGamificacao() {
               error={createAttempted && !normalizeText(createForm.titulo_feedback)}
               helperText={
                 createAttempted && !normalizeText(createForm.titulo_feedback)
-                  ? "Informe o tÃ­tulo do feedback."
+                  ? "Informe o título do feedback."
                   : "\u00A0"
               }
             />
             <TextField
-              label="DescriÃ§Ã£o do feedback de sucesso"
+              label="Descrição do feedback de sucesso"
               required
               value={createForm.texto_feedback}
               inputProps={{ maxLength: MAX_LEN.texto_feedback }}
@@ -326,7 +326,7 @@ export default function EventGamificacao() {
                 <Box component="span" sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
                   <Box component="span">
                     {createAttempted && !normalizeText(createForm.texto_feedback)
-                      ? "Informe a descriÃ§Ã£o do feedback."
+                      ? "Informe a descrição do feedback."
                       : "\u00A0"}
                   </Box>
                   <Box component="span">{`${createForm.texto_feedback.length}/${MAX_LEN.texto_feedback} caracteres`}</Box>
@@ -361,7 +361,7 @@ export default function EventGamificacao() {
                   const texto = normalizeText(createForm.texto_feedback);
 
                   if (!nome || !descricao || !premio || !titulo || !texto) {
-                    setCreateError("Preencha todos os campos obrigatÃ³rios.");
+                    setCreateError("Preencha todos os campos obrigatórios.");
                     return;
                   }
 
@@ -379,11 +379,11 @@ export default function EventGamificacao() {
                       cancelEdit();
                       setSnackbar({
                         open: true,
-                        message: "GamificaÃ§Ã£o atualizada com sucesso.",
+                        message: "Gamificação atualizada com sucesso.",
                         severity: "success",
                       });
                     } catch (err: any) {
-                      const message = getApiErrorMessage(err, "Erro ao atualizar gamificaÃ§Ã£o.");
+                      const message = getApiErrorMessage(err, "Erro ao atualizar gamificação.");
                       setCreateError(message);
                       setSnackbar({ open: true, message, severity: "error" });
                     } finally {
@@ -406,13 +406,13 @@ export default function EventGamificacao() {
                     setCreateForm(EMPTY_FORM);
                     setSnackbar({
                       open: true,
-                      message: "GamificaÃ§Ã£o adicionada com sucesso.",
+                      message: "Gamificação adicionada com sucesso.",
                       severity: "success",
                     });
                   } catch (err: any) {
                     const code = getApiErrorCode(err);
                     if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
-                    const message = getApiErrorMessage(err, "Erro ao criar gamificaÃ§Ã£o.");
+                    const message = getApiErrorMessage(err, "Erro ao criar gamificação.");
                     setCreateError(message);
                     setSnackbar({ open: true, message, severity: "error" });
                   } finally {
@@ -424,9 +424,9 @@ export default function EventGamificacao() {
                 {saving || creating ? (
                   <CircularProgress size={22} color="inherit" />
                 ) : isEditing ? (
-                  "Atualizar gamificaÃ§Ã£o"
+                  "Atualizar gamificação"
                 ) : (
-                  "Adicionar gamificaÃ§Ã£o"
+                  "Adicionar gamificação"
                 )}
               </Button>
             </Stack>
@@ -436,7 +436,7 @@ export default function EventGamificacao() {
         <Paper elevation={2} sx={{ borderRadius: 1, overflow: "hidden", width: "100%", flex: 1 }}>
           <Box sx={{ px: 2.5, py: 2 }}>
             <Typography variant="h6" fontWeight={900}>
-              GamificaÃ§Ãµes adicionadas
+              Gamificações adicionadas
             </Typography>
           </Box>
           <Divider />
@@ -461,9 +461,9 @@ export default function EventGamificacao() {
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
-                  <TableCell width={220}>PrÃªmio</TableCell>
+                  <TableCell width={220}>Prêmio</TableCell>
                   <TableCell width={120} align="right">
-                    AÃ§Ãµes
+                    Ações
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -500,7 +500,7 @@ export default function EventGamificacao() {
                   <TableRow>
                     <TableCell colSpan={3}>
                       <Typography variant="body2" color="text.secondary">
-                        Nenhuma gamificaÃ§Ã£o adicionada.
+                        Nenhuma gamificação adicionada.
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -512,7 +512,7 @@ export default function EventGamificacao() {
       </Stack>
 
       <Dialog open={deleteOpen} onClose={() => (deleting ? null : setDeleteOpen(false))}>
-        <DialogTitle>Excluir gamificaÃ§Ã£o</DialogTitle>
+        <DialogTitle>Excluir gamificação</DialogTitle>
         <DialogContent>
           {deleteError && (
             <Alert severity="error" variant="filled" sx={{ mb: 2 }}>
@@ -521,7 +521,7 @@ export default function EventGamificacao() {
           )}
           <DialogContentText>
             {deletingTarget
-              ? `Tem certeza que deseja excluir a gamificaÃ§Ã£o "${deletingTarget.nome}"?`
+              ? `Tem certeza que deseja excluir a gamificação "${deletingTarget.nome}"?`
               : "Tem certeza?"}
           </DialogContentText>
         </DialogContent>
@@ -545,7 +545,7 @@ export default function EventGamificacao() {
                 setDeletingTarget(null);
                 setSnackbar({
                   open: true,
-                  message: "GamificaÃ§Ã£o excluÃ­da com sucesso.",
+                  message: "Gamificação excluída com sucesso.",
                   severity: "success",
                 });
               } catch (err: any) {

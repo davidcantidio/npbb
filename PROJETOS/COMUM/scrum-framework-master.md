@@ -1,6 +1,6 @@
 # Framework de Projetos Scrum — Referência Canônica
-**Arquivo:** `PROJETOS/COMUM/FRAMEWORK-REF.md`  
-**Versão:** 1.0.0 | **Data:** 2026-03-03  
+**Arquivo:** `PROJETOS/COMUM/scrum-framework-master.md`  
+**Versão:** 1.1.0 | **Data:** 2026-03-07  
 **Agente executor:** OpenClaw Agent OS  
 **Status:** aprovado
 
@@ -12,15 +12,17 @@
 
 ### 1.1 Hierarquia de Autoridade
 
-```
-FRAMEWORK-REF.md  (este arquivo — normativo máximo)
-    └── SCRUM-GOV.md          (regras do processo)
-    └── DECISION-PROTOCOL.md  (como decidir e registrar decisões)
-    └── SPRINT-LIMITS.md      (limites operacionais por sprint)
-    └── WORK-ORDER-SPEC.md    (contratos de work order para OpenClaw)
-         └── PRD-<PROJETO>.md (normativo do projeto)
-              └── <FN>_<PROJETO>_EPICS.md  (normativo da fase)
-                   └── EPIC-FN-NN-<NOME>.md (normativo do épico)
+```text
+scrum-framework-master.md  (este arquivo — normativo máximo)
+    └── SCRUM-GOV.md              (regras do processo)
+    └── DECISION-PROTOCOL.md      (como decidir e registrar decisões)
+    └── SPRINT-LIMITS.md          (limites operacionais por sprint)
+    └── WORK-ORDER-SPEC.md        (contratos de work order para OpenClaw)
+    └── ISSUE-FIRST-TEMPLATES.md  (templates e convencoes de links)
+         └── PRD-<PROJETO>.md     (normativo do projeto)
+              └── <FN>_<PROJETO>_EPICS.md          (normativo da fase)
+                   └── EPIC-FN-NN-<NOME>.md        (manifesto do epico)
+                        └── issues/ISSUE-FN-NN-MMM-<NOME>.md
 ```
 
 Em conflito entre documentos do mesmo nível, o mais recente (por `version` + `last_updated`) prevalece.
@@ -39,8 +41,8 @@ Em conflito entre documentos do mesmo nível, o mais recente (por `version` + `l
 | Cerimônia | Trigger | Responsável | Output |
 |---|---|---|---|
 | **Planejamento de Fase** | Início de cada fase | PO + OpenClaw | `<FN>_<PROJETO>_EPICS.md` aprovado |
-| **Planejamento de Épico** | Antes de iniciar épico | OpenClaw (PROMPT-03) | `EPIC-FN-NN.md` com issues + tarefas |
-| **Execução de Issue** | Sprint ativo | OpenClaw (PROMPT-04) | Código/doc + status ✅ no épico |
+| **Planejamento de Épico** | Antes de iniciar épico | OpenClaw (PROMPT-03) | `EPIC-FN-NN.md` + `issues/ISSUE-*.md` |
+| **Execução de Issue** | Sprint ativo | OpenClaw (PROMPT-04) | Código/doc + status atualizado na issue e no indice do epico |
 | **Review de Fase** | Último épico concluído | OpenClaw (PROMPT-05) | Parecer go/no-go documentado |
 
 ### 1.4 Regras de Processo
@@ -165,10 +167,11 @@ epico:         EPIC-F<N>-<NN>-<NOME>   # omitir se não aplicável
 issue:         <ISSUE-ID>              # omitir se não aplicável
 
 fontes:
-  - PROJETOS/COMUM/FRAMEWORK-REF.md
+  - PROJETOS/COMUM/scrum-framework-master.md
   - PROJETOS/<PROJETO>/PRD-<PROJETO>.md
   - PROJETOS/<PROJETO>/F<N>-<FASE>/<FN>_<PROJETO>_EPICS.md
   - PROJETOS/<PROJETO>/F<N>-<FASE>/EPIC-F<N>-<NN>-<NOME>.md  # se aplicável
+  - PROJETOS/<PROJETO>/F<N>-<FASE>/issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md  # se aplicável
 
 output:
   tipo:    arquivo | codigo | relatorio
@@ -181,24 +184,25 @@ hitl:
   canal:            telegram | slack
 ```
 
-va |
+| Unidade | Recomendacao | Motivo |
 |---|---|---|
-| 1 EPIC | ✅ 1 Cloud Agent | Escopo isolado, branch única, PR revisável |
-| 1 Fase inteira | ❌ Não usar | Contexto grande demais, falhas afetam múltiplos épicos |
-| 1 Issue | ⚠️ Somente se a issue for trivial (SP=1) | Overhead de VM desnecessário |
+| 1 Issue | ✅ Padrao canonico | Menor contexto, maior precisao, PR mais revisavel |
+| 1 Epico | ✅ Para planejamento, nao para execucao continua | Bom para decompor e consolidar contexto |
+| 1 Fase inteira | ❌ Nao usar | Contexto grande demais, falhas afetam multiplos epicos |
 
-**Fluxo padrão por EPIC:**
-1. Abrir `PROJETOS/<PROJETO>/F<N>-<FASE>/PROMPT-EPIC-FN-NN.md`
-2. Copiar conteúdo completo → colar no Cloud Agent (`Ctrl+E`)
-3. Selecionar branch `main` como partida
-4. Aguardar PR → revisar → merge
-5. Só então disparar o agente do próximo EPIC
+**Fluxo padrao por issue:**
+1. Abrir o `EPIC-FN-NN-<NOME>.md` para contexto e indice
+2. Abrir a proxima `issues/ISSUE-FN-NN-MMM-<NOME>.md` elegivel
+3. Copiar o prompt de execucao da issue para o agente
+4. Selecionar a branch de partida
+5. Revisar o resultado da issue antes de seguir para a proxima
 
 **Arquivos que cada agente DEVE ler primeiro (obrigatório em todo prompt):**
 1. `AGENTS.md` — gotchas de ambiente
 2. `PRD-<PROJETO>.md` — normativo
-3. `EPIC-FN-NN-<NOME>.md` — escopo do trabalho
-4. Arquivos de código referenciados no EPIC
+3. `EPIC-FN-NN-<NOME>.md` — contexto e consolidacao do epico
+4. `issues/ISSUE-FN-NN-MMM-<NOME>.md` — escopo executavel
+5. Arquivos de código referenciados na issue
 
 ### 4.3 Checkpoints HITL por Tipo de Prompt
 
@@ -227,28 +231,35 @@ va |
 
 ### 5.1 Estrutura Canônica
 
-```
+```text
 PROJETOS/
 ├── COMUM/
-│   ├── FRAMEWORK-REF.md          ← este arquivo
+│   ├── scrum-framework-master.md ← este arquivo
 │   ├── SCRUM-GOV.md              ← extrato da Parte 1 (standalone)
 │   ├── DECISION-PROTOCOL.md      ← extrato da Parte 2 (standalone)
 │   ├── SPRINT-LIMITS.md          ← extrato da Parte 3 (standalone)
-│   └── WORK-ORDER-SPEC.md        ← extrato da Parte 4 (standalone)
+│   ├── WORK-ORDER-SPEC.md        ← extrato da Parte 4 (standalone)
+│   └── ISSUE-FIRST-TEMPLATES.md  ← templates e links canonicos
 │
 └── <NOME-DO-PROJETO>/
     ├── PRD-<NOME-DO-PROJETO>.md
-    ├── DECISION-PROTOCOL.md      ← decisões específicas do projeto
-    ├── feito/                    ← épicos/issues arquivados
+    ├── DECISION-PROTOCOL.md      ← decisoes especificas do projeto
+    ├── feito/                    ← fases arquivadas
     │
     ├── F1-<NOME-DA-FASE>/
     │   ├── F1_<PROJETO>_EPICS.md
     │   ├── EPIC-F1-01-<NOME>.md
-    │   └── EPIC-F1-02-<NOME>.md
+    │   ├── issues/
+    │   │   ├── ISSUE-F1-01-001-<NOME>.md
+    │   │   └── ISSUE-F1-01-002-<NOME>.md
+    │   └── sprints/
+    │       └── SPRINT-F1-01.md
     │
     └── F2-<NOME-DA-FASE>/
         ├── F2_<PROJETO>_EPICS.md
-        └── EPIC-F2-01-<NOME>.md
+        ├── EPIC-F2-01-<NOME>.md
+        └── issues/
+            └── ISSUE-F2-01-001-<NOME>.md
 ```
 
 ### 5.2 Convenção de Nomenclatura
@@ -259,6 +270,8 @@ PROJETOS/
 | Pasta de fase | `F<N>-<NOME-MAIUSCULO-HIFENS>` | `F3-REFATORACAO-CLI` |
 | Arquivo de épicos | `F<N>_<PROJETO-UNDERLINE>_EPICS.md` | `F3_LEAD_ETL_FUSION_EPICS.md` |
 | Arquivo de épico | `EPIC-F<N>-<NN>-<NOME-HIFENS>.md` | `EPIC-F3-02-REMOCAO-DUPLICACOES.md` |
+| Arquivo de issue | `ISSUE-F<N>-<NN>-<MMM>-<NOME-HIFENS>.md` | `ISSUE-F3-02-004-REMOVER-HELPER-LEGADO.md` |
+| Arquivo de sprint | `SPRINT-F<N>-<NN>.md` | `SPRINT-F3-01.md` |
 | ID de issue | `<PROJ>-F<N>-<NN>-<MMM>` | `ETL-F3-02-004` |
 | ID de tarefa | `<ISSUE-ID>-T<N>` | `ETL-F3-02-004-T2` |
 | Work Order | `WO-<PROJ>-<YYYY-MM-DD>-<SEQ>` | `WO-ETL-2026-03-03-001` |
@@ -277,98 +290,24 @@ PROJETOS/
 
 ## PARTE 6 — Templates
 
-### 6.1 Template: PRD-\<PROJETO\>.md
+Os templates canonicos para novos projetos `issue-first` vivem em:
 
-```markdown
-# PRD — <Nome do Projeto>
-**version:** 1.0.0 | **last_updated:** YYYY-MM-DD
-**status:** rascunho | em revisão | aprovado
-**owner:** <nome>
+- `PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md`
 
----
-## 1. Visão do Produto
-## 2. Objetivo Central e Resultado Mensurável
-## 3. Contexto e Motivação
-## 4. Escopo
-### Dentro do escopo
-### Fora do escopo (explícito)
-## 5. Requisitos Funcionais
-| ID | Requisito | Prioridade | Status |
-|---|---|---|---|
-| RF-01 | | Must | 🔲 |
-## 6. Requisitos Não-Funcionais
-| ID | Requisito | Meta |
-|---|---|---|
-## 7. Stack e Decisões Técnicas Vinculantes
-## 8. Fases Previstas
-| Fase | Nome | Objetivo | DoD resumido | Status |
-|---|---|---|---|---|
-## 9. Definition of Done do Projeto
-## 10. Riscos Principais
-## 11. Dependências Externas
-## 12. Glossário
-```
+Resumo obrigatorio:
 
-### 6.2 Template: F\<N\>\_\<PROJETO\>\_EPICS.md
+- `PRD-<PROJETO>.md`: objetivo, escopo, fases, riscos e definicoes vinculantes
+- `F<N>_<PROJETO>_EPICS.md`: objetivo da fase, gate, tabela de epicos e dependencias entre epicos
+- `EPIC-F<N>-<NN>-<NOME>.md`: manifesto do epico com DoD, artifact minimo e indice das issues
+- `issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md`: unidade executavel com user story, TDD, criterios, DoD e tarefas
+- `sprints/SPRINT-F<N>-<NN>.md`: manifesto de selecao da sprint, sem duplicar detalhes da issue
 
-```markdown
-# Épicos — <Projeto> / F<N> — <Nome da Fase>
-**version:** 1.0.0 | **last_updated:** YYYY-MM-DD
-**projeto:** <Nome> | **fase:** F<N>
-**prd:** ../PRD-<PROJETO>.md
-**status:** rascunho | aprovado
+### 6.1 Regra de Separacao de Responsabilidades
 
----
-## Objetivo da Fase
-## Épicos
-
-| ID | Nome | Objetivo | Depende de | Status | Arquivo |
-|---|---|---|---|---|---|
-| EPIC-F<N>-01 | | | nenhuma | 🔲 | `EPIC-F<N>-01-<NOME>.md` |
-
-## Dependências entre Épicos
-## Definition of Done da Fase
-- [ ]
-## Notas e Restrições
-```
-
-### 6.3 Template: EPIC-F\<N\>-\<NN\>-\<NOME\>.md
-
-```markdown
-# EPIC-F<N>-<NN> — <Nome do Épico>
-**version:** 1.0.0 | **last_updated:** YYYY-MM-DD
-**projeto:** <Nome> | **fase:** F<N> | **status:** 🔲
-
----
-## 1. Resumo do Épico
-## 2. Contexto Arquitetural
-## 3. Riscos e Armadilhas
-## 4. Definition of Done do Épico
-- [ ]
-
----
-## Issues
-
-### <PROJ>-F<N>-<NN>-001 — <Título>
-**tipo:** feature | refactor | bugfix | docs | infra
-**sp:** <N> | **prioridade:** alta | média | baixa | **status:** 🔲
-**depende de:** (issue ID ou nenhuma)
-
-**Descrição:**
-
-**Critérios de Aceitação:**
-- [ ] AC-1:
-
-**Tarefas:**
-- [ ] T1:
-- [ ] T2:
-
-**Notas técnicas:**
-
----
-### <PROJ>-F<N>-<NN>-002 — <Título>
-<!-- repetir bloco -->
-```
+- epico consolida; issue detalha
+- issue executa; sprint seleciona
+- link Markdown relativo e canonico
+- wikilink qualificado e complementar
 
 ---
 
@@ -391,8 +330,8 @@ Sua tarefa é ler o PRD do projeto indicado e propor a estrutura completa de fas
 
 Fontes de verdade (carregue e respeite):
 - PRD: {{prd_path}}
-- Governança: PROJETOS/COMUM/FRAMEWORK-REF.md (Partes 1, 3)
-- Protocolo de decisão: PROJETOS/COMUM/FRAMEWORK-REF.md (Parte 2)
+- Governança: PROJETOS/COMUM/scrum-framework-master.md (Partes 1, 3)
+- Protocolo de decisão: PROJETOS/COMUM/scrum-framework-master.md (Parte 2)
 
 Regras não negociáveis:
 - Cada fase: objetivo único, entregável verificável, DoD testável
@@ -437,8 +376,8 @@ Sua tarefa é ler o PRD e o objetivo da fase indicada e produzir o arquivo de é
 
 Fontes de verdade (carregue e respeite):
 - PRD: {{prd_path}}
-- Governança: PROJETOS/COMUM/FRAMEWORK-REF.md (Partes 1, 3, 5)
-- Sprint limits: PROJETOS/COMUM/FRAMEWORK-REF.md (Parte 3)
+- Governança: PROJETOS/COMUM/scrum-framework-master.md (Partes 1, 3, 5)
+- Sprint limits: PROJETOS/COMUM/scrum-framework-master.md (Parte 3)
 
 Regras não negociáveis:
 - Cada épico: escopo único, uma responsabilidade técnica
@@ -475,7 +414,7 @@ observacoes:   {{restrições adicionais}}
 
 ---
 
-### PROMPT-03 — Épico → Issues e Tarefas
+### PROMPT-03 — Épico → Manifesto e Arquivos de Issue
 
 **Work Order tipo:** planejamento de épico  
 **Modelo:** `openrouter-main`  
@@ -484,13 +423,13 @@ observacoes:   {{restrições adicionais}}
 ```
 Você é o OpenClaw atuando como engenheiro sênior especializado em decomposição técnica.
 
-Sua tarefa é ler o contexto do projeto e produzir o arquivo completo do épico indicado,
-com todas as issues e tarefas detalhadas.
+Sua tarefa e ler o contexto do projeto e produzir o manifesto do epico indicado
+e todos os arquivos de issue correspondentes no padrao `issue-first`.
 
 Fontes de verdade (carregue e respeite):
 - PRD: {{prd_path}}
 - Arquivo de épicos da fase: {{epics_path}}
-- Governança: PROJETOS/COMUM/FRAMEWORK-REF.md (todas as partes)
+- Governança: PROJETOS/COMUM/scrum-framework-master.md (todas as partes)
 
 Objetivos não negociáveis:
 - Issues com escopo único — sem responsabilidades mistas
@@ -500,25 +439,20 @@ Objetivos não negociáveis:
 - Issues ≥ 8 SP devem ser divididas antes de apresentar
 - Ao planejar issues: considerar arquitetura modular, manutenibilidade e evitar monolitos (arquivos/funções grandes demais)
 
-Estrutura obrigatória (Markdown puro — template 6.3):
-1. Cabeçalho completo
-2. Resumo do épico (2–4 frases)
-3. Contexto arquitetural relevante
-4. Riscos e armadilhas identificados
-5. Definition of Done do épico
-6. Para cada issue:
-   a. ID: {{PROJ}}-F<N>-<NN>-<MMM>
-   b. Título descritivo
-   c. Tipo / SP / Prioridade / Status 🔲
-   d. Dependências
-   e. Descrição (3–6 linhas)
-   f. Critérios de Aceitação (verificáveis)
-   g. Tarefas (atômicas, T1/T2/T3...)
-   h. Notas técnicas
-7. Tabela-resumo das issues
-8. Notas de implementação globais do épico
+Estrutura obrigatoria:
+1. Arquivo `EPIC-*.md` com objetivo, contexto, DoD, artifact minimo e tabela indice das issues
+2. Um arquivo `issues/ISSUE-*.md` para cada issue do epico
+3. Em cada issue:
+   a. user story
+   b. contexto tecnico minimo
+   c. plano TDD (`Red`, `Green`, `Refactor`)
+   d. criterios de aceitacao verificaveis
+   e. DoD da issue
+   f. tarefas decupadas
+   g. arquivos reais e artifact minimo
+4. Navegacao por links Markdown e wikilinks qualificados
 
-Output: criar arquivo {{output_path}}
+Output: criar `{{output_path}}` e os arquivos `issues/ISSUE-*.md` correspondentes
 HITL: apresentar rascunho ao PO antes de salvar como definitivo.
 Não traga boas práticas genéricas não referenciadas nos docs do projeto.
 
@@ -529,6 +463,7 @@ epico:         EPIC-F{{N}}-{{NN}}-{{NOME-DO-EPICO}}
 prd_path:      PROJETOS/{{projeto}}/PRD-{{projeto}}.md
 epics_path:    PROJETOS/{{projeto}}/F{{N}}-{{FASE}}/F{{N}}_{{PROJETO}}_EPICS.md
 output_path:   PROJETOS/{{projeto}}/F{{N}}-{{FASE}}/EPIC-F{{N}}-{{NN}}-{{NOME}}.md
+issues_dir:    PROJETOS/{{projeto}}/F{{N}}-{{FASE}}/issues/
 observacoes:   {{ex: "seguir ADR-03", "não criar novos endpoints"}}
 ```
 
@@ -548,16 +483,17 @@ Sua tarefa é implementar a issue indicada, respeitando integralmente os critér
 de aceitação e as restrições arquiteturais do projeto.
 
 Fontes de verdade (carregue e respeite):
-- Arquivo do épico com a issue: {{epic_path}}
+- Arquivo da issue: {{issue_path}}
+- Arquivo do epico: {{epic_path}}
 - PRD: {{prd_path}}
-- Governança: PROJETOS/COMUM/FRAMEWORK-REF.md (Partes 1, 2, 4)
+- Governança: PROJETOS/COMUM/scrum-framework-master.md (Partes 1, 2, 4)
 
 Objetivos não negociáveis:
 - Implementar exatamente os Critérios de Aceitação — nem mais, nem menos
 - Não introduzir dependências não previstas no PRD ou nos docs de arquitetura
 - Manter ou aumentar testabilidade
 - Registrar qualquer desvio necessário como proposta de DECISÃO (Parte 2)
-- Ao final: atualizar status da issue para ✅ no arquivo do épico
+- Ao final: atualizar status da issue no proprio arquivo e no indice do epico
 
 Princípios de código (pensar na arquitetura antes de codificar):
 - Modularidade: responsabilidade única por módulo/função, evitar arquivos e funções monolíticas
@@ -582,6 +518,7 @@ fase:          F{{N}} — {{NOME-DA-FASE}}
 epico:         EPIC-F{{N}}-{{NN}}-{{NOME}}
 issue:         {{PROJ}}-F{{N}}-{{NN}}-{{MMM}}
 epic_path:     PROJETOS/{{projeto}}/F{{N}}-{{FASE}}/EPIC-F{{N}}-{{NN}}-{{NOME}}.md
+issue_path:    PROJETOS/{{projeto}}/F{{N}}-{{FASE}}/issues/ISSUE-F{{N}}-{{NN}}-{{MMM}}-{{NOME-DA-ISSUE}}.md
 prd_path:      PROJETOS/{{projeto}}/PRD-{{projeto}}.md
 observacoes:   {{restrições específicas desta execução}}
 ```
@@ -604,7 +541,7 @@ Fontes de verdade (carregue e respeite):
 - Arquivo de épicos da fase: {{epics_path}}
 - Todos os arquivos de épico da fase: PROJETOS/{{projeto}}/F{{N}}-{{FASE}}/EPIC-*.md
 - PRD: {{prd_path}}
-- Governança: PROJETOS/COMUM/FRAMEWORK-REF.md (Partes 1, 2)
+- Governança: PROJETOS/COMUM/scrum-framework-master.md (Partes 1, 2)
 
 Estrutura obrigatória da resposta:
 1. Resumo do estado da fase (2–3 frases)
@@ -647,15 +584,15 @@ observacoes:   {{contexto adicional}}
 2. OpenClaw propõe fases  ──► HITL: PO aprova fases
         │
         ▼ Work Order: PROMPT-02 por fase (modelo: review)
-3. OpenClaw cria F<N>_<PROJETO>_EPICS.md  ──► HITL: PO aprova épicos
+3. OpenClaw cria F<N>_<PROJETO>_EPICS.md  ──► HITL: PO aprova epicos
         │
         ▼ Work Order: PROMPT-03 por épico (modelo: main)
-4. OpenClaw cria EPIC-F<N>-<NN>-<NOME>.md  ──► HITL: PO revisa issues
+4. OpenClaw cria EPIC-F<N>-<NN>-<NOME>.md + `issues/ISSUE-*.md`  ──► HITL: PO revisa issues
         │
         ▼  SPRINT PLANNING: PO seleciona issues do sprint (≤ 13 SP)
         │
         ▼ Work Order: PROMPT-04 por issue (modelo: main)
-5. OpenClaw executa issue  ──► HITL: PO aprova antes de commit
+5. OpenClaw executa uma issue por vez  ──► HITL: PO aprova antes de commit
         │
         ▼  (repetir PROMPT-04 até épico completo)
         │

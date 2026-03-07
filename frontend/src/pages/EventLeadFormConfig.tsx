@@ -237,7 +237,7 @@ export default function EventLeadFormConfig() {
       setCamposAtivos(initialAtivos);
       setCamposObrigatorios(initialObrigatorios);
     } catch (err: any) {
-      setError(err?.message || "Erro ao carregar configuraÃ§Ã£o do formulÃ¡rio");
+      setError(err?.message || "Erro ao carregar configuração do formulário");
     } finally {
       setLoading(false);
     }
@@ -303,13 +303,13 @@ export default function EventLeadFormConfig() {
       setCamposAtivos(nextAtivos);
       setCamposObrigatorios(nextObrigatorios);
 
-      setSnackbar({ open: true, message: "ConfiguraÃ§Ã£o salva com sucesso.", severity: "success" });
+      setSnackbar({ open: true, message: "Configuração salva com sucesso.", severity: "success" });
       void loadPreview();
       void loadGovernanceData();
     } catch (err: any) {
       setSnackbar({
         open: true,
-        message: err?.message || "Erro ao salvar configuraÃ§Ã£o.",
+        message: err?.message || "Erro ao salvar configuração.",
         severity: "error",
       });
     } finally {
@@ -341,8 +341,8 @@ export default function EventLeadFormConfig() {
   }, [loadGovernanceData]);
 
   const subtitle = Number.isFinite(eventoId)
-    ? `Configure o tema e os campos do formulÃ¡rio do evento #${eventoId}.`
-    : "Configure o tema e os campos do formulÃ¡rio do evento.";
+    ? `Configure o tema e os campos do formulário do evento #${eventoId}.`
+    : "Configure o tema e os campos do formulário do evento.";
 
   const previewChecklist = useMemo<LandingPreviewChecklistItem[]>(() => {
     if (!previewData) return [];
@@ -399,7 +399,7 @@ export default function EventLeadFormConfig() {
       >
         <Box>
           <Typography variant="h4" fontWeight={800}>
-            FormulÃ¡rio de Lead
+            Formulário de Lead
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {subtitle}
@@ -424,7 +424,7 @@ export default function EventLeadFormConfig() {
               disabled={!config || loading || saving}
               sx={{ textTransform: "none", fontWeight: 800 }}
             >
-              PrÃ³ximo
+              Próximo
             </Button>
             <Button
               variant="contained"
@@ -671,7 +671,7 @@ export default function EventLeadFormConfig() {
 
             <Box>
               <Typography variant="subtitle1" fontWeight={900} gutterBottom>
-                Campos possÃ­veis
+                Campos possíveis
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Marque os campos que estarao ativos no formulario e salve para persistir.
@@ -735,7 +735,7 @@ export default function EventLeadFormConfig() {
                                 onChange={(_, checked) => setCampoObrigatorio(nome, checked)}
                               />
                             }
-                            label="ObrigatÃ³rio"
+                            label="Obrigatório"
                           />
                         </Stack>
                       </Stack>
@@ -745,7 +745,7 @@ export default function EventLeadFormConfig() {
               </Box>
             ) : (
               <Typography variant="body2" color="text.secondary">
-                Nenhum campo disponÃ­vel.
+                Nenhum campo disponível.
               </Typography>
             )}
             <Divider />

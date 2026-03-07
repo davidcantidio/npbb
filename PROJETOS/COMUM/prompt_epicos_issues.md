@@ -1,130 +1,139 @@
-# Prompt de Execução — Criação dos Épicos e Issues do Projeto ETL de Leads
+# Prompt de Planejamento - Epicos e Issues no Padrao Issue-First
 
 ## Contexto
 
-Você é um agente de engenharia responsável por materializar o planejamento de um projeto no repositório `npbb`. O PRD de referência é a fusão do ETL de leads com o mecanismo de importação do backend (arquivo `PROJETOS/LEAD-ETL-FUSION/PRD-LEAD-ETL-FUSION.md`).
+Voce e um agente de engenharia responsavel por materializar o planejamento de um novo projeto no repositorio `npbb`.
 
-Seu objetivo é criar **todos os arquivos de planejamento** — `EPICS.md` de cada fase e os arquivos individuais de épico — seguindo rigorosamente os templates e regras de nomeação definidos no PRD (seção 9).
+Seu objetivo e criar os arquivos de planejamento da fase e do epico no padrao `issue-first`, em que:
+
+- o arquivo da fase consolida os epicos
+- o arquivo do epico funciona como manifesto e indice
+- cada issue tem arquivo proprio em `issues/ISSUE-*.md`
+- a sprint, quando existir, vira apenas um manifesto em `sprints/SPRINT-*.md`
+
+Use como fontes normativas:
+
+- `PROJETOS/COMUM/scrum-framework-master.md`
+- `PROJETOS/COMUM/SCRUM-GOV.md`
+- `PROJETOS/COMUM/SPRINT-LIMITS.md`
+- `PROJETOS/COMUM/WORK-ORDER-SPEC.md`
+- `PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md`
 
 ---
 
 ## Tarefa
 
-Crie a seguinte estrutura de arquivos dentro da pasta `PROJETOS/LEAD-ETL-FUSION/`, populando cada arquivo com conteúdo real (não placeholders):
+Criar, para a fase e o epico indicados, a seguinte estrutura minima:
 
-```
-PROJETOS/
-└── LEAD-ETL-FUSION/
-    ├── F1-NUCLEO-ETL/
-    │   ├── EPICS.md
-    │   ├── EPIC-F1-01-EXTRAIR-NUCLEO-COMPARTILHADO.md
-    │   └── EPIC-F1-02-MODELO-CANONICO-LEAD-ROW.md
-    │
-    ├── F2-INTEGRACAO-BACKEND/
-    │   ├── EPICS.md
-    │   ├── EPIC-F2-01-USECASE-ETL-IMPORT.md
-    │   ├── EPIC-F2-02-ENDPOINTS-PREVIEW-COMMIT.md
-    │   └── EPIC-F2-03-SCHEMAS-E-DEPRECACAO-NORMALIZE.md
-    │
-    ├── F3-REFATORACAO-CLI/
-    │   ├── EPICS.md
-    │   ├── EPIC-F3-01-ORCHESTRATOR-CONSUME-CORE.md
-    │   └── EPIC-F3-02-REMOCAO-DUPLICACOES.md
-    │
-    └── F4-UI-IMPORTACAO-AVANCADA/
-        ├── EPICS.md
-        ├── EPIC-F4-01-TAB-IMPORTACAO-AVANCADA.md
-        ├── EPIC-F4-02-DQ-REPORT-WIDGET.md
-        └── EPIC-F4-03-COERENCIA-NORMATIVA-E-GATE.md
+```text
+PROJETOS/<PROJETO>/
+  F<N>-<NOME-DA-FASE>/
+    F<N>_<PROJETO>_EPICS.md
+    EPIC-F<N>-<NN>-<NOME>.md
+    issues/
+      ISSUE-F<N>-<NN>-001-<NOME>.md
+      ISSUE-F<N>-<NN>-002-<NOME>.md
+    sprints/
+      SPRINT-F<N>-01.md
 ```
 
----
-
-## Regras obrigatórias
-
-### Nomeação e frontmatter
-- Todo arquivo começa com frontmatter YAML com os campos: `doc_id`, `version` (`"1.0"`), `status` (`"todo"`), `owner` (`"PM"`), `last_updated` (data de hoje).
-- `doc_id` é o nome do arquivo sem extensão.
-- `status` de todos os épicos e issues começa como `"todo"`.
-
-### Conteúdo dos `EPICS.md`
-Cada `EPICS.md` deve ter:
-- **Objetivo da Fase** — uma frase que descreve o resultado concreto ao final da fase.
-- **Gate de Saída da Fase** — critério objetivo de conclusão (ex: suite de testes passando, endpoint respondendo, `make eval-integrations: PASS`).
-- **Tabela de Épicos** com colunas: `Epic ID | Nome | Objetivo | Status | Documento`.
-- **Escopo desta Entrega** — o que está incluso e o que está explicitamente fora.
-
-### Conteúdo dos arquivos de épico
-Cada arquivo de épico deve ter:
-- **Objetivo** — resultado técnico mensurável.
-- **Resultado de Negócio Mensurável** — impacto verificável no sistema ou no usuário.
-- **Definition of Done** — lista com critérios específicos e verificáveis para este épico (não genéricos).
-- **Issues** — entre 2 e 4 issues por épico, cada uma com:
-  - User story no formato `Como <papel>, quero <ação> para <resultado>`.
-  - **Plano TDD** com os 3 passos: `Red`, `Green`, `Refactor`.
-  - **Critérios de aceitação** no formato `Given / When / Then` (mínimo 2 por issue).
-- **Artifact Mínimo do Épico** — path do arquivo de evidência a ser gerado em `artifacts/`.
-- **Dependências** — links relativos para PRD, SCRUM-GOV e DECISION-PROTOCOL.
-
-### Regras de conteúdo
-- Nenhum placeholder como `"..."`, `"<texto>"` ou `"TODO"` — todo campo deve ter conteúdo real derivado do PRD.
-- Ao planejar épicos e issues: considerar arquitetura modular, manutenibilidade e evitar monolitos (arquivos/funções grandes demais); priorizar responsabilidade única, baixo acoplamento e alta coesão.
-- Issues de épicos diferentes não se referenciam diretamente — dependências entre épicos passam apenas pelo `EPICS.md` da fase.
-- O plano TDD de cada issue deve mencionar arquivos reais do repositório (ex: `tests/core/test_column_normalize.py`, `backend/tests/test_leads_import_etl_endpoint.py`).
-- Critérios de aceitação devem ser verificáveis por um agente automatizado ou por inspeção direta de output — sem critérios subjetivos.
-- Ao concluir uma fase, a pasta da fase deve ser movida para `PROJETOS/LEAD-ETL-FUSION/feito/`, com links e automações ajustados no mesmo change set.
+Se o PO ainda nao tiver selecionado a sprint, o arquivo em `sprints/` pode ser omitido.
 
 ---
 
-## Conteúdo esperado por fase
+## Regras Obrigatorias
 
-### F1 — Núcleo ETL
+### Nomeacao e frontmatter
 
-**Gate de saída:** todos os testes existentes em `backend/tests/` e `etl/` continuam passando após a migração dos módulos para `core/leads_etl/`.
+- todo arquivo novo comeca com frontmatter YAML contendo `doc_id`, `version`, `status`, `owner`, `last_updated`
+- `doc_id` e o nome do arquivo sem extensao
+- novos `EPIC-*.md`, `ISSUE-*.md` e `SPRINT-*.md` iniciam com status `todo`
 
-**EPIC-F1-01** cobre a migração física de `etl/transform/column_normalize.py`, `etl/transform/segment_mapper.py`, `etl/validate/framework.py` e `etl/validate/checks_*.py` para `core/leads_etl/`, mantendo reexports nos paths originais.
+### Conteudo do arquivo de fase
 
-**EPIC-F1-02** cobre a criação de `core/leads_etl/models/lead_row.py` — modelo Pydantic canônico com todos os campos possíveis de um lead, sem dependência de FastAPI, SQLModel ou ORM.
+O arquivo `F<N>_<PROJETO>_EPICS.md` deve conter:
+
+- objetivo da fase
+- gate de saida objetivo
+- tabela de epicos
+- dependencias entre epicos
+- escopo dentro e fora
+
+### Conteudo do arquivo de epico
+
+O arquivo `EPIC-*.md` deve conter:
+
+- objetivo tecnico mensuravel
+- resultado de negocio mensuravel
+- contexto arquitetural
+- Definition of Done do epico
+- tabela indice das issues com colunas `Issue ID | Nome | Objetivo | SP | Status | Documento`
+- artifact minimo do epico
+- dependencias com links Markdown canonicos
+- navegacao rapida com wikilinks qualificados
+
+O epico nao deve duplicar criterios detalhados, DoD da issue ou tarefas decupadas se a issue possuir arquivo proprio.
+
+### Conteudo dos arquivos de issue
+
+Cada `issues/ISSUE-*.md` deve conter:
+
+- user story
+- contexto tecnico minimo
+- plano TDD com `Red`, `Green`, `Refactor`
+- criterios de aceitacao no formato `Given / When / Then`
+- Definition of Done da issue
+- tarefas decupadas e concluiveis
+- arquivos reais do repositorio a serem tocados ou testados
+- artifact minimo ou evidencia verificavel
+- dependencias com links Markdown
+- navegacao rapida com wikilinks qualificados
+
+### Conteudo do arquivo de sprint
+
+Cada `sprints/SPRINT-*.md` deve conter apenas:
+
+- objetivo da sprint
+- capacidade declarada
+- tabela de issues selecionadas
+- riscos e bloqueios
+- decisao de encerramento
+
+Nao repetir criterios de aceitacao, DoD ou tarefas da issue no arquivo de sprint.
 
 ---
 
-### F2 — Integração Backend
+## Regras de Conteudo
 
-**Gate de saída:** `POST /leads/import/etl/preview` e `POST /leads/import/etl/commit` respondem corretamente para um XLSX fora do padrão; testes de endpoint passando.
-
-**EPIC-F2-01** cobre `backend/app/modules/leads_publicidade/application/leads_import_etl_usecases.py` — use case que orquestra extract → transform → validate → persist, com assinatura `async def import_leads_with_etl(file, evento_id, db, strict) -> ImportEtlResult`.
-
-**EPIC-F2-02** cobre os dois novos endpoints em `backend/app/routers/leads.py`: `/leads/import/etl/preview` (dry-run, retorna DQ report + session_token) e `/leads/import/etl/commit` (persiste linhas aprovadas dado session_token).
-
-**EPIC-F2-03** cobre a criação de `backend/app/schemas/lead_import_etl.py` (schemas `ImportEtlPreviewResponse`, `DQCheckResult`, `ImportEtlResult`) e a marcação de `backend/app/utils/lead_import_normalize.py` como deprecated com comentário canônico apontando para `core/leads_etl/transform/column_normalize`.
-
----
-
-### F3 — Refatoração CLI
-
-**Gate de saída:** `cli_extract.py` e `cli_spec.py` continuam funcionando sem alterações de interface; `etl/orchestrator/s*_core.py` importa de `core/leads_etl/` em vez de paths relativos internos.
-
-**EPIC-F3-01** cobre a atualização dos arquivos `etl/orchestrator/s1_core.py` até `s4_core.py` para importar `column_normalize`, `segment_mapper` e o framework de validação de `core/leads_etl/`.
-
-**EPIC-F3-02** cobre a remoção das duplicações em `etl/transform/` (mantendo apenas os reexports criados na F1) e a deleção definitiva de `backend/app/utils/lead_import_normalize.py` após confirmação de cobertura de testes.
+- nenhum placeholder como `...`, `<texto>` ou `TODO`
+- toda issue deve representar um unico resultado tecnico verificavel
+- toda issue deve caber em uma sprint e respeitar `SPRINT-LIMITS.md`
+- tarefas devem ser atomicas e executaveis sem abrir novo escopo
+- o planejamento deve priorizar modularidade, baixo acoplamento e evitar monolitos
+- dependencias entre epicos aparecem no arquivo da fase; dependencias entre issues do mesmo epico aparecem na propria issue
 
 ---
 
-### F4 — UI Importação Avançada
+## Convencao de Links
 
-**Gate de saída:** `make eval-integrations: PASS` e `make ci-quality: PASS`; tab "Importação avançada" funcional em `/leads`; `artifacts/phase-f4/validation-summary.md` gerado com decisão `promote | hold`.
-
-**EPIC-F4-01** cobre a adição de uma tab "Importação avançada" no frontend em `/leads`, que consome `POST /leads/import/etl/preview` e exibe o DQ report antes de permitir o commit.
-
-**EPIC-F4-02** cobre o componente de DQ report no frontend — tabela expansível com colunas `check_name | severity | affected_rows | sample`, botão "Importar mesmo assim" habilitado apenas para linhas com `severity=warning` (bloqueado para `severity=error`).
-
-**EPIC-F4-03** é o épico obrigatório de coerência normativa e gate. Deve conter exatamente as 3 issues abaixo:
-- **ISSUE-F4-03-01:** Validar consistência entre `core/leads_etl/` e contratos documentados — `make eval-integrations` falha se houver divergência entre implementação e modelo canônico.
-- **ISSUE-F4-03-02:** Validar cobertura de testes cross-camada — `make ci-quality` falha se não houver teste end-to-end cobrindo extract → transform → validate → persist.
-- **ISSUE-F4-03-03:** Consolidar evidência de fase em `artifacts/phase-f4/validation-summary.md` com status de todos os épicos F1–F4 e decisão `promote | hold` com justificativa.
+- links Markdown relativos sao a referencia canonica
+- wikilinks sao complementares e nunca unicos
+- usar wikilinks qualificados por caminho local
+- exemplos validos:
+  - `[Epic](../EPIC-F1-01-NOME.md)`
+  - `[PRD](../../PRD-PROJETO.md)`
+  - `[[../EPIC-F1-01-NOME]]`
+  - `[[../../PRD-PROJETO]]`
 
 ---
 
-## Output esperado
+## Output Esperado
 
-Ao final da execução, todos os arquivos listados na estrutura acima devem existir no repositório com conteúdo completo. Nenhum arquivo deve ter campos vazios ou placeholders. Execute um `find PROJETOS/LEAD-ETL-FUSION -type f -name "*.md" | sort` ao final e liste os arquivos criados como confirmação.
+Ao final, entregar:
+
+1. `F<N>_<PROJETO>_EPICS.md`
+2. `EPIC-F<N>-<NN>-<NOME>.md`
+3. todos os `issues/ISSUE-*.md` do epico
+4. opcionalmente `sprints/SPRINT-*.md` se a selecao da sprint ja estiver definida
+
+Cada arquivo deve estar pronto para salvar, sem campos vazios e com navegacao funcional por links Markdown e wikilinks qualificados.

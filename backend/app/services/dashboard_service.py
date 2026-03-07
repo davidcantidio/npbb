@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 from statistics import median
 
-from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, Usuario, UsuarioTipo, now_utc
@@ -105,9 +104,11 @@ def _build_filters(params: AgeAnalysisQuery, current_user: Usuario) -> list:
     if params.evento_id is not None:
         filters.append(Evento.id == params.evento_id)
     if params.data_inicio is not None:
-        filters.append(func.date(Lead.data_criacao) >= params.data_inicio)
+        start_at, _ = _day_window_bounds(params.data_inicio)
+        filters.append(Lead.data_criacao >= start_at)
     if params.data_fim is not None:
-        filters.append(func.date(Lead.data_criacao) <= params.data_fim)
+        _, end_exclusive = _day_window_bounds(params.data_fim)
+        filters.append(Lead.data_criacao < end_exclusive)
     return filters
 
 
@@ -149,15 +150,37 @@ def _load_lead_event_facts(session: Session, filters: list) -> list[LeadEventFac
         facts.append(
             LeadEventFact(
                 evento_id=int(evento_id),
-                evento_nome=str(evento_nome),
-                cidade=str(cidade),
-                estado=str(estado),
+                evento_nome=_safe_text(evento_nome),
+                cidade=_safe_text(cidade),
+                estado=_safe_text(estado),
                 lead_id=int(lead_id),
                 data_nascimento=data_nascimento,
                 is_cliente_bb=is_cliente_bb,
             )
         )
     return facts
+
+
+def _day_window_bounds(value: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(value, time.min, tzinfo=timezone.utc)
+    return start, start + timedelta(days=1)
+
+
+def _safe_text(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _accumulate_link_metrics(
+    event_accumulator: EventAccumulator,
+    consolidated_accumulator: EventAccumulator,
+    fact: LeadEventFact,
+    reference_date: date,
+) -> None:
+    # Regra de produto: consolidado conta por vinculo evento<->lead, sem deduplicar por lead_id.
+    _consume_fact(event_accumulator, fact, reference_date=reference_date)
+    _consume_fact(consolidated_accumulator, fact, reference_date=reference_date)
 
 
 def _accumulator_from_fact(fact: LeadEventFact) -> EventAccumulator:
@@ -231,6 +254,7 @@ def _resolve_bb_metrics(
     if cobertura_bb_pct < bb_coverage_threshold_pct:
         return cobertura_bb_pct, None, None
 
+    # Contrato atual do endpoint: percentual BB sobre a base total do evento/consolidado.
     return (
         cobertura_bb_pct,
         accumulator.bb_clients_volume,
@@ -307,7 +331,7 @@ def build_age_analysis(
     current_user: Usuario,
 ) -> AgeAnalysisResponse:
     filters = _build_filters(params, current_user)
-    facts = _load_lead_event_facts(session, filters)
+    link_facts = _load_lead_event_facts(session, filters)
     reference_date = date.today()
     bb_coverage_threshold_pct = _read_bb_coverage_threshold_pct()
 
@@ -319,13 +343,17 @@ def build_age_analysis(
         estado="",
     )
 
-    for fact in facts:
+    for fact in link_facts:
         event_accumulator = accumulators.setdefault(
             fact.evento_id,
             _accumulator_from_fact(fact),
         )
-        _consume_fact(event_accumulator, fact, reference_date=reference_date)
-        _consume_fact(consolidated_accumulator, fact, reference_date=reference_date)
+        _accumulate_link_metrics(
+            event_accumulator,
+            consolidated_accumulator,
+            fact,
+            reference_date=reference_date,
+        )
 
     event_analyses = [
         _finalize_event_analysis(

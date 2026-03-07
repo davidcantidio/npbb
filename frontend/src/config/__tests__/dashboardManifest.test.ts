@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { DASHBOARD_MANIFEST } from "../dashboardManifest";
 
+const VALID_DOMAINS = new Set(["leads", "eventos", "publicidade"]);
+
 describe("DASHBOARD_MANIFEST", () => {
   it("defines the required dashboard entries with the expected shape", () => {
     expect(DASHBOARD_MANIFEST.length).toBeGreaterThanOrEqual(3);
@@ -18,6 +20,8 @@ describe("DASHBOARD_MANIFEST", () => {
           enabled: expect.any(Boolean),
         }),
       );
+      expect(entry.route.startsWith("/dashboard/")).toBe(true);
+      expect(VALID_DOMAINS.has(entry.domain)).toBe(true);
     }
   });
 

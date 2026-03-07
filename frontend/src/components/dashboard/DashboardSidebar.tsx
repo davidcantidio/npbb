@@ -2,26 +2,26 @@ import { useMemo } from "react";
 import { Box, Divider, List, Stack, Typography } from "@mui/material";
 
 import { DashboardSidebarItem } from "./DashboardSidebarItem";
-import type { DashboardManifestEntry } from "../../types/dashboard";
+import type { DashboardDomain, DashboardManifestEntry } from "../../types/dashboard";
 
 type DashboardSidebarProps = {
   entries: DashboardManifestEntry[];
 };
 
 type DashboardSidebarSection = {
-  domain: string;
+  domain: DashboardDomain;
   title: string;
   entries: DashboardManifestEntry[];
 };
 
-const DOMAIN_TITLES: Record<string, string> = {
+const DOMAIN_TITLES: Record<DashboardDomain, string> = {
   leads: "Leads",
   eventos: "Eventos",
   publicidade: "Publicidade",
 };
 
 function buildSections(entries: DashboardManifestEntry[]): DashboardSidebarSection[] {
-  const grouped = new Map<string, DashboardManifestEntry[]>();
+  const grouped = new Map<DashboardDomain, DashboardManifestEntry[]>();
 
   for (const entry of entries) {
     const current = grouped.get(entry.domain) ?? [];
@@ -31,7 +31,7 @@ function buildSections(entries: DashboardManifestEntry[]): DashboardSidebarSecti
 
   return Array.from(grouped.entries()).map(([domain, domainEntries]) => ({
     domain,
-    title: DOMAIN_TITLES[domain] ?? domain,
+    title: DOMAIN_TITLES[domain],
     entries: domainEntries,
   }));
 }

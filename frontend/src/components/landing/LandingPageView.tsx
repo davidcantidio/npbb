@@ -4,6 +4,7 @@ import {
   Stack,
   ThemeProvider,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import type {
   LandingPageData,

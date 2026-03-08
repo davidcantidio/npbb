@@ -363,7 +363,7 @@ export default function EventLeadFormConfig() {
   }, [loadGovernanceData]);
 
   useEffect(() => {
-    if (loading || !Number.isFinite(eventoId)) return;
+    if (loading || !config || !Number.isFinite(eventoId)) return;
 
     const resolved = resolvePreviewTemplateOverride(landingMeta.template_override);
     if (typeof resolved === "undefined") return;
@@ -374,7 +374,7 @@ export default function EventLeadFormConfig() {
     }, delayMs);
 
     return () => window.clearTimeout(timer);
-  }, [eventoId, landingMeta.template_override, loadPreview, loading]);
+  }, [config, eventoId, landingMeta.template_override, loadPreview, loading]);
 
   const subtitle = Number.isFinite(eventoId)
     ? `Configure o tema e os campos do formulário do evento #${eventoId}.`

@@ -197,11 +197,16 @@ def build_landing_payload(
     evento: Evento,
     ativacao: Ativacao | None = None,
     backend_base_url: str | None = None,
+    template_override: str | None = None,
 ) -> LandingPageRead:
     fields, template_name = get_landing_fields(session, evento=evento)
-    template = get_template_config(session, evento=evento, template_name=template_name)
+    template = get_template_config(
+        session,
+        evento=evento,
+        template_name=template_name,
+        template_override=template_override,
+    )
     template_data = TEMPLATE_REGISTRY[template.categoria]
-    hero_url = (evento.hero_image_url or "").strip() or None
 
     required_keys = [field.key for field in fields if field.required]
     optional_keys = [field.key for field in fields if not field.required]
@@ -249,9 +254,6 @@ def build_landing_payload(
         ),
         marca=LandingBrandRead(
             tagline=BRAND_TAGLINE,
-            versao_logo="negativo" if template.color_primary in {"#07111F", "#140F2E"} else "positivo",
-            url_hero_image=hero_url,
-            hero_alt=f"Imagem de destaque do evento {evento.nome}",
         ),
         acesso=LandingAccessRead(
             landing_url=ativacao.landing_url if ativacao else event_urls["url_landing"],

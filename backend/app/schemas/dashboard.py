@@ -4,7 +4,61 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+AGE_ANALYSIS_RESPONSE_EXAMPLE = {
+    "version": 1,
+    "generated_at": "2026-03-08T12:00:00Z",
+    "filters": {
+        "data_inicio": "2026-01-01",
+        "data_fim": "2026-01-31",
+        "evento_id": 42,
+    },
+    "por_evento": [
+        {
+            "evento_id": 42,
+            "evento_nome": "Festival BB Sao Paulo",
+            "cidade": "Sao Paulo",
+            "estado": "SP",
+            "base_leads": 120,
+            "clientes_bb_volume": 78,
+            "clientes_bb_pct": 65.0,
+            "cobertura_bb_pct": 95.0,
+            "faixas": {
+                "faixa_18_25": {"volume": 30, "pct": 27.27},
+                "faixa_26_40": {"volume": 60, "pct": 54.55},
+                "fora_18_40": {"volume": 20, "pct": 18.18},
+                "sem_info_volume": 10,
+                "sem_info_pct_da_base": 8.33,
+            },
+            "faixa_dominante": "faixa_26_40",
+        }
+    ],
+    "consolidado": {
+        "base_total": 120,
+        "clientes_bb_volume": 78,
+        "clientes_bb_pct": 65.0,
+        "cobertura_bb_pct": 95.0,
+        "faixas": {
+            "faixa_18_25": {"volume": 30, "pct": 27.27},
+            "faixa_26_40": {"volume": 60, "pct": 54.55},
+            "fora_18_40": {"volume": 20, "pct": 18.18},
+            "sem_info_volume": 10,
+            "sem_info_pct_da_base": 8.33,
+        },
+        "top_eventos": [
+            {
+                "evento_id": 42,
+                "evento_nome": "Festival BB Sao Paulo",
+                "base_leads": 120,
+                "faixa_dominante": "faixa_26_40",
+            }
+        ],
+        "media_por_evento": 120.0,
+        "mediana_por_evento": 120.0,
+        "concentracao_top3_pct": 100.0,
+    },
+}
 
 
 class AgeAnalysisQuery(BaseModel):
@@ -105,6 +159,8 @@ class ConsolidadoAgeAnalysis(BaseModel):
 
 
 class AgeAnalysisResponse(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": AGE_ANALYSIS_RESPONSE_EXAMPLE})
+
     version: int = 1
     generated_at: datetime
     filters: AgeAnalysisFilters

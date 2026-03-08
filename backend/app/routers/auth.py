@@ -5,10 +5,10 @@ from sqlalchemy import func
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
-from app.core.auth import SESSION_COOKIE_NAME, get_current_user
+from app.core.auth import SESSION_COOKIE_NAME, get_current_user, get_current_user_optional
 from app.db.database import get_session
 from app.models.models import Usuario
-from app.schemas.auth import LoginRequest, LoginResponse
+from app.schemas.auth import LoginRequest, LoginResponse, SessionStatusResponse
 from app.schemas.usuario import UsuarioRead
 from app.utils.jwt import create_access_token
 from app.utils.security import verify_password
@@ -98,6 +98,17 @@ def login(
 def me(current_user: Usuario = Depends(get_current_user)):
     """Retorna dados publicos do usuario autenticado."""
     return UsuarioRead.model_validate(current_user, from_attributes=True)
+
+
+@router.get("/session", response_model=SessionStatusResponse)
+def session_status(current_user: Usuario | None = Depends(get_current_user_optional)):
+    """Retorna o estado da sessão sem disparar erro para usuários não autenticados."""
+    if not current_user:
+        return SessionStatusResponse(authenticated=False, user=None)
+    return SessionStatusResponse(
+        authenticated=True,
+        user=UsuarioRead.model_validate(current_user, from_attributes=True),
+    )
 
 
 @router.post("/refresh", response_model=LoginResponse)

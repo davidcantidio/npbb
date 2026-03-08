@@ -225,18 +225,29 @@ def test_evento_update_valida_template_override_e_expoe_auditoria_e_analytics(cl
     )
     assert invalid_resp.status_code == 400
 
+    forbidden_field_resp = client.put(
+        f"/evento/{evento_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"hero_image_url": "https://example.com/hero-show.webp"},
+    )
+    assert forbidden_field_resp.status_code == 422
+    assert any(
+        item["loc"] == ["body", "hero_image_url"]
+        for item in forbidden_field_resp.json()["detail"]
+    )
+
     update_resp = client.put(
         f"/evento/{evento_id}",
         headers={"Authorization": f"Bearer {token}"},
         json={
             "template_override": "show_musical",
-            "hero_image_url": "https://example.com/hero-show.webp",
             "cta_personalizado": "Quero receber novidades",
             "descricao_curta": "Experiencia musical BB.",
         },
     )
     assert update_resp.status_code == 200
     assert update_resp.json()["template_override"] == "show_musical"
+    assert "hero_image_url" not in update_resp.json()
 
     audit_resp = client.get(
         f"/evento/{evento_id}/landing-customizations/audit",
@@ -245,6 +256,8 @@ def test_evento_update_valida_template_override_e_expoe_auditoria_e_analytics(cl
     assert audit_resp.status_code == 200
     audit_payload = audit_resp.json()
     assert any(item["field_name"] == "template_override" for item in audit_payload)
+    assert any(item["field_name"] == "cta_personalizado" for item in audit_payload)
+    assert any(item["field_name"] == "descricao_curta" for item in audit_payload)
     assert any(item["changed_by_user_id"] == user_id for item in audit_payload)
 
     analytics_resp = client.get(

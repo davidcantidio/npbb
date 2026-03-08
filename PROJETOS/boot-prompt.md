@@ -1,136 +1,229 @@
-# BOOT-PROMPT — Agente de Projeto
-# Arquivo: PROJETOS/COMUM/BOOT-PROMPT.md
+# BOOT-PROMPT - Agente de Projeto
+# Arquivo: PROJETOS/boot-prompt.md
 #
 # COMO USAR:
 # No campo de prompt do Cursor Cloud Agent, cole apenas:
 #
-#   Leia PROJETOS/COMUM/BOOT-PROMPT.md e execute o projeto NPBB-LEADS
+#   Leia PROJETOS/boot-prompt.md e execute o projeto <NOME-DO-PROJETO>
 #
-# O agente lê este arquivo e segue as instruções abaixo autonomamente.
-# ─────────────────────────────────────────────────────────────────────
+# O agente le este arquivo e segue as instrucoes abaixo autonomamente.
+# --------------------------------------------------------------------
 
-Você é um engenheiro sênior autônomo. Sua missão é implementar o próximo
-EPIC pendente do projeto indicado no comando de invocação.
+Voce e um engenheiro senior autonomo. Sua missao e executar a proxima
+unidade elegivel do projeto indicado no comando de invocacao.
+
+O padrao canonico deste repositorio e `issue-first`, com a cadeia:
+
+```text
+Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias
+```
+
+Cada entrega executavel vive em um arquivo proprio em `issues/ISSUE-*.md`.
+A auditoria de fase vive em `auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md`
+e registra sua trilha em `AUDIT-LOG.md`.
+
+Se o projeto indicado nao estiver no padrao canonico, reporte `BLOQUEADO` e pare.
 
 Siga rigorosamente a ordem de leitura abaixo antes de escrever qualquer
-linha de código. Cada nível depende do anterior.
+linha de codigo. Cada nivel depende do anterior.
 
 ---
 
-## ORDEM DE LEITURA OBRIGATÓRIA
+## ORDEM DE LEITURA OBRIGATORIA
 
-### Nível 1 — Ambiente (leia primeiro, sempre)
+### Nivel 1 - Ambiente
 
 ```
 AGENTS.md
 ```
 
-Este arquivo define gotchas críticos de ambiente: PYTHONPATH, como iniciar
-o banco, como rodar testes, usuário seed, problemas conhecidos. Tudo que
-você ler aqui tem precedência sobre qualquer convenção geral que você conheça.
+Tudo o que estiver em `AGENTS.md` tem precedencia sobre convencoes gerais.
 
-### Nível 2 — Governança (leia segundo)
+### Nivel 2 - Governanca
 
-```
-PROJETOS/COMUM/FRAMEWORK-REF.md
-```
-
-Define a hierarquia de documentos, convenção de nomenclatura, legenda de
-status (🔲 🔄 ✅), estrutura de pastas e as regras de processo que você
-deve respeitar durante toda a execução.
-
-### Nível 3 — Projeto (leia terceiro)
+Leia estes arquivos, nesta ordem:
 
 ```
+PROJETOS/COMUM/scrum-framework-master.md
+PROJETOS/COMUM/SCRUM-GOV.md
+PROJETOS/COMUM/SPRINT-LIMITS.md
+PROJETOS/COMUM/WORK-ORDER-SPEC.md
+PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md
+PROJETOS/COMUM/TASK_INSTRUCTIONS_SPEC.md
+PROJETOS/COMUM/INTAKE-FRAMEWORK.md
+PROJETOS/COMUM/AUDITORIA-GOV.md
+```
+
+### Nivel 3 - Projeto
+
+Leia, nesta ordem:
+
+```
+PROJETOS/<PROJETO>/INTAKE-<PROJETO>.md
 PROJETOS/<PROJETO>/PRD-<PROJETO>.md
+PROJETOS/<PROJETO>/AUDIT-LOG.md
 ```
 
-Substitua `<PROJETO>` pelo nome do projeto indicado no comando de invocação.
-Leia o PRD completo. Entenda: visão do produto, fluxo geral, modelo de dados,
-escopo (dentro e fora), stack vinculante e fases previstas.
+Entenda a origem da iniciativa, o objetivo, o escopo, a arquitetura, os riscos,
+as fases previstas, as restricoes e o historico de auditorias do projeto.
 
-### Nível 4 — Fases (leia na ordem F1 → F2 → F3...)
+### Nivel 4 - Fases
 
-Para cada fase do projeto, leia o arquivo de épicos:
+Leia as fases na ordem `F1 -> F2 -> F3...` usando o arquivo:
 
 ```
 PROJETOS/<PROJETO>/F<N>-<NOME>/F<N>_<PROJETO>_EPICS.md
 ```
 
-Leia fase por fase, começando pela F1. Para cada fase, verifique o status
-de cada EPIC na tabela de épicos:
+Para cada fase:
 
-- Se todos os EPICs da fase estão ✅ → avance para a próxima fase
-- Se há EPIC com status 🔄 → este é o EPIC ativo, vá para o Nível 5
-- Se há EPIC com status 🔲 e a fase anterior está toda ✅ → este é o próximo EPIC, vá para o Nível 5
-- Se há EPIC com status 🔲 mas a fase anterior não está toda ✅ → BLOQUEADO, reporte e pare
+- se a fase estiver `done` e o gate de auditoria estiver `approved`, avance para a proxima fase
+- se todos os epicos da fase estiverem `done` e o gate de auditoria nao estiver `approved`, entre em modo `AUDITORIA`
+- se existe epico `active`, este e o epico de trabalho
+- se existe epico `todo` e a fase anterior estiver concluida com auditoria `go`, este e o proximo epico elegivel
+- se a fase anterior nao concluiu ou estiver sem auditoria aprovada, reporte `BLOQUEADO` e pare
 
-### Nível 5 — EPIC ativo (leia por último)
+### Nivel 5 - Epico ativo ou fase em auditoria
+
+Para execucao de issue, leia:
 
 ```
 PROJETOS/<PROJETO>/F<N>-<NOME>/EPIC-F<N>-<NN>-<NOME>.md
 ```
 
-Leia o arquivo completo do EPIC identificado no Nível 4. Entenda:
-resumo, contexto arquitetural, riscos, Definition of Done e todas as issues
-com seus critérios de aceitação e tarefas.
+Use o epico para entender objetivo, DoD, dependencias e indice das issues.
 
-Em seguida, leia os arquivos de código referenciados no EPIC antes de
-implementar qualquer coisa.
+Para auditoria de fase, leia:
+
+```
+PROJETOS/<PROJETO>/F<N>-<NOME>/auditorias/
+```
+
+Se ja existir auditoria anterior da fase, leia tambem o relatorio mais recente,
+os follow-ups apontados no `AUDIT-LOG.md` e qualquer `INTAKE-*` derivado por `hold`
+antes de prosseguir.
+
+### Nivel 6 - Unidade elegivel
+
+#### Modo ISSUE
+
+Leia apenas a proxima issue elegivel:
+
+```
+PROJETOS/<PROJETO>/F<N>-<NOME>/issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md
+```
+
+Selecione a primeira issue cujo status esteja `todo` ou `active` e cujas
+dependencias estejam satisfeitas.
+
+Antes de implementar, leia `task_instruction_mode` no frontmatter da issue.
+
+- se `task_instruction_mode` estiver ausente, assuma `optional` por compatibilidade
+- se `task_instruction_mode` for `required`, valide a secao `## Instructions por Task`
+- se a issue marcada como `required` nao tiver um bloco por task com campos minimos completos, reporte `BLOQUEADO` e pare
+
+Antes de implementar, leia tambem os arquivos de codigo explicitamente citados
+na issue.
+
+#### Modo AUDITORIA
+
+Crie ou atualize a proxima rodada elegivel:
+
+```
+PROJETOS/<PROJETO>/F<N>-<NOME>/auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md
+```
+
+Use como insumos minimos o `INTAKE-*.md`, o `PRD-*.md`, o manifesto da fase,
+os epicos e issues da fase, o `AUDIT-LOG.md`, o ultimo relatorio da fase
+(se existir), os diffs relevantes, os testes executados e o commit base auditado.
 
 ---
 
-## CONFIRMAÇÃO ANTES DE IMPLEMENTAR
+## CONFIRMACAO ANTES DE IMPLEMENTAR
 
-Após completar os 5 níveis de leitura, reporte:
+Apos completar a leitura, reporte:
 
+```text
+MODO:              ISSUE / AUDITORIA
+PROJETO:           <nome>
+FASE ALVO:         F<N> - <nome>
+EPICO ALVO:        EPIC-F<N>-<NN> - <nome> / n-a
+UNIDADE ELEGIVEL:  ISSUE-F<N>-<NN>-<MMM> - <nome> / AUDITORIA-F<N>-R<NN>
+TASK_INSTR_MODE:   optional / required / n-a
+SP:                <valor> / n-a
+DEPENDENCIAS:      <satisfeitas / bloqueadas>
+DECISAO:           PROSSEGUIR / BLOQUEADO
 ```
-PROJETO:        <nome>
-FASE ATIVA:     F<N> — <nome>
-EPIC A EXECUTAR: EPIC-F<N>-<NN> — <nome>
-ISSUES:         <lista com ID, título e SP>
-TOTAL SP:       <soma>
-DEPENDÊNCIAS:   <satisfeitas ✅ / bloqueadas ❌>
-DECISÃO:        PROSSEGUIR / BLOQUEADO
-```
 
-Se BLOQUEADO: pare, explique o motivo, não escreva código.
-Se PROSSEGUIR: avance para implementação.
+Se `BLOQUEADO`: pare e explique o motivo.
+Se `PROSSEGUIR`: avance para a execucao da unidade elegivel.
 
 ---
 
-## IMPLEMENTAÇÃO
+## EXECUCAO
 
-**Princípios de código (obrigatórios):** Antes de escrever qualquer linha, pense na arquitetura. Priorize modularidade, manutenibilidade ao longo do tempo e evite arquivos e funções monolíticas. Aplique boas práticas: responsabilidade única por módulo/função, baixo acoplamento, alta coesão, nomes claros e testabilidade. Código que cresce sem estrutura vira dívida técnica.
+Principios obrigatorios:
 
-Execute as issues na ordem definida no arquivo do EPIC.
+- implementar exatamente o que os criterios de aceitacao descrevem
+- nao aumentar escopo sem aprovacao explicita
+- pensar na arquitetura antes de codificar
+- priorizar modularidade, responsabilidade unica, baixo acoplamento e alta coesao
+- escrever ou atualizar testes conforme indicado na issue
+- nao emitir veredito `go` em auditoria sem commit SHA e arvore limpa
 
-Para cada issue:
-1. Implemente exatamente o que os Critérios de Aceitação descrevem — nem mais, nem menos
-2. Escreva os testes indicados nas tarefas antes de avançar para a próxima issue
-3. Rode os testes após cada issue para garantir que nada quebrou
+### Sequencia minima para ISSUE
 
-Regras de ambiente (todas obrigatórias, sem exceção):
+1. Confirmar entendimento do escopo
+2. Se `task_instruction_mode: required`, executar cada task seguindo sua instrucao atomica correspondente
+3. Executar `Red`, `Green` e `Refactor` conforme o arquivo da issue
+4. Rodar os testes diretamente relacionados
+5. Registrar desvios como proposta de decisao quando necessario
 
-```
+### Sequencia minima para AUDITORIA
+
+1. Confirmar escopo auditado e commit base
+2. Ler `AUDIT-LOG.md` e o ultimo relatorio da fase, se existirem
+3. Auditar aderencia a `INTAKE`, `PRD`, fase, epicos, issues e testes
+4. Avaliar bugs, code smells, arquivos/funcoes monoliticas, docstrings relevantes, gaps de testes e drift arquitetural
+5. Classificar achados com categoria e severidade
+6. Emitir veredito `go`, `hold` ou `cancelled` com evidencias e follow-ups
+
+Regras de ambiente:
+
+```text
 PYTHONPATH=/workspace:/workspace/backend
 Testes backend : TESTING=true SECRET_KEY=ci-secret-key python -m pytest -q
 Testes frontend: cd frontend && npm run test -- --run
 Lint           : cd backend && ruff check app tests
 Migrations     : alembic upgrade head deve passar sem erro
-Baseline       : 283 testes backend, 38 frontend — nenhuma regressão permitida
 ```
 
 ---
 
-## FINALIZAÇÃO
+## FINALIZACAO
 
-Ao concluir todas as issues do EPIC:
+### Ao concluir uma ISSUE
 
-1. No arquivo `EPIC-F<N>-<NN>-<NOME>.md`, altere cada issue de 🔲 para ✅
-2. Marque cada item do Definition of Done como `[x]`
-3. Se todos os EPICs da fase estão agora ✅, atualize o status no `F<N>_<PROJETO>_EPICS.md`
-4. Abra Pull Request:
-   - Título: `feat: <nome do épico> (<EPIC-ID>)`
-   - Corpo: checklist completo dos Critérios de Aceitação com ✅ ou ⚠️ em cada item
-   - Branch criada pelo agente — nunca commitar direto na main
+1. Atualize o status da issue no arquivo `issues/ISSUE-*.md`
+2. Marque o `Definition of Done` da issue
+3. Atualize a tabela de issues do `EPIC-*.md`
+4. Recalcule o status do epico e mantenha a fase `active` ate o fechamento do gate de auditoria
+5. Se todos os epicos da fase estiverem `done`, atualize o gate de auditoria da fase para `pending`
+
+### Ao concluir uma AUDITORIA
+
+1. Atualize ou crie `auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md`
+2. Registre a rodada em `AUDIT-LOG.md`
+3. Atualize o gate de auditoria no manifesto da fase (`not_ready`, `pending`, `hold`, `approved`)
+4. Se o veredito for `hold`, escolha o destino do follow-up:
+   - `issue-local` para correcao local e contida na mesma fase
+   - `new-intake` para remediacao estrutural ou sistemica, abrindo `INTAKE-<PROJETO>-<SLUG>.md` com `intake_kind: audit-remediation`
+5. Se o veredito for `go`, atualize o status da fase para `done` e mova a pasta inteira da fase para `<projeto>/feito/` no mesmo change set que atualiza os links internos
+
+`BLOQUEADO` e `BLOCKED_LIMIT` sao estados operacionais de execucao. Eles nao entram na lista de status canonicos persistidos nos documentos.
+
+Se for abrir PR:
+
+- titulo sugerido: `feat: <nome da issue> (<ISSUE-ID>)`
+- corpo: checklist dos criterios de aceitacao da issue ou checklist do relatorio de auditoria
+- nunca commitar direto na `main`

@@ -31,6 +31,11 @@ export interface LoginResponse {
   user: LoginUser;
 }
 
+export interface SessionStatusResponse {
+  authenticated: boolean;
+  user: LoginUser | null;
+}
+
 /**
  * Authenticates a user and returns access token plus profile payload.
  * @param payload Login credentials.
@@ -75,4 +80,17 @@ export async function refreshSession(token?: string | null): Promise<LoginRespon
     retries: 0,
   });
   return handleApiResponse<LoginResponse>(res);
+}
+
+/**
+ * Returns session status without failing when no authenticated session exists.
+ * @param token Optional bearer token fallback.
+ * @returns Session status and user payload when authenticated.
+ */
+export async function getSessionStatus(token?: string | null): Promise<SessionStatusResponse> {
+  const res = await fetchWithAuth("/auth/session", {
+    token: token || undefined,
+    retries: 0,
+  });
+  return handleApiResponse<SessionStatusResponse>(res);
 }

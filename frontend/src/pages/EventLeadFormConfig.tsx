@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -36,7 +36,7 @@ import {
 } from "../services/eventos";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
-import LandingPageView, { type LandingPreviewChecklistItem } from "../components/landing/LandingPageView";
+import LandingPageView from "../components/landing/LandingPageView";
 import { getLandingByEvento, type LandingPageData } from "../services/landing_public";
 
 const TEMPLATE_OVERRIDE_OPTIONS = [
@@ -48,6 +48,22 @@ const TEMPLATE_OVERRIDE_OPTIONS = [
   "evento_cultural",
   "tecnologia",
 ] as const;
+const TEMPLATE_OVERRIDE_OPTION_SET = new Set<string>(TEMPLATE_OVERRIDE_OPTIONS);
+
+const LANDING_CUSTOMIZATION_MESSAGE =
+  "Customizacao controlada: somente template_override, cta_personalizado e descricao_curta podem ser alterados sem sair do catalogo homologado da marca BB. O visual do fundo e determinado pelo template selecionado.";
+
+function resolvePreviewTemplateOverride(value: string): string | null | undefined {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return TEMPLATE_OVERRIDE_OPTION_SET.has(normalized) ? normalized : undefined;
+}
 
 export default function EventLeadFormConfig() {
   const { id } = useParams();
@@ -62,12 +78,10 @@ export default function EventLeadFormConfig() {
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [landingMeta, setLandingMeta] = useState<{
     template_override: string;
-    hero_image_url: string;
     cta_personalizado: string;
     descricao_curta: string;
   }>({
     template_override: "",
-    hero_image_url: "",
     cta_personalizado: "",
     descricao_curta: "",
   });
@@ -81,6 +95,7 @@ export default function EventLeadFormConfig() {
   const [analyticsData, setAnalyticsData] = useState<LandingAnalyticsSummary[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditItems, setAuditItems] = useState<LandingCustomizationAuditItem[]>([]);
+  const hasLoadedInitialPreviewRef = useRef(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -171,19 +186,32 @@ export default function EventLeadFormConfig() {
     }
   }, []);
 
-  const loadPreview = useCallback(async () => {
+  const loadPreview = useCallback(async (templateOverride?: string | null) => {
     if (!Number.isFinite(eventoId)) return;
     setPreviewLoading(true);
     setPreviewError(null);
     try {
-      const response = await getLandingByEvento(eventoId);
+      const response =
+        templateOverride == null
+          ? await getLandingByEvento(eventoId)
+          : await getLandingByEvento(eventoId, { templateOverride });
       setPreviewData(response);
+      hasLoadedInitialPreviewRef.current = true;
     } catch (err: any) {
       setPreviewError(err?.message || "Erro ao carregar preview da landing.");
     } finally {
       setPreviewLoading(false);
     }
   }, [eventoId]);
+
+  const refreshPreview = useCallback(
+    async (rawTemplateOverride?: string) => {
+      const resolved = resolvePreviewTemplateOverride(rawTemplateOverride ?? landingMeta.template_override);
+      if (typeof resolved === "undefined") return;
+      await loadPreview(resolved);
+    },
+    [landingMeta.template_override, loadPreview],
+  );
 
   const loadGovernanceData = useCallback(async () => {
     if (!token || !Number.isFinite(eventoId)) return;
@@ -206,6 +234,7 @@ export default function EventLeadFormConfig() {
     if (!token || !Number.isFinite(eventoId)) return;
     setLoading(true);
     setError(null);
+    hasLoadedInitialPreviewRef.current = false;
     try {
       const [configRes, templatesRes, camposRes, eventoRes] = await Promise.all([
         getEventoFormConfig(token, eventoId),
@@ -219,7 +248,6 @@ export default function EventLeadFormConfig() {
       setTemplateId(configRes.template_id ?? null);
       setLandingMeta({
         template_override: eventoRes.template_override ?? "",
-        hero_image_url: eventoRes.hero_image_url ?? "",
         cta_personalizado: eventoRes.cta_personalizado ?? "",
         descricao_curta: eventoRes.descricao_curta ?? "",
       });
@@ -237,7 +265,7 @@ export default function EventLeadFormConfig() {
       setCamposAtivos(initialAtivos);
       setCamposObrigatorios(initialObrigatorios);
     } catch (err: any) {
-      setError(err?.message || "Erro ao carregar configuraÃ§Ã£o do formulÃ¡rio");
+      setError(err?.message || "Erro ao carregar configuração do formulário");
     } finally {
       setLoading(false);
     }
@@ -276,7 +304,6 @@ export default function EventLeadFormConfig() {
       });
       const updatedEvento = await updateEvento(token, eventoId, {
         template_override: landingMeta.template_override.trim() || null,
-        hero_image_url: landingMeta.hero_image_url.trim() || null,
         cta_personalizado: landingMeta.cta_personalizado.trim() || null,
         descricao_curta: landingMeta.descricao_curta.trim() || null,
       });
@@ -285,7 +312,6 @@ export default function EventLeadFormConfig() {
       setTemplateId(updated.template_id ?? null);
       setLandingMeta({
         template_override: updatedEvento.template_override ?? "",
-        hero_image_url: updatedEvento.hero_image_url ?? "",
         cta_personalizado: updatedEvento.cta_personalizado ?? "",
         descricao_curta: updatedEvento.descricao_curta ?? "",
       });
@@ -303,13 +329,13 @@ export default function EventLeadFormConfig() {
       setCamposAtivos(nextAtivos);
       setCamposObrigatorios(nextObrigatorios);
 
-      setSnackbar({ open: true, message: "ConfiguraÃ§Ã£o salva com sucesso.", severity: "success" });
-      void loadPreview();
+      setSnackbar({ open: true, message: "Configuração salva com sucesso.", severity: "success" });
+      void refreshPreview(updatedEvento.template_override ?? "");
       void loadGovernanceData();
     } catch (err: any) {
       setSnackbar({
         open: true,
-        message: err?.message || "Erro ao salvar configuraÃ§Ã£o.",
+        message: err?.message || "Erro ao salvar configuração.",
         severity: "error",
       });
     } finally {
@@ -324,7 +350,7 @@ export default function EventLeadFormConfig() {
     camposAtivos,
     camposObrigatorios,
     landingMeta,
-    loadPreview,
+    refreshPreview,
     loadGovernanceData,
   ]);
 
@@ -333,58 +359,26 @@ export default function EventLeadFormConfig() {
   }, [load]);
 
   useEffect(() => {
-    void loadPreview();
-  }, [loadPreview]);
-
-  useEffect(() => {
     void loadGovernanceData();
   }, [loadGovernanceData]);
 
+  useEffect(() => {
+    if (loading || !config || !Number.isFinite(eventoId)) return;
+
+    const resolved = resolvePreviewTemplateOverride(landingMeta.template_override);
+    if (typeof resolved === "undefined") return;
+
+    const delayMs = hasLoadedInitialPreviewRef.current ? 250 : 0;
+    const timer = window.setTimeout(() => {
+      void loadPreview(resolved);
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [config, eventoId, landingMeta.template_override, loadPreview, loading]);
+
   const subtitle = Number.isFinite(eventoId)
-    ? `Configure o tema e os campos do formulÃ¡rio do evento #${eventoId}.`
-    : "Configure o tema e os campos do formulÃ¡rio do evento.";
-
-  const previewChecklist = useMemo<LandingPreviewChecklistItem[]>(() => {
-    if (!previewData) return [];
-    const heroCustomizado = Boolean(landingMeta.hero_image_url.trim());
-    const ctaDisponivel = Boolean(previewData.template.cta_text.trim());
-    const taglineOk = previewData.marca.tagline.toLowerCase().includes("banco do brasil");
-    const lgpdOk = Boolean(previewData.formulario.privacy_policy_url);
-
-    return [
-      {
-        label: "Categoria resolvida",
-        ok: Boolean(previewData.template.categoria),
-        helper: `Categoria ativa: ${previewData.template.categoria || "fallback pendente"}.`,
-      },
-      {
-        label: "Hero da campanha",
-        ok: heroCustomizado,
-        helper: heroCustomizado
-          ? "O evento possui uma imagem de hero configurada manualmente."
-          : "Sem URL dedicada. O preview esta usando o fallback visual em gradiente.",
-      },
-      {
-        label: "CTA principal",
-        ok: ctaDisponivel,
-        helper: ctaDisponivel
-          ? `CTA publicado: "${previewData.template.cta_text}".`
-          : "Defina um CTA personalizado ou valide o CTA padrao da categoria.",
-      },
-      {
-        label: "Tagline BB",
-        ok: taglineOk,
-        helper: taglineOk ? "Assinatura BB presente no rodape e no bloco de marca." : "Tagline BB nao encontrada.",
-      },
-      {
-        label: "Politica e LGPD",
-        ok: lgpdOk,
-        helper: lgpdOk
-          ? "Link de privacidade carregado a partir do contrato real da landing."
-          : "A landing esta sem link de politica de privacidade.",
-      },
-    ];
-  }, [landingMeta.hero_image_url, previewData]);
+    ? `Configure o tema e os campos do formulário do evento #${eventoId}.`
+    : "Configure o tema e os campos do formulário do evento.";
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -399,7 +393,7 @@ export default function EventLeadFormConfig() {
       >
         <Box>
           <Typography variant="h4" fontWeight={800}>
-            FormulÃ¡rio de Lead
+            Formulário de Lead
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {subtitle}
@@ -424,7 +418,7 @@ export default function EventLeadFormConfig() {
               disabled={!config || loading || saving}
               sx={{ textTransform: "none", fontWeight: 800 }}
             >
-              PrÃ³ximo
+              Próximo
             </Button>
             <Button
               variant="contained"
@@ -499,18 +493,8 @@ export default function EventLeadFormConfig() {
                   )}
                 />
                 <Alert severity="info" variant="outlined">
-                  Customizacao controlada: somente `template_override`, `hero_image_url`, `cta_personalizado` e
-                  `descricao_curta` podem ser alterados sem sair do catalogo homologado da marca BB.
+                  {LANDING_CUSTOMIZATION_MESSAGE}
                 </Alert>
-                <TextField
-                  label="Hero image URL"
-                  value={landingMeta.hero_image_url}
-                  onChange={(event) =>
-                    setLandingMeta((prev) => ({ ...prev, hero_image_url: event.target.value }))
-                  }
-                  placeholder="https://..."
-                  fullWidth
-                />
                 <TextField
                   label="CTA personalizado"
                   value={landingMeta.cta_personalizado}
@@ -545,11 +529,11 @@ export default function EventLeadFormConfig() {
                     Preview da landing
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    O painel abaixo usa o mesmo contrato da landing publica para revisar hero, CTA, categoria e checklist minimo.
+                    O painel abaixo renderiza a mesma landing form-only publicada, com interacoes desabilitadas por estar em preview interno.
                   </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Button variant="outlined" onClick={() => void loadPreview()} disabled={previewLoading}>
+                  <Button variant="outlined" onClick={() => void refreshPreview()} disabled={previewLoading}>
                     {previewLoading ? <CircularProgress size={18} color="inherit" /> : "Atualizar preview"}
                   </Button>
                   {previewData?.acesso.landing_url ? (
@@ -581,7 +565,7 @@ export default function EventLeadFormConfig() {
                 </Stack>
               ) : previewData ? (
                 <Box sx={{ mt: 1, borderRadius: 4, overflow: "hidden", border: 1, borderColor: "divider" }}>
-                  <LandingPageView data={previewData} mode="preview" checklist={previewChecklist} />
+                  <LandingPageView data={previewData} mode="preview" />
                 </Box>
               ) : (
                 <Typography variant="body2" color="text.secondary">
@@ -671,7 +655,7 @@ export default function EventLeadFormConfig() {
 
             <Box>
               <Typography variant="subtitle1" fontWeight={900} gutterBottom>
-                Campos possÃ­veis
+                Campos possíveis
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Marque os campos que estarao ativos no formulario e salve para persistir.
@@ -735,7 +719,7 @@ export default function EventLeadFormConfig() {
                                 onChange={(_, checked) => setCampoObrigatorio(nome, checked)}
                               />
                             }
-                            label="ObrigatÃ³rio"
+                            label="Obrigatório"
                           />
                         </Stack>
                       </Stack>
@@ -745,7 +729,7 @@ export default function EventLeadFormConfig() {
               </Box>
             ) : (
               <Typography variant="body2" color="text.secondary">
-                Nenhum campo disponÃ­vel.
+                Nenhum campo disponível.
               </Typography>
             )}
             <Divider />

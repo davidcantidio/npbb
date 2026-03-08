@@ -172,6 +172,12 @@ def test_me_without_token(client):
     assert me_resp.status_code == 401
 
 
+def test_session_without_token_returns_unauthenticated(client):
+    session_resp = client.get("/auth/session")
+    assert session_resp.status_code == 200
+    assert session_resp.json() == {"authenticated": False, "user": None}
+
+
 def test_me_with_cookie_token(client, engine):
     user = seed_user(engine, email="cookie@example.com")
     login_resp = client.post(
@@ -183,6 +189,29 @@ def test_me_with_cookie_token(client, engine):
     me_resp = client.get("/auth/me", cookies={"npbb_access_token": cookie})
     assert me_resp.status_code == 200
     assert me_resp.json()["id"] == user.id
+
+
+def test_session_with_cookie_token_returns_authenticated(client, engine):
+    user = seed_user(engine, email="session_cookie@example.com")
+    login_resp = client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "senha123"},
+    )
+    cookie = login_resp.cookies.get("npbb_access_token")
+    assert cookie
+
+    session_resp = client.get("/auth/session", cookies={"npbb_access_token": cookie})
+    assert session_resp.status_code == 200
+    data = session_resp.json()
+    assert data["authenticated"] is True
+    assert data["user"]["id"] == user.id
+    assert data["user"]["email"] == user.email
+
+
+def test_session_with_invalid_token_returns_unauthenticated(client):
+    session_resp = client.get("/auth/session", cookies={"npbb_access_token": "invalid.token.value"})
+    assert session_resp.status_code == 200
+    assert session_resp.json() == {"authenticated": False, "user": None}
 
 
 def test_logout_clears_session_cookie(client, engine):

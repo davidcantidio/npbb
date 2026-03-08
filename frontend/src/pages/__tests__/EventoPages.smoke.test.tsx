@@ -29,7 +29,7 @@ import {
   updateEventoQuestionario,
 } from "../../services/eventos";
 import { listAgencias } from "../../services/agencias";
-import { getLandingByEvento } from "../../services/landing_public";
+import { getLandingByEvento, type LandingPageData } from "../../services/landing_public";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
@@ -87,6 +87,82 @@ const mockedGetEventoQuestionario = vi.mocked(getEventoQuestionario);
 const mockedUpdateEventoQuestionario = vi.mocked(updateEventoQuestionario);
 const mockedGetLandingByEvento = vi.mocked(getLandingByEvento);
 
+function createLandingPreviewPayload(overrides: Partial<LandingPageData> = {}): LandingPageData {
+  return {
+    ativacao_id: overrides.ativacao_id ?? null,
+    ativacao: overrides.ativacao ?? null,
+    evento: {
+      id: 1,
+      nome: "Evento QA",
+      descricao: "Descricao completa do evento QA.",
+      descricao_curta: "Resumo do evento QA.",
+      data_inicio: "2026-03-01",
+      data_fim: "2026-03-02",
+      cidade: "Brasilia",
+      estado: "DF",
+      cta_personalizado: null,
+      ...overrides.evento,
+    },
+    template: {
+      categoria: "evento_cultural",
+      tema: "Cultural",
+      mood: "Sofisticado, acessivel e inspirador.",
+      cta_text: "Quero conhecer",
+      color_primary: "#00EBD0",
+      color_secondary: "#BDB6FF",
+      color_background: "#F7FBFB",
+      color_text: "#111827",
+      hero_layout: "editorial",
+      cta_variant: "outlined",
+      graphics_style: "organic",
+      tone_of_voice: "attention",
+      cta_experiment_enabled: false,
+      cta_variants: [],
+      ...overrides.template,
+    },
+    formulario: {
+      event_id: 1,
+      ativacao_id: null,
+      submit_url: "/landing/eventos/1/submit",
+      campos: [
+        {
+          key: "nome",
+          label: "Nome",
+          input_type: "text",
+          required: true,
+          autocomplete: "name",
+          placeholder: "Como voce gostaria de ser chamado?",
+        },
+        {
+          key: "email",
+          label: "Email",
+          input_type: "email",
+          required: true,
+          autocomplete: "email",
+          placeholder: "voce@exemplo.com",
+        },
+      ],
+      campos_obrigatorios: ["nome", "email"],
+      campos_opcionais: [],
+      mensagem_sucesso: "Cadastro confirmado.",
+      lgpd_texto: "Ao enviar seus dados, voce concorda com o tratamento das informacoes.",
+      privacy_policy_url: "https://www.bb.com.br/site/privacidade-e-lgpd/",
+      ...overrides.formulario,
+    },
+    marca: {
+      tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
+      ...overrides.marca,
+    },
+    acesso: {
+      landing_url: "http://localhost:5173/landing/eventos/1",
+      qr_code_url: null,
+      url_promotor: "http://localhost:5173/landing/eventos/1",
+      ...overrides.acesso,
+    },
+    gamificacoes: overrides.gamificacoes ?? [],
+  };
+}
+
 describe("Evento pages smoke", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -132,74 +208,7 @@ describe("Evento pages smoke", () => {
     mockedUpdateEvento.mockResolvedValue({ id: 10 } as never);
 
     mockedGetEvento.mockResolvedValue({ id: 1, nome: "Evento QA" } as never);
-    mockedGetLandingByEvento.mockResolvedValue({
-      ativacao_id: null,
-      evento: {
-        id: 1,
-        nome: "Evento QA",
-        descricao: "Descricao completa do evento QA.",
-        descricao_curta: "Resumo do evento QA.",
-        data_inicio: "2026-03-01",
-        data_fim: "2026-03-02",
-        cidade: "Brasilia",
-        estado: "DF",
-      },
-      template: {
-        categoria: "evento_cultural",
-        tema: "Cultural",
-        mood: "Sofisticado, acessivel e inspirador.",
-        cta_text: "Quero conhecer",
-        color_primary: "#00EBD0",
-        color_secondary: "#BDB6FF",
-        color_background: "#F7FBFB",
-        color_text: "#111827",
-        hero_layout: "editorial",
-        cta_variant: "outlined",
-        graphics_style: "organic",
-        tone_of_voice: "attention",
-        cta_experiment_enabled: false,
-        cta_variants: [],
-      },
-      formulario: {
-        event_id: 1,
-        ativacao_id: null,
-        submit_url: "/landing/eventos/1/submit",
-        campos: [
-          {
-            key: "nome",
-            label: "Nome",
-            input_type: "text",
-            required: true,
-            autocomplete: "name",
-            placeholder: "Como voce gostaria de ser chamado?",
-          },
-          {
-            key: "email",
-            label: "Email",
-            input_type: "email",
-            required: true,
-            autocomplete: "email",
-            placeholder: "voce@exemplo.com",
-          },
-        ],
-        campos_obrigatorios: ["nome", "email"],
-        campos_opcionais: [],
-        mensagem_sucesso: "Cadastro confirmado.",
-        lgpd_texto: "Ao enviar seus dados, voce concorda com o tratamento das informacoes.",
-        privacy_policy_url: "https://www.bb.com.br/site/privacidade-e-lgpd/",
-      },
-      marca: {
-        tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
-        versao_logo: "positivo",
-        url_hero_image: "data:image/svg+xml;base64,PHN2Zy8+",
-        hero_alt: "Imagem de destaque do evento Evento QA",
-      },
-      acesso: {
-        landing_url: "http://localhost:5173/landing/eventos/1",
-        qr_code_url: null,
-        url_promotor: "http://localhost:5173/landing/eventos/1",
-      },
-    } as never);
+    mockedGetLandingByEvento.mockResolvedValue(createLandingPreviewPayload() as never);
     mockedGetLandingAnalytics.mockResolvedValue([
       {
         event_id: 1,
@@ -326,14 +335,96 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByText(/clicar em "Salvar"\./i)).toBeInTheDocument();
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
-    expect(await screen.findByText(/Preview fiel ao contrato real da landing/i)).toBeInTheDocument();
-    expect(screen.getByText(/Checklist minimo da ativacao/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Hero image URL/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/hero_image_url/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/O visual do fundo e determinado pelo template selecionado\./i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(/landing form-only publicada/i)).toBeInTheDocument();
+    expect(screen.getByTestId("landing-preview-badge")).toBeInTheDocument();
     expect(await screen.findByText(/Analytics da landing/i)).toBeInTheDocument();
     expect(screen.getByText(/Auditoria de customizacao/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(mockedUpdateEventoFormConfig).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockedUpdateEvento).toHaveBeenCalledWith("token", 1, {
+        template_override: null,
+        cta_personalizado: null,
+        descricao_curta: null,
+      }),
+    );
     expect(mockedGetLandingByEvento).toHaveBeenCalledWith(1);
+  });
+
+  it("auto-refreshes the preview when template_override changes to a valid option", async () => {
+    const user = userEvent.setup();
+    mockedGetLandingByEvento
+      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
+      .mockResolvedValueOnce(
+        createLandingPreviewPayload({
+          template: {
+            categoria: "show_musical",
+            tema: "Show",
+            mood: "Vibrante, noturno e memoravel.",
+            cta_text: "Quero ir",
+            color_primary: "#735CC6",
+            color_secondary: "#FF6E91",
+            color_background: "#140F2E",
+            color_text: "#F8FAFC",
+            hero_layout: "dark-overlay",
+            cta_variant: "gradient",
+            graphics_style: "dynamic",
+            tone_of_voice: "enthusiasm",
+            cta_experiment_enabled: false,
+            cta_variants: [],
+          },
+        }) as never,
+      );
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+        <Routes>
+          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+
+    const input = screen.getByLabelText(/template override/i);
+    await user.clear(input);
+    await user.type(input, "show_musical");
+
+    await waitFor(() =>
+      expect(mockedGetLandingByEvento).toHaveBeenLastCalledWith(1, {
+        templateOverride: "show_musical",
+      }),
+    );
+    expect(await screen.findByRole("button", { name: /quero ir/i })).toBeInTheDocument();
+  });
+
+  it("keeps the last preview when template_override input is invalid", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+        <Routes>
+          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+
+    const input = screen.getByLabelText(/template override/i);
+    await user.clear(input);
+    await user.type(input, "template-nao-homologado");
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    expect(mockedGetLandingByEvento).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
   });
 
   it("adds a gamificacao from EventGamificacao page", async () => {

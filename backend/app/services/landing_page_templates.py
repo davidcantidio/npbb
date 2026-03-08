@@ -260,8 +260,16 @@ def _get_subtipo_nome(session: Session, evento: Evento) -> str | None:
 
 
 def resolve_template_category(
-    session: Session, *, evento: Evento, template_name: str | None = None
+    session: Session,
+    *,
+    evento: Evento,
+    template_name: str | None = None,
+    template_override: str | None = None,
 ) -> str:
+    transient = _resolve_category_alias(template_override)
+    if transient:
+        return transient
+
     explicit = _resolve_category_alias(evento.template_override)
     if explicit:
         return explicit
@@ -286,9 +294,18 @@ def resolve_template_category(
 
 
 def get_template_config(
-    session: Session, *, evento: Evento, template_name: str | None = None
+    session: Session,
+    *,
+    evento: Evento,
+    template_name: str | None = None,
+    template_override: str | None = None,
 ) -> LandingTemplateConfigRead:
-    category = resolve_template_category(session, evento=evento, template_name=template_name)
+    category = resolve_template_category(
+        session,
+        evento=evento,
+        template_name=template_name,
+        template_override=template_override,
+    )
     raw = dict(TEMPLATE_REGISTRY.get(category, TEMPLATE_REGISTRY["generico"]))
     custom_cta = (evento.cta_personalizado or "").strip()
     raw["cta_text"] = custom_cta or raw["cta_text"]

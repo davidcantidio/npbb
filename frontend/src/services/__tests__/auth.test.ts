@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { login, getMe } from "../auth";
+import { login, getMe, getSessionStatus } from "../auth";
 
 type FetchResponse = {
   ok: boolean;
@@ -105,5 +105,26 @@ describe("auth service", () => {
       }),
     );
     expect(me.email).toBe("user@example.com");
+  });
+
+  it("getSessionStatus retorna autenticado=false sem sessão ativa", async () => {
+    const mockRes: FetchResponse = {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: () => Promise.resolve(JSON.stringify({ authenticated: false, user: null })),
+    };
+    const fetchMock = mockFetchSequence([mockRes]);
+
+    const session = await getSessionStatus();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/auth\/session$/),
+      expect.objectContaining({
+        method: "GET",
+      }),
+    );
+    expect(session.authenticated).toBe(false);
+    expect(session.user).toBeNull();
   });
 });

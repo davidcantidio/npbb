@@ -11,11 +11,16 @@ type DashboardCardProps = {
 
 export function DashboardCard({ entry }: DashboardCardProps) {
   const Icon = getDashboardIcon(entry.icon);
+  const cardRootTestId = `dashboard-card-root-${entry.id}`;
+  const cardIconTestId = `dashboard-card-icon-${entry.id}`;
+  const cardLinkTestId = `dashboard-card-link-${entry.id}`;
+
   const content = (
     <CardContent sx={{ height: "100%" }}>
       <Stack spacing={2} sx={{ height: "100%" }}>
         <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5 }}>
           <Box
+            data-testid={cardIconTestId}
             sx={{
               width: 44,
               height: 44,
@@ -54,6 +59,7 @@ export function DashboardCard({ entry }: DashboardCardProps) {
   if (!entry.enabled) {
     return (
       <Card
+        data-testid={cardRootTestId}
         variant="outlined"
         sx={{
           height: "100%",
@@ -69,6 +75,7 @@ export function DashboardCard({ entry }: DashboardCardProps) {
 
   return (
     <Card
+      data-testid={cardRootTestId}
       variant="outlined"
       sx={{
         height: "100%",
@@ -81,6 +88,7 @@ export function DashboardCard({ entry }: DashboardCardProps) {
       }}
     >
       <CardActionArea
+        data-testid={cardLinkTestId}
         component={RouterLink}
         to={entry.route}
         sx={{ alignItems: "stretch", display: "block", height: "100%" }}

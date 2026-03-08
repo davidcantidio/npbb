@@ -53,9 +53,6 @@ class LandingFormRead(BaseModel):
 
 class LandingBrandRead(BaseModel):
     tagline: str
-    versao_logo: str
-    url_hero_image: str | None = None
-    hero_alt: str
 
 
 class LandingEventRead(BaseModel):

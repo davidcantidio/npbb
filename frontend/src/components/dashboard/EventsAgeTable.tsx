@@ -4,6 +4,7 @@ import {
   Box,
   Card,
   CardContent,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -22,6 +23,9 @@ import {
   getDominantAgeRangeLabel,
   getNonBbMetrics,
 } from "../../utils/ageAnalysis";
+import { hasPartialBbData } from "../../utils/coverage";
+import { CoverageBanner } from "./CoverageBanner";
+import { InfoTooltip } from "./InfoTooltip";
 
 type SortDirection = "asc" | "desc";
 
@@ -84,9 +88,33 @@ const columns: ColumnDefinition[] = [
     label: "Clientes BB",
     align: "right",
     accessor: (event) => event.clientes_bb_volume,
-    render: (event) => `${event.clientes_bb_volume === null ? "—" : formatInteger(event.clientes_bb_volume)} / ${formatPercent(
-      event.clientes_bb_pct,
-    )}`,
+    render: (event) => {
+      const partialBbData = hasPartialBbData(
+        event.clientes_bb_volume,
+        event.clientes_bb_pct,
+        event.cobertura_bb_pct,
+      );
+
+      return (
+        <Stack spacing={0.35} alignItems="flex-end">
+          <Typography variant="body2">
+            {event.clientes_bb_volume === null ? "—" : formatInteger(event.clientes_bb_volume)} / 
+            {formatPercent(event.clientes_bb_pct)}
+          </Typography>
+          {partialBbData ? (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+              <Typography variant="caption" color="text.secondary">
+                (dados parciais)
+              </Typography>
+              <InfoTooltip
+                label="Dados parciais"
+                description="Dados parciais: a cobertura BB esta abaixo do limiar minimo para exibir a metrica com seguranca."
+              />
+            </Box>
+          ) : null}
+        </Stack>
+      );
+    },
   },
   {
     key: "nao_clientes_volume",
@@ -103,7 +131,11 @@ const columns: ColumnDefinition[] = [
     label: "Cobertura BB",
     align: "right",
     accessor: (event) => event.cobertura_bb_pct,
-    render: (event) => formatPercent(event.cobertura_bb_pct),
+    render: (event) => (
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <CoverageBanner coverage={event.cobertura_bb_pct} variant="compact" />
+      </Box>
+    ),
   },
   {
     key: "faixa_18_25_volume",
@@ -195,8 +227,13 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
             Nenhum evento encontrado para a tabela.
           </Typography>
         ) : (
-          <TableContainer sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 1240 }}>
+          <TableContainer data-testid="events-age-table-scroll" data-scroll-x="enabled" sx={{ overflowX: "auto" }}>
+            <Table
+              data-testid="events-age-table-grid"
+              aria-label="Tabela de eventos da analise etaria"
+              size="small"
+              sx={{ minWidth: 1240 }}
+            >
               <TableHead>
                 <TableRow>
                   {columns.map((column) => (
@@ -220,6 +257,7 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
                 {sortedEvents.map((event, index) => (
                   <TableRow
                     key={event.evento_id}
+                    data-testid={`events-age-table-row-${event.evento_id}`}
                     hover
                     onClick={onSelectEvento ? () => onSelectEvento(event.evento_id) : undefined}
                     sx={{

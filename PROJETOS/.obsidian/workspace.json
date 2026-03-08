@@ -1,0 +1,241 @@
+{
+  "main": {
+    "id": "70adbfbbea055d33",
+    "type": "split",
+    "children": [
+      {
+        "id": "bc6b52c3f1b24e6a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1ef2820dfbafffd8",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "COMUM/AUDITORIA-PROMPT.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "AUDITORIA-PROMPT"
+            }
+          },
+          {
+            "id": "dde0b6a41eed5fc6",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "COMUM/AUDITORIA-GOV.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "AUDITORIA-GOV"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "cd99789e4725aeee",
+    "type": "split",
+    "children": [
+      {
+        "id": "e4acb3047aa70d5b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "140fb961b99275e4",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "5fb0892124428cf7",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "ef7b6b8fbec2852b",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "1a5f567c8fd2e47e",
+    "type": "split",
+    "children": [
+      {
+        "id": "f62844cbdbea3532",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4cee3dfb9204ebd6",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "COMUM/AUDITORIA-PROMPT.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos para AUDITORIA-PROMPT"
+            }
+          },
+          {
+            "id": "5489e4f9d562767d",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "COMUM/AUDITORIA-PROMPT.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída para AUDITORIA-PROMPT"
+            }
+          },
+          {
+            "id": "91d4043c51256868",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "e732318484071368",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "849219c2b6009ee4",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "COMUM/AUDITORIA-PROMPT.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário de AUDITORIA-PROMPT"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false
+    }
+  },
+  "active": "1ef2820dfbafffd8",
+  "lastOpenFiles": [
+    "COMUM/AUDITORIA-GOV.md",
+    "LANDING-PAGE-FORM-FIRST/AUDIT-LOG.md",
+    "2026-03-08.md",
+    "Sem título 1.canvas",
+    "Sem título.canvas",
+    "COMUM/AUDITORIA-PROMPT.md",
+    "LANDING-PAGE-FORM-FIRST/F3-QA-CROSS-TEMPLATE/auditorias/RELATORIO-AUDITORIA-F3-R01.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/sprints/SPRINT-F1-02.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/sprints/SPRINT-F1-01.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-02-004-TESTES-UNITARIOS-DO-ENDPOINT-DE-ANALISE-ETARIA.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-02-003-IMPLEMENTAR-ENDPOINT-GET-API-V1-DASHBOARD-LEADS-ANALISE-ETARIA.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-02-001-CRIAR-SCHEMAS-PYDANTIC-DA-ANALISE-ETARIA.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-02-002-IMPLEMENTAR-LOGICA-DE-QUERY-DA-ANALISE-ETARIA.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-01-001-ADICIONAR-CAMPOS-IS-CLIENTE-BB-E-IS-CLIENTE-ESTILO-AO-MODELO-LEAD.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-01-002-CRIAR-MIGRATION-ALEMBIC-PARA-NOVOS-CAMPOS-DO-LEAD.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-01-003-ATUALIZAR-SCHEMAS-DE-LEITURA-DO-LEAD.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/auditorias/RELATORIO-AUDITORIA-F1-R01.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/auditorias/README.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/sprints",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/auditorias",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/F1_DASHBOARD_LEADS_ETARIA_EPICS.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/EPIC-F1-02-ENDPOINT-ANALISE-ETARIA.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/EPIC-F1-01-EXTENSAO-MODELO-LEAD.md",
+    "dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND",
+    "dashboard-leads-etaria/F1-FUNDACAO-BACKEND/auditorias/RELATORIO-AUDITORIA-F1-R01.md",
+    "dashboard-leads-etaria/INTAKE-DASHBOARD-LEADS-ETARIA.md",
+    "LANDING-PAGE-FORM-FIRST/INTAKE-LANDING-PAGE-FORM-FIRST.md",
+    "COMUM/PROMPT-INTAKE-PARA-PRD.md",
+    "COMUM/INTAKE-TEMPLATE.md",
+    "COMUM/INTAKE-FRAMEWORK.md",
+    "dashboard-leads-etaria/F3-ANALISE-ETARIA-UI/auditorias",
+    "dashboard-leads-etaria/F2-ARQUITETURA-DASHBOARD/auditorias",
+    "dashboard-leads-etaria/F1-FUNDACAO-BACKEND/auditorias",
+    "LANDING-PAGE-FORM-FIRST/F3-QA-CROSS-TEMPLATE/auditorias",
+    "LANDING-PAGE-FORM-FIRST/F2-BACKOFFICE-E-PREVIEW/auditorias",
+    "LANDING-PAGE-FORM-FIRST/F1-LAYOUT-FORM-ONLY/auditorias"
+  ]
+}

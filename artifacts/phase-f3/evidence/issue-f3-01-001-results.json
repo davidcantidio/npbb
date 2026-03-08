@@ -1,0 +1,412 @@
+{
+  "issue_id": "ISSUE-F3-01-001",
+  "generated_at": "2026-03-08T16:42:44.276Z",
+  "source_mode": "backend-real",
+  "api_url": "http://127.0.0.1:8000",
+  "base_url": "http://127.0.0.1:5173",
+  "event_id": 1,
+  "total_scenarios": 21,
+  "passed_scenarios": 21,
+  "failed_scenarios": 0,
+  "results": [
+    {
+      "template": "corporativo",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/corporativo_mobile.png",
+      "template_category": "corporativo",
+      "overlay_variant": "corporativo",
+      "expected_overlay_variant": "corporativo",
+      "background_image": "linear-gradient(135deg, rgb(26, 35, 126) 0%, rgb(51, 51, 189) 60%, rgb(70, 94, 255) 100%)",
+      "expected_background_image": "linear-gradient(135deg, rgb(26, 35, 126) 0%, rgb(51, 51, 189) 60%, rgb(70, 94, 255) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 443
+    },
+    {
+      "template": "corporativo",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/corporativo_tablet.png",
+      "template_category": "corporativo",
+      "overlay_variant": "corporativo",
+      "expected_overlay_variant": "corporativo",
+      "background_image": "linear-gradient(135deg, rgb(26, 35, 126) 0%, rgb(51, 51, 189) 60%, rgb(70, 94, 255) 100%)",
+      "expected_background_image": "linear-gradient(135deg, rgb(26, 35, 126) 0%, rgb(51, 51, 189) 60%, rgb(70, 94, 255) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 404
+    },
+    {
+      "template": "corporativo",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/corporativo_desktop.png",
+      "template_category": "corporativo",
+      "overlay_variant": "corporativo",
+      "expected_overlay_variant": "corporativo",
+      "background_image": "linear-gradient(135deg, rgb(26, 35, 126) 0%, rgb(51, 51, 189) 60%, rgb(70, 94, 255) 100%)",
+      "expected_background_image": "linear-gradient(135deg, rgb(26, 35, 126) 0%, rgb(51, 51, 189) 60%, rgb(70, 94, 255) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 491
+    },
+    {
+      "template": "esporte_convencional",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/esporte_convencional_mobile.png",
+      "template_category": "esporte_convencional",
+      "overlay_variant": "esporte_convencional",
+      "expected_overlay_variant": "esporte_convencional",
+      "background_image": "linear-gradient(160deg, rgb(51, 51, 189) 0%, rgb(26, 35, 126) 50%, rgb(51, 51, 189) 100%)",
+      "expected_background_image": "linear-gradient(160deg, rgb(51, 51, 189) 0%, rgb(26, 35, 126) 50%, rgb(51, 51, 189) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 372
+    },
+    {
+      "template": "esporte_convencional",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/esporte_convencional_tablet.png",
+      "template_category": "esporte_convencional",
+      "overlay_variant": "esporte_convencional",
+      "expected_overlay_variant": "esporte_convencional",
+      "background_image": "linear-gradient(160deg, rgb(51, 51, 189) 0%, rgb(26, 35, 126) 50%, rgb(51, 51, 189) 100%)",
+      "expected_background_image": "linear-gradient(160deg, rgb(51, 51, 189) 0%, rgb(26, 35, 126) 50%, rgb(51, 51, 189) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 428
+    },
+    {
+      "template": "esporte_convencional",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/esporte_convencional_desktop.png",
+      "template_category": "esporte_convencional",
+      "overlay_variant": "esporte_convencional",
+      "expected_overlay_variant": "esporte_convencional",
+      "background_image": "linear-gradient(160deg, rgb(51, 51, 189) 0%, rgb(26, 35, 126) 50%, rgb(51, 51, 189) 100%)",
+      "expected_background_image": "linear-gradient(160deg, rgb(51, 51, 189) 0%, rgb(26, 35, 126) 50%, rgb(51, 51, 189) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 474
+    },
+    {
+      "template": "esporte_radical",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/esporte_radical_mobile.png",
+      "template_category": "esporte_radical",
+      "overlay_variant": "esporte_radical",
+      "expected_overlay_variant": "esporte_radical",
+      "background_image": "linear-gradient(145deg, rgb(51, 51, 189) 0%, rgb(255, 110, 145) 55%, rgb(252, 252, 48) 100%)",
+      "expected_background_image": "linear-gradient(145deg, rgb(51, 51, 189) 0%, rgb(255, 110, 145) 55%, rgb(252, 252, 48) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 359
+    },
+    {
+      "template": "esporte_radical",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/esporte_radical_tablet.png",
+      "template_category": "esporte_radical",
+      "overlay_variant": "esporte_radical",
+      "expected_overlay_variant": "esporte_radical",
+      "background_image": "linear-gradient(145deg, rgb(51, 51, 189) 0%, rgb(255, 110, 145) 55%, rgb(252, 252, 48) 100%)",
+      "expected_background_image": "linear-gradient(145deg, rgb(51, 51, 189) 0%, rgb(255, 110, 145) 55%, rgb(252, 252, 48) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 431
+    },
+    {
+      "template": "esporte_radical",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/esporte_radical_desktop.png",
+      "template_category": "esporte_radical",
+      "overlay_variant": "esporte_radical",
+      "expected_overlay_variant": "esporte_radical",
+      "background_image": "linear-gradient(145deg, rgb(51, 51, 189) 0%, rgb(255, 110, 145) 55%, rgb(252, 252, 48) 100%)",
+      "expected_background_image": "linear-gradient(145deg, rgb(51, 51, 189) 0%, rgb(255, 110, 145) 55%, rgb(252, 252, 48) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 508
+    },
+    {
+      "template": "evento_cultural",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/evento_cultural_mobile.png",
+      "template_category": "evento_cultural",
+      "overlay_variant": "evento_cultural",
+      "expected_overlay_variant": "evento_cultural",
+      "background_image": "linear-gradient(150deg, rgb(189, 182, 255) 0%, rgb(232, 228, 255) 50%, rgb(131, 255, 234) 100%)",
+      "expected_background_image": "linear-gradient(150deg, rgb(189, 182, 255) 0%, rgb(232, 228, 255) 50%, rgb(131, 255, 234) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 348
+    },
+    {
+      "template": "evento_cultural",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/evento_cultural_tablet.png",
+      "template_category": "evento_cultural",
+      "overlay_variant": "evento_cultural",
+      "expected_overlay_variant": "evento_cultural",
+      "background_image": "linear-gradient(150deg, rgb(189, 182, 255) 0%, rgb(232, 228, 255) 50%, rgb(131, 255, 234) 100%)",
+      "expected_background_image": "linear-gradient(150deg, rgb(189, 182, 255) 0%, rgb(232, 228, 255) 50%, rgb(131, 255, 234) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 373
+    },
+    {
+      "template": "evento_cultural",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/evento_cultural_desktop.png",
+      "template_category": "evento_cultural",
+      "overlay_variant": "evento_cultural",
+      "expected_overlay_variant": "evento_cultural",
+      "background_image": "linear-gradient(150deg, rgb(189, 182, 255) 0%, rgb(232, 228, 255) 50%, rgb(131, 255, 234) 100%)",
+      "expected_background_image": "linear-gradient(150deg, rgb(189, 182, 255) 0%, rgb(232, 228, 255) 50%, rgb(131, 255, 234) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 449
+    },
+    {
+      "template": "show_musical",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/show_musical_mobile.png",
+      "template_category": "show_musical",
+      "overlay_variant": "show_musical",
+      "expected_overlay_variant": "show_musical",
+      "background_image": "linear-gradient(160deg, rgb(13, 13, 26) 0%, rgb(45, 27, 78) 50%, rgb(74, 25, 66) 100%)",
+      "expected_background_image": "linear-gradient(160deg, rgb(13, 13, 26) 0%, rgb(45, 27, 78) 50%, rgb(74, 25, 66) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 355
+    },
+    {
+      "template": "show_musical",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/show_musical_tablet.png",
+      "template_category": "show_musical",
+      "overlay_variant": "show_musical",
+      "expected_overlay_variant": "show_musical",
+      "background_image": "linear-gradient(160deg, rgb(13, 13, 26) 0%, rgb(45, 27, 78) 50%, rgb(74, 25, 66) 100%)",
+      "expected_background_image": "linear-gradient(160deg, rgb(13, 13, 26) 0%, rgb(45, 27, 78) 50%, rgb(74, 25, 66) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 380
+    },
+    {
+      "template": "show_musical",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/show_musical_desktop.png",
+      "template_category": "show_musical",
+      "overlay_variant": "show_musical",
+      "expected_overlay_variant": "show_musical",
+      "background_image": "linear-gradient(160deg, rgb(13, 13, 26) 0%, rgb(45, 27, 78) 50%, rgb(74, 25, 66) 100%)",
+      "expected_background_image": "linear-gradient(160deg, rgb(13, 13, 26) 0%, rgb(45, 27, 78) 50%, rgb(74, 25, 66) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 465
+    },
+    {
+      "template": "tecnologia",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/tecnologia_mobile.png",
+      "template_category": "tecnologia",
+      "overlay_variant": "tecnologia",
+      "expected_overlay_variant": "tecnologia",
+      "background_image": "linear-gradient(135deg, rgb(13, 27, 46) 0%, rgb(10, 36, 64) 40%, rgb(11, 51, 64) 100%)",
+      "expected_background_image": "linear-gradient(135deg, rgb(13, 27, 46) 0%, rgb(10, 36, 64) 40%, rgb(11, 51, 64) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 343
+    },
+    {
+      "template": "tecnologia",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/tecnologia_tablet.png",
+      "template_category": "tecnologia",
+      "overlay_variant": "tecnologia",
+      "expected_overlay_variant": "tecnologia",
+      "background_image": "linear-gradient(135deg, rgb(13, 27, 46) 0%, rgb(10, 36, 64) 40%, rgb(11, 51, 64) 100%)",
+      "expected_background_image": "linear-gradient(135deg, rgb(13, 27, 46) 0%, rgb(10, 36, 64) 40%, rgb(11, 51, 64) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 371
+    },
+    {
+      "template": "tecnologia",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/tecnologia_desktop.png",
+      "template_category": "tecnologia",
+      "overlay_variant": "tecnologia",
+      "expected_overlay_variant": "tecnologia",
+      "background_image": "linear-gradient(135deg, rgb(13, 27, 46) 0%, rgb(10, 36, 64) 40%, rgb(11, 51, 64) 100%)",
+      "expected_background_image": "linear-gradient(135deg, rgb(13, 27, 46) 0%, rgb(10, 36, 64) 40%, rgb(11, 51, 64) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 402
+    },
+    {
+      "template": "generico",
+      "breakpoint": "mobile",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/generico_mobile.png",
+      "template_category": "generico",
+      "overlay_variant": "generico",
+      "expected_overlay_variant": "generico",
+      "background_image": "linear-gradient(150deg, rgb(51, 51, 189) 0%, rgb(70, 94, 255) 100%)",
+      "expected_background_image": "linear-gradient(150deg, rgb(51, 51, 189) 0%, rgb(70, 94, 255) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 334
+    },
+    {
+      "template": "generico",
+      "breakpoint": "tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/generico_tablet.png",
+      "template_category": "generico",
+      "overlay_variant": "generico",
+      "expected_overlay_variant": "generico",
+      "background_image": "linear-gradient(150deg, rgb(51, 51, 189) 0%, rgb(70, 94, 255) 100%)",
+      "expected_background_image": "linear-gradient(150deg, rgb(51, 51, 189) 0%, rgb(70, 94, 255) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 367
+    },
+    {
+      "template": "generico",
+      "breakpoint": "desktop",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": "PASS",
+      "screenshot_path": "artifacts/phase-f3/screenshots/generico_desktop.png",
+      "template_category": "generico",
+      "overlay_variant": "generico",
+      "expected_overlay_variant": "generico",
+      "background_image": "linear-gradient(150deg, rgb(51, 51, 189) 0%, rgb(70, 94, 255) 100%)",
+      "expected_background_image": "linear-gradient(150deg, rgb(51, 51, 189) 0%, rgb(70, 94, 255) 100%)",
+      "viewport_gap_free": true,
+      "external_image_requests": [],
+      "errors": [],
+      "duration_ms": 479
+    }
+  ]
+}

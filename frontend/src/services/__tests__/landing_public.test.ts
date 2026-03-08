@@ -59,9 +59,6 @@ const landingBasePayload = {
   },
   marca: {
     tagline: "Banco do Brasil",
-    versao_logo: "positivo",
-    url_hero_image: null,
-    hero_alt: "Hero",
   },
   acesso: {
     landing_url: "https://npbb.example/landing/ativacoes/1",
@@ -83,6 +80,27 @@ describe("landing_public service", () => {
 
     expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/landing", { retries: 0 });
     expect(payload.gamificacoes).toEqual([]);
+  });
+
+  it("serializa template_override valido no endpoint por evento", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce(landingBasePayload);
+
+    await getLandingByEvento(10, { templateOverride: " show_musical " });
+
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith(
+      "/eventos/10/landing?template_override=show_musical",
+      { retries: 0 },
+    );
+  });
+
+  it("omite template_override vazio no endpoint por evento", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce(landingBasePayload);
+
+    await getLandingByEvento(10, { templateOverride: "   " });
+
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/landing", { retries: 0 });
   });
 
   it("normaliza gamificacoes nula para lista vazia no endpoint por ativacao", async () => {

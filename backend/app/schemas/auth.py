@@ -18,3 +18,10 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str
     user: UsuarioRead
+
+
+class SessionStatusResponse(BaseModel):
+    """Estado da sessão atual sem erro para usuários não autenticados."""
+
+    authenticated: bool
+    user: UsuarioRead | None = None

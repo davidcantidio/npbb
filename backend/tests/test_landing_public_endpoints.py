@@ -95,7 +95,6 @@ def seed_evento(
     nome: str,
     template_override: str | None = None,
     cta_personalizado: str | None = None,
-    hero_image_url: str | None = None,
     descricao_curta: str | None = None,
 ) -> Evento:
     status = session.exec(select(StatusEvento).where(StatusEvento.nome == "Previsto")).first()
@@ -106,7 +105,6 @@ def seed_evento(
         descricao_curta=descricao_curta,
         template_override=template_override,
         cta_personalizado=cta_personalizado,
-        hero_image_url=hero_image_url,
         concorrencia=False,
         cidade="Brasilia",
         estado="DF",
@@ -141,7 +139,7 @@ def login_and_get_token(client: TestClient, email: str, password: str) -> str:
     return resp.json()["access_token"]
 
 
-def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
+def test_public_landing_por_ativacao_retorna_payload_resolvido_form_only(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)
         tipo = seed_tipo(session)
@@ -152,7 +150,6 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
             nome="BB Summit 2026",
             template_override="corporativo",
             cta_personalizado="Fazer inscricao",
-            hero_image_url="https://example.com/hero-corp.webp",
             descricao_curta="Conteudo executivo e networking com o BB.",
         )
         ativacao = seed_ativacao(session, evento_id=evento.id)
@@ -167,7 +164,10 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
     assert payload["evento"]["descricao_curta"] == "Conteudo executivo e networking com o BB."
     assert payload["template"]["categoria"] == "corporativo"
     assert payload["template"]["cta_text"] == "Fazer inscricao"
-    assert payload["marca"]["url_hero_image"] == "https://example.com/hero-corp.webp"
+    assert payload["marca"] == {"tagline": "Banco do Brasil. Pra tudo que voce imaginar."}
+    assert "url_hero_image" not in payload["marca"]
+    assert "hero_alt" not in payload["marca"]
+    assert "versao_logo" not in payload["marca"]
     assert payload["formulario"]["event_id"] == payload["evento"]["id"]
     assert payload["formulario"]["ativacao_id"] == ativacao_id
     assert payload["formulario"]["campos_obrigatorios"] == ["nome", "email"]
@@ -179,7 +179,9 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido(client, engine):
     assert payload["ativacao"]["nome"] == "Captacao Principal"
 
 
-def test_public_landing_por_evento_retorna_hero_nulo_e_ativacao_nula_quando_nao_customizado(client, engine):
+def test_public_landing_por_evento_retorna_marca_minima_e_ativacao_nula_quando_nao_customizado(
+    client, engine
+):
     with Session(engine) as session:
         agencia = seed_agencia(session)
         tipo = seed_tipo(session, "Corporativo")
@@ -189,7 +191,6 @@ def test_public_landing_por_evento_retorna_hero_nulo_e_ativacao_nula_quando_nao_
             tipo_id=tipo.id,
             nome="Forum BB Sem Hero",
             cta_personalizado=None,
-            hero_image_url=None,
         )
         evento_id = evento.id
 
@@ -200,7 +201,35 @@ def test_public_landing_por_evento_retorna_hero_nulo_e_ativacao_nula_quando_nao_
     assert payload["ativacao_id"] is None
     assert payload["ativacao"] is None
     assert payload["evento"]["cta_personalizado"] is None
-    assert payload["marca"]["url_hero_image"] is None
+    assert payload["marca"] == {"tagline": "Banco do Brasil. Pra tudo que voce imaginar."}
+    assert "url_hero_image" not in payload["marca"]
+
+
+def test_public_landing_por_evento_aceita_template_override_transitorio_sem_persistir(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Corporativo")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Forum BB Preview",
+            template_override="corporativo",
+        )
+        evento_id = evento.id
+
+    resp = client.get(f"/eventos/{evento_id}/landing?template_override=show_musical")
+    assert resp.status_code == 200
+    payload = resp.json()
+
+    assert payload["template"]["categoria"] == "show_musical"
+    assert payload["template"]["tema"] == "Show"
+    assert payload["template"]["color_primary"] == "#735CC6"
+
+    with Session(engine) as session:
+        persisted = session.get(Evento, evento_id)
+        assert persisted is not None
+        assert persisted.template_override == "corporativo"
 
 
 def test_public_landing_por_ativacao_normaliza_descricao_e_mensagem_qrcode(client, engine):
@@ -335,7 +364,7 @@ def test_public_landing_supports_cta_variants_and_analytics_tracking(client, eng
         assert events[0].cta_variant_id == "show_a"
 
 
-def test_evento_create_update_e_get_expoem_campos_da_fase_1(client, engine):
+def test_evento_create_update_e_get_expoem_campos_form_only_sem_hero_image(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)
         tipo = seed_tipo(session, "Tecnologia")
@@ -352,7 +381,6 @@ def test_evento_create_update_e_get_expoem_campos_da_fase_1(client, engine):
             "descricao": "Descricao principal",
             "descricao_curta": "Resumo curto",
             "template_override": "tecnologia",
-            "hero_image_url": "https://example.com/hero-tech.webp",
             "cta_personalizado": "Quero participar",
             "cidade": "Brasilia",
             "estado": "DF",
@@ -365,9 +393,9 @@ def test_evento_create_update_e_get_expoem_campos_da_fase_1(client, engine):
     assert create_resp.status_code == 201
     created = create_resp.json()
     assert created["template_override"] == "tecnologia"
-    assert created["hero_image_url"] == "https://example.com/hero-tech.webp"
     assert created["cta_personalizado"] == "Quero participar"
     assert created["descricao_curta"] == "Resumo curto"
+    assert "hero_image_url" not in created
 
     evento_id = created["id"]
     update_resp = client.put(
@@ -389,8 +417,56 @@ def test_evento_create_update_e_get_expoem_campos_da_fase_1(client, engine):
     assert get_resp.status_code == 200
     fetched = get_resp.json()
     assert fetched["template_override"] == "corporativo"
-    assert fetched["hero_image_url"] == "https://example.com/hero-tech.webp"
     assert fetched["descricao_curta"] == "Resumo revisado"
+    assert "hero_image_url" not in fetched
+
+
+def test_evento_create_e_update_rejeitam_hero_image_url_como_campo_extra(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        seed_user(session, "strict-schema@example.com", "[REDACTED]")
+        agencia_id = agencia.id
+        tipo_id = tipo.id
+
+    token = login_and_get_token(client, "strict-schema@example.com", "[REDACTED]")
+    base_payload = {
+        "nome": "Evento Strict",
+        "descricao": "Descricao principal",
+        "cidade": "Brasilia",
+        "estado": "DF",
+        "agencia_id": agencia_id,
+        "tipo_id": tipo_id,
+        "data_inicio_prevista": "2026-05-10",
+        "data_fim_prevista": "2026-05-11",
+    }
+
+    create_resp = client.post(
+        "/evento",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            **base_payload,
+            "hero_image_url": "https://example.com/hero-tech.webp",
+        },
+    )
+    assert create_resp.status_code == 422
+    assert any(item["loc"] == ["body", "hero_image_url"] for item in create_resp.json()["detail"])
+
+    valid_create_resp = client.post(
+        "/evento",
+        headers={"Authorization": f"Bearer {token}"},
+        json=base_payload,
+    )
+    assert valid_create_resp.status_code == 201
+    evento_id = valid_create_resp.json()["id"]
+
+    update_resp = client.put(
+        f"/evento/{evento_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"hero_image_url": "https://example.com/hero-tech.webp"},
+    )
+    assert update_resp.status_code == 422
+    assert any(item["loc"] == ["body", "hero_image_url"] for item in update_resp.json()["detail"])
 
 
 # ---------------------------------------------------------------------------

@@ -1,8 +1,39 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import LandingPageView, { formatDateRange } from "../LandingPageView";
 import type { LandingPageData } from "../../../services/landing_public";
+
+function expectLegacyBlocksToBeAbsent() {
+  expect(screen.queryByTestId("landing-hero-image")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("landing-hero-fallback")).not.toBeInTheDocument();
+  expect(screen.queryByAltText(/banco do brasil/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Sobre o evento/i)).not.toBeInTheDocument();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getEmotionCssText() {
+  return Array.from(document.querySelectorAll("style[data-emotion]"))
+    .map((node) => node.textContent ?? "")
+    .join("")
+    .replace(/\s+/g, "");
+}
+
+function expectSharedWidthContract(element: HTMLElement) {
+  const emotionClass = Array.from(element.classList).find((className) => className.startsWith("css-"));
+  expect(emotionClass).toBeTruthy();
+
+  const css = getEmotionCssText();
+  const selector = `\\.${escapeRegExp(emotionClass!)}`;
+
+  expect(css).toMatch(new RegExp(`${selector}\\{[^}]*width:min\\(92vw,440px\\)`));
+  expect(css).toMatch(new RegExp(`@media\\(min-width:768px\\)\\{${selector}\\{[^}]*width:min\\(480px,90vw\\)`));
+  expect(css).toMatch(new RegExp(`@media\\(min-width:1280px\\)\\{${selector}\\{[^}]*width:min\\(520px,90vw\\)`));
+}
 
 function createLandingFixture(overrides: Partial<LandingPageData> = {}): LandingPageData {
   return {
@@ -70,9 +101,6 @@ function createLandingFixture(overrides: Partial<LandingPageData> = {}): Landing
     },
     marca: {
       tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
-      versao_logo: "positivo",
-      url_hero_image: "https://example.com/hero-image.webp",
-      hero_alt: "Imagem de destaque do evento BB Summit 2026",
     },
     acesso: {
       landing_url: "https://npbb.example/landing/ativacoes/1",
@@ -85,6 +113,13 @@ function createLandingFixture(overrides: Partial<LandingPageData> = {}): Landing
 }
 
 describe("LandingPageView", () => {
+  it("renderiza o FormCard dedicado no layout", () => {
+    render(<LandingPageView data={createLandingFixture()} mode="public" />);
+
+    expect(screen.getByTestId("form-card-container")).toBeInTheDocument();
+    expect(screen.getByTestId("form-card-paper")).toBeInTheDocument();
+  });
+
   it("oculta campos internos de template no modo publico", () => {
     render(<LandingPageView data={createLandingFixture()} mode="public" />);
 
@@ -94,13 +129,14 @@ describe("LandingPageView", () => {
     expect(screen.queryByText(/Categoria: categoria-interna/i)).not.toBeInTheDocument();
   });
 
-  it("exibe campos internos de template no modo preview", () => {
+  it("exibe apenas badge discreto no modo preview", () => {
     render(<LandingPageView data={createLandingFixture()} mode="preview" />);
 
-    expect(screen.getByText("Tema Interno")).toBeInTheDocument();
-    expect(screen.getByText(/Template: Tema Interno/i)).toBeInTheDocument();
-    expect(screen.getByText(/mood-interno/i)).toBeInTheDocument();
-    expect(screen.getByText(/Categoria: categoria-interna/i)).toBeInTheDocument();
+    expect(screen.getByTestId("landing-preview-badge")).toHaveTextContent("Preview");
+    expect(screen.queryByText("Tema Interno")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Template: Tema Interno/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/mood-interno/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Categoria: categoria-interna/i)).not.toBeInTheDocument();
   });
 
   it("prioriza cta_personalizado do evento sobre o CTA do template", () => {
@@ -116,25 +152,17 @@ describe("LandingPageView", () => {
     expect(screen.getByRole("button", { name: /cadastre-se agora/i })).toBeInTheDocument();
   });
 
-  it("renderiza fallback visual quando hero image estiver vazia", () => {
-    const fixture = createLandingFixture({
-      marca: {
-        ...createLandingFixture().marca,
-        url_hero_image: "   ",
-      },
-    });
-
-    render(<LandingPageView data={fixture} mode="public" />);
-
-    expect(screen.getByTestId("landing-hero-fallback")).toBeInTheDocument();
-    expect(screen.queryByTestId("landing-hero-image")).not.toBeInTheDocument();
-  });
-
-  it("renderiza hero image quando URL valida estiver presente", () => {
+  it("nao renderiza hero, header nem blocos legados na view publica", () => {
     render(<LandingPageView data={createLandingFixture()} mode="public" />);
 
-    expect(screen.getByTestId("landing-hero-image")).toBeInTheDocument();
-    expect(screen.queryByTestId("landing-hero-fallback")).not.toBeInTheDocument();
+    expectLegacyBlocksToBeAbsent();
+  });
+
+  it("nao renderiza hero, header nem blocos legados no preview", () => {
+    render(<LandingPageView data={createLandingFixture()} mode="preview" />);
+
+    expect(screen.getByTestId("landing-preview-badge")).toHaveTextContent("Preview");
+    expectLegacyBlocksToBeAbsent();
   });
 
   it("usa fallback com ativacao nula e nao mostra callout", () => {
@@ -157,6 +185,65 @@ describe("LandingPageView", () => {
     render(<LandingPageView data={createLandingFixture({ gamificacoes: [] })} mode="public" />);
 
     expect(screen.queryByRole("button", { name: /quero participar/i })).not.toBeInTheDocument();
+  });
+
+  it("renderiza gamificacao abaixo do FormCard com largura e surface compartilhadas", () => {
+    render(
+      <LandingPageView
+        data={createLandingFixture({
+          template: {
+            ...createLandingFixture().template,
+            categoria: "corporativo",
+          },
+          gamificacoes: [
+            {
+              id: 12,
+              nome: "Quiz BB",
+              descricao: "Responda ao quiz interativo.",
+              premio: "Kit promocional",
+              titulo_feedback: "Boa!",
+              texto_feedback: "Participacao registrada.",
+            },
+          ],
+        })}
+        mode="public"
+      />,
+    );
+
+    const formCardContainer = screen.getByTestId("form-card-container");
+    const formCardPaper = screen.getByTestId("form-card-paper");
+    const gamificacaoSection = screen.getByTestId("landing-gamificacao-section");
+    const gamificacaoSurface = screen.getByTestId("landing-gamificacao-surface");
+
+    expect(
+      formCardContainer.compareDocumentPosition(gamificacaoSection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    expectSharedWidthContract(formCardPaper);
+    expectSharedWidthContract(gamificacaoSection);
+
+    const formCardStyles = window.getComputedStyle(formCardPaper);
+    const gamificacaoStyles = window.getComputedStyle(gamificacaoSurface);
+
+    expect(gamificacaoStyles.borderRadius).toBe(formCardStyles.borderRadius);
+    expect(gamificacaoStyles.boxShadow).toBe(formCardStyles.boxShadow);
+    expect(gamificacaoStyles.borderTopWidth).toBe(formCardStyles.borderTopWidth);
+    expect(gamificacaoStyles.borderTopStyle).toBe(formCardStyles.borderTopStyle);
+    expect(gamificacaoStyles.borderTopColor).toBe(formCardStyles.borderTopColor);
+    expect(gamificacaoStyles.backgroundColor).toBe("rgba(255, 255, 255, 0.92)");
+  });
+
+  it("mantem overlay decorativo sem bloquear clique no CTA", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(<LandingPageView data={createLandingFixture()} mode="public" onSubmit={onSubmit} />);
+
+    const overlayLayer = screen.getByTestId("full-page-overlay-layer");
+    expect(overlayLayer).toHaveStyle({ pointerEvents: "none" });
+
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it("mantem gamificacao em modo somente leitura no preview", () => {
@@ -184,6 +271,16 @@ describe("LandingPageView", () => {
     );
 
     expect(screen.getByRole("button", { name: /quero participar/i })).toBeDisabled();
+  });
+
+  it("renderiza footer minimo tambem no preview", () => {
+    render(<LandingPageView data={createLandingFixture()} mode="preview" />);
+
+    expect(screen.getByTestId("minimal-footer")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /politica de privacidade e lgpd/i })).toHaveAttribute(
+      "href",
+      "https://www.bb.com.br/site/privacidade-e-lgpd/",
+    );
   });
 
   it("formatDateRange preserva o dia para datas YYYY-MM-DD", () => {

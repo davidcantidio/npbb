@@ -6,31 +6,63 @@ import { Outlet } from "react-router-dom";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DASHBOARD_MANIFEST } from "../../config/dashboardManifest";
 
-/**
- * Renders the dashboard navigation inside the shared application sidebar slot.
- * Falls back to an inline sidebar only when the layout is mounted outside AppLayout.
- */
+const DASHBOARD_SIDEBAR_SLOT_ID = "app-sidebar-slot";
+
 export default function DashboardLayout() {
   const [sidebarContainer, setSidebarContainer] = useState<HTMLElement | null>(null);
-  const [sidebarInitialized, setSidebarInitialized] = useState(false);
+  const [sidebarReady, setSidebarReady] = useState(false);
 
   useEffect(() => {
-    setSidebarContainer(document.getElementById("app-sidebar-slot"));
-    setSidebarInitialized(true);
+    let animationFrameId = 0;
+    let observer: MutationObserver | null = null;
+
+    const bindSidebarContainer = () => {
+      const nextContainer = document.getElementById(DASHBOARD_SIDEBAR_SLOT_ID);
+      if (!nextContainer) return false;
+
+      setSidebarContainer(nextContainer);
+      setSidebarReady(true);
+      observer?.disconnect();
+      return true;
+    };
+
+    if (bindSidebarContainer()) {
+      return () => undefined;
+    }
+
+    observer = new MutationObserver(() => {
+      bindSidebarContainer();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    animationFrameId = window.requestAnimationFrame(() => {
+      if (!bindSidebarContainer()) {
+        setSidebarReady(true);
+      }
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      observer?.disconnect();
+    };
   }, []);
 
   const sidebar = <DashboardSidebar entries={DASHBOARD_MANIFEST} />;
-  const sidebarPortal = sidebarContainer ? createPortal(sidebar, sidebarContainer) : null;
 
   return (
     <>
-      {sidebarPortal}
-      {!sidebarContainer && sidebarInitialized ? (
-        <Paper variant="outlined" sx={{ mb: 3, p: 2 }}>
+      {sidebarContainer ? createPortal(sidebar, sidebarContainer) : null}
+      {!sidebarContainer && sidebarReady ? (
+        <Paper
+          component="aside"
+          aria-label="Sidebar do dashboard"
+          variant="outlined"
+          sx={{ mb: 3, borderRadius: 3, p: 2 }}
+        >
           {sidebar}
         </Paper>
       ) : null}
-      <Box>
+      <Box component="section" aria-label="Conteudo do dashboard" sx={{ minWidth: 0 }}>
         <Outlet />
       </Box>
     </>

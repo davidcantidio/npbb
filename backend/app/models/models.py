@@ -213,7 +213,6 @@ class Evento(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     thumbnail: Optional[str] = Field(default=None, max_length=500)
     template_override: Optional[str] = Field(default=None, max_length=50)
-    hero_image_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     cta_personalizado: Optional[str] = Field(default=None, max_length=200)
     descricao_curta: Optional[str] = Field(default=None, max_length=500)
     # Divisao demandante (lookup table).

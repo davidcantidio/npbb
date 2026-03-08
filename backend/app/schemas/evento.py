@@ -53,7 +53,6 @@ class EventoRead(BaseModel):
     id: int
     thumbnail: Optional[str] = None
     template_override: Optional[str] = None
-    hero_image_url: Optional[str] = None
     cta_personalizado: Optional[str] = None
     descricao_curta: Optional[str] = None
     divisao_demandante_id: Optional[int] = None
@@ -115,7 +114,6 @@ class EventoCreate(BaseModel):
 
     thumbnail: Optional[str] = None
     template_override: Optional[str] = Field(default=None, max_length=50)
-    hero_image_url: Optional[str] = None
     cta_personalizado: Optional[str] = Field(default=None, max_length=200)
     descricao_curta: Optional[str] = Field(default=None, max_length=500)
     divisao_demandante_id: int | None = None
@@ -129,6 +127,8 @@ class EventoCreate(BaseModel):
 
     publico_projetado: Optional[int] = None
     publico_realizado: Optional[int] = None
+
+    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def validate_dates(self):
@@ -163,7 +163,6 @@ class EventoUpdate(BaseModel):
 
     thumbnail: str | None = None
     template_override: str | None = Field(default=None, max_length=50)
-    hero_image_url: str | None = None
     cta_personalizado: str | None = Field(default=None, max_length=200)
     descricao_curta: str | None = Field(default=None, max_length=500)
     divisao_demandante_id: int | None = None
@@ -177,6 +176,8 @@ class EventoUpdate(BaseModel):
 
     publico_projetado: int | None = None
     publico_realizado: int | None = None
+
+    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def validate_dates(self):

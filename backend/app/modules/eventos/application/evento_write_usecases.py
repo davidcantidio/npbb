@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from datetime import date
 from types import SimpleNamespace
-from urllib.parse import urlparse
 
 from fastapi import Response, status
 from sqlalchemy import func
@@ -81,18 +80,6 @@ def _validate_landing_customization_fields(data: dict) -> None:
                 message="template_override fora do catalogo homologado",
             )
         data["template_override"] = normalized
-
-    if "hero_image_url" in data:
-        hero_image_url = data.get("hero_image_url")
-        if hero_image_url:
-            parsed = urlparse(hero_image_url)
-            allowed = parsed.scheme in {"http", "https"} or hero_image_url.startswith("data:image/")
-            if not allowed:
-                _raise_http(
-                    status.HTTP_400_BAD_REQUEST,
-                    code="LANDING_HERO_URL_INVALID",
-                    message="hero_image_url deve usar http, https ou data:image/",
-                )
 
 
 def _infer_status_nome(data_inicio_prevista: date | None, data_fim_prevista: date | None) -> str:
@@ -202,7 +189,6 @@ def criar_evento_usecase(payload: EventoCreate, session: Session, current_user: 
 
     landing_data = {
         "template_override": _normalize_str(payload.template_override),
-        "hero_image_url": _normalize_str(payload.hero_image_url),
         "cta_personalizado": _normalize_str(payload.cta_personalizado),
         "descricao_curta": _normalize_str(payload.descricao_curta),
     }
@@ -211,7 +197,6 @@ def criar_evento_usecase(payload: EventoCreate, session: Session, current_user: 
     evento = Evento(
         thumbnail=_normalize_str(payload.thumbnail),
         template_override=landing_data["template_override"],
-        hero_image_url=landing_data["hero_image_url"],
         cta_personalizado=landing_data["cta_personalizado"],
         descricao_curta=landing_data["descricao_curta"],
         divisao_demandante_id=payload.divisao_demandante_id,
@@ -393,8 +378,6 @@ def atualizar_evento_usecase(
         data["thumbnail"] = _normalize_str(data["thumbnail"])
     if "template_override" in data:
         data["template_override"] = _normalize_str(data["template_override"])
-    if "hero_image_url" in data:
-        data["hero_image_url"] = _normalize_str(data["hero_image_url"])
     if "cta_personalizado" in data:
         data["cta_personalizado"] = _normalize_str(data["cta_personalizado"])
     if "descricao_curta" in data:
@@ -406,7 +389,7 @@ def atualizar_evento_usecase(
 
     _validate_landing_customization_fields(data)
 
-    governed_fields = ["template_override", "hero_image_url", "cta_personalizado", "descricao_curta"]
+    governed_fields = ["template_override", "cta_personalizado", "descricao_curta"]
     customization_audits: list[EventoLandingCustomizationAudit] = []
     for field_name in governed_fields:
         if field_name not in data:

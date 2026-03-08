@@ -117,9 +117,6 @@ const landingFixture: LandingPageData = {
   },
   marca: {
     tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
-    versao_logo: "positivo",
-    url_hero_image: "data:image/svg+xml;base64,PHN2Zy8+",
-    hero_alt: "Imagem de destaque do evento BB Summit 2026",
   },
   acesso: {
     landing_url: "https://npbb.example/landing/ativacoes/1",
@@ -302,9 +299,9 @@ describe("EventLandingPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Mostra CCBB 2026")).toBeInTheDocument();
-    expect(screen.getByText(/Programacao e contexto/i)).toBeInTheDocument();
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Programacao e contexto/i)).not.toBeInTheDocument();
   });
 
   it("aplica exposicao de CTA para template musical", async () => {
@@ -318,7 +315,7 @@ describe("EventLandingPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Festival BB Noite Viva")).toBeInTheDocument();
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /cadastre-se na experiencia|quero receber novidades/i }),
     ).toBeInTheDocument();

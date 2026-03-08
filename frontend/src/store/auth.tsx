@@ -1,5 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getMe, login as apiLogin, LoginUser, logout as apiLogout, refreshSession } from "../services/auth";
+import {
+  getSessionStatus,
+  login as apiLogin,
+  LoginUser,
+  logout as apiLogout,
+  refreshSession,
+} from "../services/auth";
 
 type AuthContextValue = {
   user: LoginUser | null;
@@ -33,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const pathname = typeof window !== "undefined" ? window.location.pathname : "";
     const isPublicLandingRoute =
       pathname.startsWith("/landing/") || pathname.startsWith("/checkin-sem-qr/");
@@ -40,25 +47,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       setRefreshing(false);
       setError(null);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     setLoading(true);
-    getMe()
-      .then(async (me) => {
-        setUser(me);
+    getSessionStatus()
+      .then(async (sessionStatus) => {
+        if (cancelled) return;
+        if (!sessionStatus.authenticated || !sessionStatus.user) {
+          clearSession();
+          setError(null);
+          return;
+        }
+
+        setUser(sessionStatus.user);
         setError(null);
         try {
           const refreshed = await refreshSession();
+          if (cancelled) return;
           setToken(refreshed.access_token || null);
+          setUser(refreshed.user || sessionStatus.user);
         } catch {
-          setToken(null);
+          if (cancelled) return;
+          clearSession();
+          setError(null);
         }
       })
       .catch((err: any) => {
+        if (cancelled) return;
         clearSession(err?.message || "Sessao invalida. Faca login novamente.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [clearSession]);
 
   const handleLogin = async (email: string, password: string) => {

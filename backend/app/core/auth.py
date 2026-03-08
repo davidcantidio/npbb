@@ -1,6 +1,6 @@
 """Dependência de autenticação para obter o usuário atual."""
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 import jwt
@@ -13,15 +13,29 @@ SESSION_COOKIE_NAME = "npbb_access_token"
 http_bearer = HTTPBearer(auto_error=False)
 
 
+def _resolve_token_value(
+    token: str | None,
+    bearer: HTTPAuthorizationCredentials | None,
+    cookie_token: str | None,
+) -> str | None:
+    direct_token = token if isinstance(token, str) else None
+    session_cookie_token = cookie_token if isinstance(cookie_token, str) else None
+    return direct_token or (bearer.credentials if bearer else session_cookie_token)
+
+
 def get_current_user(
-    token: str | None = None,
+    token: str | None = Query(default=None, include_in_schema=False),
     bearer: HTTPAuthorizationCredentials | None = Depends(http_bearer),
-    cookie_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    cookie_token: str | None = Cookie(
+        default=None,
+        alias=SESSION_COOKIE_NAME,
+        include_in_schema=False,
+    ),
     session: Session = Depends(get_session),
 ) -> Usuario:
     """Valida bearer/cookie token, busca o usuário ativo e o retorna."""
     auth_headers = {"WWW-Authenticate": "Bearer"}
-    token_value = token or (bearer.credentials if bearer else cookie_token)
+    token_value = _resolve_token_value(token, bearer, cookie_token)
     if not token_value:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -59,4 +73,34 @@ def get_current_user(
             detail="Usuário inativo ou inexistente",
             headers=auth_headers,
         )
+    return usuario
+
+
+def get_current_user_optional(
+    token: str | None = Query(default=None, include_in_schema=False),
+    bearer: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    cookie_token: str | None = Cookie(
+        default=None,
+        alias=SESSION_COOKIE_NAME,
+        include_in_schema=False,
+    ),
+    session: Session = Depends(get_session),
+) -> Usuario | None:
+    """Tenta resolver o usuário atual via bearer/cookie sem retornar erro 401."""
+    token_value = _resolve_token_value(token, bearer, cookie_token)
+    if not token_value:
+        return None
+
+    try:
+        payload = decode_token(token_value)
+        sub = payload.get("sub")
+        if sub is None:
+            return None
+        user_id = int(sub)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
+        return None
+
+    usuario = session.get(Usuario, user_id)
+    if not usuario or not usuario.ativo:
+        return None
     return usuario

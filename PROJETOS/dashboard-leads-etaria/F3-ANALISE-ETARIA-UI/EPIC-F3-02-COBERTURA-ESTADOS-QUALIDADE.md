@@ -44,6 +44,7 @@ A interface passa a explicar a qualidade dos dados e a responder bem a loading, 
 | ISSUE-F3-02-001 | Implementar banners de aviso de dados BB | Implementar banners de aviso de dados BB | 3 | done | [ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md](./issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md) |
 | ISSUE-F3-02-002 | Implementar estados da interface (loading, empty, error) | Implementar estados da interface (loading, empty, error) | 3 | todo | [ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md](./issues/ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md) |
 | ISSUE-F3-02-003 | Tooltips interpretativos e documentação visual | Tooltips interpretativos e documentação visual | 2 | done | [ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md](./issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md) |
+| ISSUE-F3-02-004 | Alinhar contratos de teste da tabela e KPIs | Reconciliar contrato de exibicao da tabela/KPIs com a suite de testes da analise etaria apos hold F3-R01. | 2 | todo | [ISSUE-F3-02-004-ALINHAR-CONTRATOS-DE-TESTE-DA-TABELA-E-KPIS.md](./issues/ISSUE-F3-02-004-ALINHAR-CONTRATOS-DE-TESTE-DA-TABELA-E-KPIS.md) |
 
 ## Artifact Minimo do Epico
 
@@ -69,4 +70,5 @@ A interface passa a explicar a qualidade dos dados e a responder bem a loading, 
 - `[[./issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB]]`
 - `[[./issues/ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR]]`
 - `[[./issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL]]`
+- `[[./issues/ISSUE-F3-02-004-ALINHAR-CONTRATOS-DE-TESTE-DA-TABELA-E-KPIS]]`
 - `[[../PRD-DASHBOARD-LEADS-ETARIA]]`

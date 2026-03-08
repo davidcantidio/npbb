@@ -1,7 +1,7 @@
 ---
 doc_id: "F2_DASHBOARD_LEADS_ETARIA_EPICS.md"
 version: "1.1"
-status: "done"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -18,10 +18,10 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `approved`
-- ultima_auditoria: `F2-R01`
-- veredito_atual: `go`
-- relatorio_mais_recente: `./auditorias/RELATORIO-AUDITORIA-F2-R01.md`
+- estado_do_gate: `hold`
+- ultima_auditoria: `F2-R02`
+- veredito_atual: `hold`
+- relatorio_mais_recente: `./auditorias/RELATORIO-AUDITORIA-F2-R02.md`
 - log_do_projeto: [AUDIT-LOG](../../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 
@@ -29,7 +29,7 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F2-01 | Layout e Manifesto de Dashboards | Criar manifesto, `DashboardLayout`, `DashboardHome` e roteamento protegido para o modulo. | F1 concluida | done | [EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md) |
+| EPIC-F2-01 | Layout e Manifesto de Dashboards | Criar manifesto, `DashboardLayout`, `DashboardHome` e roteamento protegido para o modulo. | F1 concluida | active | [EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md) |
 
 ## Dependencias entre Epicos
 

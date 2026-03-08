@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md"
 version: "1.0"
-status: "done"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -36,6 +36,7 @@ O modulo dashboard passa a ter uma arquitetura extensivel, em que novas analises
 - [x] `DashboardHome` com grid de cards clicáveis/não-clicáveis
 - [x] Rotas `/dashboard` e `/dashboard/leads/analise-etaria` protegidas e funcionais
 - [x] Extensibilidade validada: nova entrada no manifesto = novo card sem alterar layout
+- [ ] Semantica de navegacao e suite de arquitetura reconciliadas apos hold F2-R02
 
 ## Issues do Epico
 
@@ -45,6 +46,7 @@ O modulo dashboard passa a ter uma arquitetura extensivel, em que novas analises
 | ISSUE-F2-01-002 | Implementar DashboardLayout com sidebar de navegação | Implementar DashboardLayout com sidebar de navegação | 3 | done | [ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO.md](./issues/ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO.md) |
 | ISSUE-F2-01-003 | Implementar DashboardHome (seletor visual de análises) | Implementar DashboardHome (seletor visual de análises) | 3 | done | [ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES.md](./issues/ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES.md) |
 | ISSUE-F2-01-004 | Configurar rotas /dashboard/* e proteção de autenticação | Configurar rotas /dashboard/* e proteção de autenticação | 2 | done | [ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO.md](./issues/ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO.md) |
+| ISSUE-F2-01-005 | Alinhar semantica de navegacao e testes do DashboardLayout | Corrigir drift entre componente e suite de acessibilidade/navegacao apos auditoria F2-R02. | 2 | todo | [ISSUE-F2-01-005-ALINHAR-SEMANTICA-DE-NAVEGACAO-E-TESTES-DO-DASHBOARDLAYOUT.md](./issues/ISSUE-F2-01-005-ALINHAR-SEMANTICA-DE-NAVEGACAO-E-TESTES-DO-DASHBOARDLAYOUT.md) |
 
 ## Artifact Minimo do Epico
 
@@ -71,4 +73,5 @@ domínio (leads, eventos, publicidade) sem alteração no layout
 - `[[./issues/ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO]]`
 - `[[./issues/ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES]]`
 - `[[./issues/ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO]]`
+- `[[./issues/ISSUE-F2-01-005-ALINHAR-SEMANTICA-DE-NAVEGACAO-E-TESTES-DO-DASHBOARDLAYOUT]]`
 - `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`

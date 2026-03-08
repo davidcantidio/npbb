@@ -19,9 +19,9 @@ O backend retorna a analise etaria consolidada e por evento com filtros de perio
 ## Gate de Auditoria da Fase
 
 - estado_do_gate: `approved`
-- ultima_auditoria: `F1-R01`
+- ultima_auditoria: `F1-R02`
 - veredito_atual: `go`
-- relatorio_mais_recente: `./auditorias/RELATORIO-AUDITORIA-F1-R01.md`
+- relatorio_mais_recente: `./auditorias/RELATORIO-AUDITORIA-F1-R02.md`
 - log_do_projeto: [AUDIT-LOG](../../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 

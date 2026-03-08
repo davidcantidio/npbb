@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F3-01.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -23,7 +23,7 @@ Abrir a pagina de analise etaria com base tipada e transparência inicial sobre 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
 | ISSUE-F3-01-001 | Criar tipos TypeScript e hook de consumo da API | 3 | todo | [ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md](../issues/ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md) |
-| ISSUE-F3-02-001 | Implementar banners de aviso de dados BB | 3 | todo | [ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md](../issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md) |
+| ISSUE-F3-02-001 | Implementar banners de aviso de dados BB | 3 | done | [ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md](../issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md) |
 | ISSUE-F3-02-002 | Implementar estados da interface (loading, empty, error) | 3 | todo | [ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md](../issues/ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md) |
 
 ## Riscos e Bloqueios

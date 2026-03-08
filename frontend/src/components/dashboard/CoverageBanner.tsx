@@ -1,6 +1,6 @@
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import { Alert, Box, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
 
 import { formatPercent } from "../../utils/ageAnalysis";
 import {
@@ -17,11 +17,12 @@ type CoverageBannerProps = {
   dismissible?: boolean;
   onDismiss?: () => void;
   variant?: "default" | "compact";
+  scope?: "consolidated" | "event";
 };
 
-function getCoverageMessage(status: CoverageStatus, variant: "default" | "compact") {
+function getCoverageMessage(status: CoverageStatus, scope: "consolidated" | "event") {
   if (status === "danger") {
-    return variant === "compact"
+    return scope === "event"
       ? "Dados de vinculo BB indisponiveis para este evento - realize o cruzamento com a base de dados do Banco."
       : "Dados de vinculo BB indisponiveis neste recorte - realize o cruzamento com a base de dados do Banco.";
   }
@@ -35,29 +36,49 @@ export function CoverageBanner({
   dismissible = false,
   onDismiss,
   variant = "default",
+  scope = "consolidated",
 }: CoverageBannerProps) {
   const status = getCoverageStatus(coverage, { warning: thresholdWarning, danger: thresholdDanger });
   if (status === "normal") return null;
 
   const isDanger = status === "danger";
-  const message = getCoverageMessage(status, variant);
+  const message = getCoverageMessage(status, scope);
   const label = isDanger ? "Cobertura critica" : "Cobertura parcial";
+  const backgroundColor = isDanger ? "#FEE2E2" : "#FEF3C7";
+  const foregroundColor = isDanger ? "#991B1B" : "#92400E";
 
   if (variant === "compact") {
     return (
-      <Stack data-testid={`coverage-banner-${status}-compact`} spacing={0.75} sx={{ mt: 0.5 }}>
+      <Stack
+        data-testid={`coverage-banner-${status}-compact`}
+        spacing={0.75}
+        sx={{ mt: 0.5, maxWidth: 320, alignItems: "flex-start" }}
+      >
         <Typography variant="caption" color="text.secondary">
           Cobertura BB: {formatPercent(coverage)}
         </Typography>
-        <Chip
-          size="small"
-          icon={isDanger ? <ErrorOutlineRoundedIcon /> : <WarningAmberRoundedIcon />}
-          label={label}
-          color={isDanger ? "error" : "warning"}
-          variant="outlined"
-          title={message}
-          sx={{ width: "fit-content" }}
-        />
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 0.75,
+            px: 1,
+            py: 0.75,
+            borderRadius: 1.5,
+            bgcolor: backgroundColor,
+            color: foregroundColor,
+          }}
+        >
+          <Box sx={{ display: "flex", pt: 0.1 }}>
+            {isDanger ? <ErrorOutlineRoundedIcon fontSize="inherit" /> : <WarningAmberRoundedIcon fontSize="inherit" />}
+          </Box>
+          <Stack spacing={0.1}>
+            <Typography variant="caption" fontWeight={700}>
+              {label}
+            </Typography>
+            <Typography variant="caption">{message}</Typography>
+          </Stack>
+        </Box>
       </Stack>
     );
   }
@@ -69,10 +90,10 @@ export function CoverageBanner({
       onClose={dismissible && onDismiss ? onDismiss : undefined}
       icon={isDanger ? <ErrorOutlineRoundedIcon fontSize="inherit" /> : <WarningAmberRoundedIcon fontSize="inherit" />}
       sx={{
-        bgcolor: isDanger ? "#FEE2E2" : "#FEF3C7",
-        color: isDanger ? "#991B1B" : "#92400E",
+        bgcolor: backgroundColor,
+        color: foregroundColor,
         "& .MuiAlert-icon": {
-          color: isDanger ? "#991B1B" : "#92400E",
+          color: foregroundColor,
         },
       }}
     >

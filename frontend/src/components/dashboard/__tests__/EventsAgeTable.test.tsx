@@ -58,7 +58,28 @@ describe("EventsAgeTable", () => {
     expect(screen.getByText("18–25")).toBeInTheDocument();
   });
 
-  it('renders "—" for BB cells when backend returns null coverage values', () => {
+  it("renders compact warning banner text when coverage is partial", () => {
+    render(
+      <EventsAgeTable
+        events={[
+          buildEvent({
+            evento_id: 4,
+            evento_nome: "Evento Warning",
+            clientes_bb_volume: null,
+            clientes_bb_pct: null,
+            cobertura_bb_pct: 65,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("coverage-banner-warning-compact")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dados parcialmente disponiveis. Realize o cruzamento completo com a base do Banco."),
+    ).toBeInTheDocument();
+  });
+
+  it('renders "—" for BB cells and the danger banner when backend returns null coverage values', () => {
     render(
       <EventsAgeTable
         events={[
@@ -74,6 +95,12 @@ describe("EventsAgeTable", () => {
     );
 
     expect(screen.getAllByText("— / —").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByTestId("coverage-banner-danger-compact")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Dados de vinculo BB indisponiveis para este evento - realize o cruzamento com a base de dados do Banco.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("sorts by numeric columns through header click and updates visual direction", async () => {

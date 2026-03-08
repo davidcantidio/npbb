@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -39,21 +39,21 @@ o backend. Usar mesmos valores definidos no PRD seção 4.4.
 
 ## Definition of Done da Issue
 
-- [ ] Banner amarelo (⚠️) quando cobertura entre 20% e 80%: "Dados parcialmente disponíveis. Realize o cruzamento completo com a base do Banco."
-- [ ] Banner vermelho (🔴) quando cobertura < 20%: "Dados de vínculo BB indisponíveis para este evento — realize o cruzamento com a base de dados do Banco."
-- [ ] Sem banner quando cobertura ≥ 80%
-- [ ] Banner no topo da página usa cobertura consolidada
-- [ ] Texto do banner inclui instrução de ação ao operador
-- [ ] Banner é dismissível (X) mas reaparece ao recarregar/mudar filtro
-- [ ] Componente `CoverageBanner` genérico e reutilizável
+- [x] Banner amarelo (⚠️) quando cobertura entre 20% e 80%: "Dados parcialmente disponíveis. Realize o cruzamento completo com a base do Banco."
+- [x] Banner vermelho (🔴) quando cobertura < 20%: "Dados de vínculo BB indisponíveis para este evento — realize o cruzamento com a base de dados do Banco."
+- [x] Sem banner quando cobertura ≥ 80%
+- [x] Banner no topo da página usa cobertura consolidada
+- [x] Texto do banner inclui instrução de ação ao operador
+- [x] Banner é dismissível (X) mas reaparece ao recarregar/mudar filtro
+- [x] Componente `CoverageBanner` genérico e reutilizável
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente `CoverageBanner.tsx` com props: `coverage`, `threshold_warning`, `threshold_danger`
-- [ ] T2: Implementar variante amarela (warning)
-- [ ] T3: Implementar variante vermelha (danger)
-- [ ] T4: Integrar no topo da página `LeadsAgeAnalysisPage`
-- [ ] T5: Integrar em cards de evento individual (na tabela ou detalhe)
+- [x] T1: Criar componente `CoverageBanner.tsx` com props: `coverage`, `threshold_warning`, `threshold_danger`
+- [x] T2: Implementar variante amarela (warning)
+- [x] T3: Implementar variante vermelha (danger)
+- [x] T4: Integrar no topo da página `LeadsAgeAnalysisPage`
+- [x] T5: Integrar em cards de evento individual (na tabela ou detalhe)
 
 ## Arquivos Reais Envolvidos
 

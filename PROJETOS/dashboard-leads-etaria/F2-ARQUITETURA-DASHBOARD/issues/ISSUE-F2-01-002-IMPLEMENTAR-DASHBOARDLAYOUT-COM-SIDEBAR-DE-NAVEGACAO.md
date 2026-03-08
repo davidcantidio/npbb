@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -28,29 +28,29 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 
 ## Criterios de Aceitacao
 
-- [ ] Componente `DashboardLayout` renderiza sidebar + área de conteúdo (Outlet)
-- [ ] Sidebar lista todas as entradas do manifesto com ícone e nome
-- [ ] Entradas com `enabled: true` são links navegáveis com destaque de rota ativa
-- [ ] Entradas com `enabled: false` aparecem esmaecidas com tooltip "Em breve"
-- [ ] Layout responsivo: sidebar colapsa em mobile (hambúrguer ou drawer)
-- [ ] Componente não conflita com a navegação global da aplicação
+- [x] Componente `DashboardLayout` renderiza sidebar + área de conteúdo (Outlet)
+- [x] Sidebar lista todas as entradas do manifesto com ícone e nome
+- [x] Entradas com `enabled: true` são links navegáveis com destaque de rota ativa
+- [x] Entradas com `enabled: false` aparecem esmaecidas com tooltip "Em breve"
+- [x] Layout responsivo: sidebar colapsa em mobile (hambúrguer ou drawer)
+- [x] Componente não conflita com a navegação global da aplicação
 
 ## Definition of Done da Issue
 
-- [ ] Componente `DashboardLayout` renderiza sidebar + área de conteúdo (Outlet)
-- [ ] Sidebar lista todas as entradas do manifesto com ícone e nome
-- [ ] Entradas com `enabled: true` são links navegáveis com destaque de rota ativa
-- [ ] Entradas com `enabled: false` aparecem esmaecidas com tooltip "Em breve"
-- [ ] Layout responsivo: sidebar colapsa em mobile (hambúrguer ou drawer)
-- [ ] Componente não conflita com a navegação global da aplicação
+- [x] Componente `DashboardLayout` renderiza sidebar + área de conteúdo (Outlet)
+- [x] Sidebar lista todas as entradas do manifesto com ícone e nome
+- [x] Entradas com `enabled: true` são links navegáveis com destaque de rota ativa
+- [x] Entradas com `enabled: false` aparecem esmaecidas com tooltip "Em breve"
+- [x] Layout responsivo: sidebar colapsa em mobile (hambúrguer ou drawer)
+- [x] Componente não conflita com a navegação global da aplicação
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente `frontend/src/components/dashboard/DashboardLayout.tsx`
-- [ ] T2: Implementar sidebar com iteração sobre manifesto
-- [ ] T3: Implementar destaque de rota ativa via `useLocation()`
-- [ ] T4: Implementar comportamento responsivo (mobile)
-- [ ] T5: Estilizar com Tailwind seguindo padrão visual do projeto
+- [x] T1: Criar componente `frontend/src/components/dashboard/DashboardLayout.tsx`
+- [x] T2: Implementar sidebar com iteração sobre manifesto
+- [x] T3: Implementar destaque de rota ativa via `useLocation()`
+- [x] T4: Implementar comportamento responsivo (mobile)
+- [x] T5: Estilizar com Tailwind seguindo padrão visual do projeto
 
 ## Arquivos Reais Envolvidos
 

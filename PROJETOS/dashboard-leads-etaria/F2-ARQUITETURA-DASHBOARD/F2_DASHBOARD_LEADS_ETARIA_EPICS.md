@@ -29,7 +29,7 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F2-01 | Layout e Manifesto de Dashboards | Criar manifesto, `DashboardLayout`, `DashboardHome` e roteamento protegido para o modulo. | F1 concluida | active | [EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md) |
+| EPIC-F2-01 | Layout e Manifesto de Dashboards | Criar manifesto, `DashboardLayout`, `DashboardHome` e roteamento protegido para o modulo. | F1 concluida | done | [EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md) |
 
 ## Dependencias entre Epicos
 
@@ -53,14 +53,14 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 ## Definition of Done da Fase
 
-- [ ] manifesto de dashboards definido com ao menos uma entrada ativa e entradas futuras desabilitadas
-- [ ] `DashboardLayout` renderiza sidebar funcional baseada no manifesto
-- [ ] `DashboardHome` exibe cards em grid responsivo
-- [ ] cards desabilitados aparecem como "Em breve" e nao sao clicaveis
-- [ ] rotas `/dashboard` e `/dashboard/leads/analise-etaria` estao protegidas por autenticacao
-- [ ] a inclusao de uma nova entrada no manifesto rende um novo card sem alterar o layout
-- [ ] responsividade validada em desktop e mobile
-- [ ] gate de auditoria preparado para futura rodada em `auditorias/`
+- [x] manifesto de dashboards definido com ao menos uma entrada ativa e entradas futuras desabilitadas
+- [x] `DashboardLayout` renderiza sidebar funcional baseada no manifesto
+- [x] `DashboardHome` exibe cards em grid responsivo
+- [x] cards desabilitados aparecem como "Em breve" e nao sao clicaveis
+- [x] rotas `/dashboard` e `/dashboard/leads/analise-etaria` estao protegidas por autenticacao
+- [x] a inclusao de uma nova entrada no manifesto rende um novo card sem alterar o layout
+- [x] responsividade validada em desktop e mobile
+- [x] gate de auditoria preparado para futura rodada em `auditorias/`
 
 ## Navegacao Rapida
 

@@ -15,7 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { AgeAnalysisFilters } from "../../components/dashboard/AgeAnalysisFilters";
+import { ALL_EVENTS_OPTION_ID, AgeAnalysisFilters } from "../../components/dashboard/AgeAnalysisFilters";
 import { AgeDistributionChart } from "../../components/dashboard/AgeDistributionChart";
 import { ChartSkeleton } from "../../components/dashboard/ChartSkeleton";
 import { ConsolidatedPanel } from "../../components/dashboard/ConsolidatedPanel";
@@ -46,6 +46,12 @@ const EMPTY_FILTERS: AgeAnalysisFilterFormValues = {
   evento_id: null,
   data_inicio: "",
   data_fim: "",
+};
+
+const ALL_EVENTS_OPTION: ReferenciaEvento = {
+  id: ALL_EVENTS_OPTION_ID,
+  nome: "Todos os eventos",
+  data_inicio_prevista: null,
 };
 
 function parsePositiveInt(value: string | null) {
@@ -157,6 +163,10 @@ export default function LeadsAgeAnalysisPage() {
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [isCoverageBannerDismissed, setIsCoverageBannerDismissed] = useState(false);
   const [errorToastOpen, setErrorToastOpen] = useState(false);
+  const eventOptionsWithAll = useMemo(
+    () => [ALL_EVENTS_OPTION, ...eventOptions.filter((option) => option.id !== ALL_EVENTS_OPTION_ID)],
+    [eventOptions],
+  );
 
   const queryFilters = useMemo(() => toQueryFilters(appliedFilters), [appliedFilters]);
   const queryFiltersKey = useMemo(() => JSON.stringify(queryFilters), [queryFilters]);
@@ -209,9 +219,14 @@ export default function LeadsAgeAnalysisPage() {
     ? getDominantRangeFromBreakdown(data.consolidado.faixas)
     : "sem_info";
 
-  const handleApplyFilters = () => {
-    if (invalidDateRange) return;
-    setSearchParams(buildSearchParams(draftFilters), { replace: true });
+  const handleFiltersChange = (nextFilters: AgeAnalysisFilterFormValues) => {
+    setDraftFilters(nextFilters);
+
+    if (hasDateRangeError(nextFilters)) return;
+
+    const nextSearchParams = buildSearchParams(nextFilters);
+    if (nextSearchParams.toString() === searchParams.toString()) return;
+    setSearchParams(nextSearchParams, { replace: true });
   };
 
   const handleClearFilters = () => {
@@ -220,12 +235,10 @@ export default function LeadsAgeAnalysisPage() {
   };
 
   const handleSelectEvento = (eventoId: number) => {
-    const nextFilters: AgeAnalysisFilterFormValues = {
-      ...appliedFilters,
+    handleFiltersChange({
+      ...draftFilters,
       evento_id: eventoId,
-    };
-    setDraftFilters(nextFilters);
-    setSearchParams(buildSearchParams(nextFilters), { replace: true });
+    });
   };
 
   const hasData = Boolean(data);
@@ -261,11 +274,10 @@ export default function LeadsAgeAnalysisPage() {
 
       <AgeAnalysisFilters
         value={draftFilters}
-        eventOptions={eventOptions}
+        eventOptions={eventOptionsWithAll}
         isLoadingEvents={isLoadingEvents}
         hasInvalidRange={invalidDateRange}
-        onChange={setDraftFilters}
-        onApply={handleApplyFilters}
+        onChange={handleFiltersChange}
         onClear={handleClearFilters}
       />
 

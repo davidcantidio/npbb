@@ -1,5 +1,4 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Autocomplete,
   Box,
@@ -15,13 +14,14 @@ import {
 import type { ReferenciaEvento } from "../../services/leads_import";
 import type { AgeAnalysisFilterFormValues } from "../../types/dashboard";
 
+export const ALL_EVENTS_OPTION_ID = -1;
+
 type AgeAnalysisFiltersProps = {
   value: AgeAnalysisFilterFormValues;
   eventOptions: ReferenciaEvento[];
   isLoadingEvents: boolean;
   hasInvalidRange: boolean;
   onChange: (nextValue: AgeAnalysisFilterFormValues) => void;
-  onApply: () => void;
   onClear: () => void;
 };
 
@@ -36,10 +36,10 @@ export function AgeAnalysisFilters({
   isLoadingEvents,
   hasInvalidRange,
   onChange,
-  onApply,
   onClear,
 }: AgeAnalysisFiltersProps) {
-  const selectedEvento = eventOptions.find((option) => option.id === value.evento_id) ?? null;
+  const selectedEvento =
+    eventOptions.find((option) => option.id === value.evento_id) ?? eventOptions[0] ?? null;
 
   return (
     <Card variant="outlined">
@@ -58,22 +58,29 @@ export function AgeAnalysisFilters({
             <Grid item xs={12} md={6}>
               <Autocomplete
                 options={eventOptions}
+                disableClearable
                 value={selectedEvento}
                 loading={isLoadingEvents}
+                loadingText="Carregando eventos..."
+                noOptionsText="Nenhum evento encontrado"
                 getOptionLabel={formatEventOptionLabel}
                 isOptionEqualToValue={(option, selectedValue) => option.id === selectedValue.id}
                 onChange={(_, selectedValue) =>
                   onChange({
                     ...value,
-                    evento_id: selectedValue?.id ?? null,
+                    evento_id:
+                      selectedValue?.id === ALL_EVENTS_OPTION_ID ? null : selectedValue?.id ?? null,
                   })
                 }
                 renderInput={(params) => (
                   <TextField
                     {...params}
                     label="Evento"
-                    placeholder="Todos os eventos"
-                    helperText="Use a busca para localizar um evento especifico."
+                    helperText={
+                      isLoadingEvents
+                        ? "Carregando eventos disponiveis."
+                        : "Use a busca para localizar um evento especifico."
+                    }
                   />
                 )}
               />
@@ -115,14 +122,6 @@ export function AgeAnalysisFilters({
           </Grid>
 
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              variant="contained"
-              startIcon={<SearchRoundedIcon />}
-              onClick={onApply}
-              disabled={hasInvalidRange}
-            >
-              Aplicar filtros
-            </Button>
             <Button variant="outlined" startIcon={<ClearRoundedIcon />} onClick={onClear}>
               Limpar filtros
             </Button>

@@ -31,11 +31,11 @@ A pagina de analise etaria passa a exibir dados reais da API com visualizacoes e
 
 ## Definition of Done do Epico
 
-- [ ] Hook `useAgeAnalysis` consome a API e retorna dados tipados
-- [ ] KPI cards renderizam base total, clientes BB e faixa dominante
-- [ ] Gráfico de barras empilhadas renderiza distribuição etária por evento
-- [ ] Tabela de eventos renderiza todas as colunas da seção 3.2 do PRD
-- [ ] Painel consolidado exibe Top 3, média, mediana e concentração Top 3
+- [x] Hook `useAgeAnalysis` consome a API e retorna dados tipados
+- [x] KPI cards renderizam base total, clientes BB e faixa dominante
+- [x] Gráfico de barras empilhadas renderiza distribuição etária por evento
+- [x] Tabela de eventos renderiza todas as colunas da seção 3.2 do PRD
+- [x] Painel consolidado exibe Top 3, média, mediana e concentração Top 3
 - [ ] Filtros de período e evento funcionais
 - [ ] Dados reais da API renderizados corretamente
 
@@ -47,7 +47,7 @@ A pagina de analise etaria passa a exibir dados reais da API com visualizacoes e
 | ISSUE-F3-01-002 | Implementar KPI Cards do painel consolidado | Implementar KPI Cards do painel consolidado | 3 | done | [ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md](./issues/ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md) |
 | ISSUE-F3-01-003 | Implementar gráfico de barras empilhadas (distribuição etária) | Implementar gráfico de barras empilhadas (distribuição etária) | 5 | done | [ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md](./issues/ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md) |
 | ISSUE-F3-01-004 | Implementar tabela de eventos com colunas configuráveis | Implementar tabela de eventos com colunas configuráveis | 5 | done | [ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md](./issues/ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md) |
-| ISSUE-F3-01-005 | Implementar painel consolidado com Top 3, média e mediana | Implementar painel consolidado com Top 3, média e mediana | 3 | todo | [ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md](./issues/ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md) |
+| ISSUE-F3-01-005 | Implementar painel consolidado com Top 3, média e mediana | Implementar painel consolidado com Top 3, média e mediana | 3 | done | [ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md](./issues/ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md) |
 | ISSUE-F3-01-006 | Implementar filtros de período e evento | Implementar filtros de período e evento | 3 | todo | [ISSUE-F3-01-006-IMPLEMENTAR-FILTROS-DE-PERIODO-E-EVENTO.md](./issues/ISSUE-F3-01-006-IMPLEMENTAR-FILTROS-DE-PERIODO-E-EVENTO.md) |
 
 ## Artifact Minimo do Epico

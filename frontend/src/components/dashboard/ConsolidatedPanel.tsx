@@ -17,6 +17,10 @@ type ConsolidatedPanelProps = {
   data: ConsolidadoAgeAnalysis;
 };
 
+function formatRoundedInteger(value: number) {
+  return formatInteger(Math.round(value));
+}
+
 function StatWithTooltip({
   label,
   value,
@@ -71,7 +75,8 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                   >
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="body2" fontWeight={700} noWrap>
-                        {index + 1}o {evento.evento_nome}
+                        {index + 1}
+                        {"\u00BA"} {evento.evento_nome}
                       </Typography>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                         <Typography variant="caption" color="text.secondary">
@@ -83,13 +88,12 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                         />
                       </Box>
                     </Box>
-                    <Chip
-                      label={`${formatInteger(evento.base_leads)} - ${formatPercent(
-                        data.base_total > 0 ? (evento.base_leads / data.base_total) * 100 : 0,
-                      )}`}
-                      size="small"
-                      variant="outlined"
-                    />
+                    <Stack alignItems="flex-end" spacing={0.25}>
+                      <Chip label={formatInteger(evento.base_leads)} size="small" variant="outlined" />
+                      <Typography variant="caption" color="text.secondary">
+                        {formatPercent(data.base_total > 0 ? (evento.base_leads / data.base_total) * 100 : 0)}
+                      </Typography>
+                    </Stack>
                   </Box>
                 ))
               )}
@@ -107,14 +111,14 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                   <StatWithTooltip
                     label="Media por evento"
                     value={formatDecimal(data.media_por_evento)}
-                    tooltip="Soma dos volumes dividida pela quantidade de eventos"
+                    tooltip="Soma total dividida pela quantidade de eventos"
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <StatWithTooltip
                     label="Mediana por evento"
-                    value={formatDecimal(data.mediana_por_evento)}
-                    tooltip="Volume central quando os eventos sao ordenados por tamanho. Quando poucos eventos sao muito grandes, a mediana e mais representativa do tamanho tipico."
+                    value={formatRoundedInteger(data.mediana_por_evento)}
+                    tooltip="Valor central ao ordenar eventos por volume"
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>

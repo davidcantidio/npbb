@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -28,31 +28,31 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 
 ## Criterios de Aceitacao
 
-- [ ] Top 3 eventos listados com nome, volume e percentual da base total
-- [ ] Média por evento exibida com 1 casa decimal
-- [ ] Mediana por evento exibida como inteiro
-- [ ] Concentração Top 3 exibida como percentual
-- [ ] Tooltip na mediana explica: "Valor central ao ordenar eventos por volume"
-- [ ] Tooltip na média explica: "Soma total dividida pela quantidade de eventos"
-- [ ] Layout em linha ou cards horizontais, integrado ao design da página
+- [x] Top 3 eventos listados com nome, volume e percentual da base total
+- [x] Média por evento exibida com 1 casa decimal
+- [x] Mediana por evento exibida como inteiro
+- [x] Concentração Top 3 exibida como percentual
+- [x] Tooltip na mediana explica: "Valor central ao ordenar eventos por volume"
+- [x] Tooltip na média explica: "Soma total dividida pela quantidade de eventos"
+- [x] Layout em linha ou cards horizontais, integrado ao design da página
 
 ## Definition of Done da Issue
 
-- [ ] Top 3 eventos listados com nome, volume e percentual da base total
-- [ ] Média por evento exibida com 1 casa decimal
-- [ ] Mediana por evento exibida como inteiro
-- [ ] Concentração Top 3 exibida como percentual
-- [ ] Tooltip na mediana explica: "Valor central ao ordenar eventos por volume"
-- [ ] Tooltip na média explica: "Soma total dividida pela quantidade de eventos"
-- [ ] Layout em linha ou cards horizontais, integrado ao design da página
+- [x] Top 3 eventos listados com nome, volume e percentual da base total
+- [x] Média por evento exibida com 1 casa decimal
+- [x] Mediana por evento exibida como inteiro
+- [x] Concentração Top 3 exibida como percentual
+- [x] Tooltip na mediana explica: "Valor central ao ordenar eventos por volume"
+- [x] Tooltip na média explica: "Soma total dividida pela quantidade de eventos"
+- [x] Layout em linha ou cards horizontais, integrado ao design da página
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente `ConsolidatedPanel.tsx`
-- [ ] T2: Implementar seção Top 3 com ranking visual (1º, 2º, 3º)
-- [ ] T3: Implementar métricas estatísticas (média, mediana, concentração)
-- [ ] T4: Adicionar tooltips interpretativos
-- [ ] T5: Integrar no layout da página abaixo dos KPI cards
+- [x] T1: Criar componente `ConsolidatedPanel.tsx`
+- [x] T2: Implementar seção Top 3 com ranking visual (1º, 2º, 3º)
+- [x] T3: Implementar métricas estatísticas (média, mediana, concentração)
+- [x] T4: Adicionar tooltips interpretativos
+- [x] T5: Integrar no layout da página abaixo dos KPI cards
 
 ## Arquivos Reais Envolvidos
 

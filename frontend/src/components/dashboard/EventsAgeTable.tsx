@@ -98,7 +98,7 @@ const columns: ColumnDefinition[] = [
       return (
         <Stack spacing={0.35} alignItems="flex-end">
           <Typography variant="body2">
-            {event.clientes_bb_volume === null ? "—" : formatInteger(event.clientes_bb_volume)} /{" "}
+            {event.clientes_bb_volume === null ? "—" : formatInteger(event.clientes_bb_volume)} / 
             {formatPercent(event.clientes_bb_pct)}
           </Typography>
           {partialBbData ? (

@@ -254,6 +254,7 @@ def _resolve_bb_metrics(
     if cobertura_bb_pct < bb_coverage_threshold_pct:
         return cobertura_bb_pct, None, None
 
+    # Contrato atual do endpoint: percentual BB sobre a base total do evento/consolidado.
     return (
         cobertura_bb_pct,
         accumulator.bb_clients_volume,

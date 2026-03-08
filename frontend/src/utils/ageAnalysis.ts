@@ -44,12 +44,8 @@ export function formatPercent(value: number | null | undefined) {
   return `${formatDecimal(value)}%`;
 }
 
-export function getDominantAgeRangeLabel(value: string) {
-  if (value in AGE_RANGE_META) {
-    return AGE_RANGE_META[value as DominantAgeRangeKey].label;
-  }
-
-  return AGE_RANGE_META.sem_info.label;
+export function getDominantAgeRangeLabel(value: DominantAgeRangeKey) {
+  return AGE_RANGE_META[value].label;
 }
 
 export function getDominantRangeFromBreakdown(breakdown: AgeBreakdown): DominantAgeRangeKey {

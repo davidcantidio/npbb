@@ -4,10 +4,12 @@ export type DashboardIconKey =
   | "event-conversion"
   | "media-coverage";
 
+export type DashboardDomain = "leads" | "eventos" | "publicidade";
+
 export type DashboardManifestEntry = {
   id: string;
   route: string;
-  domain: string;
+  domain: DashboardDomain;
   name: string;
   icon: DashboardIconKey;
   description: string;
@@ -22,12 +24,6 @@ export type AgeAnalysisFiltersQuery = {
   evento_id?: number;
   data_inicio?: string;
   data_fim?: string;
-};
-
-export type AgeAnalysisFilters = {
-  data_inicio: string | null;
-  data_fim: string | null;
-  evento_id: number | null;
 };
 
 export type AgeAnalysisFilterFormValues = {
@@ -59,14 +55,14 @@ export type EventoAgeAnalysis = {
   clientes_bb_pct: number | null;
   cobertura_bb_pct: number;
   faixas: AgeBreakdown;
-  faixa_dominante: string;
+  faixa_dominante: DominantAgeRangeKey;
 };
 
 export type TopEventoAgeAnalysis = {
   evento_id: number;
   evento_nome: string;
   base_leads: number;
-  faixa_dominante: string;
+  faixa_dominante: DominantAgeRangeKey;
 };
 
 export type ConsolidadoAgeAnalysis = {
@@ -84,7 +80,11 @@ export type ConsolidadoAgeAnalysis = {
 export type AgeAnalysisResponse = {
   version: number;
   generated_at: string;
-  filters: AgeAnalysisFilters;
+  filters: {
+    data_inicio: string | null;
+    data_fim: string | null;
+    evento_id: number | null;
+  };
   por_evento: EventoAgeAnalysis[];
   consolidado: ConsolidadoAgeAnalysis;
 };

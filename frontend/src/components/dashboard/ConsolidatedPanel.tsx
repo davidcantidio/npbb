@@ -91,7 +91,9 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                     <Stack alignItems="flex-end" spacing={0.25}>
                       <Chip label={formatInteger(evento.base_leads)} size="small" variant="outlined" />
                       <Typography variant="caption" color="text.secondary">
-                        {formatPercent(data.base_total > 0 ? (evento.base_leads / data.base_total) * 100 : 0)}
+                        {formatPercent(
+                          data.base_total > 0 ? (evento.base_leads / data.base_total) * 100 : 0,
+                        )}
                       </Typography>
                     </Stack>
                   </Box>

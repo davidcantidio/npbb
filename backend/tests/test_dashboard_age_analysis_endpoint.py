@@ -291,6 +291,65 @@ def test_dashboard_age_analysis_filter_data_intervalo_inclusivo(client, engine):
     assert data["consolidado"]["base_total"] == 1
 
 
+def test_dashboard_age_analysis_threshold_fallback_para_default(monkeypatch, client, engine):
+    monkeypatch.setenv("DASHBOARD_BB_COVERAGE_THRESHOLD_PCT", "valor-invalido")
+
+    with Session(engine) as session:
+        seed_age_analysis_data(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    alpha = data["por_evento"][0]
+    assert alpha["evento_nome"] == "Evento Alpha"
+    assert alpha["cobertura_bb_pct"] == 75.0
+    assert alpha["clientes_bb_volume"] is None
+    assert alpha["clientes_bb_pct"] is None
+
+
+def test_dashboard_age_analysis_threshold_clamp_min_zero(monkeypatch, client, engine):
+    monkeypatch.setenv("DASHBOARD_BB_COVERAGE_THRESHOLD_PCT", "-10")
+
+    with Session(engine) as session:
+        seed_age_analysis_data(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    alpha = data["por_evento"][0]
+    assert alpha["evento_nome"] == "Evento Alpha"
+    assert alpha["clientes_bb_volume"] == 2
+    assert alpha["clientes_bb_pct"] == 50.0
+
+
+def test_dashboard_age_analysis_threshold_clamp_max_cem(monkeypatch, client, engine):
+    monkeypatch.setenv("DASHBOARD_BB_COVERAGE_THRESHOLD_PCT", "180")
+
+    with Session(engine) as session:
+        seed_age_analysis_data(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    alpha = data["por_evento"][0]
+    beta = data["por_evento"][1]
+
+    assert alpha["evento_nome"] == "Evento Alpha"
+    assert alpha["clientes_bb_volume"] is None
+    assert alpha["clientes_bb_pct"] is None
+
+    assert beta["evento_nome"] == "Evento Beta"
+    assert beta["cobertura_bb_pct"] == 100.0
+    assert beta["clientes_bb_volume"] == 2
+    assert beta["clientes_bb_pct"] == 66.67
+
+
 def test_dashboard_age_analysis_empty_response(client, engine):
     with Session(engine) as session:
         headers = get_auth_header(client, session)
@@ -315,7 +374,6 @@ def test_dashboard_age_analysis_requires_auth(client, engine):
 
     response = client.get("/dashboard/leads/analise-etaria")
     assert response.status_code == 401
-
 
 def test_dashboard_age_analysis_openapi_contract():
     app.openapi_schema = None

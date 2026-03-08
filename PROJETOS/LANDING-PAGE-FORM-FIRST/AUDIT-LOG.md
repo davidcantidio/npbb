@@ -1,6 +1,6 @@
 ---
 doc_id: "AUDIT-LOG.md"
-version: "1.1"
+version: "1.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
@@ -27,10 +27,10 @@ last_updated: "2026-03-08"
 |---|---|---|---|---|
 | F1 - LAYOUT-FORM-ONLY | not_ready | nenhuma | n-a | desenvolvimento ainda em andamento |
 | F2 - BACKOFFICE-E-PREVIEW | not_ready | nenhuma | n-a | fase ainda nao iniciou |
-| F3 - QA-CROSS-TEMPLATE | not_ready | nenhuma | n-a | fase ainda nao iniciou |
+| F3 - QA-CROSS-TEMPLATE | hold | R02 (`hold`) | [RELATORIO-AUDITORIA-F3-R02](./F3-QA-CROSS-TEMPLATE/auditorias/RELATORIO-AUDITORIA-F3-R02.md) | R02 formaliza o gate em base limpa; `F3-R01` permanece como antecedente nao canonico de escopo issue e sem SHA valido |
 
 ## Rodadas
 
 | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| nenhum | - | - | - | - | - | - | - | - | - | - | - | - |
+| F3-R02 | F3 - QA-CROSS-TEMPLATE | 2026-03-08 | GPT-5 Codex | 11f60f688118c49a477609169f5253a9ef15bd87 | n-a (`F3-R01` sem SHA valido) | hold | done | [RELATORIO-AUDITORIA-F3-R02](./F3-QA-CROSS-TEMPLATE/auditorias/RELATORIO-AUDITORIA-F3-R02.md) | A-01 (`test-gap/medium`), A-02 (`scope-drift/medium`), A-03 (`architecture-drift/medium`), A-04 (`scope-drift/low`) | issue-local | A-01, A-02 | F3-R01 |

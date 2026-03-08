@@ -112,19 +112,17 @@ export function getTemplateOverlayVariant(data: LandingPageData): TemplateOverla
   return resolveOverlayVariantFromGraphicsStyle(data.template.graphics_style);
 }
 
+/**
+ * Campos mortos removidos (ISSUE-F1-02-002): heroBackground, heroMinHeight, heroGridColumns,
+ * heroTextCardBackground, heroTextCardBorder, contentGridColumns, imageMinHeight.
+ * Nao consumidos pelo layout form-only.
+ */
 export type LayoutVisualSpec = {
-  heroBackground: string;
-  heroTextColor: string;
-  heroMinHeight: { xs: number | string; md: number | string };
-  heroGridColumns: { xs: string; md: string };
-  heroTextCardBackground: string;
-  heroTextCardBorder: string;
+  pageTextColor: string;
   formCardBackground: string;
   formCardBorder: string;
   formCardShadow: string;
   footerTextColor: string;
-  contentGridColumns: { xs: string; md: string };
-  imageMinHeight: { xs: number; md: number };
   buttonVariant: "contained" | "outlined";
   buttonColor: "primary" | "secondary";
   buttonStyles?: Record<string, unknown>;
@@ -269,16 +267,9 @@ export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
 
   if (heroLayout === "editorial") {
     return {
-      heroBackground: `linear-gradient(180deg, #FFFFFF 0%, ${alpha(primary, 0.08)} 55%, ${alpha(secondary, 0.16)} 100%)`,
-      heroTextColor: "#111827",
-      heroMinHeight: { xs: "100svh", md: "auto" },
-      heroGridColumns: { xs: "1fr", md: "1.08fr 0.92fr" },
-      heroTextCardBackground: alpha("#FFFFFF", 0.78),
-      heroTextCardBorder: alpha(primary, 0.18),
+      pageTextColor: "#111827",
       ...formCardSpec,
       footerTextColor,
-      contentGridColumns: { xs: "1fr", md: "1.05fr 0.95fr" },
-      imageMinHeight: { xs: 280, md: 520 },
       buttonVariant: "outlined",
       buttonColor: "primary",
       buttonStyles: {
@@ -292,19 +283,9 @@ export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
 
   if (heroLayout === "dark-overlay") {
     return {
-      heroBackground: `linear-gradient(135deg, ${alpha("#07111F", 0.98)} 0%, ${alpha(primary, 0.6)} 55%, ${alpha(
-        secondary,
-        0.22,
-      )} 100%)`,
-      heroTextColor: "#F8FAFC",
-      heroMinHeight: { xs: "100svh", md: "auto" },
-      heroGridColumns: { xs: "1fr", md: "1.1fr 0.9fr" },
-      heroTextCardBackground: alpha("#07111F", 0.46),
-      heroTextCardBorder: alpha("#FFFFFF", 0.14),
+      pageTextColor: "#F8FAFC",
       ...formCardSpec,
       footerTextColor,
-      contentGridColumns: { xs: "1fr", md: "1fr 0.95fr" },
-      imageMinHeight: { xs: 300, md: 500 },
       buttonVariant: "contained",
       buttonColor: "secondary",
       buttonStyles: {
@@ -316,19 +297,9 @@ export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
 
   if (heroLayout === "full-bleed") {
     return {
-      heroBackground: `linear-gradient(180deg, ${alpha(primary, 0.12)} 0%, ${alpha(secondary, 0.08)} 45%, ${alpha(
-        primary,
-        0.18,
-      )} 100%)`,
-      heroTextColor: text || "#1F2937",
-      heroMinHeight: { xs: "100svh", md: "auto" },
-      heroGridColumns: { xs: "1fr", md: "1fr 1fr" },
-      heroTextCardBackground: alpha("#FFFFFF", 0.92),
-      heroTextCardBorder: alpha(primary, 0.2),
+      pageTextColor: text || "#1F2937",
       ...formCardSpec,
       footerTextColor,
-      contentGridColumns: { xs: "1fr", md: "0.95fr 1.05fr" },
-      imageMinHeight: { xs: 320, md: 540 },
       buttonVariant: "contained",
       buttonColor: "secondary",
       buttonStyles: {
@@ -339,16 +310,9 @@ export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
   }
 
   return {
-    heroBackground: `linear-gradient(135deg, ${primary} 0%, ${alpha(primary, 0.92)} 52%, ${alpha(secondary, 0.58)} 100%)`,
-    heroTextColor: defaultTextColor,
-    heroMinHeight: { xs: "100svh", md: "auto" },
-    heroGridColumns: { xs: "1fr", md: "1.15fr 0.85fr" },
-    heroTextCardBackground: alpha("#FFFFFF", 0.1),
-    heroTextCardBorder: alpha("#FFFFFF", 0.18),
+    pageTextColor: defaultTextColor,
     ...formCardSpec,
     footerTextColor,
-    contentGridColumns: { xs: "1fr", md: "0.98fr 1.02fr" },
-    imageMinHeight: { xs: 260, md: 460 },
     buttonVariant: data.template.cta_variant === "outlined" ? "outlined" : "contained",
     buttonColor: data.template.cta_variant === "outlined" ? "primary" : "secondary",
   };

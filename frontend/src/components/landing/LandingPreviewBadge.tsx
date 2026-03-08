@@ -19,8 +19,8 @@ export default function LandingPreviewBadge({ layout }: LandingPreviewBadgeProps
         right: { xs: 16, md: 24 },
         zIndex: 3,
         fontWeight: 800,
-        bgcolor: alpha("#FFFFFF", isDarkColor(layout.heroTextColor) ? 0.16 : 0.84),
-        color: layout.heroTextColor,
+        bgcolor: alpha("#FFFFFF", isDarkColor(layout.pageTextColor) ? 0.16 : 0.84),
+        color: layout.pageTextColor,
         border: `1px solid ${alpha("#FFFFFF", 0.18)}`,
         backdropFilter: "blur(10px)",
       }}

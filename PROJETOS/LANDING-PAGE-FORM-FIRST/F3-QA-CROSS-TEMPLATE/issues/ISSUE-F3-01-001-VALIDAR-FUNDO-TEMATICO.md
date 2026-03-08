@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-08"
+last_updated: "2026-03-08T16:27:12Z"
 ---
 
 # ISSUE-F3-01-001 - Validar Fundo Tematico Cross-Template
@@ -35,30 +35,32 @@ Breakpoints: 375px (mobile), 768px (tablet), 1280px (desktop).
 
 ## Definition of Done da Issue
 
-- [ ] 21 combinacoes validadas com evidencia visual
-- [ ] zero desvios de gradiente em relacao ao PRD
-- [ ] zero gaps de fundo em qualquer combinacao
-- [ ] nenhuma imagem externa carregada
+- [x] 21 combinacoes validadas com evidencia visual
+- [x] zero desvios de gradiente em relacao ao PRD
+- [x] zero gaps de fundo em qualquer combinacao
+- [x] nenhuma imagem externa carregada
 
 ## Tarefas Decupadas
 
-- [ ] T1: criar matriz de validacao 7 × 3 com criterios esperados
-- [ ] T2: capturar screenshots dos 7 templates em 375px
-- [ ] T3: capturar screenshots dos 7 templates em 768px
-- [ ] T4: capturar screenshots dos 7 templates em 1280px
-- [ ] T5: comparar gradientes e overlays com especificacao do PRD secao 05
-- [ ] T6: documentar desvios encontrados
-- [ ] T7: gerar relatorio de validacao
+- [x] T1: criar matriz de validacao 7 × 3 com criterios esperados
+- [x] T2: capturar screenshots dos 7 templates em 375px
+- [x] T3: capturar screenshots dos 7 templates em 768px
+- [x] T4: capturar screenshots dos 7 templates em 1280px
+- [x] T5: comparar gradientes e overlays com especificacao do PRD secao 05
+- [x] T6: documentar desvios encontrados
+- [x] T7: gerar relatorio de validacao
 
 ## Arquivos Reais Envolvidos
 
 - `frontend/src/components/landing/FullPageBackground.tsx`
-- `frontend/src/components/landing/landingThemeBuilder.ts`
+- `frontend/src/components/landing/landingStyle.tsx`
 - `frontend/src/components/landing/LandingPageView.tsx`
+- `frontend/e2e/issue-f3-01-001-theme-validation.spec.ts`
 
 ## Artifact Minimo
 
 - relatorio de validacao de fundo tematico com screenshots
+- `artifacts/phase-f3/issue-f3-01-001-validacao-fundo-tematico.md`
 
 ## Dependencias
 

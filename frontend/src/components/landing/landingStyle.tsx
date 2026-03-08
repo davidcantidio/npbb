@@ -3,6 +3,19 @@ import { alpha } from "@mui/material/styles";
 
 import type { LandingPageData } from "../../services/landing_public";
 
+export const TEMPLATE_CATEGORIES = [
+  "corporativo",
+  "esporte_convencional",
+  "esporte_radical",
+  "evento_cultural",
+  "show_musical",
+  "tecnologia",
+  "generico",
+] as const;
+
+export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
+export type TemplateOverlayVariant = TemplateCategory;
+
 const TEMPLATE_BACKGROUND_GRADIENTS: Record<string, string> = {
   corporativo: "linear-gradient(135deg, #1A237E 0%, #3333BD 60%, #465EFF 100%)",
   esporte_convencional: "linear-gradient(160deg, #3333BD 0%, #1A237E 50%, #3333BD 100%)",
@@ -26,17 +39,31 @@ const TEMPLATE_OVERLAY_OPACITY: Record<string, number> = {
 const TEMPLATE_FOOTER_TEXT_COLORS: Record<string, string> = {
   corporativo: "rgba(255, 255, 255, 0.75)",
   esporte_convencional: "rgba(255, 255, 255, 0.75)",
-  esporte_radical: "rgba(255, 255, 255, 0.85)",
+  esporte_radical: "rgba(7, 17, 31, 0.92)",
   evento_cultural: "rgba(51, 51, 189, 0.75)",
   show_musical: "rgba(255, 255, 255, 0.65)",
   tecnologia: "rgba(255, 255, 255, 0.70)",
   generico: "rgba(255, 255, 255, 0.75)",
 };
 
+const TEMPLATE_OVERLAY_VARIANTS: Record<TemplateCategory, TemplateOverlayVariant> = {
+  corporativo: "corporativo",
+  esporte_convencional: "esporte_convencional",
+  esporte_radical: "esporte_radical",
+  evento_cultural: "evento_cultural",
+  show_musical: "show_musical",
+  tecnologia: "tecnologia",
+  generico: "generico",
+};
+
 function normalizeTemplateCategory(data: LandingPageData): string {
   return String(data.template.categoria || "")
     .trim()
     .toLowerCase();
+}
+
+function isKnownTemplateCategory(category: string): category is TemplateCategory {
+  return (TEMPLATE_CATEGORIES as readonly string[]).includes(category);
 }
 
 export function getTemplateBackgroundGradient(data: LandingPageData): string {
@@ -53,6 +80,36 @@ export function getTemplateOverlayOpacity(data: LandingPageData): number {
 export function getTemplateFooterTextColor(data: LandingPageData): string {
   const category = normalizeTemplateCategory(data);
   return TEMPLATE_FOOTER_TEXT_COLORS[category] ?? TEMPLATE_FOOTER_TEXT_COLORS.generico;
+}
+
+function resolveOverlayVariantFromGraphicsStyle(graphicsStyle: string): TemplateOverlayVariant {
+  if (graphicsStyle === "organic") {
+    return "evento_cultural";
+  }
+
+  if (graphicsStyle === "grid") {
+    return "tecnologia";
+  }
+
+  if (graphicsStyle === "dynamic") {
+    return "esporte_radical";
+  }
+
+  if (graphicsStyle === "geometric") {
+    return "esporte_convencional";
+  }
+
+  return "generico";
+}
+
+export function getTemplateOverlayVariant(data: LandingPageData): TemplateOverlayVariant {
+  const category = normalizeTemplateCategory(data);
+
+  if (isKnownTemplateCategory(category)) {
+    return TEMPLATE_OVERLAY_VARIANTS[category];
+  }
+
+  return resolveOverlayVariantFromGraphicsStyle(data.template.graphics_style);
 }
 
 export type LayoutVisualSpec = {
@@ -170,6 +227,40 @@ export function buildLandingTheme(data: LandingPageData) {
   });
 }
 
+export function buildFormCardTheme(data: LandingPageData) {
+  const primary = data.template.color_primary || "#3333BD";
+  const secondary = data.template.color_secondary || "#FCFC30";
+  const surfaceText = "#07111F";
+
+  return createTheme({
+    palette: {
+      mode: "light",
+      primary: {
+        main: primary,
+        contrastText: "#FFFFFF",
+      },
+      secondary: {
+        main: secondary,
+        contrastText: surfaceText,
+      },
+      background: {
+        default: "#FFFFFF",
+        paper: "#FFFFFF",
+      },
+      text: {
+        primary: surfaceText,
+        secondary: alpha(surfaceText, 0.76),
+      },
+    },
+    shape: { borderRadius: 20 },
+    typography: {
+      fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, sans-serif',
+      h5: { fontWeight: 800 },
+      button: { fontWeight: 800, textTransform: "none" },
+    },
+  });
+}
+
 export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
   const { hero_layout: heroLayout, color_primary: primary, color_secondary: secondary, color_text: text } = data.template;
   const defaultTextColor = isDarkColor(primary) || isDarkColor(data.template.color_background) ? "#F8FAFC" : text;
@@ -192,6 +283,8 @@ export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
       buttonColor: "primary",
       buttonStyles: {
         borderWidth: 2,
+        borderColor: "#3333BD",
+        color: "#3333BD",
         "&:hover": { borderWidth: 2 },
       },
     };
@@ -240,7 +333,7 @@ export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {
       buttonColor: "secondary",
       buttonStyles: {
         background: `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
-        color: "#FFFFFF",
+        color: "#07111F",
       },
     };
   }
@@ -279,6 +372,14 @@ type OverlayPalette = {
 function resolveOverlayPalette(data: LandingPageData): OverlayPalette {
   const category = normalizeTemplateCategory(data);
 
+  if (category === "corporativo") {
+    return {
+      primary: "#1A237E",
+      secondary: "#FCFC30",
+      neutral: "#FFFFFF",
+    };
+  }
+
   if (category === "evento_cultural") {
     return {
       primary: "#735CC6",
@@ -310,6 +411,130 @@ function resolveOverlayPalette(data: LandingPageData): OverlayPalette {
   };
 }
 
+function renderCorporateOverlay(palette: OverlayPalette) {
+  return (
+    <>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `linear-gradient(${alpha(palette.neutral, 0.82)} 1px, transparent 1px), linear-gradient(90deg, ${alpha(
+            palette.neutral,
+            0.82,
+          )} 1px, transparent 1px)`,
+          backgroundSize: "72px 72px",
+          maskImage: "linear-gradient(180deg, rgba(0,0,0,0.9), transparent 82%)",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: "8% 12% auto auto",
+          width: 220,
+          height: 220,
+          borderRadius: 3,
+          border: `1px solid ${alpha(palette.secondary, 0.48)}`,
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: "auto auto 12% 10%",
+          width: 260,
+          height: 96,
+          borderTop: `1px solid ${alpha(palette.neutral, 0.72)}`,
+          borderBottom: `1px solid ${alpha(palette.neutral, 0.48)}`,
+        }}
+      />
+    </>
+  );
+}
+
+function renderSportOverlay(palette: OverlayPalette) {
+  return (
+    <>
+      <Box
+        sx={{
+          position: "absolute",
+          top: -24,
+          right: 48,
+          width: 180,
+          height: 180,
+          transform: "rotate(18deg)",
+          borderRadius: 6,
+          bgcolor: alpha(palette.secondary, 0.88),
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: 40,
+          left: -18,
+          width: 168,
+          height: 168,
+          clipPath: "polygon(12% 12%, 88% 12%, 88% 88%, 12% 88%)",
+          bgcolor: alpha(palette.neutral, 0.74),
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: -24,
+          left: 96,
+          width: 220,
+          height: 72,
+          transform: "rotate(-12deg)",
+          borderRadius: 999,
+          bgcolor: alpha(palette.primary, 0.78),
+        }}
+      />
+    </>
+  );
+}
+
+function renderRadicalOverlay(palette: OverlayPalette) {
+  return (
+    <>
+      <Box
+        sx={{
+          position: "absolute",
+          top: -48,
+          right: 24,
+          width: 240,
+          height: 200,
+          clipPath: "polygon(12% 0%, 100% 0%, 72% 100%, 0% 84%)",
+          bgcolor: alpha(palette.secondary, 0.9),
+          transform: "rotate(6deg)",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: -40,
+          left: -12,
+          width: 280,
+          height: 180,
+          clipPath: "polygon(0% 30%, 58% 0%, 100% 52%, 36% 100%)",
+          bgcolor: alpha(palette.primary, 0.86),
+          transform: "rotate(-8deg)",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          top: 96,
+          right: 128,
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          bgcolor: alpha(palette.neutral, 0.95),
+          boxShadow: `0 0 18px ${alpha(palette.neutral, 0.95)}`,
+        }}
+      />
+    </>
+  );
+}
+
 function renderOrganicOverlay(palette: OverlayPalette) {
   return (
     <>
@@ -338,119 +563,181 @@ function renderOrganicOverlay(palette: OverlayPalette) {
   );
 }
 
-function renderGridOverlay(palette: OverlayPalette) {
-  return (
-    <Box
-      sx={{
-        position: "absolute",
-        inset: 0,
-        backgroundImage: `linear-gradient(${alpha(palette.neutral, 0.85)} 1px, transparent 1px), linear-gradient(90deg, ${alpha(
-          palette.neutral,
-          0.85,
-        )} 1px, transparent 1px)`,
-        backgroundSize: "32px 32px",
-        maskImage: "linear-gradient(180deg, rgba(0,0,0,0.92), transparent 78%)",
-      }}
-    />
-  );
-}
-
-function renderDynamicOverlay(palette: OverlayPalette) {
+function renderMusicalOverlay(palette: OverlayPalette) {
   return (
     <>
       <Box
         sx={{
           position: "absolute",
-          top: -20,
-          right: 40,
-          width: 180,
-          height: 180,
-          transform: "rotate(18deg)",
-          borderRadius: 8,
-          bgcolor: alpha(palette.secondary, 0.85),
+          top: 48,
+          right: 120,
+          width: 18,
+          height: 18,
+          borderRadius: "50%",
+          bgcolor: alpha(palette.secondary, 0.92),
+          boxShadow: `0 0 22px ${alpha(palette.secondary, 0.88)}`,
         }}
       />
       <Box
         sx={{
           position: "absolute",
-          bottom: -36,
-          left: 32,
-          width: 220,
-          height: 72,
-          transform: "rotate(-12deg)",
-          borderRadius: 999,
-          bgcolor: alpha(palette.primary, 0.82),
+          top: 112,
+          right: 60,
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          bgcolor: alpha(palette.neutral, 0.92),
+          boxShadow: `0 0 18px ${alpha(palette.neutral, 0.85)}`,
         }}
       />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: 72,
+          left: 48,
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          bgcolor: alpha(palette.primary, 0.94),
+          boxShadow: `0 0 24px ${alpha(palette.primary, 0.78)}`,
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: 120,
+          left: 120,
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          bgcolor: alpha(palette.secondary, 0.86),
+          boxShadow: `0 0 14px ${alpha(palette.secondary, 0.78)}`,
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: "auto 8% 12% auto",
+          width: 220,
+          height: 220,
+          background: `radial-gradient(circle, ${alpha(palette.primary, 0.34)} 0%, ${alpha(palette.primary, 0.08)} 45%, transparent 72%)`,
+          filter: "blur(6px)",
+        }}
+      />
+    </>
+  );
+}
+
+function renderTechnologyOverlay(palette: OverlayPalette) {
+  return (
+    <>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `radial-gradient(circle, ${alpha(palette.secondary, 0.92)} 1.2px, transparent 1.3px)`,
+          backgroundSize: "22px 22px",
+          maskImage: "linear-gradient(180deg, rgba(0,0,0,0.95), transparent 84%)",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          top: 48,
+          right: 72,
+          width: 190,
+          height: 168,
+          border: `1px solid ${alpha(palette.secondary, 0.78)}`,
+          clipPath: "polygon(25% 6.7%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0% 50%)",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: 56,
+          left: 40,
+          width: 140,
+          height: 124,
+          border: `1px solid ${alpha(palette.neutral, 0.7)}`,
+          clipPath: "polygon(25% 6.7%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0% 50%)",
+        }}
+      />
+    </>
+  );
+}
+
+function renderGenericOverlay(palette: OverlayPalette) {
+  return (
+    <>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: "auto 6% 8% auto",
+          fontSize: { xs: 160, md: 240 },
+          fontWeight: 900,
+          letterSpacing: "-0.12em",
+          lineHeight: 0.8,
+          color: alpha(palette.neutral, 0.86),
+          transform: "rotate(-12deg)",
+          userSelect: "none",
+        }}
+      >
+        BB
+      </Box>
       <Box
         sx={{
           position: "absolute",
           top: 72,
-          right: 120,
-          width: 8,
-          height: 8,
+          left: 48,
+          width: 180,
+          height: 180,
           borderRadius: "50%",
-          bgcolor: alpha(palette.neutral, 0.95),
-          boxShadow: `0 0 18px ${alpha(palette.neutral, 0.95)}`,
+          border: `1px solid ${alpha(palette.secondary, 0.42)}`,
         }}
       />
     </>
   );
 }
 
-function renderGeometricOverlay(palette: OverlayPalette) {
-  return (
-    <>
-      <Box
-        sx={{
-          position: "absolute",
-          top: -32,
-          right: -8,
-          width: 150,
-          height: 150,
-          borderRadius: 6,
-          border: `1px solid ${alpha(palette.neutral, 0.82)}`,
-          transform: "rotate(18deg)",
-        }}
-      />
-      <Box
-        sx={{
-          position: "absolute",
-          bottom: -20,
-          left: 40,
-          width: 170,
-          height: 170,
-          borderRadius: "50%",
-          bgcolor: alpha(palette.secondary, 0.78),
-        }}
-      />
-    </>
-  );
-}
+function renderOverlayByVariant(overlayVariant: TemplateOverlayVariant, palette: OverlayPalette) {
+  if (overlayVariant === "corporativo") {
+    return renderCorporateOverlay(palette);
+  }
 
-function renderOverlayByStyle(graphicsStyle: string, palette: OverlayPalette) {
-  if (graphicsStyle === "organic") {
+  if (overlayVariant === "esporte_convencional") {
+    return renderSportOverlay(palette);
+  }
+
+  if (overlayVariant === "esporte_radical") {
+    return renderRadicalOverlay(palette);
+  }
+
+  if (overlayVariant === "evento_cultural") {
     return renderOrganicOverlay(palette);
   }
 
-  if (graphicsStyle === "grid") {
-    return renderGridOverlay(palette);
+  if (overlayVariant === "show_musical") {
+    return renderMusicalOverlay(palette);
   }
 
-  if (graphicsStyle === "dynamic") {
-    return renderDynamicOverlay(palette);
+  if (overlayVariant === "tecnologia") {
+    return renderTechnologyOverlay(palette);
   }
 
-  return renderGeometricOverlay(palette);
+  return renderGenericOverlay(palette);
 }
 
 export function renderGraphicOverlay(data: LandingPageData) {
   const overlayOpacity = getTemplateOverlayOpacity(data);
   const palette = resolveOverlayPalette(data);
+  const overlayVariant = getTemplateOverlayVariant(data);
+  const templateCategory = normalizeTemplateCategory(data) || "generico";
 
   return (
     <Box
       data-testid="landing-graphic-overlay"
+      data-template-category={templateCategory}
+      data-overlay-variant={overlayVariant}
       aria-hidden="true"
       sx={{
         position: "absolute",
@@ -459,7 +746,7 @@ export function renderGraphicOverlay(data: LandingPageData) {
         pointerEvents: "none",
       }}
     >
-      {renderOverlayByStyle(data.template.graphics_style, palette)}
+      {renderOverlayByVariant(overlayVariant, palette)}
     </Box>
   );
 }

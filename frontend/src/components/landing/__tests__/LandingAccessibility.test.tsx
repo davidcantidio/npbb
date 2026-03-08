@@ -37,14 +37,14 @@ const axe = configureAxe({
 describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
   describe.each(TEMPLATE_KEYS)("Template %s — axe audit", (templateKey) => {
     it("não possui violações axe-core em modo público", async () => {
-      const data = createTemplateFixture(templateKey, { withHero: true });
+      const data = createTemplateFixture(templateKey);
       const { container } = render(<LandingPageView data={data} mode="public" />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
     });
 
     it("não possui violações axe-core em modo preview", async () => {
-      const data = createTemplateFixture(templateKey, { withHero: true });
+      const data = createTemplateFixture(templateKey);
       const { container } = render(<LandingPageView data={data} mode="preview" />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
@@ -53,7 +53,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
 
   describe("Campos de formulário — labels acessíveis", () => {
     it("todos os campos possuem label associada", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       render(<LandingPageView data={data} mode="public" />);
 
       for (const field of data.formulario.campos) {
@@ -64,7 +64,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
     });
 
     it("checkbox LGPD possui label acessível", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       render(<LandingPageView data={data} mode="public" />);
       expect(screen.getByRole("checkbox")).toBeInTheDocument();
     });
@@ -72,13 +72,13 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
 
   describe("Botões — nomes acessíveis", () => {
     it("CTA possui nome acessível", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       render(<LandingPageView data={data} mode="public" />);
       expect(screen.getByRole("button", { name: /garanta sua vaga/i })).toBeInTheDocument();
     });
 
     it("botão reset possui nome acessível", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       render(
         <LandingPageView
           data={data}
@@ -122,7 +122,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
 
   describe("Elementos decorativos", () => {
     it("footer mínimo não renderiza logos decorativos", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       const { container } = render(<LandingPageView data={data} mode="public" />);
 
       expect(container.querySelector("[data-testid='minimal-footer'] img")).toBeNull();
@@ -132,7 +132,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
 
   describe("Navegação por teclado", () => {
     it("todos os campos interativos são focáveis via Tab", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       render(<LandingPageView data={data} mode="public" />);
 
       const interactiveElements = [
@@ -147,7 +147,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
     });
 
     it("link de privacidade é focável", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
+      const data = createTemplateFixture("esporte_convencional");
       render(<LandingPageView data={data} mode="preview" />);
 
       const links = screen.getAllByRole("link", { name: /privacidade/i });

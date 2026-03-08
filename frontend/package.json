@@ -12,6 +12,7 @@
     "test:ui": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:f3-theme": "playwright test -c playwright.f3-theme.config.ts",
     "smoke:evento-leads": "node scripts/smoke_evento_leads.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"

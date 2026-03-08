@@ -24,7 +24,7 @@ Validar sistematicamente o novo layout form-only: fundo tematico em 7 templates 
 |---|---|---|---|---|
 | ISSUE-F3-01-001 | Validar Fundo Tematico Cross-Template | 5 | todo | [ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md](../issues/ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md) |
 | ISSUE-F3-01-002 | Validar Contraste WCAG AA | 3 | todo | [ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md](../issues/ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md) |
-| ISSUE-F3-01-003 | Validar Gamificacao no Novo Layout | 3 | todo | [ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md](../issues/ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md) |
+| ISSUE-F3-01-003 | Validar Gamificacao no Novo Layout | 3 | done | [ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md](../issues/ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md) |
 
 ## Riscos e Bloqueios
 

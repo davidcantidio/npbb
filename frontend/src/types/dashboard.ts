@@ -24,6 +24,12 @@ export type AgeAnalysisFiltersQuery = {
   data_fim?: string;
 };
 
+export type AgeAnalysisFilters = {
+  data_inicio: string | null;
+  data_fim: string | null;
+  evento_id: number | null;
+};
+
 export type AgeAnalysisFilterFormValues = {
   evento_id: number | null;
   data_inicio: string;
@@ -53,14 +59,14 @@ export type EventoAgeAnalysis = {
   clientes_bb_pct: number | null;
   cobertura_bb_pct: number;
   faixas: AgeBreakdown;
-  faixa_dominante: DominantAgeRangeKey;
+  faixa_dominante: string;
 };
 
 export type TopEventoAgeAnalysis = {
   evento_id: number;
   evento_nome: string;
   base_leads: number;
-  faixa_dominante: DominantAgeRangeKey;
+  faixa_dominante: string;
 };
 
 export type ConsolidadoAgeAnalysis = {
@@ -78,11 +84,7 @@ export type ConsolidadoAgeAnalysis = {
 export type AgeAnalysisResponse = {
   version: number;
   generated_at: string;
-  filters: {
-    data_inicio: string | null;
-    data_fim: string | null;
-    evento_id: number | null;
-  };
+  filters: AgeAnalysisFilters;
   por_evento: EventoAgeAnalysis[];
   consolidado: ConsolidadoAgeAnalysis;
 };

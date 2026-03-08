@@ -3,6 +3,12 @@ import { Box, Typography } from "@mui/material";
 import { DashboardCard } from "../../components/dashboard/DashboardCard";
 import { DASHBOARD_MANIFEST } from "../../config/dashboardManifest";
 
+export const DASHBOARD_HOME_GRID_COLUMNS = {
+  xs: "1fr",
+  sm: "repeat(2, minmax(0, 1fr))",
+  lg: "repeat(3, minmax(0, 1fr))",
+} as const;
+
 export default function DashboardHome() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -16,14 +22,12 @@ export default function DashboardHome() {
       </Box>
 
       <Box
+        data-testid="dashboard-home-card-grid"
+        aria-label="Analises disponiveis"
         sx={{
           display: "grid",
           gap: 2,
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, minmax(0, 1fr))",
-            lg: "repeat(3, minmax(0, 1fr))",
-          },
+          gridTemplateColumns: DASHBOARD_HOME_GRID_COLUMNS,
         }}
       >
         {DASHBOARD_MANIFEST.map((entry) => (

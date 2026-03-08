@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,29 +29,29 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 
 ## Criterios de Aceitacao
 
-- [ ] Página renderiza na rota `/dashboard`
-- [ ] Grid de 3 colunas com cards para cada entrada do manifesto
-- [ ] Cards habilitados: clicáveis, com ícone, nome, descrição e hover effect
-- [ ] Cards desabilitados: badge "Em breve", opacidade reduzida, cursor default
-- [ ] Grid responsivo: 1 coluna em mobile, 2 em tablet, 3 em desktop
-- [ ] Título da página: "Dashboard" ou "Painel de Análises"
+- [x] Página renderiza na rota `/dashboard`
+- [x] Grid de 3 colunas com cards para cada entrada do manifesto
+- [x] Cards habilitados: clicáveis, com ícone, nome, descrição e hover effect
+- [x] Cards desabilitados: badge "Em breve", opacidade reduzida, cursor default
+- [x] Grid responsivo: 1 coluna em mobile, 2 em tablet, 3 em desktop
+- [x] Título da página: "Dashboard" ou "Painel de Análises"
 
 ## Definition of Done da Issue
 
-- [ ] Página renderiza na rota `/dashboard`
-- [ ] Grid de 3 colunas com cards para cada entrada do manifesto
-- [ ] Cards habilitados: clicáveis, com ícone, nome, descrição e hover effect
-- [ ] Cards desabilitados: badge "Em breve", opacidade reduzida, cursor default
-- [ ] Grid responsivo: 1 coluna em mobile, 2 em tablet, 3 em desktop
-- [ ] Título da página: "Dashboard" ou "Painel de Análises"
+- [x] Página renderiza na rota `/dashboard`
+- [x] Grid de 3 colunas com cards para cada entrada do manifesto
+- [x] Cards habilitados: clicáveis, com ícone, nome, descrição e hover effect
+- [x] Cards desabilitados: badge "Em breve", opacidade reduzida, cursor default
+- [x] Grid responsivo: 1 coluna em mobile, 2 em tablet, 3 em desktop
+- [x] Título da página: "Dashboard" ou "Painel de Análises"
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar página `frontend/src/pages/dashboard/DashboardHome.tsx`
-- [ ] T2: Criar componente de card `DashboardCard.tsx`
-- [ ] T3: Implementar grid responsivo com Tailwind
-- [ ] T4: Implementar estados de card (enabled/disabled) com badge "Em breve"
-- [ ] T5: Conectar click dos cards à navegação via React Router
+- [x] T1: Criar página `frontend/src/pages/dashboard/DashboardHome.tsx`
+- [x] T2: Criar componente de card `DashboardCard.tsx`
+- [x] T3: Implementar grid responsivo com Tailwind
+- [x] T4: Implementar estados de card (enabled/disabled) com badge "Em breve"
+- [x] T5: Conectar click dos cards à navegação via React Router
 
 ## Arquivos Reais Envolvidos
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-08"
+last_updated: "2026-03-08T20:00:00Z"
 ---
 
 # ISSUE-F3-01-003 - Validar Gamificacao no Novo Layout
@@ -32,27 +32,39 @@ O GamificacaoBlock foi reposicionado abaixo do FormCard (F1). Precisa ser valida
 
 ## Definition of Done da Issue
 
-- [ ] fluxo PRESENTING → ACTIVE → COMPLETED validado em todos os 7 templates
-- [ ] fundo tematico visivel por tras do GamificacaoBlock em todos os templates
-- [ ] zero regressoes funcionais
-- [ ] relatorio de validacao documentado
+- [x] fluxo PRESENTING → ACTIVE → COMPLETED validado em todos os 7 templates
+- [x] fundo tematico visivel por tras do GamificacaoBlock em todos os templates
+- [x] zero regressoes funcionais
+- [x] relatorio de validacao documentado
 
 ## Tarefas Decupadas
 
-- [ ] T1: preparar dados de teste com gamificacoes ativas para cada template
-- [ ] T2: executar fluxo completo de gamificacao em cada template
-- [ ] T3: verificar transicoes de estado PRESENTING → ACTIVE → COMPLETED
-- [ ] T4: verificar que fundo tematico e visivel por tras do bloco
-- [ ] T5: documentar resultados e abrir issues de correcao se necessario
+- [x] T1: preparar dados de teste com gamificacoes ativas para cada template
+- [x] T2: executar fluxo completo de gamificacao em cada template
+- [x] T3: verificar transicoes de estado PRESENTING → ACTIVE → COMPLETED
+- [x] T4: verificar que fundo tematico e visivel por tras do bloco
+- [x] T5: documentar resultados e abrir issues de correcao se necessario
+
+## Execução
+
+- script: `backend/scripts/seed_playwright_smoke.py`
+- spec e2e: `frontend/e2e/issue-f3-01-003-gamificacao-validation.spec.ts`
+- matriz executada: `7 templates × 3 breakpoints = 21 cenários`
+- evidencia estruturada: `artifacts/phase-f3/evidence/issue-f3-01-003-results.json`
+- relatorio: `artifacts/phase-f3/issue-f3-01-003-validacao-gamificacao.md`
 
 ## Arquivos Reais Envolvidos
 
 - `frontend/src/components/landing/GamificacaoBlock.tsx`
 - `frontend/src/components/landing/LandingPageView.tsx`
+- `frontend/e2e/issue-f3-01-003-gamificacao-validation.spec.ts`
+- `backend/scripts/seed_playwright_smoke.py`
 
 ## Artifact Minimo
 
 - relatorio de validacao de gamificacao cross-template
+- `artifacts/phase-f3/issue-f3-01-003-validacao-gamificacao.md`
+- `artifacts/phase-f3/evidence/issue-f3-01-003-results.json`
 
 ## Dependencias
 

@@ -230,7 +230,7 @@ describe("AFLPD-F4-01-002 — Fluxos UC-01 a UC-04", () => {
 
   describe("UC-04 — Preview no backoffice", () => {
     it("exibe apenas badge de preview e replica o layout publico", () => {
-      const data = createTemplateFixture("show_musical", { withHero: true });
+      const data = createTemplateFixture("show_musical");
       render(<LandingPageView data={data} mode="preview" />);
 
       expect(screen.getByTestId("landing-preview-badge")).toHaveTextContent("Preview");
@@ -240,7 +240,7 @@ describe("AFLPD-F4-01-002 — Fluxos UC-01 a UC-04", () => {
     });
 
     it("formulário está desabilitado em isPreview", () => {
-      const data = createTemplateFixture("show_musical", { withHero: true });
+      const data = createTemplateFixture("show_musical");
       render(<LandingPageView data={data} mode="preview" />);
 
       const inputs = screen.getAllByRole("textbox");
@@ -256,14 +256,14 @@ describe("AFLPD-F4-01-002 — Fluxos UC-01 a UC-04", () => {
     });
 
     it("nao exibe mensagem operacional extra no preview", () => {
-      const data = createTemplateFixture("show_musical", { withHero: true });
+      const data = createTemplateFixture("show_musical");
       render(<LandingPageView data={data} mode="preview" />);
 
       expect(screen.queryByText(/preview fiel ao contrato real/i)).not.toBeInTheDocument();
     });
 
     it("exibe o mesmo footer minimo em modo preview", () => {
-      const data = createTemplateFixture("show_musical", { withHero: true });
+      const data = createTemplateFixture("show_musical");
       render(<LandingPageView data={data} mode="preview" />);
 
       expect(screen.getByText("Banco do Brasil. Pra tudo que voce imaginar.")).toBeInTheDocument();

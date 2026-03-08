@@ -8,15 +8,15 @@ export const AGE_RANGE_META: Record<
   }
 > = {
   faixa_18_25: {
-    label: "18-25",
+    label: "18–25",
     color: "#1976d2",
   },
   faixa_26_40: {
-    label: "26-40",
+    label: "26–40",
     color: "#2e7d32",
   },
   fora_18_40: {
-    label: "Fora de 18-40",
+    label: "Fora de 18–40",
     color: "#ed6c02",
   },
   sem_info: {
@@ -44,8 +44,12 @@ export function formatPercent(value: number | null | undefined) {
   return `${formatDecimal(value)}%`;
 }
 
-export function getDominantAgeRangeLabel(value: DominantAgeRangeKey) {
-  return AGE_RANGE_META[value].label;
+export function getDominantAgeRangeLabel(value: string) {
+  if (value in AGE_RANGE_META) {
+    return AGE_RANGE_META[value as DominantAgeRangeKey].label;
+  }
+
+  return AGE_RANGE_META.sem_info.label;
 }
 
 export function getDominantRangeFromBreakdown(breakdown: AgeBreakdown): DominantAgeRangeKey {

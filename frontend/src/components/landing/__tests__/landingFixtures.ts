@@ -1,4 +1,4 @@
-import type { LandingPageData, GamificacaoPublic } from "../../../services/landing_public";
+import type { GamificacaoPublic, LandingPageData } from "../../../services/landing_public";
 
 const BASE_EVENTO = {
   id: 10,
@@ -35,7 +35,7 @@ const BASE_FORMULARIO = {
   privacy_policy_url: "https://www.bb.com.br/site/privacidade-e-lgpd/",
 };
 
-const BASE_MARCA_WITH_HERO = {
+const BASE_MARCA = {
   tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
 };
 
@@ -45,9 +45,32 @@ const BASE_ACESSO = {
   url_promotor: "https://npbb.example/landing/ativacoes/1",
 };
 
-type TemplateKey = "esporte_convencional" | "esporte_radical" | "show_musical" | "evento_cultural" | "tecnologia";
+export type TemplateKey =
+  | "corporativo"
+  | "esporte_convencional"
+  | "esporte_radical"
+  | "evento_cultural"
+  | "show_musical"
+  | "tecnologia"
+  | "generico";
 
 const TEMPLATE_CONFIGS: Record<TemplateKey, LandingPageData["template"]> = {
+  corporativo: {
+    categoria: "corporativo",
+    tema: "Corp",
+    mood: "Profissional, confiavel e estrategico.",
+    cta_text: "Confirmar presenca",
+    color_primary: "#1E3A8A",
+    color_secondary: "#FCFC30",
+    color_background: "#F5F7FB",
+    color_text: "#111827",
+    hero_layout: "split",
+    cta_variant: "outlined",
+    graphics_style: "grid",
+    tone_of_voice: "attention",
+    cta_experiment_enabled: false,
+    cta_variants: [],
+  },
   esporte_convencional: {
     categoria: "esporte_convencional",
     tema: "Sport",
@@ -80,22 +103,6 @@ const TEMPLATE_CONFIGS: Record<TemplateKey, LandingPageData["template"]> = {
     cta_experiment_enabled: false,
     cta_variants: [],
   },
-  show_musical: {
-    categoria: "show_musical",
-    tema: "Show",
-    mood: "Vibrante, noturno e memoravel.",
-    cta_text: "Quero ir",
-    color_primary: "#735CC6",
-    color_secondary: "#FF6E91",
-    color_background: "#140F2E",
-    color_text: "#F8FAFC",
-    hero_layout: "dark-overlay",
-    cta_variant: "gradient",
-    graphics_style: "dynamic",
-    tone_of_voice: "enthusiasm",
-    cta_experiment_enabled: false,
-    cta_variants: [],
-  },
   evento_cultural: {
     categoria: "evento_cultural",
     tema: "Cultural",
@@ -109,6 +116,22 @@ const TEMPLATE_CONFIGS: Record<TemplateKey, LandingPageData["template"]> = {
     cta_variant: "outlined",
     graphics_style: "organic",
     tone_of_voice: "attention",
+    cta_experiment_enabled: false,
+    cta_variants: [],
+  },
+  show_musical: {
+    categoria: "show_musical",
+    tema: "Show",
+    mood: "Vibrante, noturno e memoravel.",
+    cta_text: "Quero ir",
+    color_primary: "#735CC6",
+    color_secondary: "#FF6E91",
+    color_background: "#140F2E",
+    color_text: "#F8FAFC",
+    hero_layout: "dark-overlay",
+    cta_variant: "gradient",
+    graphics_style: "dynamic",
+    tone_of_voice: "enthusiasm",
     cta_experiment_enabled: false,
     cta_variants: [],
   },
@@ -128,11 +151,77 @@ const TEMPLATE_CONFIGS: Record<TemplateKey, LandingPageData["template"]> = {
     cta_experiment_enabled: false,
     cta_variants: [],
   },
+  generico: {
+    categoria: "generico",
+    tema: "Default",
+    mood: "Neutro, confiavel e com identidade BB.",
+    cta_text: "Quero me cadastrar",
+    color_primary: "#3333BD",
+    color_secondary: "#FCFC30",
+    color_background: "#F7F8FF",
+    color_text: "#111827",
+    hero_layout: "split",
+    cta_variant: "filled",
+    graphics_style: "geometric",
+    tone_of_voice: "warmth",
+    cta_experiment_enabled: false,
+    cta_variants: [],
+  },
 };
 
 export const TEMPLATE_KEYS = Object.keys(TEMPLATE_CONFIGS) as TemplateKey[];
 
 export const BREAKPOINTS = [375, 768, 1280] as const;
+
+export const EXPECTED_TEMPLATE_GRADIENTS: Record<TemplateKey, string> = {
+  corporativo: "linear-gradient(135deg, #1A237E 0%, #3333BD 60%, #465EFF 100%)",
+  esporte_convencional: "linear-gradient(160deg, #3333BD 0%, #1A237E 50%, #3333BD 100%)",
+  esporte_radical: "linear-gradient(145deg, #3333BD 0%, #FF6E91 55%, #FCFC30 100%)",
+  evento_cultural: "linear-gradient(150deg, #BDB6FF 0%, #E8E4FF 50%, #83FFEA 100%)",
+  show_musical: "linear-gradient(160deg, #0D0D1A 0%, #2D1B4E 50%, #4A1942 100%)",
+  tecnologia: "linear-gradient(135deg, #0D1B2E 0%, #0A2440 40%, #0B3340 100%)",
+  generico: "linear-gradient(150deg, #3333BD 0%, #465EFF 100%)",
+};
+
+export const EXPECTED_TEMPLATE_OVERLAY_OPACITY: Record<TemplateKey, number> = {
+  corporativo: 0.1,
+  esporte_convencional: 0.1,
+  esporte_radical: 0.15,
+  evento_cultural: 0.12,
+  show_musical: 0.2,
+  tecnologia: 0.15,
+  generico: 0.05,
+};
+
+export const EXPECTED_TEMPLATE_OVERLAY_VARIANTS: Record<TemplateKey, string> = {
+  corporativo: "corporativo",
+  esporte_convencional: "esporte_convencional",
+  esporte_radical: "esporte_radical",
+  evento_cultural: "evento_cultural",
+  show_musical: "show_musical",
+  tecnologia: "tecnologia",
+  generico: "generico",
+};
+
+export const GRAPHICS_STYLE_MAP: Record<TemplateKey, string> = {
+  corporativo: "grid",
+  esporte_convencional: "geometric",
+  esporte_radical: "dynamic",
+  evento_cultural: "organic",
+  show_musical: "dynamic",
+  tecnologia: "grid",
+  generico: "geometric",
+};
+
+export const HERO_LAYOUT_MAP: Record<TemplateKey, string> = {
+  corporativo: "split",
+  esporte_convencional: "split",
+  esporte_radical: "full-bleed",
+  evento_cultural: "editorial",
+  show_musical: "dark-overlay",
+  tecnologia: "dark-overlay",
+  generico: "split",
+};
 
 export const GAMIFICACAO_MOCK: GamificacaoPublic = {
   id: 1,
@@ -145,9 +234,10 @@ export const GAMIFICACAO_MOCK: GamificacaoPublic = {
 
 export function createTemplateFixture(
   templateKey: TemplateKey,
-  options: { withHero?: boolean; withGamificacao?: boolean; withAtivacao?: boolean } = {},
+  options: { withGamificacao?: boolean; withAtivacao?: boolean } = {},
 ): LandingPageData {
   const { withGamificacao = false, withAtivacao = true } = options;
+
   return {
     ativacao_id: withAtivacao ? 1 : null,
     ativacao: withAtivacao ? BASE_ATIVACAO : null,
@@ -155,23 +245,7 @@ export function createTemplateFixture(
     evento: BASE_EVENTO,
     template: TEMPLATE_CONFIGS[templateKey],
     formulario: BASE_FORMULARIO,
-    marca: BASE_MARCA_WITH_HERO,
+    marca: BASE_MARCA,
     acesso: BASE_ACESSO,
   };
 }
-
-export const GRAPHICS_STYLE_MAP: Record<TemplateKey, string> = {
-  esporte_convencional: "geometric",
-  esporte_radical: "dynamic",
-  show_musical: "dynamic",
-  evento_cultural: "organic",
-  tecnologia: "grid",
-};
-
-export const HERO_LAYOUT_MAP: Record<TemplateKey, string> = {
-  esporte_convencional: "split",
-  esporte_radical: "full-bleed",
-  show_musical: "dark-overlay",
-  evento_cultural: "editorial",
-  tecnologia: "dark-overlay",
-};

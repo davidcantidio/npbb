@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,32 +29,32 @@ recharts é a escolha recomendada para React (leve, declarativo, boa tipagem TS)
 
 ## Criterios de Aceitacao
 
-- [ ] Gráfico de barras empilhadas com uma barra por evento
-- [ ] Seções coloridas: 18–25 (azul), 26–40 (verde), fora 18–40 (laranja), sem info (cinza)
-- [ ] Legenda visível com nome de cada faixa e cor correspondente
-- [ ] Hover/tooltip exibe volume e percentual de cada faixa para o evento
-- [ ] Eixo Y: volume de leads; Eixo X: nome do evento (truncado se longo)
-- [ ] Scroll horizontal quando há muitos eventos (>10)
-- [ ] Responsivo: altura se ajusta ao viewport
+- [x] Gráfico de barras empilhadas com uma barra por evento
+- [x] Seções coloridas: 18–25 (azul), 26–40 (verde), fora 18–40 (laranja), sem info (cinza)
+- [x] Legenda visível com nome de cada faixa e cor correspondente
+- [x] Hover/tooltip exibe volume e percentual de cada faixa para o evento
+- [x] Eixo Y: volume de leads; Eixo X: nome do evento (truncado se longo)
+- [x] Scroll horizontal quando há muitos eventos (>10)
+- [x] Responsivo: altura se ajusta ao viewport
 
 ## Definition of Done da Issue
 
-- [ ] Gráfico de barras empilhadas com uma barra por evento
-- [ ] Seções coloridas: 18–25 (azul), 26–40 (verde), fora 18–40 (laranja), sem info (cinza)
-- [ ] Legenda visível com nome de cada faixa e cor correspondente
-- [ ] Hover/tooltip exibe volume e percentual de cada faixa para o evento
-- [ ] Eixo Y: volume de leads; Eixo X: nome do evento (truncado se longo)
-- [ ] Scroll horizontal quando há muitos eventos (>10)
-- [ ] Responsivo: altura se ajusta ao viewport
+- [x] Gráfico de barras empilhadas com uma barra por evento
+- [x] Seções coloridas: 18–25 (azul), 26–40 (verde), fora 18–40 (laranja), sem info (cinza)
+- [x] Legenda visível com nome de cada faixa e cor correspondente
+- [x] Hover/tooltip exibe volume e percentual de cada faixa para o evento
+- [x] Eixo Y: volume de leads; Eixo X: nome do evento (truncado se longo)
+- [x] Scroll horizontal quando há muitos eventos (>10)
+- [x] Responsivo: altura se ajusta ao viewport
 
 ## Tarefas Decupadas
 
-- [ ] T1: Avaliar e instalar biblioteca de gráficos (recharts recomendado)
-- [ ] T2: Criar componente `AgeDistributionChart.tsx`
-- [ ] T3: Mapear dados da API para formato esperado pelo gráfico
-- [ ] T4: Implementar tooltip customizado com volume e percentual
-- [ ] T5: Implementar legenda e responsividade
-- [ ] T6: Tratar cenário com muitos eventos (scroll horizontal)
+- [x] T1: Avaliar e instalar biblioteca de gráficos (recharts recomendado)
+- [x] T2: Criar componente `AgeDistributionChart.tsx`
+- [x] T3: Mapear dados da API para formato esperado pelo gráfico
+- [x] T4: Implementar tooltip customizado com volume e percentual
+- [x] T5: Implementar legenda e responsividade
+- [x] T6: Tratar cenário com muitos eventos (scroll horizontal)
 
 ## Arquivos Reais Envolvidos
 

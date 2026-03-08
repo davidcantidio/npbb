@@ -142,6 +142,44 @@ describe("LeadsAgeAnalysisPage states", () => {
     expect(await screen.findByText("Nenhum lead encontrado para os filtros aplicados")).toBeInTheDocument();
   });
 
+  it("renders the four KPI cards with required consolidated metrics", async () => {
+    mockedUseAgeAnalysis.mockReturnValue({
+      data: buildFixture(),
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    const baseCard = (await screen.findByText("Base Total")).closest(".MuiCard-root");
+    if (!baseCard) {
+      throw new Error("Base Total card not found");
+    }
+    expect(within(baseCard).getByText("10")).toBeInTheDocument();
+
+    const clientesCard = screen.getByText("Clientes BB").closest(".MuiCard-root");
+    if (!clientesCard) {
+      throw new Error("Clientes BB card not found");
+    }
+    expect(within(clientesCard).getByText("4")).toBeInTheDocument();
+    expect(within(clientesCard).getByText("Percentual da base: 40,0%")).toBeInTheDocument();
+    expect(within(clientesCard).getByText("Cobertura BB")).toBeInTheDocument();
+    expect(within(clientesCard).getByText("90.0%")).toBeInTheDocument();
+
+    const faixaCard = screen.getByText("Faixa Dominante").closest(".MuiCard-root");
+    if (!faixaCard) {
+      throw new Error("Faixa Dominante card not found");
+    }
+    expect(within(faixaCard).getByText("18–25")).toBeInTheDocument();
+
+    const eventosCard = screen.getByText("Eventos").closest(".MuiCard-root");
+    if (!eventosCard) {
+      throw new Error("Eventos card not found");
+    }
+    expect(within(eventosCard).getByText("1")).toBeInTheDocument();
+  });
+
   it("shows error toast with retry action", async () => {
     const refetch = vi.fn();
     const user = userEvent.setup();

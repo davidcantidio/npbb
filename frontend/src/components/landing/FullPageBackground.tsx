@@ -2,7 +2,11 @@ import { Box } from "@mui/material";
 import type { ReactNode } from "react";
 
 import type { LandingPageData } from "../../services/landing_public";
-import { getTemplateBackgroundGradient, renderGraphicOverlay } from "./landingStyle";
+import {
+  getTemplateBackgroundGradient,
+  getTemplateOverlayVariant,
+  renderGraphicOverlay,
+} from "./landingStyle";
 
 type FullPageBackgroundProps = {
   data: LandingPageData;
@@ -16,12 +20,16 @@ export default function FullPageBackground({
   fullHeight = true,
 }: FullPageBackgroundProps) {
   const backgroundGradient = getTemplateBackgroundGradient(data);
+  const templateCategory = String(data.template.categoria || "generico").trim().toLowerCase() || "generico";
+  const overlayVariant = getTemplateOverlayVariant(data);
   const contentMinHeight = fullHeight ? "100vh" : "auto";
 
   return (
     <Box sx={{ position: "relative", minHeight: contentMinHeight }}>
       <Box
         data-testid="full-page-background-layer"
+        data-template-category={templateCategory}
+        data-overlay-variant={overlayVariant}
         aria-hidden="true"
         sx={{
           position: "fixed",
@@ -34,6 +42,8 @@ export default function FullPageBackground({
       />
       <Box
         data-testid="full-page-overlay-layer"
+        data-template-category={templateCategory}
+        data-overlay-variant={overlayVariant}
         aria-hidden="true"
         sx={{
           position: "fixed",

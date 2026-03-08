@@ -3,6 +3,14 @@ import { Box, Card, CardContent, LinearProgress, Stack, Typography } from "@mui/
 
 import { InfoTooltip } from "./InfoTooltip";
 
+type KpiCardTrendDirection = "up" | "down" | "neutral";
+
+type KpiCardTrend = {
+  value: ReactNode;
+  direction?: KpiCardTrendDirection;
+  label?: ReactNode;
+};
+
 type KpiCardProps = {
   title: string;
   value: ReactNode;
@@ -12,6 +20,7 @@ type KpiCardProps = {
   progressValue?: number | null;
   progressLabel?: string;
   titleTooltip?: string;
+  trend?: KpiCardTrend;
 };
 
 export function KpiCard({
@@ -23,12 +32,22 @@ export function KpiCard({
   progressValue,
   progressLabel,
   titleTooltip,
+  trend,
 }: KpiCardProps) {
   const normalizedProgress =
     typeof progressValue === "number" ? Math.min(Math.max(progressValue, 0), 100) : null;
   const shouldWrapValue = typeof value === "string" || typeof value === "number";
   const shouldWrapSubtitle = typeof subtitle === "string" || typeof subtitle === "number";
   const shouldWrapHelperText = typeof helperText === "string" || typeof helperText === "number";
+  const shouldWrapTrendValue = typeof trend?.value === "string" || typeof trend?.value === "number";
+  const shouldWrapTrendLabel = typeof trend?.label === "string" || typeof trend?.label === "number";
+  const trendColor =
+    trend?.direction === "up"
+      ? "success.main"
+      : trend?.direction === "down"
+        ? "error.main"
+        : "text.secondary";
+  const trendMarker = trend?.direction === "up" ? "+" : trend?.direction === "down" ? "-" : "~";
 
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
@@ -89,6 +108,30 @@ export function KpiCard({
                 value={normalizedProgress}
                 sx={{ height: 8, borderRadius: 999 }}
               />
+            </Stack>
+          ) : null}
+
+          {trend ? (
+            <Stack spacing={0.25}>
+              {trend.label && shouldWrapTrendLabel ? (
+                <Typography variant="caption" color="text.secondary">
+                  {trend.label}
+                </Typography>
+              ) : trend.label ? (
+                <Box>{trend.label}</Box>
+              ) : null}
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: trendColor }}>
+                <Typography variant="caption" fontWeight={700}>
+                  {trendMarker}
+                </Typography>
+                {shouldWrapTrendValue ? (
+                  <Typography variant="caption" fontWeight={700}>
+                    {trend.value}
+                  </Typography>
+                ) : (
+                  <Box>{trend.value}</Box>
+                )}
+              </Box>
             </Stack>
           ) : null}
 

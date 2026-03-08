@@ -1,15 +1,13 @@
+import type { ReactElement } from "react";
+import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
-import { ProtectedRoute } from "../../../components/ProtectedRoute";
-import DashboardLayout from "../../../components/dashboard/DashboardLayout";
-import AppLayout from "../../../components/layout/AppLayout";
+import AppRoutes from "../../../app/AppRoutes";
 import { useAgeAnalysis } from "../../../hooks/useAgeAnalysis";
 import { listReferenciaEventos } from "../../../services/leads_import";
 import type { AgeAnalysisResponse } from "../../../types/dashboard";
-import DashboardHome from "../DashboardHome";
-import LeadsAgeAnalysisPage from "../LeadsAgeAnalysisPage";
 import { useAuth } from "../../../store/auth";
 
 vi.mock("../../../store/auth", () => ({
@@ -27,6 +25,7 @@ vi.mock("../../../services/leads_import", () => ({
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseAgeAnalysis = vi.mocked(useAgeAnalysis);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
+const theme = createTheme();
 
 const ageAnalysisFixture: AgeAnalysisResponse = {
   version: 1,
@@ -82,32 +81,46 @@ const ageAnalysisFixture: AgeAnalysisResponse = {
   },
 };
 
-function renderDashboardModule(initialEntry: string) {
+function mockMatchMedia(matches: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation(() => ({
+      matches,
+      media: "",
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
+}
+
+function renderWithTheme(ui: ReactElement) {
   return render(
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {ui}
+    </ThemeProvider>,
+  );
+}
+
+function renderDashboardModule(initialEntry: string) {
+  return renderWithTheme(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/login" element={<div>Login page</div>} />
-        <Route
-          element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardHome />} />
-            <Route path="leads" element={<Navigate to="analise-etaria" replace />} />
-            <Route path="leads/analise-etaria" element={<LeadsAgeAnalysisPage />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-        </Route>
-      </Routes>
+      <AppRoutes />
     </MemoryRouter>,
   );
 }
 
 describe("Dashboard module", () => {
-  it("renders dashboard home with manifesto-driven cards and sidebar", async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("redirects unauthenticated access to /dashboard back to login", async () => {
+    mockMatchMedia(true);
     mockedUseAgeAnalysis.mockReturnValue({
       data: null,
       isLoading: false,
@@ -128,10 +141,11 @@ describe("Dashboard module", () => {
 
     renderDashboardModule("/dashboard");
 
-    expect(await screen.findByText("Login page")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 
-  it("redirects to login when the user is not authenticated", async () => {
+  it("renders /dashboard inside the authenticated shell with dashboard navigation", async () => {
+    mockMatchMedia(true);
     mockedUseAgeAnalysis.mockReturnValue({
       data: ageAnalysisFixture,
       isLoading: false,
@@ -157,11 +171,14 @@ describe("Dashboard module", () => {
     expect(
       await screen.findByText("Selecione uma trilha analitica para navegar pelos dashboards disponiveis."),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /navegacao do dashboard/i })).toBeInTheDocument();
     expect(screen.getAllByText("Analise etaria por evento").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Em breve").length).toBeGreaterThan(0);
   });
 
   it("renders the age analysis route with dashboard data", async () => {
+    mockMatchMedia(true);
     mockedUseAgeAnalysis.mockReturnValue({
       data: ageAnalysisFixture,
       isLoading: false,
@@ -184,12 +201,13 @@ describe("Dashboard module", () => {
 
     renderDashboardModule("/dashboard/leads/analise-etaria");
 
-    expect(await screen.findByText("Base total")).toBeInTheDocument();
+    expect(await screen.findByText("Base Total")).toBeInTheDocument();
     expect(screen.getByText("Distribuicao etaria por evento")).toBeInTheDocument();
     expect(screen.getAllByText("Evento Alpha").length).toBeGreaterThan(0);
   });
 
   it("redirects unknown dashboard routes back to the module home", async () => {
+    mockMatchMedia(true);
     mockedUseAgeAnalysis.mockReturnValue({
       data: ageAnalysisFixture,
       isLoading: false,

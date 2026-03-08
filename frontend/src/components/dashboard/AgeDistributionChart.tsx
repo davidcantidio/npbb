@@ -1,4 +1,5 @@
 import { Box, Card, CardContent, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -36,11 +37,38 @@ type ChartRow = {
   sem_info_pct: number;
 };
 
-function buildChartData(events: EventoAgeAnalysis[]): ChartRow[] {
+const X_AXIS_MAX_LABEL_LENGTH = 18;
+const CHART_MIN_WIDTH = 720;
+const CHART_WIDTH_PER_EVENT = 110;
+const HORIZONTAL_SCROLL_THRESHOLD = 10;
+const CHART_HEIGHT_MIN = 260;
+const CHART_HEIGHT_MAX = 420;
+const CHART_HEIGHT_VIEWPORT_RATIO = 0.42;
+const VIEWPORT_WIDTH_PADDING = 96;
+
+type ViewportSize = {
+  width: number;
+  height: number;
+};
+
+function getViewportSize(): ViewportSize {
+  if (typeof window === "undefined") {
+    return { width: 1280, height: 900 };
+  }
+
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+export function getResponsiveChartHeight(viewportHeight: number) {
+  const estimatedHeight = Math.round(viewportHeight * CHART_HEIGHT_VIEWPORT_RATIO);
+  return Math.min(CHART_HEIGHT_MAX, Math.max(CHART_HEIGHT_MIN, estimatedHeight));
+}
+
+export function buildChartData(events: EventoAgeAnalysis[]): ChartRow[] {
   return events.map((event) => ({
     eventoId: event.evento_id,
     eventoNome: event.evento_nome,
-    eventoNomeCurto: truncateLabel(event.evento_nome, 18),
+    eventoNomeCurto: truncateLabel(event.evento_nome, X_AXIS_MAX_LABEL_LENGTH),
     faixa_18_25: event.faixas.faixa_18_25.volume,
     faixa_26_40: event.faixas.faixa_26_40.volume,
     fora_18_40: event.faixas.fora_18_40.volume,
@@ -52,7 +80,7 @@ function buildChartData(events: EventoAgeAnalysis[]): ChartRow[] {
   }));
 }
 
-function CustomTooltip({
+export function CustomTooltip({
   active,
   payload,
   label,
@@ -97,8 +125,32 @@ function CustomTooltip({
 }
 
 export function AgeDistributionChart({ events }: AgeDistributionChartProps) {
-  const data = buildChartData(events);
-  const minWidth = Math.max(720, data.length * 110);
+  const data = useMemo(() => buildChartData(events), [events]);
+  const [viewportSize, setViewportSize] = useState<ViewportSize>(() => getViewportSize());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      setViewportSize(getViewportSize());
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const shouldEnableHorizontalScroll = data.length > HORIZONTAL_SCROLL_THRESHOLD;
+  const nonScrollableWidth = Math.max(
+    Math.min(viewportSize.width - VIEWPORT_WIDTH_PADDING, 1200),
+    320,
+  );
+  const chartWidth = shouldEnableHorizontalScroll
+    ? Math.max(CHART_MIN_WIDTH, data.length * CHART_WIDTH_PER_EVENT)
+    : nonScrollableWidth;
+  const chartHeight = getResponsiveChartHeight(viewportSize.height);
 
   return (
     <Card variant="outlined">
@@ -115,12 +167,26 @@ export function AgeDistributionChart({ events }: AgeDistributionChartProps) {
             Nenhum evento disponivel para exibir no grafico.
           </Typography>
         ) : (
-          <Box sx={{ overflowX: "auto", overflowY: "hidden" }}>
-            <Box sx={{ width: minWidth, height: 360 }}>
-              <BarChart width={minWidth} height={360} data={data} margin={{ top: 8, right: 24, left: 0, bottom: 12 }}>
+          <Box
+            data-testid="age-distribution-chart-scroll"
+            data-scroll-enabled={shouldEnableHorizontalScroll ? "true" : "false"}
+            sx={{ overflowX: shouldEnableHorizontalScroll ? "auto" : "hidden", overflowY: "hidden" }}
+          >
+            <Box
+              data-testid="age-distribution-chart-canvas"
+              data-chart-height={chartHeight}
+              data-chart-width={chartWidth}
+              sx={{ width: chartWidth, height: chartHeight }}
+            >
+              <BarChart
+                width={chartWidth}
+                height={chartHeight}
+                data={data}
+                margin={{ top: 8, right: 24, left: 0, bottom: 12 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="eventoNomeCurto" interval={0} tickMargin={10} />
-                <YAxis allowDecimals={false} />
+                <YAxis allowDecimals={false} width={80} label={{ value: "Volume de leads", angle: -90 }} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Bar

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -28,29 +28,29 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 
 ## Criterios de Aceitacao
 
-- [ ] Card "Base Total" exibe contagem total de leads no filtro
-- [ ] Card "Clientes BB" exibe volume e percentual; indicador de cobertura (barra ou badge)
-- [ ] Card "Faixa Dominante" exibe nome da faixa com maior volume (ex.: "26–40")
-- [ ] Card "Eventos" exibe quantidade de eventos no filtro
-- [ ] Cards com design consistente: ícone, valor principal, valor secundário, tendência (opcional)
-- [ ] Componente `KpiCard` genérico e reutilizável
+- [x] Card "Base Total" exibe contagem total de leads no filtro
+- [x] Card "Clientes BB" exibe volume e percentual; indicador de cobertura (barra ou badge)
+- [x] Card "Faixa Dominante" exibe nome da faixa com maior volume (ex.: "26–40")
+- [x] Card "Eventos" exibe quantidade de eventos no filtro
+- [x] Cards com design consistente: ícone, valor principal, valor secundário, tendência (opcional)
+- [x] Componente `KpiCard` genérico e reutilizável
 
 ## Definition of Done da Issue
 
-- [ ] Card "Base Total" exibe contagem total de leads no filtro
-- [ ] Card "Clientes BB" exibe volume e percentual; indicador de cobertura (barra ou badge)
-- [ ] Card "Faixa Dominante" exibe nome da faixa com maior volume (ex.: "26–40")
-- [ ] Card "Eventos" exibe quantidade de eventos no filtro
-- [ ] Cards com design consistente: ícone, valor principal, valor secundário, tendência (opcional)
-- [ ] Componente `KpiCard` genérico e reutilizável
+- [x] Card "Base Total" exibe contagem total de leads no filtro
+- [x] Card "Clientes BB" exibe volume e percentual; indicador de cobertura (barra ou badge)
+- [x] Card "Faixa Dominante" exibe nome da faixa com maior volume (ex.: "26–40")
+- [x] Card "Eventos" exibe quantidade de eventos no filtro
+- [x] Cards com design consistente: ícone, valor principal, valor secundário, tendência (opcional)
+- [x] Componente `KpiCard` genérico e reutilizável
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente genérico `KpiCard.tsx` em `frontend/src/components/dashboard/`
-- [ ] T2: Implementar card "Base Total"
-- [ ] T3: Implementar card "Clientes BB" com indicador de cobertura
-- [ ] T4: Implementar card "Faixa Dominante"
-- [ ] T5: Compor os 4 cards no topo da página com grid responsivo
+- [x] T1: Criar componente genérico `KpiCard.tsx` em `frontend/src/components/dashboard/`
+- [x] T2: Implementar card "Base Total"
+- [x] T3: Implementar card "Clientes BB" com indicador de cobertura
+- [x] T4: Implementar card "Faixa Dominante"
+- [x] T5: Compor os 4 cards no topo da página com grid responsivo
 
 ## Arquivos Reais Envolvidos
 

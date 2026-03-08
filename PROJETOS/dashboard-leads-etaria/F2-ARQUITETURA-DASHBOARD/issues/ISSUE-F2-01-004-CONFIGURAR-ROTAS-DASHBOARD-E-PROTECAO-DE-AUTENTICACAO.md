@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,38 +29,38 @@ em `frontend/src/`). Não criar novo mecanismo de auth.
 
 ## Criterios de Aceitacao
 
-- [ ] Rota `/dashboard` renderiza `DashboardHome` dentro de `DashboardLayout`
-- [ ] Rota `/dashboard/leads/analise-etaria` renderiza componente placeholder (até F3)
-- [ ] Rotas do dashboard protegidas por guard de autenticação existente
-- [ ] Acesso sem autenticação redireciona para login
-- [ ] Rota inexistente dentro de `/dashboard/*` exibe 404 ou redireciona para `/dashboard`
-- [ ] Link para "Dashboard" adicionado ao menu/navegação principal da aplicação
+- [x] Rota `/dashboard` renderiza `DashboardHome` dentro de `DashboardLayout`
+- [x] Rota `/dashboard/leads/analise-etaria` renderiza componente placeholder (até F3)
+- [x] Rotas do dashboard protegidas por guard de autenticação existente
+- [x] Acesso sem autenticação redireciona para login
+- [x] Rota inexistente dentro de `/dashboard/*` exibe 404 ou redireciona para `/dashboard`
+- [x] Link para "Dashboard" adicionado ao menu/navegação principal da aplicação
 
 ## Definition of Done da Issue
 
-- [ ] Rota `/dashboard` renderiza `DashboardHome` dentro de `DashboardLayout`
-- [ ] Rota `/dashboard/leads/analise-etaria` renderiza componente placeholder (até F3)
-- [ ] Rotas do dashboard protegidas por guard de autenticação existente
-- [ ] Acesso sem autenticação redireciona para login
-- [ ] Rota inexistente dentro de `/dashboard/*` exibe 404 ou redireciona para `/dashboard`
-- [ ] Link para "Dashboard" adicionado ao menu/navegação principal da aplicação
+- [x] Rota `/dashboard` renderiza `DashboardHome` dentro de `DashboardLayout`
+- [x] Rota `/dashboard/leads/analise-etaria` renderiza componente placeholder (até F3)
+- [x] Rotas do dashboard protegidas por guard de autenticação existente
+- [x] Acesso sem autenticação redireciona para login
+- [x] Rota inexistente dentro de `/dashboard/*` exibe 404 ou redireciona para `/dashboard`
+- [x] Link para "Dashboard" adicionado ao menu/navegação principal da aplicação
 
 ## Tarefas Decupadas
 
-- [ ] T1: Configurar rotas aninhadas em `frontend/src/App.tsx` ou arquivo de rotas
-- [ ] T2: Aplicar guard de autenticação ao grupo `/dashboard/*`
-- [ ] T3: Criar componente placeholder para `/dashboard/leads/analise-etaria`
-- [ ] T4: Adicionar link "Dashboard" ao menu de navegação principal
-- [ ] T5: Testar navegação: autenticado e não-autenticado
+- [x] T1: Configurar rotas aninhadas em `frontend/src/app/AppRoutes.tsx`
+- [x] T2: Aplicar guard de autenticação ao grupo `/dashboard/*`
+- [x] T3: Criar componente placeholder para `/dashboard/leads/analise-etaria`
+- [x] T4: Adicionar link "Dashboard" ao menu de navegação principal
+- [x] T5: Testar navegação: autenticado e não-autenticado
 
 ## Arquivos Reais Envolvidos
 
-- `frontend/src/App.tsx`
+- `frontend/src/app/AppRoutes.tsx`
 - `frontend/src/pages/dashboard/LeadsAgeAnalysisPage.tsx`
 
 ## Artifact Minimo
 
-- `frontend/src/App.tsx`
+- `frontend/src/app/AppRoutes.tsx`
 
 ## Dependencias
 

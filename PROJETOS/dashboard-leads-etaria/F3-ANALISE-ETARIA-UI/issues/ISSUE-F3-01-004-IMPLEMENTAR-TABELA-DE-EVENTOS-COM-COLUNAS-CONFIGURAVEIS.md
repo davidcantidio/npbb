@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -28,32 +28,32 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 
 ## Criterios de Aceitacao
 
-- [ ] Tabela exibe todos os campos da seção 3.2 do PRD
-- [ ] Colunas de percentual formatadas com 1 casa decimal + símbolo %
-- [ ] Ordenação por qualquer coluna numérica (click no header)
-- [ ] Indicação visual de coluna ordenada e direção (asc/desc)
-- [ ] Scroll horizontal em telas pequenas
-- [ ] Células de clientes BB exibem "—" quando cobertura insuficiente (null do backend)
-- [ ] Linha de evento é clicável (futuro: navegação para detalhe do evento)
+- [x] Tabela exibe todos os campos da seção 3.2 do PRD
+- [x] Colunas de percentual formatadas com 1 casa decimal + símbolo %
+- [x] Ordenação por qualquer coluna numérica (click no header)
+- [x] Indicação visual de coluna ordenada e direção (asc/desc)
+- [x] Scroll horizontal em telas pequenas
+- [x] Células de clientes BB exibem "—" quando cobertura insuficiente (null do backend)
+- [x] Linha de evento é clicável (futuro: navegação para detalhe do evento)
 
 ## Definition of Done da Issue
 
-- [ ] Tabela exibe todos os campos da seção 3.2 do PRD
-- [ ] Colunas de percentual formatadas com 1 casa decimal + símbolo %
-- [ ] Ordenação por qualquer coluna numérica (click no header)
-- [ ] Indicação visual de coluna ordenada e direção (asc/desc)
-- [ ] Scroll horizontal em telas pequenas
-- [ ] Células de clientes BB exibem "—" quando cobertura insuficiente (null do backend)
-- [ ] Linha de evento é clicável (futuro: navegação para detalhe do evento)
+- [x] Tabela exibe todos os campos da seção 3.2 do PRD
+- [x] Colunas de percentual formatadas com 1 casa decimal + símbolo %
+- [x] Ordenação por qualquer coluna numérica (click no header)
+- [x] Indicação visual de coluna ordenada e direção (asc/desc)
+- [x] Scroll horizontal em telas pequenas
+- [x] Células de clientes BB exibem "—" quando cobertura insuficiente (null do backend)
+- [x] Linha de evento é clicável (futuro: navegação para detalhe do evento)
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente `EventsAgeTable.tsx`
-- [ ] T2: Definir colunas com formatação (percentual, volume, texto)
-- [ ] T3: Implementar ordenação por coluna no header
-- [ ] T4: Tratar valores null (cobertura BB insuficiente) com placeholder "—"
-- [ ] T5: Implementar scroll horizontal responsivo
-- [ ] T6: Estilizar zebra-striping e hover para legibilidade
+- [x] T1: Criar componente `EventsAgeTable.tsx`
+- [x] T2: Definir colunas com formatação (percentual, volume, texto)
+- [x] T3: Implementar ordenação por coluna no header
+- [x] T4: Tratar valores null (cobertura BB insuficiente) com placeholder "—"
+- [x] T5: Implementar scroll horizontal responsivo
+- [x] T6: Estilizar zebra-striping e hover para legibilidade
 
 ## Arquivos Reais Envolvidos
 

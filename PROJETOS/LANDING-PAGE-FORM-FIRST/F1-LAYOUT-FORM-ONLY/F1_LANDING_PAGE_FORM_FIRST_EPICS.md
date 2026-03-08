@@ -18,9 +18,9 @@ O novo layout renderiza corretamente nos 7 templates, o formulario funciona sem 
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `hold`
+- estado_do_gate: `approved`
 - ultima_auditoria: `R01`
-- veredito_atual: `hold`
+- veredito_atual: `go`
 - relatorio_mais_recente: [RELATORIO-AUDITORIA-F1-R01](./auditorias/RELATORIO-AUDITORIA-F1-R01.md)
 - log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
@@ -78,7 +78,7 @@ EPIC-F1-02 ──┘
 
 ## Follow-up Bloqueante da Auditoria F1-R01
 
-- [ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md](./issues/ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md)
+- [x] ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md (resolvido)
 
 ## Estado Atual vs Refacao Necessaria
 

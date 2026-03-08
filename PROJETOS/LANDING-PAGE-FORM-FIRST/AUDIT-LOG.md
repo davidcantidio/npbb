@@ -25,7 +25,7 @@ last_updated: "2026-03-08"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1 - LAYOUT-FORM-ONLY | hold | R01 (`hold`) | [RELATORIO-AUDITORIA-F1-R01](./F1-LAYOUT-FORM-ONLY/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | follow-up local bloqueante aberto para alinhar contrato de cor de rodape `esporte_radical` |
+| F1 - LAYOUT-FORM-ONLY | approved | R01 (`go`) | [RELATORIO-AUDITORIA-F1-R01](./F1-LAYOUT-FORM-ONLY/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | follow-up local de cor de rodape resolvido e gate de auditoria liberado |
 | F2 - BACKOFFICE-E-PREVIEW | not_ready | nenhuma | n-a | fase ainda nao iniciou |
 | F3 - QA-CROSS-TEMPLATE | not_ready | nenhuma | n-a | fase ainda nao iniciou |
 
@@ -33,4 +33,4 @@ last_updated: "2026-03-08"
 
 | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| F1-R01 | F1 - LAYOUT-FORM-ONLY | 2026-03-08 | GPT-5 Codex | 11f60f688118c49a477609169f5253a9ef15bd87 | n-a | hold | done | [RELATORIO-AUDITORIA-F1-R01](./F1-LAYOUT-FORM-ONLY/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | A-01 (`bug/high`), S-01 (`monolithic-file/medium`), S-02 (`architecture-drift/medium`) | issue-local | [ISSUE-F1-03-004](./F1-LAYOUT-FORM-ONLY/issues/ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md) | none |
+| F1-R01 | F1 - LAYOUT-FORM-ONLY | 2026-03-08 | GPT-5 Codex | 11f60f688118c49a477609169f5253a9ef15bd87 | n-a | go | done | [RELATORIO-AUDITORIA-F1-R01](./F1-LAYOUT-FORM-ONLY/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | S-01 (`monolithic-file/medium`), S-02 (`architecture-drift/medium`) | cancelled | n-a | none |

@@ -158,10 +158,11 @@ describe("LeadsAgeAnalysisPage states", () => {
     }
     expect(within(baseCard).getByText("10")).toBeInTheDocument();
 
-    const clientesCard = screen.getByText("Clientes BB").closest(".MuiCard-root");
+    const clientesCard = screen.getByText("Percentual da base: 40,0%").closest(".MuiCard-root");
     if (!clientesCard) {
       throw new Error("Clientes BB card not found");
     }
+    expect(within(clientesCard).getByText("Clientes BB")).toBeInTheDocument();
     expect(within(clientesCard).getByText("4")).toBeInTheDocument();
     expect(within(clientesCard).getByText("Percentual da base: 40,0%")).toBeInTheDocument();
     expect(within(clientesCard).getByText("Cobertura BB")).toBeInTheDocument();

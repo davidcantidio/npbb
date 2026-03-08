@@ -39,7 +39,7 @@ const TEMPLATE_OVERLAY_OPACITY: Record<string, number> = {
 const TEMPLATE_FOOTER_TEXT_COLORS: Record<string, string> = {
   corporativo: "rgba(255, 255, 255, 0.75)",
   esporte_convencional: "rgba(255, 255, 255, 0.75)",
-  esporte_radical: "rgba(7, 17, 31, 0.92)",
+  esporte_radical: "rgba(255, 255, 255, 0.85)",
   evento_cultural: "rgba(51, 51, 189, 0.75)",
   show_musical: "rgba(255, 255, 255, 0.65)",
   tecnologia: "rgba(255, 255, 255, 0.70)",

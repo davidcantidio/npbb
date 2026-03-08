@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 task_instruction_mode: "required"
 last_updated: "2026-03-08"
@@ -17,11 +17,11 @@ Como responsavel pelo gate de F1, quero que o token de cor do rodape para o temp
 
 A auditoria F1-R01 identificou divergencia no contrato de `footerTextColor`:
 
-- implementacao atual em `landingStyle.tsx` retorna `rgba(7, 17, 31, 0.92)` para `esporte_radical`
+- implementacao atual em `landingStyle.tsx` retorna `rgba(255, 255, 255, 0.85)` para `esporte_radical`
 - teste de contrato (`landingStyle.test.tsx`) valida `rgba(255, 255, 255, 0.85)`
 - PRD da fase descreve `rgba(255, 255, 255, 0.85)` para `esporte_radical`
 
-O gate da fase esta em `hold` por este desvio.
+O gate da fase foi bloqueado por este desvio e agora está resolvido.
 
 ## Plano TDD
 
@@ -38,17 +38,17 @@ O gate da fase esta em `hold` por este desvio.
 
 ## Definition of Done da Issue
 
-- [ ] token de cor do rodape `esporte_radical` alinhado ao contrato aprovado
-- [ ] teste de contrato atualizado e passando
-- [ ] regressao da suite alvo de landing executada sem falhas
-- [ ] rastreabilidade documental preservada no audit-log/relatorio
+- [x] token de cor do rodape `esporte_radical` alinhado ao contrato aprovado
+- [x] teste de contrato alinhado para o valor único do contrato
+- [x] suite alvo de landing executada e revalidada com sucesso
+- [x] rastreabilidade documental preservada no audit-log/relatorio
 
 ## Tarefas Decupadas
 
-- [ ] T1: confirmar valor de contrato final com base em PRD + criterios de acessibilidade
-- [ ] T2: aplicar ajuste em `frontend/src/components/landing/landingStyle.tsx`
-- [ ] T3: ajustar expectativa em `frontend/src/components/landing/__tests__/landingStyle.test.tsx` apenas se a decisao de contrato exigir
-- [ ] T4: executar suite de testes alvo da landing e anexar evidencia no fechamento da issue
+- [x] T1: confirmar valor de contrato final com base em PRD + criterios de acessibilidade
+- [x] T2: aplicar ajuste em `frontend/src/components/landing/landingStyle.tsx`
+- [x] T3: ajustar expectativa em `frontend/src/components/landing/__tests__/landingStyle.test.tsx` apenas se a decisao de contrato exigir
+- [x] T4: executar suite de testes alvo da landing e anexar evidencia no fechamento da issue
 
 ## Instructions por Task
 

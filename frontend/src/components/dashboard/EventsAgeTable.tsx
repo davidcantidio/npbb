@@ -227,8 +227,13 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
             Nenhum evento encontrado para a tabela.
           </Typography>
         ) : (
-          <TableContainer sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 1240 }}>
+          <TableContainer data-testid="events-age-table-scroll" data-scroll-x="enabled" sx={{ overflowX: "auto" }}>
+            <Table
+              data-testid="events-age-table-grid"
+              aria-label="Tabela de eventos da analise etaria"
+              size="small"
+              sx={{ minWidth: 1240 }}
+            >
               <TableHead>
                 <TableRow>
                   {columns.map((column) => (
@@ -252,6 +257,7 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
                 {sortedEvents.map((event, index) => (
                   <TableRow
                     key={event.evento_id}
+                    data-testid={`events-age-table-row-${event.evento_id}`}
                     hover
                     onClick={onSelectEvento ? () => onSelectEvento(event.evento_id) : undefined}
                     sx={{

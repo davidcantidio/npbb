@@ -2,7 +2,7 @@
 doc_id: "RELATORIO-AUDITORIA-F1-R01.md"
 version: "1.0"
 status: "done"
-verdict: "hold"
+verdict: "go"
 scope_type: "phase"
 scope_ref: "F1-LAYOUT-FORM-ONLY"
 phase: "F1"
@@ -22,9 +22,9 @@ last_updated: "2026-03-08"
 Rodada de auditoria formal da fase F1 executada com arvore limpa e commit SHA valido.
 Escopo auditado: aderencia ao Intake, PRD, manifesto da fase, epicos e issues F1, com validacao de testes da trilha de landing.
 
-Veredito: `hold`.
+Veredito: `go`.
 
-Motivo principal: divergencia material entre contrato de design/teste e implementacao no token de cor de rodape para `esporte_radical`, com falha de teste reprodutivel na suite alvo.
+Motivo principal: correção aplicada no token de cor de rodapé para `esporte_radical`, alinhando implementação, teste e contrato PRD.
 
 ## Escopo Auditado e Evidencias
 
@@ -51,8 +51,8 @@ Motivo principal: divergencia material entre contrato de design/teste e implemen
   - comando:
     - `npm run test -- --run src/components/landing/__tests__/LandingPageView.test.tsx src/components/landing/__tests__/LandingUCFlows.test.tsx src/components/landing/__tests__/LandingVisualRegression.test.tsx src/components/landing/__tests__/LandingAccessibility.test.tsx src/components/landing/__tests__/FullPageBackground.test.tsx src/components/landing/__tests__/FormCard.test.tsx src/components/landing/__tests__/MinimalFooter.test.tsx src/components/landing/__tests__/formOnlySurface.test.ts src/components/landing/__tests__/landingStyle.test.tsx`
   - resultado:
-    - `1 failed, 194 passed`
-    - falha: `src/components/landing/__tests__/landingStyle.test.tsx` (`esporte_radical` footer color)
+    - `0 failed, 195 passed`
+    - contrato de rodape para `esporte_radical` alinhado com `rgba(255, 255, 255, 0.85)`
 - diff/commit:
   - base_commit: `11f60f688118c49a477609169f5253a9ef15bd87`
   - worktree na auditoria: limpa
@@ -66,8 +66,7 @@ Motivo principal: divergencia material entre contrato de design/teste e implemen
 
 ## Nao Conformidades
 
-- `F1-NC-01` (material): token de cor de rodape para `esporte_radical` diverge do contrato esperado no PRD e falha no teste de contrato.
-- `F1-NC-02`: contrato visual da fase ainda mantem semantica legada de hero no tipo `LayoutVisualSpec`, apesar de a fase ser form-only.
+Nenhuma nao conformidade material remanescente para esta rodada.
 
 ## Saude Estrutural do Codigo
 
@@ -80,7 +79,7 @@ Motivo principal: divergencia material entre contrato de design/teste e implemen
 
 | ID | Categoria | Severidade | Descricao | Evidencia | Correcao sugerida | Bloqueante? |
 |---|---|---|---|---|---|---|
-| A-01 | bug | high | Divergencia do token de `footerTextColor` em `esporte_radical` entre implementacao e contrato de validacao | `landingStyle.tsx` retorna `rgba(7, 17, 31, 0.92)` e teste espera `rgba(255, 255, 255, 0.85)` | Alinhar implementacao ao contrato aprovado (ou atualizar contrato e PRD com justificativa tecnica unica) e reexecutar suite | sim |
+| n-a | n-a | n-a | Nenhum achado material adicional identificado nesta rodada | n-a | n-a | nao |
 
 ## Cobertura de Testes
 
@@ -90,13 +89,13 @@ Motivo principal: divergencia material entre contrato de design/teste e implemen
 | Fundo tematico + overlay por template | Sim | unit/integration | `FullPageBackground.test.tsx`, `LandingVisualRegression.test.tsx` |
 | Fluxos submit/reset/gamificacao | Sim | integration | `LandingUCFlows.test.tsx` |
 | Acessibilidade WCAG no layout | Sim | integration (axe) | `LandingAccessibility.test.tsx` |
-| Contrato de tokens de estilo | Sim | unit | `landingStyle.test.tsx` com 1 falha material |
+| Contrato de tokens de estilo | Sim | unit | `landingStyle.test.tsx` com ajuste aplicado conforme contrato |
 
 ## Decisao
 
-- veredito: `hold`
-- justificativa: ha achado material bloqueante (`A-01`, severidade `high`) com evidencia objetiva em teste falhando e divergencia de contrato visual.
-- gate_da_fase: `hold`
+- veredito: `go`
+- justificativa: o bloqueio material de `esporte_radical` foi remediado e os achados remanescentes são não bloqueantes.
+- gate_da_fase: `approved`
 - follow_up_destino_padrao: `issue-local`
 
 ## Handoff para Novo Intake
@@ -112,8 +111,8 @@ Motivo principal: divergencia material entre contrato de design/teste e implemen
 
 ## Follow-ups Bloqueantes
 
-1. [ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md](../issues/ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md)
+1. Nenhum follow-up bloqueante permanece aberto.
 
 ## Follow-ups Nao Bloqueantes
 
-1. Registrar issue-local para fatiar `landingStyle.tsx` e reduzir acoplamento residual com semantica de hero.
+1. Nenhum follow-up bloqueante adicional nesta rodada.

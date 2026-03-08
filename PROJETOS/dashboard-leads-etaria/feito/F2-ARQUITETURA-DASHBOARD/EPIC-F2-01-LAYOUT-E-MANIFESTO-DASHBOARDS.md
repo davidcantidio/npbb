@@ -54,9 +54,9 @@ O modulo dashboard passa a ter uma arquitetura extensivel, em que novas analises
 
 ## Dependencias
 
-- [PRD](../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
 - [Fase](./F2_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [Decision Protocol](../DECISION-PROTOCOL.md)
+- [Decision Protocol](../../DECISION-PROTOCOL.md)
 
 ## Notas de Implementacao Globais
 
@@ -71,4 +71,4 @@ domínio (leads, eventos, publicidade) sem alteração no layout
 - `[[./issues/ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO]]`
 - `[[./issues/ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES]]`
 - `[[./issues/ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO]]`
-- `[[../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`

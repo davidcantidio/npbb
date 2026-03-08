@@ -61,9 +61,9 @@ nome de ícone — seguir padrão do projeto.
 
 - [Epic](../EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md)
 - [Fase](../F2_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../../PRD-DASHBOARD-LEADS-ETARIA.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS]]`
-- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../../PRD-DASHBOARD-LEADS-ETARIA]]`

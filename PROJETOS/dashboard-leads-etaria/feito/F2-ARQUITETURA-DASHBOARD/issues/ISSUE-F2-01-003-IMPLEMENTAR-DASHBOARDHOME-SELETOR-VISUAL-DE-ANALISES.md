@@ -67,9 +67,9 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 - [Issue Dependente](./ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md)
 - [Epic](../EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md)
 - [Fase](../F2_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../../PRD-DASHBOARD-LEADS-ETARIA.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS]]`
-- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../../PRD-DASHBOARD-LEADS-ETARIA]]`

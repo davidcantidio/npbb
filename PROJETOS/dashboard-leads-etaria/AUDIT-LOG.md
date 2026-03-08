@@ -26,11 +26,12 @@ last_updated: "2026-03-08"
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
 | F1 - FUNDACAO-BACKEND | approved | F1-R01 | [RELATORIO-AUDITORIA-F1-R01](./feito/F1-FUNDACAO-BACKEND/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | auditoria formal aprovada em arvore limpa; fase movida para `feito/` |
-| F2 - ARQUITETURA-DASHBOARD | not_ready | nenhuma | n-a | fase em execucao; manifesto reconciliado a partir do estado ja implementado |
-| F3 - ANALISE-ETARIA-UI | not_ready | nenhuma | n-a | fase ainda nao iniciou |
+| F2 - ARQUITETURA-DASHBOARD | approved | F2-R01 | [RELATORIO-AUDITORIA-F2-R01](./feito/F2-ARQUITETURA-DASHBOARD/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | auditoria formal aprovada em arvore limpa; fase movida para `feito/` |
+| F3 - ANALISE-ETARIA-UI | not_ready | nenhuma | n-a | fase em execucao |
 
 ## Rodadas
 
 | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | F1-R01 | F1 - FUNDACAO-BACKEND | 2026-03-08 | GPT-5 Codex | `a82f1b0c31d218426f591e5c09556941fdf17448` | none | go | done | [RELATORIO-AUDITORIA-F1-R01](./feito/F1-FUNDACAO-BACKEND/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | nenhum achado material bloqueante; testes backend relevantes passaram em arvore limpa | cancelled | n-a | none |
+| F2-R01 | F2 - ARQUITETURA-DASHBOARD | 2026-03-08 | GPT-5 Codex | `bb5078d786be1045e16880004e2a552d5ba826fd` | F1-R01 | go | done | [RELATORIO-AUDITORIA-F2-R01](./feito/F2-ARQUITETURA-DASHBOARD/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | nenhum achado material bloqueante; testes frontend de arquitetura do dashboard passaram em arvore limpa | cancelled | n-a | none |

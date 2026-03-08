@@ -1,7 +1,7 @@
 ---
 doc_id: "F2_DASHBOARD_LEADS_ETARIA_EPICS.md"
 version: "1.1"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -18,11 +18,11 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `not_ready`
-- ultima_auditoria: `nenhuma`
-- veredito_atual: `n-a`
-- relatorio_mais_recente: `n-a`
-- log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
+- estado_do_gate: `approved`
+- ultima_auditoria: `F2-R01`
+- veredito_atual: `go`
+- relatorio_mais_recente: `./auditorias/RELATORIO-AUDITORIA-F2-R01.md`
+- log_do_projeto: [AUDIT-LOG](../../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 
 ## Epicos
@@ -64,10 +64,10 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 ## Navegacao Rapida
 
-- [Intake](../INTAKE-DASHBOARD-LEADS-ETARIA.md)
-- [PRD](../PRD-DASHBOARD-LEADS-ETARIA.md)
-- [Audit Log](../AUDIT-LOG.md)
+- [Intake](../../INTAKE-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [Audit Log](../../AUDIT-LOG.md)
 - [Epic F2-01](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md)
-- `[[../INTAKE-DASHBOARD-LEADS-ETARIA]]`
-- `[[../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../INTAKE-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
 - `[[./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS]]`

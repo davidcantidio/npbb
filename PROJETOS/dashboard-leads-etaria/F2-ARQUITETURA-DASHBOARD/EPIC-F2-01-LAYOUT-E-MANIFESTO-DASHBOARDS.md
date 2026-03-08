@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -41,7 +41,7 @@ O modulo dashboard passa a ter uma arquitetura extensivel, em que novas analises
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F2-01-001 | Criar manifesto de dashboards no frontend | Criar manifesto de dashboards no frontend | 2 | todo | [ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md](./issues/ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md) |
+| ISSUE-F2-01-001 | Criar manifesto de dashboards no frontend | Criar manifesto de dashboards no frontend | 2 | done | [ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md](./issues/ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md) |
 | ISSUE-F2-01-002 | Implementar DashboardLayout com sidebar de navegação | Implementar DashboardLayout com sidebar de navegação | 3 | todo | [ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO.md](./issues/ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO.md) |
 | ISSUE-F2-01-003 | Implementar DashboardHome (seletor visual de análises) | Implementar DashboardHome (seletor visual de análises) | 3 | todo | [ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES.md](./issues/ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES.md) |
 | ISSUE-F2-01-004 | Configurar rotas /dashboard/* e proteção de autenticação | Configurar rotas /dashboard/* e proteção de autenticação | 2 | todo | [ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO.md](./issues/ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO.md) |

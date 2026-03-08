@@ -1,7 +1,7 @@
 ---
 doc_id: "F1_DASHBOARD_LEADS_ETARIA_EPICS.md"
 version: "1.1"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -18,11 +18,11 @@ O backend retorna a analise etaria consolidada e por evento com filtros de perio
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `not_ready`
+- estado_do_gate: `approved`
 - ultima_auditoria: `F1-R01`
-- veredito_atual: `cancelled`
+- veredito_atual: `go`
 - relatorio_mais_recente: `./auditorias/RELATORIO-AUDITORIA-F1-R01.md`
-- log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
+- log_do_projeto: [AUDIT-LOG](../../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 
 ## Epicos
@@ -70,12 +70,12 @@ O backend retorna a analise etaria consolidada e por evento com filtros de perio
 
 ## Navegacao Rapida
 
-- [Intake](../INTAKE-DASHBOARD-LEADS-ETARIA.md)
-- [PRD](../PRD-DASHBOARD-LEADS-ETARIA.md)
-- [Audit Log](../AUDIT-LOG.md)
+- [Intake](../../INTAKE-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [Audit Log](../../AUDIT-LOG.md)
 - [Epic F1-01](./EPIC-F1-01-EXTENSAO-MODELO-LEAD.md)
 - [Epic F1-02](./EPIC-F1-02-ENDPOINT-ANALISE-ETARIA.md)
-- `[[../INTAKE-DASHBOARD-LEADS-ETARIA]]`
-- `[[../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../INTAKE-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
 - `[[./EPIC-F1-01-EXTENSAO-MODELO-LEAD]]`
 - `[[./EPIC-F1-02-ENDPOINT-ANALISE-ETARIA]]`

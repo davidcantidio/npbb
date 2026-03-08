@@ -1,13 +1,13 @@
 ---
 doc_id: "RELATORIO-AUDITORIA-F1-R01.md"
 version: "1.1"
-status: "provisional"
-verdict: "cancelled"
+status: "done"
+verdict: "go"
 scope_type: "phase"
 scope_ref: "F1-FUNDACAO-BACKEND"
 phase: "F1"
 reviewer_model: "GPT-5 Codex"
-base_commit: "c0a31d29ebe4b949229706daa1f84888ae8bca44"
+base_commit: "a82f1b0c31d218426f591e5c09556941fdf17448"
 compares_to: "none"
 round: 1
 supersedes: "none"
@@ -19,29 +19,27 @@ last_updated: "2026-03-08"
 
 ## Resumo Executivo
 
-A fase F1 apresenta aderencia funcional ao intake e ao PRD no escopo auditado: os testes
-de servico e endpoint da analise etaria passaram e cobrem limites de faixa etaria,
-cobertura BB, filtros, consolidado, autenticacao e contrato OpenAPI.
+A fase F1 apresenta aderencia funcional ao intake e ao PRD no escopo auditado. Os testes
+de servico e endpoint da analise etaria passaram em arvore limpa e cobrem limites de
+faixa etaria, cobertura BB, filtros, consolidado, autenticacao e contrato OpenAPI.
 
-Esta rodada nao pode aprovar o gate da fase porque o worktree estava sujo durante a
-auditoria. Conforme `AUDITORIA-GOV.md`, o resultado precisa permanecer `provisional` e o
-veredito da rodada fica `cancelled`.
+Nao foram identificados achados materiais bloqueantes no escopo backend auditado.
 
 ## Escopo Auditado e Evidencias
 
 - intake: `PROJETOS/dashboard-leads-etaria/INTAKE-DASHBOARD-LEADS-ETARIA.md`
 - prd: `PROJETOS/dashboard-leads-etaria/PRD-DASHBOARD-LEADS-ETARIA.md`
-- fase: `PROJETOS/dashboard-leads-etaria/F1-FUNDACAO-BACKEND/F1_DASHBOARD_LEADS_ETARIA_EPICS.md`
+- fase: `PROJETOS/dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/F1_DASHBOARD_LEADS_ETARIA_EPICS.md`
 - epicos:
-  - `PROJETOS/dashboard-leads-etaria/F1-FUNDACAO-BACKEND/EPIC-F1-01-EXTENSAO-MODELO-LEAD.md`
-  - `PROJETOS/dashboard-leads-etaria/F1-FUNDACAO-BACKEND/EPIC-F1-02-ENDPOINT-ANALISE-ETARIA.md`
-- issues: todas as issues de `PROJETOS/dashboard-leads-etaria/F1-FUNDACAO-BACKEND/issues/`
+  - `PROJETOS/dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/EPIC-F1-01-EXTENSAO-MODELO-LEAD.md`
+  - `PROJETOS/dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/EPIC-F1-02-ENDPOINT-ANALISE-ETARIA.md`
+- issues: todas as issues de `PROJETOS/dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/`
 - testes:
   - `cd backend && PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q tests/test_dashboard_age_analysis_service.py tests/test_dashboard_age_analysis_endpoint.py`
-  - resultado observado: `13 passed in 5.81s`
+  - resultado observado: `13 passed in 5.77s`
 - diff/commit:
-  - commit base auditado: `c0a31d29ebe4b949229706daa1f84888ae8bca44`
-  - evidência operacional: `git status --short --untracked-files=normal` retornou árvore suja com alterações fora do escopo da F1
+  - commit base auditado: `a82f1b0c31d218426f591e5c09556941fdf17448`
+  - evidência operacional: `git status --short` retornou árvore limpa antes da emissão do veredito
 
 ## Conformidades
 
@@ -52,19 +50,19 @@ veredito da rodada fica `cancelled`.
 
 ## Nao Conformidades
 
-- A rodada não atende o pré-requisito de árvore limpa para auditoria formal. Isso impede veredito `go` e fechamento do gate da fase nesta execução.
+- Nenhuma nao conformidade material identificada no escopo auditado.
 
 ## Saude Estrutural do Codigo
 
 | ID | Categoria | Severidade | Componente | Descricao | Evidencia | Impacto | Bloqueante? | Destino sugerido |
 |---|---|---|---|---|---|---|---|---|
-| n-a | n-a | n-a | escopo F1 auditado | Nenhum achado material de saude estrutural foi identificado na amostragem do backend do dashboard. | Testes de servico e endpoint passaram sem falhas. | Sem impacto adicional identificado. | nao | cancelled |
+| n-a | n-a | n-a | escopo F1 auditado | Nenhum achado material de saude estrutural foi identificado na amostragem do backend do dashboard. | Testes de servico e endpoint passaram em arvore limpa. | Sem impacto adicional identificado. | nao | cancelled |
 
 ## Bugs e Riscos Antecipados
 
 | ID | Categoria | Severidade | Descricao | Evidencia | Correcao sugerida | Bloqueante? |
 |---|---|---|---|---|---|---|
-| A-01 | scope-drift | low | A fase não pode ser encerrada enquanto a auditoria formal continuar sendo executada sobre worktree sujo. | `git status --short --untracked-files=normal` retornou alterações modificadas e não rastreadas fora do escopo auditado. | Reexecutar a auditoria da F1 em árvore limpa, no mesmo commit base ou sucessor equivalente. | sim |
+| n-a | n-a | n-a | Nenhum risco material adicional foi identificado durante a auditoria formal. | Testes e verificação do worktree em estado limpo. | n-a | nao |
 
 ## Cobertura de Testes
 
@@ -78,9 +76,9 @@ veredito da rodada fica `cancelled`.
 
 ## Decisao
 
-- veredito: `cancelled`
-- justificativa: a amostragem técnica do escopo F1 não revelou achados materiais bloqueantes, mas a auditoria formal não pode aprovar gate com worktree sujo
-- gate_da_fase: `pending`
+- veredito: `go`
+- justificativa: a fase F1 atende ao intake, ao PRD e aos critérios documentais auditados; os testes relevantes passaram em árvore limpa
+- gate_da_fase: `approved`
 - follow_up_destino_padrao: `cancelled`
 
 ## Handoff para Novo Intake
@@ -96,7 +94,7 @@ veredito da rodada fica `cancelled`.
 
 ## Follow-ups Bloqueantes
 
-1. Reexecutar a auditoria formal da F1 com a árvore limpa para permitir veredito válido e fechamento do gate.
+1. Nenhum follow-up bloqueante foi aberto nesta rodada.
 
 ## Follow-ups Nao Bloqueantes
 

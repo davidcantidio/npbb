@@ -65,9 +65,9 @@ Usar `BaseModel` do Pydantic (não SQLModel) — estes schemas não representam 
 
 - [Epic](../EPIC-F1-02-ENDPOINT-ANALISE-ETARIA.md)
 - [Fase](../F1_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../../PRD-DASHBOARD-LEADS-ETARIA.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F1-02-ENDPOINT-ANALISE-ETARIA]]`
-- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../../PRD-DASHBOARD-LEADS-ETARIA]]`

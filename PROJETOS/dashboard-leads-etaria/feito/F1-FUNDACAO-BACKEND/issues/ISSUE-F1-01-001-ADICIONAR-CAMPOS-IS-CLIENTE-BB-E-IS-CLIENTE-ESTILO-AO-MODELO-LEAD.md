@@ -62,9 +62,9 @@ do Field deve explicar a semântica: "True = cliente BB confirmado; NULL = cruza
 
 - [Epic](../EPIC-F1-01-EXTENSAO-MODELO-LEAD.md)
 - [Fase](../F1_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../../PRD-DASHBOARD-LEADS-ETARIA.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F1-01-EXTENSAO-MODELO-LEAD]]`
-- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../../PRD-DASHBOARD-LEADS-ETARIA]]`

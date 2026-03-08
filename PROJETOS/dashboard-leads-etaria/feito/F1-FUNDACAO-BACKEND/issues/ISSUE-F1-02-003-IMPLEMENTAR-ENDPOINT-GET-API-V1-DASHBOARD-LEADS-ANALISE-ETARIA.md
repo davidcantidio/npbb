@@ -69,9 +69,9 @@ Sem observacoes adicionais alem das dependencias e restricoes do epico.
 - [Issue Dependente](./ISSUE-F1-02-002-IMPLEMENTAR-LOGICA-DE-QUERY-DA-ANALISE-ETARIA.md)
 - [Epic](../EPIC-F1-02-ENDPOINT-ANALISE-ETARIA.md)
 - [Fase](../F1_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../../PRD-DASHBOARD-LEADS-ETARIA.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F1-02-ENDPOINT-ANALISE-ETARIA]]`
-- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../../PRD-DASHBOARD-LEADS-ETARIA]]`

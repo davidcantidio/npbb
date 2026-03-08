@@ -57,9 +57,9 @@ O dashboard recebe um endpoint unico, autenticado e tipado para consultar distri
 
 ## Dependencias
 
-- [PRD](../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
 - [Fase](./F1_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [Decision Protocol](../DECISION-PROTOCOL.md)
+- [Decision Protocol](../../DECISION-PROTOCOL.md)
 
 ## Notas de Implementacao Globais
 
@@ -75,4 +75,4 @@ ambiente, não hardcoded no serviço
 - `[[./issues/ISSUE-F1-02-002-IMPLEMENTAR-LOGICA-DE-QUERY-DA-ANALISE-ETARIA]]`
 - `[[./issues/ISSUE-F1-02-003-IMPLEMENTAR-ENDPOINT-GET-API-V1-DASHBOARD-LEADS-ANALISE-ETARIA]]`
 - `[[./issues/ISSUE-F1-02-004-TESTES-UNITARIOS-DO-ENDPOINT-DE-ANALISE-ETARIA]]`
-- `[[../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`

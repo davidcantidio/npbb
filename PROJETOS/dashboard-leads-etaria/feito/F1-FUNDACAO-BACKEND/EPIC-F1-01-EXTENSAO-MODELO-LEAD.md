@@ -55,9 +55,9 @@ O backend passa a expor os campos de cobertura BB de forma retrocompativel, perm
 
 ## Dependencias
 
-- [PRD](../PRD-DASHBOARD-LEADS-ETARIA.md)
+- [PRD](../../PRD-DASHBOARD-LEADS-ETARIA.md)
 - [Fase](./F1_DASHBOARD_LEADS_ETARIA_EPICS.md)
-- [Decision Protocol](../DECISION-PROTOCOL.md)
+- [Decision Protocol](../../DECISION-PROTOCOL.md)
 
 ## Notas de Implementacao Globais
 
@@ -70,4 +70,4 @@ O backend passa a expor os campos de cobertura BB de forma retrocompativel, perm
 - `[[./issues/ISSUE-F1-01-001-ADICIONAR-CAMPOS-IS-CLIENTE-BB-E-IS-CLIENTE-ESTILO-AO-MODELO-LEAD]]`
 - `[[./issues/ISSUE-F1-01-002-CRIAR-MIGRATION-ALEMBIC-PARA-NOVOS-CAMPOS-DO-LEAD]]`
 - `[[./issues/ISSUE-F1-01-003-ATUALIZAR-SCHEMAS-DE-LEITURA-DO-LEAD]]`
-- `[[../PRD-DASHBOARD-LEADS-ETARIA]]`
+- `[[../../PRD-DASHBOARD-LEADS-ETARIA]]`

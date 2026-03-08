@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,24 +29,24 @@ nome de ícone — seguir padrão do projeto.
 
 ## Criterios de Aceitacao
 
-- [ ] Tipo `DashboardManifestEntry` definido com campos: `id`, `route`, `domain`, `name`, `icon`, `description`, `enabled`
-- [ ] Array `DASHBOARD_MANIFEST` com ao menos 3 entradas: Análise Etária (enabled), Fechamento de Evento (disabled), Conversão por Evento (disabled)
-- [ ] Manifesto exportado de módulo dedicado (`frontend/src/config/dashboardManifest.ts`)
-- [ ] Tipo e array cobertos por teste unitário de shape
+- [x] Tipo `DashboardManifestEntry` definido com campos: `id`, `route`, `domain`, `name`, `icon`, `description`, `enabled`
+- [x] Array `DASHBOARD_MANIFEST` com ao menos 3 entradas: Análise Etária (enabled), Fechamento de Evento (disabled), Conversão por Evento (disabled)
+- [x] Manifesto exportado de módulo dedicado (`frontend/src/config/dashboardManifest.ts`)
+- [x] Tipo e array cobertos por teste unitário de shape
 
 ## Definition of Done da Issue
 
-- [ ] Tipo `DashboardManifestEntry` definido com campos: `id`, `route`, `domain`, `name`, `icon`, `description`, `enabled`
-- [ ] Array `DASHBOARD_MANIFEST` com ao menos 3 entradas: Análise Etária (enabled), Fechamento de Evento (disabled), Conversão por Evento (disabled)
-- [ ] Manifesto exportado de módulo dedicado (`frontend/src/config/dashboardManifest.ts`)
-- [ ] Tipo e array cobertos por teste unitário de shape
+- [x] Tipo `DashboardManifestEntry` definido com campos: `id`, `route`, `domain`, `name`, `icon`, `description`, `enabled`
+- [x] Array `DASHBOARD_MANIFEST` com ao menos 3 entradas: Análise Etária (enabled), Fechamento de Evento (disabled), Conversão por Evento (disabled)
+- [x] Manifesto exportado de módulo dedicado (`frontend/src/config/dashboardManifest.ts`)
+- [x] Tipo e array cobertos por teste unitário de shape
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar tipo `DashboardManifestEntry` em `frontend/src/types/dashboard.ts`
-- [ ] T2: Criar manifesto em `frontend/src/config/dashboardManifest.ts`
-- [ ] T3: Popular manifesto com entradas conforme PRD (seção 1.1)
-- [ ] T4: Escrever teste de shape do manifesto
+- [x] T1: Criar tipo `DashboardManifestEntry` em `frontend/src/types/dashboard.ts`
+- [x] T2: Criar manifesto em `frontend/src/config/dashboardManifest.ts`
+- [x] T3: Popular manifesto com entradas conforme PRD (seção 1.1)
+- [x] T4: Escrever teste de shape do manifesto
 
 ## Arquivos Reais Envolvidos
 

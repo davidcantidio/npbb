@@ -1,7 +1,7 @@
 ---
 doc_id: "F2_DASHBOARD_LEADS_ETARIA_EPICS.md"
 version: "1.1"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,7 +29,7 @@ O usuario autenticado acessa `/dashboard`, navega pela sidebar gerada a partir d
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F2-01 | Layout e Manifesto de Dashboards | Criar manifesto, `DashboardLayout`, `DashboardHome` e roteamento protegido para o modulo. | F1 concluida | todo | [EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md) |
+| EPIC-F2-01 | Layout e Manifesto de Dashboards | Criar manifesto, `DashboardLayout`, `DashboardHome` e roteamento protegido para o modulo. | F1 concluida | active | [EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md](./EPIC-F2-01-LAYOUT-E-MANIFESTO-DASHBOARDS.md) |
 
 ## Dependencias entre Epicos
 

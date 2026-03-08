@@ -40,7 +40,6 @@ export type EventoRead = {
   id: number;
   thumbnail?: string | null;
   template_override?: string | null;
-  hero_image_url?: string | null;
   cta_personalizado?: string | null;
   descricao_curta?: string | null;
   divisao_demandante_id?: number | null;
@@ -86,7 +85,6 @@ export type EventoCreate = {
   status_id?: number;
   thumbnail?: string | null;
   template_override?: string | null;
-  hero_image_url?: string | null;
   cta_personalizado?: string | null;
   descricao_curta?: string | null;
   divisao_demandante_id?: number | null;
@@ -494,4 +492,3 @@ export async function listCidades(token: string, estado?: string): Promise<strin
 }
 
 export { EVENTOS_API_BASE_URL };
-

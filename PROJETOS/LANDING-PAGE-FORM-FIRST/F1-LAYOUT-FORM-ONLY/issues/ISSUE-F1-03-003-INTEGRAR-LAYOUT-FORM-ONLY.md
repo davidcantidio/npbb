@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md"
-version: "1.0"
-status: "todo"
+version: "1.2"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F1-03-003 - Integrar Layout Form-Only
@@ -43,23 +43,23 @@ Os handlers existentes (`handleSubmitSuccess`, `handleReset`, `handleGamificacao
 
 ## Definition of Done da Issue
 
-- [ ] LandingPageView usa FullPageBackground como wrapper externo
-- [ ] FormCard renderiza como corpo principal dentro do container Flexbox
-- [ ] GamificacaoBlock aparece condicionalmente abaixo do FormCard
-- [ ] MinimalFooter aparece no final do fluxo
-- [ ] handlers existentes preservados e funcionais
-- [ ] scroll funciona com fundo fixo
-- [ ] layout responsivo em 375px, 768px e 1280px
+- [x] LandingPageView usa FullPageBackground como wrapper externo
+- [x] FormCard renderiza como corpo principal dentro do container Flexbox
+- [x] GamificacaoBlock aparece condicionalmente abaixo do FormCard
+- [x] MinimalFooter aparece no final do fluxo
+- [x] handlers existentes preservados e funcionais
+- [x] scroll funciona com fundo fixo
+- [x] layout responsivo em 375px, 768px e 1280px
 
 ## Tarefas Decupadas
 
-- [ ] T1: refatorar LandingPageView: substituir arvore de componentes pelo novo layout
-- [ ] T2: montar container Flexbox (column, center) dentro do FullPageBackground
-- [ ] T3: renderizar FormCard com passagem de props de ativacao, evento e tema
-- [ ] T4: renderizar GamificacaoBlock condicionalmente abaixo do FormCard
-- [ ] T5: renderizar MinimalFooter no final do container
-- [ ] T6: testar fluxo completo: submit → sucesso → reset → gamificacao
-- [ ] T7: validar scroll com fundo fixo em mobile e desktop
+- [x] T1: refatorar LandingPageView: substituir arvore de componentes pelo novo layout
+- [x] T2: montar container Flexbox (column, center) dentro do FullPageBackground
+- [x] T3: renderizar FormCard com passagem de props de ativacao, evento e tema
+- [x] T4: renderizar GamificacaoBlock condicionalmente abaixo do FormCard
+- [x] T5: renderizar MinimalFooter no final do container
+- [x] T6: testar fluxo completo: submit → sucesso → reset → gamificacao
+- [x] T7: validar scroll com fundo fixo em mobile e desktop
 
 ## Arquivos Reais Envolvidos
 
@@ -73,11 +73,63 @@ Os handlers existentes (`handleSubmitSuccess`, `handleReset`, `handleGamificacao
 
 - `frontend/src/components/landing/LandingPageView.tsx` (refatorado com novo layout)
 
+## Validacao de Encerramento Tecnico
+
+### Composicao Final Confirmada
+
+- `LandingPageView.tsx` monta `ThemeProvider` via `buildLandingTheme(data)`, aplica `FullPageBackground` como wrapper externo, centraliza o fluxo em coluna unica e renderiza `FormCard`, `LandingGamificacaoSection` e `MinimalFooter` nesta ordem
+- `FullPageBackground.tsx` preserva gradiente e overlay como layers `fixed` atras do conteudo, com `pointerEvents: none` no overlay decorativo
+- `FormCard.tsx` preserva os breakpoints canonicos (`92vw/440px`, `480px`, `520px`) e mantem os estados de formulario, sucesso e reset sem alterar o fluxo funcional
+- `landingSections.gamificacao.tsx` mantem a gamificacao abaixo do card e compartilha a mesma largura maxima do layout form-only
+
+### Encadeamento de Handlers Confirmado
+
+- `EventLandingPage.tsx` continua entregando `onSubmit` e `onReset` diretamente para `LandingPageView`
+- `EventLandingPage.tsx` continua entregando `gamificacao.onComplete` e `gamificacao.onReset` para `LandingPageView` sem adaptacao funcional intermediaria
+- `LandingPageView.tsx` apenas encaminha esses callbacks para `FormCard` e `LandingGamificacaoSection`, preservando o contrato de integracao ja em uso
+
+### Mudanca de API Publica
+
+- nenhuma mudanca de API publica foi introduzida nesta validacao
+- props de `LandingPageView`, `FormCard`, `GamificacaoBlock` e o contrato visual de tema permanecem inalterados
+
+## Evidencias de Validacao
+
+### Mapeamento dos Criterios de Aceitacao
+
+| Criterio | Evidencia |
+|---|---|
+| mobile 375px exibe fundo tematico + card above the fold | `frontend/src/components/landing/__tests__/LandingVisualRegression.test.tsx` valida breakpoints `375/768/1280` e renderizacao do formulario sem blocos legados |
+| desktop 1280px centraliza card com max 520px | `frontend/src/components/landing/__tests__/LandingVisualRegression.test.tsx` cobre `1280px`; `FormCard.tsx` fixa largura maxima em `520px` |
+| submit mostra sucesso dentro do card | `frontend/src/components/landing/__tests__/LandingUCFlows.test.tsx` valida mensagem de sucesso apos submit |
+| reset retorna estado inicial | `frontend/src/components/landing/__tests__/LandingUCFlows.test.tsx` valida reset da gamificacao para estado inicial; `FormCard.tsx` mantem CTA de reset do cadastro no estado de sucesso |
+| gamificacao aparece abaixo do card | `frontend/src/components/landing/LandingPageView.tsx` renderiza `LandingGamificacaoSection` logo apos `FormCard`; `frontend/src/components/landing/__tests__/LandingPageView.test.tsx` cobre presenca/ausencia do bloco |
+| fundo permanece fixo durante scroll | `frontend/src/components/landing/__tests__/LandingVisualRegression.test.tsx` valida integracao do wrapper `FullPageBackground`; `frontend/src/components/landing/__tests__/LandingPageView.test.tsx` valida overlay decorativo sem bloquear interacao |
+
+### Suite Minima Executada
+
+```bash
+npm run test -- --run src/components/landing/__tests__/LandingPageView.test.tsx src/components/landing/__tests__/LandingUCFlows.test.tsx src/components/landing/__tests__/LandingVisualRegression.test.tsx
+```
+
+Resultado esperado para encerramento desta issue: todos os testes passam sem necessidade de alterar o codigo de runtime.
+
+### Regra de Divergencia
+
+- se alguma validacao futura divergir deste documento, o tratamento correto e abrir follow-up local de correcao
+- esta issue nao deve ser reexecutada como se o layout ainda estivesse pendente
+
+## Orientacao de Refacao Pos-Entrega
+
+- a integracao desta issue esta funcionalmente concluida: a composicao ativa ja e form-only
+- a refacao derivada desta etapa deve limpar o contrato visual ainda herdado do layout antigo, principalmente onde `LandingPageView` consome nomes como `heroTextColor`
+- a meta da limpeza e deixar a integracao final semanticamente coerente com pagina, fundo, card e footer, sem referencias conceituais a hero
+
 ## Dependencias
 
 - [Epic](../EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md)
 - [Fase](../F1_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Issue FullPageBackground](./ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md)
 - [Issue Overlay](./ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md)
 - [Issue FormCard](./ISSUE-F1-02-001-CRIAR-FORMCARD.md)
@@ -90,4 +142,4 @@ Os handlers existentes (`handleSubmitSuccess`, `handleReset`, `handleGamificacao
 - `[[../EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO]]`
 - `[[./ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND]]`
 - `[[./ISSUE-F1-02-001-CRIAR-FORMCARD]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

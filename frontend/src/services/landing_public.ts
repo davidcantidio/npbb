@@ -46,9 +46,6 @@ export type LandingForm = {
 
 export type LandingBrand = {
   tagline: string;
-  versao_logo: string;
-  url_hero_image?: string | null;
-  hero_alt: string;
 };
 
 export type LandingEvent = {
@@ -159,6 +156,10 @@ type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
   gamificacoes?: GamificacaoPublic[] | null;
 };
 
+export type GetLandingByEventoOptions = {
+  templateOverride?: string | null;
+};
+
 function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPageData {
   return {
     ...payload,
@@ -166,8 +167,21 @@ function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPageData 
   };
 }
 
-export async function getLandingByEvento(eventoId: number): Promise<LandingPageData> {
-  const res = await fetchWithAuth(`/eventos/${eventoId}/landing`, { retries: 0 });
+function buildEventoLandingPath(eventoId: number, options?: GetLandingByEventoOptions): string {
+  const templateOverride = String(options?.templateOverride || "").trim();
+  if (!templateOverride) {
+    return `/eventos/${eventoId}/landing`;
+  }
+
+  const params = new URLSearchParams({ template_override: templateOverride });
+  return `/eventos/${eventoId}/landing?${params.toString()}`;
+}
+
+export async function getLandingByEvento(
+  eventoId: number,
+  options?: GetLandingByEventoOptions,
+): Promise<LandingPageData> {
+  const res = await fetchWithAuth(buildEventoLandingPath(eventoId, options), { retries: 0 });
   const payload = await handleApiResponse<LandingPageDataRaw>(res);
   return normalizeLandingPageData(payload);
 }

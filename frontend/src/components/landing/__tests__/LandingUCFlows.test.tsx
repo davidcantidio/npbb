@@ -229,13 +229,14 @@ describe("AFLPD-F4-01-002 — Fluxos UC-01 a UC-04", () => {
   });
 
   describe("UC-04 — Preview no backoffice", () => {
-    it("exibe chips mood, categoria e tema em isPreview", () => {
+    it("exibe apenas badge de preview e replica o layout publico", () => {
       const data = createTemplateFixture("show_musical", { withHero: true });
       render(<LandingPageView data={data} mode="preview" />);
 
-      expect(screen.getByText(data.template.mood)).toBeInTheDocument();
-      expect(screen.getByText(new RegExp(`Categoria: ${data.template.categoria}`))).toBeInTheDocument();
-      expect(screen.getByText(new RegExp(`Template: ${data.template.tema}`))).toBeInTheDocument();
+      expect(screen.getByTestId("landing-preview-badge")).toHaveTextContent("Preview");
+      expect(screen.queryByText(data.template.mood)).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(`Categoria: ${data.template.categoria}`))).not.toBeInTheDocument();
+      expect(screen.queryByText(new RegExp(`Template: ${data.template.tema}`))).not.toBeInTheDocument();
     });
 
     it("formulário está desabilitado em isPreview", () => {
@@ -254,33 +255,19 @@ describe("AFLPD-F4-01-002 — Fluxos UC-01 a UC-04", () => {
       expect(ctaButton).toBeDisabled();
     });
 
-    it("exibe alerta de preview", () => {
+    it("nao exibe mensagem operacional extra no preview", () => {
       const data = createTemplateFixture("show_musical", { withHero: true });
       render(<LandingPageView data={data} mode="preview" />);
 
-      expect(screen.getByText(/preview fiel ao contrato real/i)).toBeInTheDocument();
+      expect(screen.queryByText(/preview fiel ao contrato real/i)).not.toBeInTheDocument();
     });
 
-    it("exibe checklist mínimo quando fornecido", () => {
-      const data = createTemplateFixture("show_musical", { withHero: true });
-      const checklist = [
-        { label: "Hero image configurada", ok: true, helper: "Imagem de destaque presente." },
-        { label: "CTA definido", ok: true, helper: "Texto do botao presente." },
-        { label: "LGPD configurada", ok: false, helper: "Texto LGPD pendente." },
-      ];
-      render(<LandingPageView data={data} mode="preview" checklist={checklist} />);
-
-      expect(screen.getByText("Checklist minimo da ativacao")).toBeInTheDocument();
-      expect(screen.getByText(/Hero image configurada/)).toBeInTheDocument();
-      expect(screen.getByText(/CTA definido/)).toBeInTheDocument();
-      expect(screen.getByText(/LGPD configurada/)).toBeInTheDocument();
-    });
-
-    it("não exibe footer em modo preview", () => {
+    it("exibe o mesmo footer minimo em modo preview", () => {
       const data = createTemplateFixture("show_musical", { withHero: true });
       render(<LandingPageView data={data} mode="preview" />);
 
-      expect(screen.queryByText("Politica de privacidade e LGPD")).not.toBeInTheDocument();
+      expect(screen.getByText("Banco do Brasil. Pra tudo que voce imaginar.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /politica de privacidade e lgpd/i })).toBeInTheDocument();
     });
   });
 });

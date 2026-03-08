@@ -1,3 +1,5 @@
-Diretorio para fases e epicos concluidos do projeto LANDING-PAGE-FORM-FIRST.
+# Arquivo de Fases Concluidas
 
-Quando uma fase recebe go no review, seus arquivos sao movidos para ca com status preservado.
+Este diretorio arquiva apenas fases concluidas do projeto `LANDING-PAGE-FORM-FIRST`.
+
+Quando uma fase atingir `done` apos auditoria `go` e fechamento do gate, a pasta completa da fase deve ser movida para ca com os links internos atualizados no mesmo change set.

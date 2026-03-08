@@ -36,15 +36,8 @@ const axe = configureAxe({
 
 describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
   describe.each(TEMPLATE_KEYS)("Template %s — axe audit", (templateKey) => {
-    it("não possui violações axe-core em modo público (com hero)", async () => {
+    it("não possui violações axe-core em modo público", async () => {
       const data = createTemplateFixture(templateKey, { withHero: true });
-      const { container } = render(<LandingPageView data={data} mode="public" />);
-      const results = await axe(container);
-      expect(results).toHaveNoViolations();
-    });
-
-    it("não possui violações axe-core em modo público (sem hero)", async () => {
-      const data = createTemplateFixture(templateKey, { withHero: false });
       const { container } = render(<LandingPageView data={data} mode="public" />);
       const results = await axe(container);
       expect(results).toHaveNoViolations();
@@ -127,22 +120,13 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
     });
   });
 
-  describe("Imagens — alt text", () => {
-    it("hero image possui alt text descritivo", () => {
+  describe("Elementos decorativos", () => {
+    it("footer mínimo não renderiza logos decorativos", () => {
       const data = createTemplateFixture("esporte_convencional", { withHero: true });
-      render(<LandingPageView data={data} mode="public" />);
+      const { container } = render(<LandingPageView data={data} mode="public" />);
 
-      const heroImg = screen.getByTestId("landing-hero-image");
-      expect(heroImg).toHaveAttribute("alt");
-      expect(heroImg.getAttribute("alt")!.length).toBeGreaterThan(0);
-    });
-
-    it("logo BB possui alt text", () => {
-      const data = createTemplateFixture("esporte_convencional", { withHero: true });
-      render(<LandingPageView data={data} mode="public" />);
-
-      const logos = screen.getAllByAltText("Banco do Brasil");
-      expect(logos.length).toBeGreaterThanOrEqual(1);
+      expect(container.querySelector("[data-testid='minimal-footer'] img")).toBeNull();
+      expect(container.querySelector("[data-testid='minimal-footer'] svg")).toBeNull();
     });
   });
 
@@ -164,7 +148,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
 
     it("link de privacidade é focável", () => {
       const data = createTemplateFixture("esporte_convencional", { withHero: true });
-      render(<LandingPageView data={data} mode="public" />);
+      render(<LandingPageView data={data} mode="preview" />);
 
       const links = screen.getAllByRole("link", { name: /privacidade/i });
       for (const link of links) {

@@ -3,7 +3,7 @@ doc_id: "DECISION-PROTOCOL.md"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # DECISION-PROTOCOL - LANDING-PAGE-FORM-FIRST
@@ -14,7 +14,15 @@ Registrar decisoes do projeto Landing Page Form-Only quando houver alteracao de 
 
 ## Status Atual
 
-Nenhuma decisao especifica do projeto foi registrada ate o momento.
+## Decisoes Registradas
+
+### 2026-03-08 - Remocao definitiva do modelo legado da landing
+
+- decisao: a landing publica e o modo preview passam a compartilhar o mesmo layout form-only
+- implicacao_visual: header, hero, hero image, about, brand summary, checklist e chips operacionais deixam de existir no produto
+- implicacao_tecnica: `hero_image_url` sai do formulario de backoffice, dos payloads publicos, dos schemas de evento, da validacao de escrita e da persistencia em banco
+- implicacao_de_preview: o preview permanece somente com um badge discreto de `Preview` e interacoes desabilitadas
+- impacto_documental: issues que assumiam preservacao temporaria de blocos legados ficam reescritas ou canceladas conforme o novo escopo canonico
 
 ## Regras Locais
 

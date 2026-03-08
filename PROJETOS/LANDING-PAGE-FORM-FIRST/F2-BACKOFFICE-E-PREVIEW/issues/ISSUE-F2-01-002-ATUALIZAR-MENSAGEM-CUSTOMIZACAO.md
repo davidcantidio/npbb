@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-002-ATUALIZAR-MENSAGEM-CUSTOMIZACAO.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F2-01-002 - Atualizar Mensagem Customizacao
@@ -31,14 +31,14 @@ Deve ser atualizada para: "Customizacao controlada: somente template_override, c
 
 ## Definition of Done da Issue
 
-- [ ] mensagem de customizacao controlada atualizada conforme PRD secao 06.3
-- [ ] nenhuma referencia a hero_image_url na mensagem
+- [x] mensagem de customizacao controlada atualizada conforme PRD secao 06.3
+- [x] nenhuma referencia a hero_image_url na mensagem
 
 ## Tarefas Decupadas
 
-- [ ] T1: localizar a string da mensagem de customizacao no codigo
-- [ ] T2: atualizar o texto conforme PRD secao 06.3
-- [ ] T3: validar visualmente no painel
+- [x] T1: localizar a string da mensagem de customizacao no codigo
+- [x] T2: atualizar o texto conforme PRD secao 06.3
+- [x] T3: validar visualmente no painel
 
 ## Arquivos Reais Envolvidos
 
@@ -52,11 +52,11 @@ Deve ser atualizada para: "Customizacao controlada: somente template_override, c
 
 - [Epic](../EPIC-F2-01-AJUSTE-PAINEL-CONTEXTO.md)
 - [Fase](../F2_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Issue 001](./ISSUE-F2-01-001-REMOVER-HERO-IMAGE-URL.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F2-01-AJUSTE-PAINEL-CONTEXTO]]`
 - `[[./ISSUE-F2-01-001-REMOVER-HERO-IMAGE-URL]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

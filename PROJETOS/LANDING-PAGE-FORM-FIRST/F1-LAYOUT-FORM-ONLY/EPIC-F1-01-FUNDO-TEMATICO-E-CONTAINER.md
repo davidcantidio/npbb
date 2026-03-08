@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F1-01-FUNDO-TEMATICO-E-CONTAINER.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # EPIC-F1-01 - Fundo Tematico e Container Principal
@@ -26,25 +26,31 @@ O fundo tematico da landing page e calculado inteiramente por CSS/SVG, sem requi
 
 ## Definition of Done do Epico
 
-- [ ] componente FullPageBackground renderiza gradiente full-page para os 7 templates
-- [ ] renderGraphicOverlay posicionado como layer de fundo sem quebrar em novo container
-- [ ] nenhuma imagem externa carregada para compor o fundo
-- [ ] fundo preenche 100vw × 100vh sem gap ou cor padrao do browser
+- [x] componente FullPageBackground renderiza gradiente full-page para os 7 templates
+- [x] renderGraphicOverlay posicionado como layer de fundo sem quebrar em novo container
+- [x] nenhuma imagem externa carregada para compor o fundo
+- [x] fundo preenche 100vw × 100vh sem gap ou cor padrao do browser
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Criar FullPageBackground | Implementar o wrapper que aplica gradiente + overlay como fundo fixo da viewport | 3 | todo | [ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md](./issues/ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md) |
-| ISSUE-F1-01-002 | Adaptar renderGraphicOverlay | Reposicionar renderGraphicOverlay como layer fixa dentro do FullPageBackground | 3 | todo | [ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md](./issues/ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md) |
+| ISSUE-F1-01-001 | Criar FullPageBackground | Implementar o wrapper que aplica gradiente + overlay como fundo fixo da viewport | 3 | done | [ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md](./issues/ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md) |
+| ISSUE-F1-01-002 | Adaptar renderGraphicOverlay | Reposicionar renderGraphicOverlay como layer fixa dentro do FullPageBackground | 3 | done | [ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md](./issues/ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md) |
 
 ## Artifact Minimo do Epico
 
 - `frontend/src/components/landing/FullPageBackground.tsx`
 
+## Refacao Residual Apos a Entrega
+
+- o wrapper full-page esta entregue e em uso, mas o contrato visual interno ainda carrega nomes de hero em `frontend/src/components/landing/landingStyle.tsx`
+- a refacao canonica desta etapa deve rebatizar os tokens de pagina para semantica neutra de fundo/superficie, sem alterar o comportamento visual final
+- tambem deve remover campos do `LayoutVisualSpec` que deixaram de ter consumidor apos a delecao do layout legado
+
 ## Dependencias
 
-- [PRD](../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Fase](./F1_LANDING_PAGE_FORM_FIRST_EPICS.md)
 - [Decision Protocol](../DECISION-PROTOCOL.md)
 
@@ -52,4 +58,4 @@ O fundo tematico da landing page e calculado inteiramente por CSS/SVG, sem requi
 
 - `[[./issues/ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND]]`
 - `[[./issues/ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY]]`
-- `[[../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../PRD-LANDING-PAGE-FORM-FIRST]]`

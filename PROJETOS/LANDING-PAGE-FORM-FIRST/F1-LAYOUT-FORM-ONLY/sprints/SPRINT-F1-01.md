@@ -1,9 +1,9 @@
 ---
 doc_id: "SPRINT-F1-01.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # SPRINT-F1-01
@@ -22,10 +22,10 @@ Construir os componentes base do novo layout: FullPageBackground com fundo temat
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-01-001 | Criar FullPageBackground | 3 | todo | [ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md](../issues/ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md) |
-| ISSUE-F1-01-002 | Adaptar renderGraphicOverlay | 3 | todo | [ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md](../issues/ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md) |
-| ISSUE-F1-02-001 | Criar FormCard | 5 | todo | [ISSUE-F1-02-001-CRIAR-FORMCARD.md](../issues/ISSUE-F1-02-001-CRIAR-FORMCARD.md) |
-| ISSUE-F1-02-002 | Criar MinimalFooter | 2 | todo | [ISSUE-F1-02-002-CRIAR-MINIMAL-FOOTER.md](../issues/ISSUE-F1-02-002-CRIAR-MINIMAL-FOOTER.md) |
+| ISSUE-F1-01-001 | Criar FullPageBackground | 3 | done | [ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md](../issues/ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md) |
+| ISSUE-F1-01-002 | Adaptar renderGraphicOverlay | 3 | done | [ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md](../issues/ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md) |
+| ISSUE-F1-02-001 | Criar FormCard | 5 | done | [ISSUE-F1-02-001-CRIAR-FORMCARD.md](../issues/ISSUE-F1-02-001-CRIAR-FORMCARD.md) |
+| ISSUE-F1-02-002 | Criar MinimalFooter | 2 | done | [ISSUE-F1-02-002-CRIAR-MINIMAL-FOOTER.md](../issues/ISSUE-F1-02-002-CRIAR-MINIMAL-FOOTER.md) |
 
 ## Riscos e Bloqueios
 
@@ -34,8 +34,14 @@ Construir os componentes base do novo layout: FullPageBackground com fundo temat
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes: sprint conclui quando os 4 componentes estao prontos isoladamente para integracao na SPRINT-F1-02
+- decisao: concluida
+- observacoes: ISSUE-F1-01-001, ISSUE-F1-01-002, ISSUE-F1-02-001 e ISSUE-F1-02-002 concluidas; componentes base prontos para integracao total.
+
+## Saldo de Refacao Identificado Depois da Integracao
+
+- rebatizar os tokens visuais herdados de hero em `landingStyle.tsx`
+- remover campos de layout sem consumidor no modelo form-only
+- manter `FullPageBackground` e overlay como entregas consolidadas, atuando apenas na semantica interna e nao no comportamento visual
 
 ## Navegacao Rapida
 

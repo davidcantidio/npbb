@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F1-03-002 - Reposicionar GamificacaoBlock
@@ -37,19 +37,19 @@ O `GamificacaoBlock` continua funcionando exatamente como especificado no PRD v1
 
 ## Definition of Done da Issue
 
-- [ ] GamificacaoBlock posicionado abaixo do FormCard
-- [ ] mesma largura maxima do FormCard em todos os breakpoints
-- [ ] borderRadius 24px e elevacao consistente com o FormCard
-- [ ] fundo tematico visivel por tras do GamificacaoBlock
-- [ ] fluxo PRESENTING → ACTIVE → COMPLETED sem regressao
+- [x] GamificacaoBlock posicionado abaixo do FormCard
+- [x] mesma largura maxima do FormCard em todos os breakpoints
+- [x] borderRadius 24px e elevacao consistente com o FormCard
+- [x] fundo tematico visivel por tras do GamificacaoBlock
+- [x] fluxo PRESENTING → ACTIVE → COMPLETED sem regressao
 
 ## Tarefas Decupadas
 
-- [ ] T1: mover renderizacao do GamificacaoBlock para logo abaixo do FormCard no container
-- [ ] T2: aplicar mesma largura maxima e centralizacao do FormCard
-- [ ] T3: aplicar borderRadius 24px e elevacao ao wrapper do GamificacaoBlock
-- [ ] T4: garantir fundo semitransparente para que o tema vaze
-- [ ] T5: testar fluxo completo de estados da gamificacao no novo posicionamento
+- [x] T1: mover renderizacao do GamificacaoBlock para logo abaixo do FormCard no container
+- [x] T2: aplicar mesma largura maxima e centralizacao do FormCard
+- [x] T3: aplicar borderRadius 24px e elevacao ao wrapper do GamificacaoBlock
+- [x] T4: garantir fundo semitransparente para que o tema vaze
+- [x] T5: testar fluxo completo de estados da gamificacao no novo posicionamento
 
 ## Arquivos Reais Envolvidos
 
@@ -64,11 +64,11 @@ O `GamificacaoBlock` continua funcionando exatamente como especificado no PRD v1
 
 - [Epic](../EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md)
 - [Fase](../F1_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Issue FormCard](./ISSUE-F1-02-001-CRIAR-FORMCARD.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO]]`
 - `[[./ISSUE-F1-02-001-CRIAR-FORMCARD]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

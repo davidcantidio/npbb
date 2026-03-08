@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-02-001-CRIAR-FORMCARD.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F1-02-001 - Criar FormCard
@@ -33,46 +33,53 @@ Responsividade:
 - Given o template `corporativo`, When o card renderiza, Then o background e `#FFFFFF` solido e a borda e `2px solid rgba(252, 252, 48, 0.6)`
 - Given o template `esporte_convencional`, When o card renderiza, Then o background e `rgba(255, 255, 255, 0.96)` e a sombra e `0 8px 32px rgba(0,0,0,0.35)`
 - Given uma ativacao com `mensagem_qrcode`, When o card renderiza, Then um `<Alert severity="info">` aparece acima dos campos
-- Given uma ativacao sem `descricao`, When o card renderiza, Then nenhum subtitulo e exibido
+- Given uma ativacao sem `descricao` e evento sem `descricao_curta`, When o card renderiza, Then nenhum subtitulo e exibido
 - Given qualquer breakpoint, When o card renderiza, Then o card esta centralizado horizontalmente
 
 ## Definition of Done da Issue
 
-- [ ] componente FormCard criado em `frontend/src/components/landing/`
-- [ ] card centralizado horizontal e verticalmente com Flexbox
-- [ ] responsivo em 375px, 768px e 1280px conforme especificacao
-- [ ] titulo usa `ativacao.nome ?? evento.nome`
-- [ ] subtitulo usa `ativacao.descricao ?? evento.descricao_curta` (opcional)
-- [ ] callout `mensagem_qrcode` renderiza como Alert acima dos campos (se presente)
-- [ ] borderRadius 24px, elevacao e fundo conforme template
-- [ ] CTA usa `evento.cta_personalizado ?? template.cta_text`
+- [x] componente FormCard criado em `frontend/src/components/landing/`
+- [x] card centralizado horizontal e verticalmente com Flexbox
+- [x] responsivo em 375px, 768px e 1280px conforme especificacao
+- [x] titulo usa `ativacao.nome ?? evento.nome`
+- [x] subtitulo usa `ativacao.descricao ?? evento.descricao_curta` (opcional)
+- [x] callout `mensagem_qrcode` renderiza como Alert acima dos campos (se presente)
+- [x] borderRadius 24px, elevacao e fundo conforme template
+- [x] CTA usa `evento.cta_personalizado ?? template.cta_text`
 
 ## Tarefas Decupadas
 
-- [ ] T1: criar arquivo `FormCard.tsx` com props para dados da ativacao, evento e tema
-- [ ] T2: implementar centralizacao via Flexbox (`alignItems: center`, `justifyContent: center`)
-- [ ] T3: aplicar tokens visuais do card por template (background, border, sombra) via `getLayoutVisualSpec`
-- [ ] T4: renderizar titulo derivado com typography `h5` bold
-- [ ] T5: renderizar subtitulo opcional com typography `body2`
-- [ ] T6: renderizar callout `mensagem_qrcode` como `<Alert severity="info">` condicional
-- [ ] T7: aplicar breakpoints responsivos (mobile 92vw, tablet 480px, desktop 520px)
+- [x] T1: criar arquivo `FormCard.tsx` com props para dados da ativacao, evento e tema
+- [x] T2: implementar centralizacao via Flexbox (`alignItems: center`, `justifyContent: center`)
+- [x] T3: aplicar tokens visuais do card por template (background, border, sombra) via `getLayoutVisualSpec`
+- [x] T4: renderizar titulo derivado com typography `h5` bold
+- [x] T5: renderizar subtitulo opcional com typography `body2`
+- [x] T6: renderizar callout `mensagem_qrcode` como `<Alert severity="info">` condicional
+- [x] T7: aplicar breakpoints responsivos (mobile 92vw, tablet 480px, desktop 520px)
 
 ## Arquivos Reais Envolvidos
 
 - `frontend/src/components/landing/LandingPageView.tsx`
-- `frontend/src/components/landing/landingThemeBuilder.ts` (ou equivalente)
+- `frontend/src/components/landing/landingStyle.tsx`
+- `frontend/src/components/landing/__tests__/FormCard.test.tsx`
 
 ## Artifact Minimo
 
 - `frontend/src/components/landing/FormCard.tsx`
 
+## Orientacao de Refacao Pos-Entrega
+
+- o `FormCard` entregue nesta issue continua sendo a base correta do layout
+- a refacao pendente desta etapa e estreitar sua interface visual: o componente deve depender apenas de tokens de card, botao e tipografia efetivamente consumidos no form-only
+- qualquer limpeza posterior deve evitar carregar para o `FormCard` campos de `layout` ligados a hero, grid lateral ou superficies removidas
+
 ## Dependencias
 
 - [Epic](../EPIC-F1-02-CARD-FORMULARIO-E-RODAPE.md)
 - [Fase](../F1_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F1-02-CARD-FORMULARIO-E-RODAPE]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

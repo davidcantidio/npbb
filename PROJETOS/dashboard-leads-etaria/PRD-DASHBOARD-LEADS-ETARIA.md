@@ -1,11 +1,13 @@
-# PRD — Dashboard Portfolio
+# PRD — DASHBOARD-LEADS-ETARIA
 **Arquitetura de Subpainéis + Análise Etária por Evento**
 
 | | |
 |---|---|
 | **Versão** | 1.0 |
 | **Data** | Março 2026 |
-| **Status** | 🟢 Em desenvolvimento |
+| **Status** | active |
+| **Origem do Intake** | [INTAKE-DASHBOARD-LEADS-ETARIA.md](./INTAKE-DASHBOARD-LEADS-ETARIA.md) |
+| **Log de Auditoria** | [AUDIT-LOG.md](./AUDIT-LOG.md) |
 
 ---
 
@@ -21,10 +23,10 @@ A estrutura de rotas segue o padrão: `dashboard / <domínio> / <análise>`. Os 
 
 | Caminho | Domínio | Análise | Status |
 |---|---|---|---|
-| `dashboard > leads > análise etária` | Leads | Análise Etária por Evento | 🟢 Escopo v1.0 |
-| `dashboard > eventos > fechamento` | Eventos | Relatório de Fechamento | ⏸ Fora do escopo |
-| `dashboard > leads > conversão` | Leads | Conversão por Evento | ⏸ Backlog |
-| `dashboard > publicidade > cobertura` | Publicidade | Cobertura por Mídia | ⏸ Backlog |
+| `dashboard > leads > análise etária` | Leads | Análise Etária por Evento | active |
+| `dashboard > eventos > fechamento` | Eventos | Relatório de Fechamento | fora do escopo |
+| `dashboard > leads > conversão` | Leads | Conversão por Evento | backlog |
+| `dashboard > publicidade > cobertura` | Publicidade | Cobertura por Mídia | backlog |
 
 ---
 
@@ -113,7 +115,7 @@ Dois campos boolean nullable devem ser adicionados ao modelo `Lead` (tabela `lea
 
 `is_cliente_bb` representa o resultado do cruzamento com a base de dados externa do Banco do Brasil. `is_cliente_estilo` representa o produto Estilo. Ambos podem ficar nulos quando o cruzamento ainda não foi realizado para aquele lote de leads.
 
-> ⚠️ **Regra de negócio — Transparência de Dados Faltantes**
+> **Regra de negocio — Transparencia de Dados Faltantes**
 >
 > Quando `is_cliente_bb` for `NULL` para a maioria dos leads de um evento, o dashboard deve exibir um aviso explícito:
 > *"Dados de vínculo BB indisponíveis para este evento — realize o cruzamento com a base de dados do Banco."*
@@ -153,8 +155,8 @@ O dashboard deve calcular, para cada evento, o percentual de leads com `is_clien
 | Cobertura | Comportamento |
 |---|---|
 | ≥ 80% | Dados exibidos normalmente |
-| 20%–80% | ⚠️ Banner amarelo — "Dados parcialmente disponíveis. Realize o cruzamento completo." |
-| < 20% | 🔴 Banner vermelho — "Dados de vínculo BB indisponíveis para este evento." |
+| 20%–80% | Banner amarelo — "Dados parcialmente disponiveis. Realize o cruzamento completo." |
+| < 20% | Banner vermelho — "Dados de vinculo BB indisponiveis para este evento." |
 
 ---
 

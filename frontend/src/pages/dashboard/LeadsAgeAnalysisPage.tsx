@@ -1,13 +1,14 @@
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
+import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Grid,
+  Snackbar,
   Stack,
   Typography,
 } from "@mui/material";
@@ -16,9 +17,14 @@ import { useSearchParams } from "react-router-dom";
 
 import { AgeAnalysisFilters } from "../../components/dashboard/AgeAnalysisFilters";
 import { AgeDistributionChart } from "../../components/dashboard/AgeDistributionChart";
+import { ChartSkeleton } from "../../components/dashboard/ChartSkeleton";
 import { ConsolidatedPanel } from "../../components/dashboard/ConsolidatedPanel";
+import { CoverageBanner } from "../../components/dashboard/CoverageBanner";
 import { EventsAgeTable } from "../../components/dashboard/EventsAgeTable";
+import { InfoTooltip } from "../../components/dashboard/InfoTooltip";
 import { KpiCard } from "../../components/dashboard/KpiCard";
+import { KpiCardSkeleton } from "../../components/dashboard/KpiCardSkeleton";
+import { TableSkeleton } from "../../components/dashboard/TableSkeleton";
 import { useAgeAnalysis } from "../../hooks/useAgeAnalysis";
 import { listReferenciaEventos, type ReferenciaEvento } from "../../services/leads_import";
 import { toApiErrorMessage } from "../../services/http";
@@ -30,6 +36,11 @@ import {
   getDominantAgeRangeLabel,
   getDominantRangeFromBreakdown,
 } from "../../utils/ageAnalysis";
+import {
+  BB_COVERAGE_DANGER_THRESHOLD,
+  BB_COVERAGE_WARNING_THRESHOLD,
+  hasPartialBbData,
+} from "../../utils/coverage";
 
 const EMPTY_FILTERS: AgeAnalysisFilterFormValues = {
   evento_id: null,
@@ -81,6 +92,61 @@ function hasDateRangeError(filters: AgeAnalysisFilterFormValues) {
   return filters.data_fim < filters.data_inicio;
 }
 
+function PartialDataNote() {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+      <Typography variant="caption" color="text.secondary">
+        (dados parciais)
+      </Typography>
+      <InfoTooltip
+        label="Dados parciais"
+        description="Dados parciais: a cobertura BB esta abaixo do limiar minimo para exibir a metrica com seguranca."
+      />
+    </Box>
+  );
+}
+
+function EmptyState() {
+  return (
+    <Box
+      sx={{
+        py: 8,
+        px: 2,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 3,
+        bgcolor: "background.paper",
+      }}
+    >
+      <SearchOffRoundedIcon sx={{ fontSize: 38, color: "text.secondary", mb: 1.25 }} />
+      <Typography variant="h6" fontWeight={800}>
+        Nenhum lead encontrado para os filtros aplicados
+      </Typography>
+    </Box>
+  );
+}
+
+function AgeAnalysisLoadingState() {
+  return (
+    <Stack spacing={2}>
+      <Grid container spacing={2}>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Grid key={`kpi-skeleton-${index}`} item xs={12} sm={6} xl={3}>
+            <KpiCardSkeleton />
+          </Grid>
+        ))}
+      </Grid>
+      <ChartSkeleton />
+      <TableSkeleton />
+    </Stack>
+  );
+}
+
 export default function LeadsAgeAnalysisPage() {
   const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -89,13 +155,25 @@ export default function LeadsAgeAnalysisPage() {
   const [eventOptions, setEventOptions] = useState<ReferenciaEvento[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
+  const [isCoverageBannerDismissed, setIsCoverageBannerDismissed] = useState(false);
+  const [errorToastOpen, setErrorToastOpen] = useState(false);
 
   const queryFilters = useMemo(() => toQueryFilters(appliedFilters), [appliedFilters]);
+  const queryFiltersKey = useMemo(() => JSON.stringify(queryFilters), [queryFilters]);
   const { data, isLoading, error, refetch } = useAgeAnalysis(queryFilters);
 
   useEffect(() => {
     setDraftFilters(appliedFilters);
   }, [appliedFilters]);
+
+  useEffect(() => {
+    setIsCoverageBannerDismissed(false);
+  }, [queryFiltersKey]);
+
+  useEffect(() => {
+    if (!error) return;
+    setErrorToastOpen(true);
+  }, [error]);
 
   useEffect(() => {
     if (!token) return;
@@ -152,6 +230,22 @@ export default function LeadsAgeAnalysisPage() {
 
   const hasData = Boolean(data);
   const isEmpty = hasData && baseTotal === 0;
+  const consolidatedPartialBbData = data
+    ? hasPartialBbData(
+        data.consolidado.clientes_bb_volume,
+        data.consolidado.clientes_bb_pct,
+        data.consolidado.cobertura_bb_pct,
+        {
+          warning: BB_COVERAGE_WARNING_THRESHOLD,
+          danger: BB_COVERAGE_DANGER_THRESHOLD,
+        },
+      )
+    : false;
+
+  const handleRetry = () => {
+    setErrorToastOpen(false);
+    void refetch();
+  };
 
   return (
     <Stack spacing={3}>
@@ -176,27 +270,23 @@ export default function LeadsAgeAnalysisPage() {
       />
 
       {eventsError ? <Alert severity="warning">{eventsError}</Alert> : null}
-      {error ? (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void refetch()}>
-              Tentar novamente
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      ) : null}
 
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : null}
+      {isLoading ? <AgeAnalysisLoadingState /> : null}
 
-      {!isLoading && data ? (
+      {!isLoading && data && isEmpty ? <EmptyState /> : null}
+
+      {!isLoading && data && !isEmpty ? (
         <>
+          {!isCoverageBannerDismissed ? (
+            <CoverageBanner
+              coverage={data.consolidado.cobertura_bb_pct}
+              thresholdWarning={BB_COVERAGE_WARNING_THRESHOLD}
+              thresholdDanger={BB_COVERAGE_DANGER_THRESHOLD}
+              dismissible
+              onDismiss={() => setIsCoverageBannerDismissed(true)}
+            />
+          ) : null}
+
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} xl={3}>
               <KpiCard
@@ -210,10 +300,16 @@ export default function LeadsAgeAnalysisPage() {
             <Grid item xs={12} sm={6} xl={3}>
               <KpiCard
                 title="Clientes BB"
+                titleTooltip="Percentual de leads com informacao de vinculo BB disponivel"
                 value={
-                  data.consolidado.clientes_bb_volume === null
-                    ? "—"
-                    : formatInteger(data.consolidado.clientes_bb_volume)
+                  <Stack spacing={0.25}>
+                    <Typography variant="h5" fontWeight={800}>
+                      {data.consolidado.clientes_bb_volume === null
+                        ? "—"
+                        : formatInteger(data.consolidado.clientes_bb_volume)}
+                    </Typography>
+                    {consolidatedPartialBbData ? <PartialDataNote /> : null}
+                  </Stack>
                 }
                 subtitle={`Percentual da base: ${formatPercent(data.consolidado.clientes_bb_pct)}`}
                 helperText="Valores ficam indisponiveis quando a cobertura BB esta abaixo do limiar."
@@ -225,6 +321,7 @@ export default function LeadsAgeAnalysisPage() {
             <Grid item xs={12} sm={6} xl={3}>
               <KpiCard
                 title="Faixa dominante"
+                titleTooltip="Faixa etaria com maior volume de leads neste evento"
                 value={getDominantAgeRangeLabel(dominantConsolidatedRange)}
                 subtitle="Faixa predominante considerando toda a base consolidada."
                 helperText={
@@ -255,12 +352,31 @@ export default function LeadsAgeAnalysisPage() {
           <ConsolidatedPanel data={data.consolidado} />
           <AgeDistributionChart events={data.por_evento} />
           <EventsAgeTable events={data.por_evento} onSelectEvento={handleSelectEvento} />
-
-          {isEmpty ? (
-            <Alert severity="info">Nenhum lead encontrado para os filtros aplicados.</Alert>
-          ) : null}
         </>
       ) : null}
+
+      <Snackbar
+        open={Boolean(error) && errorToastOpen}
+        autoHideDuration={7000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setErrorToastOpen(false);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity="error"
+          onClose={() => setErrorToastOpen(false)}
+          action={
+            <Button color="inherit" size="small" onClick={handleRetry}>
+              Tentar novamente
+            </Button>
+          }
+          sx={{ width: "100%" }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

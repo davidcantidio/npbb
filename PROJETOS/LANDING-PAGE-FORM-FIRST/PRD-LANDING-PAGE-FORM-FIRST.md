@@ -1,13 +1,15 @@
-# PRD — Landing Page Form-Only com Tema Dinâmico (v1.0)
+# PRD - LANDING-PAGE-FORM-FIRST
 **Banco do Brasil · Plataforma NPBB — Módulo de Landing Pages Dinâmicas**
 
 | Campo | Valor |
 |---|---|
-| Produto | Landing Page Form-Only — Redesign Radical |
+| Produto | LANDING-PAGE-FORM-FIRST |
 | Iniciativa | BB-LANDING-PAGES-DINAMICAS — Sprint de Simplificação |
 | Versão | 1.0 |
 | Data | Março 2026 |
-| Status | Proposto |
+| Status | active |
+| Origem do Intake | [INTAKE-LANDING-PAGE-FORM-FIRST.md](./INTAKE-LANDING-PAGE-FORM-FIRST.md) |
+| Log de Auditoria | [AUDIT-LOG.md](./AUDIT-LOG.md) |
 | Referência | `frontend/src/components/landing/LandingPageView.tsx` · `PRD-LANDING-REDESIGN-ATIVACAO-v1.2.md` |
 
 ---
@@ -124,9 +126,8 @@ da página:
 | `tecnologia` | Gradiente azul escuro → verde escuro, grid de pontos |
 | `generico` | Gradiente azul BB → azul médio, grafema BB como watermark |
 
-**A hero image (`url_hero_image`) não é mais exibida na view pública.**
-Se o operador quiser personalizar o visual, faz isso via `template_override` ou via
-as 4 variáveis controladas já existentes no backoffice.
+**A hero image nao faz mais parte do produto.**
+O visual e personalizado apenas por `template_override` e pelos tokens homologados do template.
 
 ### 2.4 O Card do Formulário
 
@@ -168,15 +169,15 @@ O header com logo BB deve ser **completamente removido** da view pública da lan
 O bloco que exibe nome da ativação, descrição e hero image **como seção separada** deve ser removido.
 
 - `HeroContextCard` (ou equivalente) não é renderizado na view pública
-- `url_hero_image` não é exibida em nenhuma parte da view pública
+- nenhum asset de hero image é exibido ou mantido no runtime da landing
 - Nome e descrição da ativação/evento são exibidos **apenas dentro do card do formulário** como título e subtítulo
 
 ### RF-03 — Remoção do Bloco "Sobre o Evento"
 
 O card `AboutEventCard` (ou equivalente) não é renderizado na view pública.
 
-- Os dados de quando/onde continuam disponíveis no payload para uso futuro
-- O bloco de "Marca BB" (tagline + template info) do preview é mantido apenas em `isPreview`
+- Os dados de quando/onde continuam disponiveis no payload para uso futuro
+- Nenhum bloco adicional de marca e exibido nem na view publica nem no preview
 
 ### RF-04 — Fundo Temático Full-Page
 
@@ -359,19 +360,16 @@ Os campos do painel "Contexto da landing" continuam existindo e fazem sentido:
 | `cta_personalizado` | Texto do botão dentro do card |
 | `descricao_curta` | Subtítulo dentro do card |
 
-### 6.2 Campo a Remover ou Desativar
+### 6.2 Campo Removido do Produto
 
 | Campo | Justificativa |
 |---|---|
-| `hero_image_url` | A hero image não é exibida na view pública do novo layout. Pode ser mantida no modelo de dados para uso futuro (ex: thumbnails, OG tags), mas deve sair do formulário de "Contexto da landing" para não criar expectativa errada. |
+| `hero_image_url` | O campo foi removido do formulario, dos payloads e do banco. A volta desse conceito exigira nova decisao de produto, novo contrato e nova migration. |
 
 ### 6.3 Ajuste na Mensagem de Customização Controlada
 
-O aviso atual diz:
-> "Customizacao controlada: somente `template_override`, `hero_image_url`, `cta_personalizado` e `descricao_curta` podem ser alterados sem sair do catalogo homologado da marca BB."
-
-Deve ser atualizado para:
-> "Customizacao controlada: somente `template_override`, `cta_personalizado` e `descricao_curta` podem ser alterados sem sair do catalogo homologado da marca BB. O visual do fundo é determinado pelo template selecionado."
+O aviso do painel deve ser:
+> "Customizacao controlada: somente `template_override`, `cta_personalizado` e `descricao_curta` podem ser alterados sem sair do catalogo homologado da marca BB. O visual do fundo e determinado pelo template selecionado."
 
 ---
 
@@ -381,11 +379,11 @@ Deve ser atualizado para:
 
 | Bloco | Ação |
 |---|---|
-| Header com logo BB | **Remover** da view pública; manter como indicador no modo preview |
+| Header com logo BB | **Remover** definitivamente da view publica e do preview |
 | `HeroContextCard` (nome, descrição, hero image como seção separada) | **Remover** |
 | `<Box component="img" src={heroImageUrl}>` | **Remover** |
 | `AboutEventCard` (quando/onde/link) | **Remover** da view pública |
-| `BrandSummaryCard` | **Remover** da view pública; manter apenas em `isPreview` |
+| `BrandSummaryCard` | **Remover** do produto |
 | Grid de 2 colunas do hero | **Substituir** por Flexbox de coluna única centralizado |
 
 ### 7.2 O que é Mantido
@@ -434,8 +432,8 @@ Deve ser atualizado para:
 ### UC-04 — Preview no backoffice
 1. Operador vê o novo layout form-only com badge "Preview" flutuante
 2. Fundo temático calculado pelo `template_override` configurado
-3. Chips `mood`/`categoria` exibidos em seção colapsável dentro do card
-4. Bloco de info de marca abaixo do GamificacaoBlock, somente em preview
+3. O preview replica a mesma composicao publicada: FormCard, GamificacaoBlock e MinimalFooter
+4. Nenhum chip, checklist ou bloco de marca extra aparece no preview
 
 ---
 
@@ -478,6 +476,8 @@ Deve ser atualizado para:
 - [ ] Mensagem de customização controlada atualizada
 - [ ] Preview mostra o novo layout form-only (não o layout antigo)
 - [ ] Badge "Preview" visível no modo `isPreview`
+- [ ] `hero_image_url` removido dos payloads de evento e landing
+- [ ] `hero_image_url` removido do schema e do banco de dados
 
 **FORM-ONLY-07 — Conformidade BB:**
 - [ ] Amarelo BB (`#FCFC30`) presente em todos os templates (CTA, borda ou fundo)
@@ -491,7 +491,7 @@ Deve ser atualizado para:
 ## 10 · Fora de Escopo
 
 - Edição visual do fundo pelo operador (cores, gradientes) — o catálogo de templates é a fonte de verdade
-- Hero image para uso em OG tags ou SEO — pode ser endereçado em épico futuro sem impactar a view pública
+- Reintroduzir hero image, bloco de marca ou metadados visuais extras no preview sem nova decisao formal
 - Animações de entrada do card ou do fundo — melhoria futura de UX
 - Múltiplos cards ou etapas de formulário (multi-step form)
 - Exibição de header/logo BB sob qualquer condição na view pública
@@ -504,8 +504,8 @@ Deve ser atualizado para:
 |---|---|---|
 | `renderGraphicOverlay()` assumir posicionamento DOM específico | Pode quebrar com novo container full-page | Verificar e adaptar o container antes de remover o layout antigo |
 | `getLayoutVisualSpec()` retornar valores que dependiam do hero | Tokens de `imageMinHeight` etc. serão inutilizados | Mapear quais tokens ainda são relevantes; ignorar os de hero |
-| Operadores que usavam `hero_image_url` para personalizar landings | Expectativa de continuar funcionando | Comunicar mudança; remover campo do formulário; dado continua no modelo |
-| Cache do payload `GET /ativacoes/{id}/landing` | Payloads em cache ainda terão `hero_image_url` | Frontend deve simplesmente não usar o campo — sem quebra |
+| Operadores que usavam `hero_image_url` para personalizar landings | Quebra explicita de fluxo e de expectativa | Comunicar mudanca, remover campo do formulario e bloquear o campo por schema estrito |
+| Clientes integrados ao payload antigo | Quebra de contrato ao remover `hero_image_url` e metadados de marca nao usados | Versionar comunicacao interna, atualizar fixtures e invalidar caches dependentes do shape antigo |
 
 ---
 
@@ -513,8 +513,8 @@ Deve ser atualizado para:
 
 | Fase | Nome | Objetivo | DoD resumido | Status |
 |---|---|---|---|---|
-| F1 | LAYOUT-FORM-ONLY | Implementar o novo layout form-only com fundo temático, card centralizado, rodapé mínimo e remoção dos blocos legados | Novo layout renderizável em todos os 7 templates, formulário funcional, gamificação reposicionada | todo |
-| F2 | BACKOFFICE-E-PREVIEW | Ajustar o backoffice e o modo preview para refletir o novo layout | Campo hero_image_url removido do painel, mensagem atualizada, preview exibe layout form-only com badge e chips colapsáveis | todo |
+| F1 | LAYOUT-FORM-ONLY | Implementar o novo layout form-only com fundo tematico, card centralizado, rodape minimo e remocao definitiva dos blocos legados | Novo layout renderizavel, formulario funcional, gamificacao reposicionada e runtime legado removido | done |
+| F2 | BACKOFFICE-E-PREVIEW | Ajustar o backoffice, o preview e os contratos para refletir o novo layout | Campo hero_image_url removido do painel, mensagem atualizada, preview espelha a landing publica com badge discreto, schema e banco atualizados | done |
 | F3 | QA-CROSS-TEMPLATE | Validar regressão visual, contraste e conformidade BB em todos os templates e breakpoints | 7 templates × 3 breakpoints validados, contraste WCAG AA, fluxo de gamificação sem regressão | todo |
 
 ## 13 · Roadmap Sugerido

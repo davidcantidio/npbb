@@ -1,9 +1,9 @@
 ---
 doc_id: "SPRINT-F1-02.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # SPRINT-F1-02
@@ -22,9 +22,9 @@ Remover os blocos legados da view publica, reposicionar o GamificacaoBlock e int
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-03-001 | Remover Blocos Legados | 3 | todo | [ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS.md](../issues/ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS.md) |
-| ISSUE-F1-03-002 | Reposicionar GamificacaoBlock | 3 | todo | [ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md](../issues/ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md) |
-| ISSUE-F1-03-003 | Integrar Layout Form-Only | 3 | todo | [ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md](../issues/ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md) |
+| ISSUE-F1-03-001 | Remover Blocos Legados | 3 | done | [ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS.md](../issues/ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS.md) |
+| ISSUE-F1-03-002 | Reposicionar GamificacaoBlock | 3 | done | [ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md](../issues/ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md) |
+| ISSUE-F1-03-003 | Integrar Layout Form-Only | 3 | done | [ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md](../issues/ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md) |
 
 ## Riscos e Bloqueios
 
@@ -34,8 +34,14 @@ Remover os blocos legados da view publica, reposicionar o GamificacaoBlock e int
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes: sprint conclui quando o layout form-only esta funcional e a fase F1 pode receber review
+- decisao: concluida
+- observacoes: a landing publica foi consolidada no layout form-only com gamificacao reposicionada e runtime legado removido.
+
+## Saldo de Refacao Identificado Depois da Entrega
+
+- limpar nomes e tipos herdados de hero ainda usados na integracao final
+- estreitar o contrato visual compartilhado entre `LandingPageView`, `FormCard` e `MinimalFooter`
+- manter como proibicao explicita qualquer retorno de Header, HeroContextCard, AboutEventCard, BrandSummaryCard ou checklist operacional
 
 ## Navegacao Rapida
 

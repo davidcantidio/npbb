@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-01-002-ADAPTAR-RENDER-GRAPHIC-OVERLAY.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F1-01-002 - Adaptar renderGraphicOverlay
@@ -31,18 +31,18 @@ A funcao `renderGraphicOverlay(data)` ja gera o elemento SVG/React com o overlay
 
 ## Definition of Done da Issue
 
-- [ ] renderGraphicOverlay funciona sem regressao visual dentro do FullPageBackground
-- [ ] overlay posicionado como layer fixa com pointer-events: none
-- [ ] opacidade do overlay respeita valores do PRD por template
-- [ ] nenhuma interacao com o formulario e bloqueada pelo overlay
+- [x] renderGraphicOverlay funciona sem regressao visual dentro do FullPageBackground
+- [x] overlay posicionado como layer fixa com pointer-events: none
+- [x] opacidade do overlay respeita valores do PRD por template
+- [x] nenhuma interacao com o formulario e bloqueada pelo overlay
 
 ## Tarefas Decupadas
 
-- [ ] T1: identificar como renderGraphicOverlay e chamado atualmente e qual container DOM assume
-- [ ] T2: mover a chamada de renderGraphicOverlay para dentro do FullPageBackground
-- [ ] T3: aplicar `position: fixed`, `inset: 0`, `pointer-events: none` ao container do overlay
-- [ ] T4: validar opacidade por template (corporativo 8-12%, show_musical 20%, etc.)
-- [ ] T5: testar que cliques no formulario nao sao interceptados pelo overlay
+- [x] T1: identificar como renderGraphicOverlay e chamado atualmente e qual container DOM assume
+- [x] T2: mover a chamada de renderGraphicOverlay para dentro do FullPageBackground
+- [x] T3: aplicar `position: fixed`, `inset: 0`, `pointer-events: none` ao container do overlay
+- [x] T4: validar opacidade por template (corporativo 8-12%, show_musical 20%, etc.)
+- [x] T5: testar que cliques no formulario nao sao interceptados pelo overlay
 
 ## Arquivos Reais Envolvidos
 
@@ -54,15 +54,21 @@ A funcao `renderGraphicOverlay(data)` ja gera o elemento SVG/React com o overlay
 
 - `frontend/src/components/landing/FullPageBackground.tsx` (atualizado com overlay)
 
+## Orientacao de Refacao Pos-Entrega
+
+- a adaptacao do overlay esta correta e permanece como base do layout final
+- a refacao desta etapa deve garantir que o overlay dependa apenas de semantica de pagina full-page, sem referencias conceituais a hero container no contrato visual compartilhado
+- se houver limpeza de tipos em `landingStyle.tsx`, preservar o comportamento de `renderGraphicOverlay(data)` e sua camada fixa, alterando apenas nomes e campos mortos
+
 ## Dependencias
 
 - [Epic](../EPIC-F1-01-FUNDO-TEMATICO-E-CONTAINER.md)
 - [Fase](../F1_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Issue 001](./ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F1-01-FUNDO-TEMATICO-E-CONTAINER]]`
 - `[[./ISSUE-F1-01-001-CRIAR-FULLPAGEBACKGROUND]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

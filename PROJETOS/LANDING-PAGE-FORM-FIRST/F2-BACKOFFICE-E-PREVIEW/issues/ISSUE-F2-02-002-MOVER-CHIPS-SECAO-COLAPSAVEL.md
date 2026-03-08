@@ -1,48 +1,41 @@
 ---
 doc_id: "ISSUE-F2-02-002-MOVER-CHIPS-SECAO-COLAPSAVEL.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "cancelled"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F2-02-002 - Mover Chips para Secao Colapsavel
 
 ## User Story
 
-Como operador do backoffice, quero ver os chips de mood e categoria dentro do card do formulario em uma secao colapsavel no preview para ter contexto operacional sem poluir a visualizacao do layout real.
+Como operador do backoffice, eu queria ver chips de mood e categoria dentro do card do formulario em uma secao colapsavel no preview, mas essa necessidade foi removida pela decisao de produto de manter o preview identico a landing publicada.
 
 ## Contexto Tecnico
 
-Os chips de `mood` e `categoria` eram exibidos no hero/header do layout antigo. Com a remocao do hero, eles devem ser movidos para uma secao colapsavel dentro do FormCard, visivel apenas em `isPreview`. A secao deve usar um Accordion/Collapse do MUI, posicionada abaixo dos campos do formulario.
+Os chips de `mood` e `categoria` eram exibidos no hero/header do layout antigo. A decisao registrada em `DECISION-PROTOCOL.md` removeu esse escopo: o preview nao deve exibir metadados extras, para continuar fiel a landing publicada.
 
 ## Plano TDD
 
-- Red: chips de mood/categoria nao aparecem em nenhum lugar apos remocao do hero.
-- Green: adicionar secao colapsavel "Metadados" dentro do FormCard, renderizada apenas quando isPreview=true, com chips de mood e categoria.
-- Refactor: extrair secao de metadados como componente; garantir que nao interfere com submit do formulario.
+- status_final: cancelada por decisao de produto
+- motivo: o preview ficou restrito a badge discreto de `Preview`, sem chips, checklist ou bloco de marca
+- acao_substituta: nenhuma implementacao necessaria; cobertura de testes deve garantir ausencia desses elementos
 
 ## Criterios de Aceitacao
 
-- Given o modo isPreview, When o card do formulario renderiza, Then uma secao colapsavel "Metadados" aparece abaixo dos campos
-- Given a secao "Metadados" expandida, When observada, Then os chips de mood e categoria estao presentes
-- Given a view publica (isPreview=false), When o card renderiza, Then nenhuma secao de metadados e visivel
-- Given a secao de metadados, When o formulario e submetido, Then a secao nao interfere com o submit
+- Given o modo isPreview, When o card do formulario renderiza, Then nenhuma secao colapsavel de metadados aparece
+- Given a view publica (isPreview=false), When o card renderiza, Then nenhum chip de mood/categoria e visivel
 
 ## Definition of Done da Issue
 
-- [ ] secao colapsavel com chips de mood e categoria dentro do FormCard
-- [ ] visivel apenas em isPreview
-- [ ] nao interfere com submit do formulario
-- [ ] usa Accordion/Collapse do MUI
+- [x] issue cancelada formalmente
+- [x] nenhuma implementacao aberta permanece associada a chips de preview
 
 ## Tarefas Decupadas
 
-- [ ] T1: criar secao colapsavel "Metadados" usando MUI Accordion dentro do FormCard
-- [ ] T2: renderizar chips de mood e categoria dentro da secao
-- [ ] T3: condicionar renderizacao a isPreview=true
-- [ ] T4: testar que submit funciona normalmente com secao presente
-- [ ] T5: testar que view publica nao exibe a secao
+- [x] T1: registrar cancelamento canonico da issue
+- [x] T2: remover a expectativa de chips/metadados dos testes de preview
 
 ## Arquivos Reais Envolvidos
 
@@ -50,17 +43,17 @@ Os chips de `mood` e `categoria` eram exibidos no hero/header do layout antigo. 
 
 ## Artifact Minimo
 
-- secao colapsavel de metadados no FormCard (apenas preview)
+- nenhuma; issue cancelada
 
 ## Dependencias
 
 - [Epic](../EPIC-F2-02-ADAPTACAO-PREVIEW.md)
 - [Fase](../F2_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Issue 001](./ISSUE-F2-02-001-ADAPTAR-PREVIEW-FORM-ONLY.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F2-02-ADAPTACAO-PREVIEW]]`
 - `[[./ISSUE-F2-02-001-ADAPTAR-PREVIEW-FORM-ONLY]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

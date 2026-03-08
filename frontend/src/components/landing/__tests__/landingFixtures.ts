@@ -37,14 +37,6 @@ const BASE_FORMULARIO = {
 
 const BASE_MARCA_WITH_HERO = {
   tagline: "Banco do Brasil. Pra tudo que voce imaginar.",
-  versao_logo: "positivo",
-  url_hero_image: "https://example.com/hero.webp",
-  hero_alt: "Imagem do evento BB Summit 2026",
-};
-
-const BASE_MARCA_NO_HERO = {
-  ...BASE_MARCA_WITH_HERO,
-  url_hero_image: null,
 };
 
 const BASE_ACESSO = {
@@ -155,7 +147,7 @@ export function createTemplateFixture(
   templateKey: TemplateKey,
   options: { withHero?: boolean; withGamificacao?: boolean; withAtivacao?: boolean } = {},
 ): LandingPageData {
-  const { withHero = true, withGamificacao = false, withAtivacao = true } = options;
+  const { withGamificacao = false, withAtivacao = true } = options;
   return {
     ativacao_id: withAtivacao ? 1 : null,
     ativacao: withAtivacao ? BASE_ATIVACAO : null,
@@ -163,7 +155,7 @@ export function createTemplateFixture(
     evento: BASE_EVENTO,
     template: TEMPLATE_CONFIGS[templateKey],
     formulario: BASE_FORMULARIO,
-    marca: withHero ? BASE_MARCA_WITH_HERO : BASE_MARCA_NO_HERO,
+    marca: BASE_MARCA_WITH_HERO,
     acesso: BASE_ACESSO,
   };
 }

@@ -1,23 +1,25 @@
 ---
 doc_id: "ISSUE-FIRST-TEMPLATES.md"
-version: "1.0"
+version: "1.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-FIRST-TEMPLATES
 
 ## Objetivo
 
-Definir a estrutura canonica para novos projetos em `PROJETOS/` no modelo `issue-first`, em que o trabalho detalhado vive em arquivos proprios de issue e a sprint permanece apenas como manifesto de selecao.
+Definir a estrutura canonica para projetos ativos em `PROJETOS/`, em que o trabalho detalhado vive em arquivos proprios de issue, a sprint permanece apenas como manifesto de selecao, o intake antecede o PRD e a auditoria fecha a fase.
 
 ## Estrutura Canonica
 
 ```text
 PROJETOS/<PROJETO>/
+  INTAKE-<PROJETO>.md
   PRD-<PROJETO>.md
   DECISION-PROTOCOL.md
+  AUDIT-LOG.md
   feito/
   F1-<NOME-DA-FASE>/
     F1_<PROJETO>_EPICS.md
@@ -27,14 +29,26 @@ PROJETOS/<PROJETO>/
       ISSUE-F1-01-002-<NOME>.md
     sprints/
       SPRINT-F1-01.md
+    auditorias/
+      RELATORIO-AUDITORIA-F1-R01.md
 ```
+
+Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PROJETO>-<SLUG>.md`.
 
 ## Responsabilidades por Documento
 
-- `F<N>_<PROJETO>_EPICS.md`: objetivo da fase, gate, escopo, tabela de epicos e dependencias entre epicos
-- `EPIC-*.md`: manifesto do epico, DoD do epico, dependencias, artifact minimo e indice das issues
-- `issues/ISSUE-*.md`: user story, plano TDD, criterios `Given/When/Then`, DoD da issue, tarefas decupadas e artefatos
+- `INTAKE-*.md`: intake estruturado, taxonomias, restricoes, riscos, rastreabilidade, lacunas conhecidas e checklist de prontidao para PRD
+- `PRD-*.md`: objetivo, arquitetura, requisitos, fases e restricoes do projeto
+- `AUDIT-LOG.md`: historico cumulativo das rodadas de auditoria e follow-ups
+- `F<N>_<PROJETO>_EPICS.md`: objetivo da fase, gate, tabela de epicos, dependencias entre epicos e estado do gate de auditoria
+- `EPIC-*.md`: manifesto do epico, DoD do epico, dependencias, artefato minimo e indice das issues
+- `issues/ISSUE-*.md`: user story, plano TDD, criterios `Given/When/Then`, DoD da issue, tasks, instructions por task quando exigidas e artefatos
 - `sprints/SPRINT-*.md`: selecao de issues, capacidade, riscos e consolidacao de status
+- `auditorias/RELATORIO-AUDITORIA-*.md`: evidencia formal do gate da fase
+
+## Template de `INTAKE-*.md`
+
+Usar o modelo oficial em `PROJETOS/COMUM/INTAKE-TEMPLATE.md`.
 
 ## Template de `EPIC-*.md`
 
@@ -67,13 +81,10 @@ last_updated: "YYYY-MM-DD"
 ## Artifact Minimo do Epico
 
 ## Dependencias
+- [Intake](../INTAKE-PROJETO.md)
 - [PRD](../PRD-PROJETO.md)
 - [Fase](./F1_PROJETO_EPICS.md)
 - [Decision Protocol](../DECISION-PROTOCOL.md)
-
-## Navegacao Rapida
-- `[[./issues/ISSUE-F1-01-001-NOME]]`
-- `[[../PRD-PROJETO]]`
 ```
 
 ## Template de `issues/ISSUE-*.md`
@@ -85,6 +96,7 @@ version: "1.0"
 status: "todo"
 owner: "PM"
 last_updated: "YYYY-MM-DD"
+task_instruction_mode: "optional"
 ---
 
 # ISSUE-F1-01-001 - Nome da Issue
@@ -101,15 +113,30 @@ Como <papel>, quero <acao> para <resultado>.
 
 ## Criterios de Aceitacao
 - Given ..., When ..., Then ...
-- Given ..., When ..., Then ...
 
 ## Definition of Done da Issue
 - [ ]
 
-## Tarefas Decupadas
+## Tasks Decupadas
 - [ ] T1:
-- [ ] T2:
-- [ ] T3:
+
+## Instructions por Task
+> Preencher esta secao apenas quando `task_instruction_mode: required`.
+
+### T1
+- objetivo:
+- precondicoes:
+- arquivos_a_ler_ou_tocar:
+  - `frontend/...`
+- passos_atomicos:
+  1. ...
+- comandos_permitidos:
+  - `npm run test -- --run`
+- resultado_esperado:
+- testes_ou_validacoes_obrigatorias:
+  - `frontend/...`
+- stop_conditions:
+  - parar e reportar bloqueio se ...
 
 ## Arquivos Reais Envolvidos
 - `backend/...`
@@ -119,13 +146,10 @@ Como <papel>, quero <acao> para <resultado>.
 - `artifacts/...`
 
 ## Dependencias
+- [Intake](../../INTAKE-PROJETO.md)
 - [Epic](../EPIC-F1-01-NOME-DO-EPICO.md)
 - [Fase](../F1_PROJETO_EPICS.md)
 - [PRD](../../PRD-PROJETO.md)
-
-## Navegacao Rapida
-- `[[../EPIC-F1-01-NOME-DO-EPICO]]`
-- `[[../../PRD-PROJETO]]`
 ```
 
 ## Template de `sprints/SPRINT-*.md`
@@ -159,25 +183,25 @@ last_updated: "YYYY-MM-DD"
 ## Encerramento
 - decisao:
 - observacoes:
-
-## Navegacao Rapida
-- `[[../issues/ISSUE-F1-01-001-NOME]]`
-- `[[../EPIC-F1-01-NOME-DO-EPICO]]`
 ```
+
+## Template de `AUDIT-LOG.md`
+
+Usar o modelo oficial em `PROJETOS/COMUM/AUDITORIA-LOG-TEMPLATE.md`.
+
+## Template de `auditorias/RELATORIO-AUDITORIA-*.md`
+
+Usar o modelo oficial em `PROJETOS/COMUM/AUDITORIA-REPORT-TEMPLATE.md`.
+
+## Regras de `task_instruction_mode`
+
+- `optional`: tasks podem permanecer apenas como checklist curto
+- `required`: cada task deve ter bloco proprio em `## Instructions por Task`
+- usar `required` para tasks de alto risco conforme `PROJETOS/COMUM/TASK_INSTRUCTIONS_SPEC.md`
+- para compatibilidade de rollout, issues antigas podem nao ter o campo; novas issues devem declarar o modo explicitamente
 
 ## Convencao de Links
 
 - link Markdown relativo e a referencia canonica
 - wikilink e complementar e nunca deve ser o unico meio de navegacao
 - usar wikilinks qualificados por caminho local para evitar ambiguidade
-- evitar wikilinks curtos como `[[EPICS]]`, `[[DECISION-PROTOCOL]]` ou `[[EPIC-F1-01]]`
-- preferir:
-  - `[[./issues/ISSUE-F1-01-001-NOME]]`
-  - `[[../EPIC-F1-01-NOME-DO-EPICO]]`
-  - `[[../../PRD-PROJETO]]`
-
-## Regras de Adocao
-
-- aplicar este padrao apenas a projetos novos
-- nao migrar automaticamente projetos ativos ou o historico em `FEITO/`
-- quando um projeto legado nao usar `issues/`, a issue pode permanecer embutida no epico ate decisao formal de migracao

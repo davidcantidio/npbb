@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlmodel import Session
 
 from app.db.database import get_session
@@ -23,6 +23,7 @@ from app.services.landing_pages import (
     build_landing_payload,
     get_template_config,
     hydrate_ativacao_public_urls,
+    normalize_template_override_input,
     track_landing_analytics,
     submit_landing_lead,
 )
@@ -56,10 +57,22 @@ def _get_ativacao_or_404(session: Session, ativacao_id: int) -> Ativacao:
     return ativacao
 
 
+def _normalize_preview_template_override(template_override: str | None) -> str | None:
+    normalized = normalize_template_override_input(template_override)
+    if template_override is not None and str(template_override).strip() and normalized is None:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="LANDING_TEMPLATE_OVERRIDE_INVALID",
+            message="template_override fora do catalogo homologado",
+        )
+    return normalized
+
+
 @router.get("/eventos/{evento_id}/landing", response_model=LandingPageRead)
 def get_evento_landing(
     evento_id: int,
     request: Request,
+    template_override: str | None = Query(default=None, max_length=50),
     session: Session = Depends(get_session),
 ):
     evento = _get_evento_or_404(session, evento_id)
@@ -68,6 +81,7 @@ def get_evento_landing(
         evento=evento,
         ativacao=None,
         backend_base_url=str(request.base_url),
+        template_override=_normalize_preview_template_override(template_override),
     )
 
 

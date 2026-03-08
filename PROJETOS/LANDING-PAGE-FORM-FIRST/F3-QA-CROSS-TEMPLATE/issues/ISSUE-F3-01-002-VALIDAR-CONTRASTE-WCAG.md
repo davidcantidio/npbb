@@ -3,7 +3,7 @@ doc_id: "ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md"
 version: "1.0"
 status: "todo"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # ISSUE-F3-01-002 - Validar Contraste WCAG AA
@@ -63,9 +63,9 @@ A validacao deve usar ferramentas de medicao de contraste (Chrome DevTools, axe,
 
 - [Epic](../EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md)
 - [Fase](../F3_LANDING_PAGE_FORM_FIRST_EPICS.md)
-- [PRD](../../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../../PRD-LANDING-PAGE-FORM-FIRST.md)
 
 ## Navegacao Rapida
 
 - `[[../EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE]]`
-- `[[../../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../../PRD-LANDING-PAGE-FORM-FIRST]]`

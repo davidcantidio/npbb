@@ -1,9 +1,9 @@
 ---
 doc_id: "F3_LANDING_PAGE_FORM_FIRST_EPICS.md"
-version: "1.0"
+version: "1.1"
 status: "todo"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # Epicos - LANDING-PAGE-FORM-FIRST / F3 - QA-CROSS-TEMPLATE
@@ -15,6 +15,15 @@ Validar regressao visual, contraste WCAG AA, conformidade com a marca BB e fluxo
 ## Gate de Saida da Fase
 
 Todos os 7 templates validados nos 3 breakpoints com fundo tematico correto, contraste minimo WCAG AA, amarelo BB presente, tagline BB presente, e fluxo de gamificacao funcional sem regressao.
+
+## Gate de Auditoria da Fase
+
+- estado_do_gate: `not_ready`
+- ultima_auditoria: `nenhuma`
+- veredito_atual: `n-a`
+- relatorio_mais_recente: `n-a`
+- log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
+- convencao_de_relatorios: [README](./auditorias/README.md)
 
 ## Epicos
 
@@ -50,10 +59,14 @@ Todos os 7 templates validados nos 3 breakpoints com fundo tematico correto, con
 - [ ] tagline BB presente no rodape de todos os templates
 - [ ] nenhuma cor fora do catalogo do Manual BB usada no fundo
 - [ ] fluxo PRESENTING → ACTIVE → COMPLETED sem regressao em todos os templates
+- [ ] gate de auditoria preparado para futura rodada em `auditorias/`
 
 ## Navegacao Rapida
 
-- [PRD](../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [Intake](../INTAKE-LANDING-PAGE-FORM-FIRST.md)
+- [PRD](../PRD-LANDING-PAGE-FORM-FIRST.md)
+- [Audit Log](../AUDIT-LOG.md)
 - [Epic F3-01](./EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md)
-- `[[../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../INTAKE-LANDING-PAGE-FORM-FIRST]]`
+- `[[../PRD-LANDING-PAGE-FORM-FIRST]]`
 - `[[./EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE]]`

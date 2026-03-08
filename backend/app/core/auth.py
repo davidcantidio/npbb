@@ -1,6 +1,6 @@
 """Dependência de autenticação para obter o usuário atual."""
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 import jwt
@@ -18,13 +18,19 @@ def _resolve_token_value(
     bearer: HTTPAuthorizationCredentials | None,
     cookie_token: str | None,
 ) -> str | None:
-    return token or (bearer.credentials if bearer else cookie_token)
+    direct_token = token if isinstance(token, str) else None
+    session_cookie_token = cookie_token if isinstance(cookie_token, str) else None
+    return direct_token or (bearer.credentials if bearer else session_cookie_token)
 
 
 def get_current_user(
-    token: str | None = None,
+    token: str | None = Query(default=None, include_in_schema=False),
     bearer: HTTPAuthorizationCredentials | None = Depends(http_bearer),
-    cookie_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    cookie_token: str | None = Cookie(
+        default=None,
+        alias=SESSION_COOKIE_NAME,
+        include_in_schema=False,
+    ),
     session: Session = Depends(get_session),
 ) -> Usuario:
     """Valida bearer/cookie token, busca o usuário ativo e o retorna."""
@@ -71,9 +77,13 @@ def get_current_user(
 
 
 def get_current_user_optional(
-    token: str | None = None,
+    token: str | None = Query(default=None, include_in_schema=False),
     bearer: HTTPAuthorizationCredentials | None = Depends(http_bearer),
-    cookie_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    cookie_token: str | None = Cookie(
+        default=None,
+        alias=SESSION_COOKIE_NAME,
+        include_in_schema=False,
+    ),
     session: Session = Depends(get_session),
 ) -> Usuario | None:
     """Tenta resolver o usuário atual via bearer/cookie sem retornar erro 401."""

@@ -317,6 +317,34 @@ def test_dashboard_age_analysis_requires_auth(client, engine):
     assert response.status_code == 401
 
 
+def test_dashboard_age_analysis_openapi_contract():
+    app.openapi_schema = None
+    schema = app.openapi()
+    operation = schema["paths"]["/dashboard/leads/analise-etaria"]["get"]
+
+    assert operation["summary"] == "Analise etaria de leads por evento"
+    assert "cobertura de cruzamento BB" in operation["description"]
+
+    params = {
+        param["name"]: param
+        for param in operation["parameters"]
+        if param["in"] == "query"
+    }
+    assert set(params) == {"evento_id", "data_inicio", "data_fim"}
+    assert params["evento_id"]["description"] == "Filtra a analise para um evento especifico."
+    assert params["evento_id"]["examples"]["evento_especifico"]["value"] == 42
+    assert params["data_inicio"]["examples"]["inicio_janeiro"]["value"] == "2026-01-01"
+    assert params["data_fim"]["examples"]["fim_janeiro"]["value"] == "2026-01-31"
+    assert operation["security"] == [{"HTTPBearer": []}]
+
+    success_response = operation["responses"]["200"]
+    assert success_response["description"] == "Payload tipado da analise etaria consolidada e por evento."
+    assert success_response["content"]["application/json"]["example"]["filters"]["evento_id"] == 42
+    assert success_response["content"]["application/json"]["example"]["por_evento"][0]["evento_nome"] == (
+        "Festival BB Sao Paulo"
+    )
+
+
 def test_dashboard_age_analysis_invalid_date_range_returns_422(client, engine):
     with Session(engine) as session:
         seed_age_analysis_data(session)

@@ -3,7 +3,7 @@ doc_id: "EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md"
 version: "1.0"
 status: "todo"
 owner: "PM"
-last_updated: "2026-03-07"
+last_updated: "2026-03-08"
 ---
 
 # EPIC-F3-01 - Regressao Visual e Conformidade
@@ -46,7 +46,7 @@ Relatorio de QA com 21 combinacoes (7 templates × 3 breakpoints) validadas, zer
 
 ## Dependencias
 
-- [PRD](../PRD-LANDING-FORM-ONLY-v1.0.md)
+- [PRD](../PRD-LANDING-PAGE-FORM-FIRST.md)
 - [Fase](./F3_LANDING_PAGE_FORM_FIRST_EPICS.md)
 - [Decision Protocol](../DECISION-PROTOCOL.md)
 
@@ -55,4 +55,4 @@ Relatorio de QA com 21 combinacoes (7 templates × 3 breakpoints) validadas, zer
 - `[[./issues/ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO]]`
 - `[[./issues/ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG]]`
 - `[[./issues/ISSUE-F3-01-003-VALIDAR-GAMIFICACAO]]`
-- `[[../PRD-LANDING-FORM-ONLY-v1.0]]`
+- `[[../PRD-LANDING-PAGE-FORM-FIRST]]`

@@ -8,12 +8,6 @@ import type { LayoutVisualSpec } from "./landingStyle";
 
 export type LandingFormState = Record<string, string>;
 
-export type LandingPreviewChecklistItem = {
-  label: string;
-  ok: boolean;
-  helper: string;
-};
-
 export type LandingGamificacaoConfig = {
   leadSubmitted: boolean;
   busy?: boolean;
@@ -21,19 +15,6 @@ export type LandingGamificacaoConfig = {
   resetVersion?: number;
   onComplete: (gamificacaoId: number) => Promise<void> | void;
   onReset: () => void;
-};
-
-export type HeroContextCardProps = {
-  data: LandingPageData;
-  layout: LayoutVisualSpec;
-  isPreview: boolean;
-};
-
-export type HeroMediaCardProps = {
-  data: LandingPageData;
-  layout: LayoutVisualSpec;
-  heroImageUrl: string | null;
-  isPreview: boolean;
 };
 
 export type LandingFormCardProps = {
@@ -53,19 +34,9 @@ export type LandingFormCardProps = {
   onResetDisabled?: boolean;
 };
 
-export type AboutEventCardProps = {
-  data: LandingPageData;
-  aboutDescription: string;
-  pageTextColor: string;
-};
-
-export type BrandSummaryCardProps = {
-  data: LandingPageData;
-  isPreview: boolean;
-};
-
 export type LandingGamificacaoSectionProps = {
   gamificacoes: GamificacaoPublic[];
+  layout: LayoutVisualSpec;
   isPreview: boolean;
   gamificacao?: LandingGamificacaoConfig;
 };

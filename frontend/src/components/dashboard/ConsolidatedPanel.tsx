@@ -1,4 +1,3 @@
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   Card,
@@ -7,12 +6,12 @@ import {
   Divider,
   Grid,
   Stack,
-  Tooltip,
   Typography,
 } from "@mui/material";
 
 import type { ConsolidadoAgeAnalysis } from "../../types/dashboard";
 import { formatDecimal, formatInteger, formatPercent, getDominantAgeRangeLabel } from "../../utils/ageAnalysis";
+import { InfoTooltip } from "./InfoTooltip";
 
 type ConsolidatedPanelProps = {
   data: ConsolidadoAgeAnalysis;
@@ -33,9 +32,7 @@ function StatWithTooltip({
         <Typography variant="caption" color="text.secondary">
           {label}
         </Typography>
-        <Tooltip title={tooltip}>
-          <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-        </Tooltip>
+        <InfoTooltip label={label} description={tooltip} />
       </Box>
       <Typography variant="h6" fontWeight={800}>
         {value}
@@ -74,14 +71,20 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                   >
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="body2" fontWeight={700} noWrap>
-                        {index + 1}º {evento.evento_nome}
+                        {index + 1}o {evento.evento_nome}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Faixa dominante: {getDominantAgeRangeLabel(evento.faixa_dominante)}
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Faixa dominante: {getDominantAgeRangeLabel(evento.faixa_dominante)}
+                        </Typography>
+                        <InfoTooltip
+                          label="Faixa dominante"
+                          description="Faixa etaria com maior volume de leads neste evento"
+                        />
+                      </Box>
                     </Box>
                     <Chip
-                      label={`${formatInteger(evento.base_leads)} • ${formatPercent(
+                      label={`${formatInteger(evento.base_leads)} - ${formatPercent(
                         data.base_total > 0 ? (evento.base_leads / data.base_total) * 100 : 0,
                       )}`}
                       size="small"
@@ -104,21 +107,27 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                   <StatWithTooltip
                     label="Media por evento"
                     value={formatDecimal(data.media_por_evento)}
-                    tooltip="Soma total dividida pela quantidade de eventos."
+                    tooltip="Soma dos volumes dividida pela quantidade de eventos"
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <StatWithTooltip
                     label="Mediana por evento"
                     value={formatDecimal(data.mediana_por_evento)}
-                    tooltip="Valor central ao ordenar eventos por volume."
+                    tooltip="Volume central quando os eventos sao ordenados por tamanho. Quando poucos eventos sao muito grandes, a mediana e mais representativa do tamanho tipico."
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Concentracao Top 3
-                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Concentracao Top 3
+                      </Typography>
+                      <InfoTooltip
+                        label="Concentracao Top 3"
+                        description="Percentual da base total representada pelos 3 maiores eventos"
+                      />
+                    </Box>
                     <Typography variant="h6" fontWeight={800}>
                       {formatPercent(data.concentracao_top3_pct)}
                     </Typography>

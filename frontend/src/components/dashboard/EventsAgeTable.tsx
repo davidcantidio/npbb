@@ -133,7 +133,7 @@ const columns: ColumnDefinition[] = [
     accessor: (event) => event.cobertura_bb_pct,
     render: (event) => (
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <CoverageBanner coverage={event.cobertura_bb_pct} variant="compact" />
+        <CoverageBanner coverage={event.cobertura_bb_pct} variant="compact" scope="event" />
       </Box>
     ),
   },

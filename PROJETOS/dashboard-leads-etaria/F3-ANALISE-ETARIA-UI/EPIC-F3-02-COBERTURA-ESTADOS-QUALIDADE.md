@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F3-02-COBERTURA-ESTADOS-QUALIDADE.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -41,7 +41,7 @@ A interface passa a explicar a qualidade dos dados e a responder bem a loading, 
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-02-001 | Implementar banners de aviso de dados BB | Implementar banners de aviso de dados BB | 3 | todo | [ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md](./issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md) |
+| ISSUE-F3-02-001 | Implementar banners de aviso de dados BB | Implementar banners de aviso de dados BB | 3 | done | [ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md](./issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md) |
 | ISSUE-F3-02-002 | Implementar estados da interface (loading, empty, error) | Implementar estados da interface (loading, empty, error) | 3 | todo | [ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md](./issues/ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md) |
 | ISSUE-F3-02-003 | Tooltips interpretativos e documentação visual | Tooltips interpretativos e documentação visual | 2 | todo | [ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md](./issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md) |
 

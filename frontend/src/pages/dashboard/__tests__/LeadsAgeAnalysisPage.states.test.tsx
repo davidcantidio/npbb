@@ -92,6 +92,14 @@ function renderPage(initialEntry = "/dashboard/leads/analise-etaria") {
   );
 }
 
+function getRequiredCard(element: Element | null, message: string) {
+  if (!(element instanceof HTMLElement)) {
+    throw new Error(message);
+  }
+
+  return element;
+}
+
 describe("LeadsAgeAnalysisPage states", () => {
   beforeEach(() => {
     mockedUseAuth.mockReturnValue({
@@ -152,32 +160,23 @@ describe("LeadsAgeAnalysisPage states", () => {
 
     renderPage();
 
-    const baseCard = (await screen.findByText("Base Total")).closest(".MuiCard-root");
-    if (!baseCard) {
-      throw new Error("Base Total card not found");
-    }
+    const baseCard = getRequiredCard((await screen.findByText("Base Total")).closest(".MuiCard-root"), "Base Total card not found");
     expect(within(baseCard).getByText("10")).toBeInTheDocument();
 
-    const clientesCard = screen.getByText("Percentual da base: 40,0%").closest(".MuiCard-root");
-    if (!clientesCard) {
-      throw new Error("Clientes BB card not found");
-    }
+    const clientesCard = getRequiredCard(
+      screen.getByText("Percentual da base: 40,0%").closest(".MuiCard-root"),
+      "Clientes BB card not found",
+    );
     expect(within(clientesCard).getByText("Clientes BB")).toBeInTheDocument();
     expect(within(clientesCard).getByText("4")).toBeInTheDocument();
     expect(within(clientesCard).getByText("Percentual da base: 40,0%")).toBeInTheDocument();
     expect(within(clientesCard).getByText("Cobertura BB")).toBeInTheDocument();
     expect(within(clientesCard).getByText("90.0%")).toBeInTheDocument();
 
-    const faixaCard = screen.getByText("Faixa Dominante").closest(".MuiCard-root");
-    if (!faixaCard) {
-      throw new Error("Faixa Dominante card not found");
-    }
+    const faixaCard = getRequiredCard(screen.getByText("Faixa Dominante").closest(".MuiCard-root"), "Faixa Dominante card not found");
     expect(within(faixaCard).getByText("18–25")).toBeInTheDocument();
 
-    const eventosCard = screen.getByText("Eventos").closest(".MuiCard-root");
-    if (!eventosCard) {
-      throw new Error("Eventos card not found");
-    }
+    const eventosCard = getRequiredCard(screen.getByText("Eventos").closest(".MuiCard-root"), "Eventos card not found");
     expect(within(eventosCard).getByText("1")).toBeInTheDocument();
   });
 
@@ -263,6 +262,16 @@ describe("LeadsAgeAnalysisPage states", () => {
 
     expect(await screen.findByTestId("coverage-banner-danger-default")).toBeInTheDocument();
     expect(await screen.findByTestId("coverage-banner-danger-compact")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Dados de vinculo BB indisponiveis neste recorte - realize o cruzamento com a base de dados do Banco.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Dados de vinculo BB indisponiveis para este evento - realize o cruzamento com a base de dados do Banco.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("(dados parciais)").length).toBeGreaterThan(0);
   });
 });

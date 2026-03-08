@@ -1,7 +1,7 @@
 ---
 doc_id: "F3_DASHBOARD_LEADS_ETARIA_EPICS.md"
 version: "1.1"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,7 +29,7 @@ A pagina `/dashboard/leads/analise-etaria` renderiza com dados reais da API, per
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F3-01 | Dados e Visualizacoes da Analise Etaria | Implementar consumo da API, KPI cards, grafico, tabela, painel consolidado e filtros. | F2 concluida | todo | [EPIC-F3-01-DADOS-E-VISUALIZACOES.md](./EPIC-F3-01-DADOS-E-VISUALIZACOES.md) |
+| EPIC-F3-01 | Dados e Visualizacoes da Analise Etaria | Implementar consumo da API, KPI cards, grafico, tabela, painel consolidado e filtros. | F2 concluida | active | [EPIC-F3-01-DADOS-E-VISUALIZACOES.md](./EPIC-F3-01-DADOS-E-VISUALIZACOES.md) |
 | EPIC-F3-02 | Cobertura BB, Estados e Qualidade | Implementar banners de cobertura BB, skeletons, estados de erro/vazio e tooltips interpretativos. | EPIC-F3-01 | todo | [EPIC-F3-02-COBERTURA-ESTADOS-QUALIDADE.md](./EPIC-F3-02-COBERTURA-ESTADOS-QUALIDADE.md) |
 
 ## Dependencias entre Epicos

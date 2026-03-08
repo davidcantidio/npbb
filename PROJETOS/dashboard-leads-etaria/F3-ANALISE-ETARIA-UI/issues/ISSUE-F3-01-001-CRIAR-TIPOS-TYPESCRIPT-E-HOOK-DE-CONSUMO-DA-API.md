@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,26 +29,26 @@ Seguir o padrão de hooks do projeto (verificar se usa React Query, SWR ou fetch
 
 ## Criterios de Aceitacao
 
-- [ ] Tipos definidos em `frontend/src/types/dashboard.ts` (ou mesmo módulo do manifesto)
-- [ ] `useAgeAnalysis(filters)` aceita `evento_id`, `data_inicio`, `data_fim` opcionais
-- [ ] Hook retorna `{ data, isLoading, error, refetch }`
-- [ ] Token JWT incluído automaticamente nas requisições (reusar padrão do projeto)
-- [ ] Tipo de resposta reflete exatamente o schema do backend (seção 5 do PRD)
+- [x] Tipos definidos em `frontend/src/types/dashboard.ts` (ou mesmo módulo do manifesto)
+- [x] `useAgeAnalysis(filters)` aceita `evento_id`, `data_inicio`, `data_fim` opcionais
+- [x] Hook retorna `{ data, isLoading, error, refetch }`
+- [x] Token JWT incluído automaticamente nas requisições (reusar padrão do projeto)
+- [x] Tipo de resposta reflete exatamente o schema do backend (seção 5 do PRD)
 
 ## Definition of Done da Issue
 
-- [ ] Tipos definidos em `frontend/src/types/dashboard.ts` (ou mesmo módulo do manifesto)
-- [ ] `useAgeAnalysis(filters)` aceita `evento_id`, `data_inicio`, `data_fim` opcionais
-- [ ] Hook retorna `{ data, isLoading, error, refetch }`
-- [ ] Token JWT incluído automaticamente nas requisições (reusar padrão do projeto)
-- [ ] Tipo de resposta reflete exatamente o schema do backend (seção 5 do PRD)
+- [x] Tipos definidos em `frontend/src/types/dashboard.ts` (ou mesmo módulo do manifesto)
+- [x] `useAgeAnalysis(filters)` aceita `evento_id`, `data_inicio`, `data_fim` opcionais
+- [x] Hook retorna `{ data, isLoading, error, refetch }`
+- [x] Token JWT incluído automaticamente nas requisições (reusar padrão do projeto)
+- [x] Tipo de resposta reflete exatamente o schema do backend (seção 5 do PRD)
 
 ## Tarefas Decupadas
 
-- [ ] T1: Definir tipos TypeScript para `FaixaEtariaMetrics`, `AgeBreakdown`, `EventoAgeAnalysis`, `ConsolidadoAgeAnalysis`, `AgeAnalysisResponse`
-- [ ] T2: Criar hook `useAgeAnalysis` em `frontend/src/hooks/useAgeAnalysis.ts`
-- [ ] T3: Integrar com mecanismo de autenticação existente
-- [ ] T4: Tratar estados de loading, error e data vazia
+- [x] T1: Definir tipos TypeScript para `FaixaEtariaMetrics`, `AgeBreakdown`, `EventoAgeAnalysis`, `ConsolidadoAgeAnalysis`, `AgeAnalysisResponse`
+- [x] T2: Criar hook `useAgeAnalysis` em `frontend/src/hooks/useAgeAnalysis.ts`
+- [x] T3: Integrar com mecanismo de autenticação existente
+- [x] T4: Tratar estados de loading, error e data vazia
 
 ## Arquivos Reais Envolvidos
 

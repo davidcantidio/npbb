@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F3-01-DADOS-E-VISUALIZACOES.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -43,10 +43,10 @@ A pagina de analise etaria passa a exibir dados reais da API com visualizacoes e
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-01-001 | Criar tipos TypeScript e hook de consumo da API | Criar tipos TypeScript e hook de consumo da API | 3 | todo | [ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md](./issues/ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md) |
-| ISSUE-F3-01-002 | Implementar KPI Cards do painel consolidado | Implementar KPI Cards do painel consolidado | 3 | todo | [ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md](./issues/ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md) |
-| ISSUE-F3-01-003 | Implementar gráfico de barras empilhadas (distribuição etária) | Implementar gráfico de barras empilhadas (distribuição etária) | 5 | todo | [ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md](./issues/ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md) |
-| ISSUE-F3-01-004 | Implementar tabela de eventos com colunas configuráveis | Implementar tabela de eventos com colunas configuráveis | 5 | todo | [ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md](./issues/ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md) |
+| ISSUE-F3-01-001 | Criar tipos TypeScript e hook de consumo da API | Criar tipos TypeScript e hook de consumo da API | 3 | done | [ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md](./issues/ISSUE-F3-01-001-CRIAR-TIPOS-TYPESCRIPT-E-HOOK-DE-CONSUMO-DA-API.md) |
+| ISSUE-F3-01-002 | Implementar KPI Cards do painel consolidado | Implementar KPI Cards do painel consolidado | 3 | done | [ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md](./issues/ISSUE-F3-01-002-IMPLEMENTAR-KPI-CARDS-DO-PAINEL-CONSOLIDADO.md) |
+| ISSUE-F3-01-003 | Implementar gráfico de barras empilhadas (distribuição etária) | Implementar gráfico de barras empilhadas (distribuição etária) | 5 | done | [ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md](./issues/ISSUE-F3-01-003-IMPLEMENTAR-GRAFICO-DE-BARRAS-EMPILHADAS-DISTRIBUICAO-ETARIA.md) |
+| ISSUE-F3-01-004 | Implementar tabela de eventos com colunas configuráveis | Implementar tabela de eventos com colunas configuráveis | 5 | done | [ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md](./issues/ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md) |
 | ISSUE-F3-01-005 | Implementar painel consolidado com Top 3, média e mediana | Implementar painel consolidado com Top 3, média e mediana | 3 | todo | [ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md](./issues/ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md) |
 | ISSUE-F3-01-006 | Implementar filtros de período e evento | Implementar filtros de período e evento | 3 | todo | [ISSUE-F3-01-006-IMPLEMENTAR-FILTROS-DE-PERIODO-E-EVENTO.md](./issues/ISSUE-F3-01-006-IMPLEMENTAR-FILTROS-DE-PERIODO-E-EVENTO.md) |
 

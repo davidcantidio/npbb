@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md"
 version: "1.1"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---

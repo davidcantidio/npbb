@@ -1,6 +1,6 @@
 ---
 doc_id: "F2_LANDING_PAGE_FORM_FIRST_EPICS.md"
-version: "1.2"
+version: "1.3"
 status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
@@ -18,10 +18,10 @@ Campo `hero_image_url` removido do painel, da API e do banco; mensagem de custom
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `not_ready`
-- ultima_auditoria: `nenhuma`
-- veredito_atual: `n-a`
-- relatorio_mais_recente: `n-a`
+- estado_do_gate: `approved`
+- ultima_auditoria: `R01`
+- veredito_atual: `go`
+- relatorio_mais_recente: [RELATORIO-AUDITORIA-F2-R01](./auditorias/RELATORIO-AUDITORIA-F2-R01.md)
 - log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 
@@ -65,7 +65,7 @@ EPIC-F2-02 (independente)
 - [x] badge "Preview" visivel no canto superior direito em modo isPreview
 - [x] hero_image_url removido dos schemas, payloads e banco
 - [x] nenhum bloco de marca, checklist ou chip operacional aparece no preview
-- [ ] gate de auditoria preparado para futura rodada em `auditorias/`
+- [x] gate de auditoria aprovado em `auditorias/RELATORIO-AUDITORIA-F2-R01.md`
 
 ## Navegacao Rapida
 

@@ -1,4 +1,3 @@
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { IconButton, Tooltip, type TooltipProps } from "@mui/material";
 
 type InfoTooltipProps = {
@@ -14,11 +13,16 @@ export function InfoTooltip({ label, description, placement = "top" }: InfoToolt
         size="small"
         aria-label={`Saiba mais sobre ${label}`}
         sx={{
-          p: 0.25,
+          p: 0,
+          width: 18,
+          height: 18,
+          borderRadius: 999,
           color: "text.secondary",
+          fontSize: 13,
+          lineHeight: 1,
         }}
       >
-        <InfoOutlinedIcon sx={{ fontSize: 14 }} />
+        ℹ️
       </IconButton>
     </Tooltip>
   );

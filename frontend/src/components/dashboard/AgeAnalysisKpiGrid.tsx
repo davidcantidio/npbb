@@ -14,6 +14,11 @@ type AgeAnalysisKpiGridProps = {
   appliedFilters: AgeAnalysisFilterFormValues;
 };
 
+const KPI_TOOLTIP_COPY = {
+  dominantRange: "Faixa etária com maior volume de leads neste evento",
+  bbCoverage: "Percentual de leads com informação de vínculo BB disponível",
+} as const;
+
 export function AgeAnalysisKpiGrid({ data, eventosTotal, appliedFilters }: AgeAnalysisKpiGridProps) {
   const dominantConsolidatedRange = getDominantRangeFromBreakdown(data.consolidado.faixas);
 
@@ -41,12 +46,14 @@ export function AgeAnalysisKpiGrid({ data, eventosTotal, appliedFilters }: AgeAn
           icon={<VerifiedRoundedIcon fontSize="small" />}
           progressValue={data.consolidado.cobertura_bb_pct}
           progressLabel="Cobertura BB"
+          progressTooltip={KPI_TOOLTIP_COPY.bbCoverage}
         />
       </Grid>
       <Grid item xs={12} sm={6} xl={3}>
         <KpiCard
           title="Faixa dominante"
           value={getDominantAgeRangeLabel(dominantConsolidatedRange)}
+          titleTooltip={KPI_TOOLTIP_COPY.dominantRange}
           subtitle="Faixa predominante considerando toda a base consolidada."
           helperText={
             data.consolidado.top_eventos[0]

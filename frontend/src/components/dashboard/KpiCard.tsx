@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Card, CardContent, LinearProgress, Stack, Typography } from "@mui/material";
+import { InfoTooltip } from "./InfoTooltip";
 
 type KpiCardProps = {
   title: string;
@@ -7,8 +8,10 @@ type KpiCardProps = {
   subtitle?: string;
   helperText?: string;
   icon: ReactNode;
+  titleTooltip?: string;
   progressValue?: number | null;
   progressLabel?: string;
+  progressTooltip?: string;
 };
 
 export function KpiCard({
@@ -17,8 +20,10 @@ export function KpiCard({
   subtitle,
   helperText,
   icon,
+  titleTooltip,
   progressValue,
   progressLabel,
+  progressTooltip,
 }: KpiCardProps) {
   const normalizedProgress =
     typeof progressValue === "number" ? Math.min(Math.max(progressValue, 0), 100) : null;
@@ -29,9 +34,12 @@ export function KpiCard({
         <Stack spacing={2}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
             <Box>
-              <Typography variant="overline" color="text.secondary">
-                {title}
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                <Typography variant="overline" color="text.secondary">
+                  {title}
+                </Typography>
+                {titleTooltip ? <InfoTooltip label={title} description={titleTooltip} /> : null}
+              </Box>
               <Typography variant="h5" fontWeight={800}>
                 {value}
               </Typography>
@@ -61,9 +69,17 @@ export function KpiCard({
           {normalizedProgress !== null ? (
             <Stack spacing={0.75}>
               <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {progressLabel || "Cobertura"}
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {progressLabel || "Cobertura"}
+                  </Typography>
+                  {progressTooltip ? (
+                    <InfoTooltip
+                      label={progressLabel || "Cobertura"}
+                      description={progressTooltip}
+                    />
+                  ) : null}
+                </Box>
                 <Typography variant="caption" fontWeight={700}>
                   {normalizedProgress.toFixed(1)}%
                 </Typography>

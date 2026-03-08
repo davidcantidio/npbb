@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F3-03.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -24,7 +24,7 @@ Fechar tabela, painel consolidado e tooltips interpretativos da analise etaria.
 |---|---|---|---|---|
 | ISSUE-F3-01-004 | Implementar tabela de eventos com colunas configuráveis | 5 | todo | [ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md](../issues/ISSUE-F3-01-004-IMPLEMENTAR-TABELA-DE-EVENTOS-COM-COLUNAS-CONFIGURAVEIS.md) |
 | ISSUE-F3-01-005 | Implementar painel consolidado com Top 3, média e mediana | 3 | todo | [ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md](../issues/ISSUE-F3-01-005-IMPLEMENTAR-PAINEL-CONSOLIDADO-COM-TOP-3-MEDIA-E-MEDIANA.md) |
-| ISSUE-F3-02-003 | Tooltips interpretativos e documentação visual | 2 | todo | [ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md](../issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md) |
+| ISSUE-F3-02-003 | Tooltips interpretativos e documentação visual | 2 | done | [ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md](../issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md) |
 
 ## Riscos e Bloqueios
 

@@ -86,19 +86,32 @@ describe("ConsolidatedPanel", () => {
     expect(within(concentracaoBlock).getByText("66,7%")).toBeInTheDocument();
   });
 
-  it("exibe tooltips interpretativos com os textos definidos para media e mediana", async () => {
+  it("exibe tooltips interpretativos com os textos definidos para media, mediana, concentracao e faixa dominante", async () => {
     const user = userEvent.setup();
     render(<ConsolidatedPanel data={buildConsolidated()} />);
 
     await user.hover(screen.getByRole("button", { name: "Saiba mais sobre Media por evento" }));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Soma total dividida pela quantidade de eventos",
+      "Soma dos volumes dividida pela quantidade de eventos",
     );
 
     await user.unhover(screen.getByRole("button", { name: "Saiba mais sobre Media por evento" }));
     await user.hover(screen.getByRole("button", { name: "Saiba mais sobre Mediana por evento" }));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Valor central ao ordenar eventos por volume",
+      "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico.",
+    );
+
+    await user.unhover(screen.getByRole("button", { name: "Saiba mais sobre Mediana por evento" }));
+    await user.hover(screen.getByRole("button", { name: "Saiba mais sobre Concentracao Top 3" }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Percentual da base total representada pelos 3 maiores eventos",
+    );
+
+    await user.unhover(screen.getByRole("button", { name: "Saiba mais sobre Concentracao Top 3" }));
+    const faixaDominanteButtons = screen.getAllByRole("button", { name: "Saiba mais sobre Faixa dominante" });
+    await user.hover(faixaDominanteButtons[0]);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Faixa etária com maior volume de leads neste evento",
     );
   });
 });

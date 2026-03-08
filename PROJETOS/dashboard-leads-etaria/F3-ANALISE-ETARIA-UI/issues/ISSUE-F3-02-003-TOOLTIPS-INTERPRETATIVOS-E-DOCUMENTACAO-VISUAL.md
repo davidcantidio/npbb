@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,30 +29,30 @@ Reusar componente de tooltip existente no projeto se houver. Caso contrário, us
 
 ## Criterios de Aceitacao
 
-- [ ] Tooltip na média: "Soma dos volumes dividida pela quantidade de eventos"
-- [ ] Tooltip na mediana: "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico."
-- [ ] Tooltip na concentração Top 3: "Percentual da base total representada pelos 3 maiores eventos"
-- [ ] Tooltip na faixa dominante: "Faixa etária com maior volume de leads neste evento"
-- [ ] Tooltip na cobertura BB: "Percentual de leads com informação de vínculo BB disponível"
-- [ ] Ícone de info (ℹ️) ao lado da métrica indica presença de tooltip
-- [ ] Tooltips acessíveis (focusable via teclado, role="tooltip")
+- [x] Tooltip na média: "Soma dos volumes dividida pela quantidade de eventos"
+- [x] Tooltip na mediana: "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico."
+- [x] Tooltip na concentração Top 3: "Percentual da base total representada pelos 3 maiores eventos"
+- [x] Tooltip na faixa dominante: "Faixa etária com maior volume de leads neste evento"
+- [x] Tooltip na cobertura BB: "Percentual de leads com informação de vínculo BB disponível"
+- [x] Ícone de info (ℹ️) ao lado da métrica indica presença de tooltip
+- [x] Tooltips acessíveis (focusable via teclado, role="tooltip")
 
 ## Definition of Done da Issue
 
-- [ ] Tooltip na média: "Soma dos volumes dividida pela quantidade de eventos"
-- [ ] Tooltip na mediana: "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico."
-- [ ] Tooltip na concentração Top 3: "Percentual da base total representada pelos 3 maiores eventos"
-- [ ] Tooltip na faixa dominante: "Faixa etária com maior volume de leads neste evento"
-- [ ] Tooltip na cobertura BB: "Percentual de leads com informação de vínculo BB disponível"
-- [ ] Ícone de info (ℹ️) ao lado da métrica indica presença de tooltip
-- [ ] Tooltips acessíveis (focusable via teclado, role="tooltip")
+- [x] Tooltip na média: "Soma dos volumes dividida pela quantidade de eventos"
+- [x] Tooltip na mediana: "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico."
+- [x] Tooltip na concentração Top 3: "Percentual da base total representada pelos 3 maiores eventos"
+- [x] Tooltip na faixa dominante: "Faixa etária com maior volume de leads neste evento"
+- [x] Tooltip na cobertura BB: "Percentual de leads com informação de vínculo BB disponível"
+- [x] Ícone de info (ℹ️) ao lado da métrica indica presença de tooltip
+- [x] Tooltips acessíveis (focusable via teclado, role="tooltip")
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente `InfoTooltip.tsx` com ícone e texto
-- [ ] T2: Adicionar tooltips aos KPI cards relevantes
-- [ ] T3: Adicionar tooltips ao painel consolidado (média, mediana, concentração)
-- [ ] T4: Garantir acessibilidade (ARIA attributes, keyboard navigation)
+- [x] T1: Criar componente `InfoTooltip.tsx` com ícone e texto
+- [x] T2: Adicionar tooltips aos KPI cards relevantes
+- [x] T3: Adicionar tooltips ao painel consolidado (média, mediana, concentração)
+- [x] T4: Garantir acessibilidade (ARIA attributes, keyboard navigation)
 
 ## Arquivos Reais Envolvidos
 

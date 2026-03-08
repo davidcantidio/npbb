@@ -17,6 +17,14 @@ type ConsolidatedPanelProps = {
   data: ConsolidadoAgeAnalysis;
 };
 
+const TOOLTIP_COPY = {
+  dominantRange: "Faixa etária com maior volume de leads neste evento",
+  average: "Soma dos volumes dividida pela quantidade de eventos",
+  median:
+    "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico.",
+  top3: "Percentual da base total representada pelos 3 maiores eventos",
+} as const;
+
 function formatRoundedInteger(value: number) {
   return formatInteger(Math.round(value));
 }
@@ -84,7 +92,7 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                         </Typography>
                         <InfoTooltip
                           label="Faixa dominante"
-                          description="Faixa etaria com maior volume de leads neste evento"
+                          description={TOOLTIP_COPY.dominantRange}
                         />
                       </Box>
                     </Box>
@@ -113,14 +121,14 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                   <StatWithTooltip
                     label="Media por evento"
                     value={formatDecimal(data.media_por_evento)}
-                    tooltip="Soma total dividida pela quantidade de eventos"
+                    tooltip={TOOLTIP_COPY.average}
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <StatWithTooltip
                     label="Mediana por evento"
                     value={formatRoundedInteger(data.mediana_por_evento)}
-                    tooltip="Valor central ao ordenar eventos por volume"
+                    tooltip={TOOLTIP_COPY.median}
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
@@ -131,7 +139,7 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                       </Typography>
                       <InfoTooltip
                         label="Concentracao Top 3"
-                        description="Percentual da base total representada pelos 3 maiores eventos"
+                        description={TOOLTIP_COPY.top3}
                       />
                     </Box>
                     <Typography variant="h6" fontWeight={800}>

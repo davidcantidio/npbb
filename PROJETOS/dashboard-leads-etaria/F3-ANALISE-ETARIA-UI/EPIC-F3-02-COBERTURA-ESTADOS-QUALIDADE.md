@@ -43,7 +43,7 @@ A interface passa a explicar a qualidade dos dados e a responder bem a loading, 
 |---|---|---|---|---|---|
 | ISSUE-F3-02-001 | Implementar banners de aviso de dados BB | Implementar banners de aviso de dados BB | 3 | done | [ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md](./issues/ISSUE-F3-02-001-IMPLEMENTAR-BANNERS-DE-AVISO-DE-DADOS-BB.md) |
 | ISSUE-F3-02-002 | Implementar estados da interface (loading, empty, error) | Implementar estados da interface (loading, empty, error) | 3 | todo | [ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md](./issues/ISSUE-F3-02-002-IMPLEMENTAR-ESTADOS-DA-INTERFACE-LOADING-EMPTY-ERROR.md) |
-| ISSUE-F3-02-003 | Tooltips interpretativos e documentação visual | Tooltips interpretativos e documentação visual | 2 | todo | [ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md](./issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md) |
+| ISSUE-F3-02-003 | Tooltips interpretativos e documentação visual | Tooltips interpretativos e documentação visual | 2 | done | [ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md](./issues/ISSUE-F3-02-003-TOOLTIPS-INTERPRETATIVOS-E-DOCUMENTACAO-VISUAL.md) |
 
 ## Artifact Minimo do Epico
 

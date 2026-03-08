@@ -1,7 +1,7 @@
 ---
 doc_id: "F3_LANDING_PAGE_FORM_FIRST_EPICS.md"
-version: "1.1"
-status: "todo"
+version: "1.2"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -18,10 +18,10 @@ Todos os 7 templates validados nos 3 breakpoints com fundo tematico correto, con
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `not_ready`
-- ultima_auditoria: `nenhuma`
-- veredito_atual: `n-a`
-- relatorio_mais_recente: `n-a`
+- estado_do_gate: `hold`
+- ultima_auditoria: `R02`
+- veredito_atual: `hold`
+- relatorio_mais_recente: [RELATORIO-AUDITORIA-F3-R02](./auditorias/RELATORIO-AUDITORIA-F3-R02.md)
 - log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 
@@ -29,7 +29,7 @@ Todos os 7 templates validados nos 3 breakpoints com fundo tematico correto, con
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F3-01 | Regressao Visual e Conformidade | Validar fundo tematico, contraste WCAG AA e conformidade BB em todos os templates e breakpoints | nenhuma | todo | [EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md](./EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md) |
+| EPIC-F3-01 | Regressao Visual e Conformidade | Validar fundo tematico, contraste WCAG AA e conformidade BB em todos os templates e breakpoints | nenhuma | active | [EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md](./EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md) |
 
 ## Dependencias entre Epicos
 
@@ -58,8 +58,8 @@ Todos os 7 templates validados nos 3 breakpoints com fundo tematico correto, con
 - [ ] amarelo BB (#FCFC30) presente em todos os templates
 - [ ] tagline BB presente no rodape de todos os templates
 - [ ] nenhuma cor fora do catalogo do Manual BB usada no fundo
-- [ ] fluxo PRESENTING → ACTIVE → COMPLETED sem regressao em todos os templates
-- [ ] gate de auditoria preparado para futura rodada em `auditorias/`
+- [x] fluxo PRESENTING → ACTIVE → COMPLETED sem regressao em todos os templates
+- [x] gate de auditoria formal executado em `auditorias/RELATORIO-AUDITORIA-F3-R02.md`
 
 ## Navegacao Rapida
 

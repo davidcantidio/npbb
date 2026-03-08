@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -30,15 +30,15 @@ Relatorio de QA com 21 combinacoes (7 templates × 3 breakpoints) validadas, zer
 - [ ] nenhuma falha de contraste WCAG AA
 - [ ] amarelo BB presente em todos os templates
 - [ ] tagline BB presente no rodape de todos os templates
-- [ ] fluxo de gamificacao funcional em todos os templates
+- [x] fluxo de gamificacao funcional em todos os templates
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-01-001 | Validar Fundo Tematico Cross-Template | Verificar que cada template exibe gradiente e overlay corretos em 3 breakpoints | 5 | todo | [ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md](./issues/ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md) |
+| ISSUE-F3-01-001 | Validar Fundo Tematico Cross-Template | Verificar que cada template exibe gradiente e overlay corretos em 3 breakpoints | 5 | done | [ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md](./issues/ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md) |
 | ISSUE-F3-01-002 | Validar Contraste WCAG AA | Verificar contraste minimo do card e rodape contra fundo em todos os templates | 3 | todo | [ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md](./issues/ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md) |
-| ISSUE-F3-01-003 | Validar Gamificacao no Novo Layout | Verificar fluxo PRESENTING-ACTIVE-COMPLETED sem regressao em todos os templates | 3 | todo | [ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md](./issues/ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md) |
+| ISSUE-F3-01-003 | Validar Gamificacao no Novo Layout | Verificar fluxo PRESENTING-ACTIVE-COMPLETED sem regressao em todos os templates | 3 | done | [ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md](./issues/ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md) |
 
 ## Artifact Minimo do Epico
 

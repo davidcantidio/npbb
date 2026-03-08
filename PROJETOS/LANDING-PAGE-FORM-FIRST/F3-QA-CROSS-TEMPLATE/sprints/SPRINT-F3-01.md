@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F3-01.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -22,7 +22,7 @@ Validar sistematicamente o novo layout form-only: fundo tematico em 7 templates 
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F3-01-001 | Validar Fundo Tematico Cross-Template | 5 | todo | [ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md](../issues/ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md) |
+| ISSUE-F3-01-001 | Validar Fundo Tematico Cross-Template | 5 | done | [ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md](../issues/ISSUE-F3-01-001-VALIDAR-FUNDO-TEMATICO.md) |
 | ISSUE-F3-01-002 | Validar Contraste WCAG AA | 3 | todo | [ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md](../issues/ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md) |
 | ISSUE-F3-01-003 | Validar Gamificacao no Novo Layout | 3 | done | [ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md](../issues/ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md) |
 
@@ -34,8 +34,8 @@ Validar sistematicamente o novo layout form-only: fundo tematico em 7 templates 
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes: sprint conclui quando o relatorio de QA cross-template esta completo e sem bloqueios criticos
+- decisao: em andamento
+- observacoes: sprint permanece aberta ate o fechamento canonico da `ISSUE-F3-01-002` e a reconciliacao dos artefatos declarados pela `ISSUE-F3-01-003`
 
 ## Navegacao Rapida
 

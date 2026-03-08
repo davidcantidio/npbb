@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md"
 version: "1.1"
-status: "done"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -41,6 +41,7 @@ A view publica da landing page exibe apenas o fundo tematico, o card do formular
 | ISSUE-F1-03-001 | Remover Blocos Legados | Remover Header, HeroContextCard e AboutEventCard da view publica | 3 | done | [ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS.md](./issues/ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS.md) |
 | ISSUE-F1-03-002 | Reposicionar GamificacaoBlock | Mover GamificacaoBlock para abaixo do FormCard com mesma largura maxima | 3 | done | [ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md](./issues/ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK.md) |
 | ISSUE-F1-03-003 | Integrar Layout Form-Only | Montar o LandingPageView com os componentes novos em Flexbox de coluna unica | 3 | done | [ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md](./issues/ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY.md) |
+| ISSUE-F1-03-004 | Alinhar Cor de Rodape `esporte_radical` ao Contrato | Corrigir divergencia de contrato entre implementacao, PRD e teste na cor do rodape | 2 | todo | [ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md](./issues/ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md) |
 
 ## Artifact Minimo do Epico
 
@@ -51,6 +52,11 @@ A view publica da landing page exibe apenas o fundo tematico, o card do formular
 - a integracao final removeu o runtime legado, mas ainda consome nomes herdados de hero em partes do contrato visual compartilhado
 - a proxima refacao desta etapa deve alinhar `LandingPageView`, `FormCard` e `landingStyle.tsx` ao paradigma form-only sem reintroduzir qualquer bloco legado
 - o criterio de encerramento tecnico desta limpeza e: nenhum componente ativo da landing depender de campo, prop ou tipo cuja semantica ainda descreva hero, grid lateral ou card de contexto removido
+
+## Follow-up de Auditoria F1-R01
+
+- gate em `hold` ate conclusao da issue bloqueante `ISSUE-F1-03-004`
+- origem do follow-up: `auditorias/RELATORIO-AUDITORIA-F1-R01.md`
 
 ## Dependencias
 
@@ -65,4 +71,5 @@ A view publica da landing page exibe apenas o fundo tematico, o card do formular
 - `[[./issues/ISSUE-F1-03-001-REMOVER-BLOCOS-LEGADOS]]`
 - `[[./issues/ISSUE-F1-03-002-REPOSICIONAR-GAMIFICACAO-BLOCK]]`
 - `[[./issues/ISSUE-F1-03-003-INTEGRAR-LAYOUT-FORM-ONLY]]`
+- `[[./issues/ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO]]`
 - `[[../PRD-LANDING-PAGE-FORM-FIRST]]`

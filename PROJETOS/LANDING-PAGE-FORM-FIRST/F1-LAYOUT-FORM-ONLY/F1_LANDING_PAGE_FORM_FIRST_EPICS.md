@@ -18,10 +18,10 @@ O novo layout renderiza corretamente nos 7 templates, o formulario funciona sem 
 
 ## Gate de Auditoria da Fase
 
-- estado_do_gate: `not_ready`
-- ultima_auditoria: `nenhuma`
-- veredito_atual: `n-a`
-- relatorio_mais_recente: `n-a`
+- estado_do_gate: `hold`
+- ultima_auditoria: `R01`
+- veredito_atual: `hold`
+- relatorio_mais_recente: [RELATORIO-AUDITORIA-F1-R01](./auditorias/RELATORIO-AUDITORIA-F1-R01.md)
 - log_do_projeto: [AUDIT-LOG](../AUDIT-LOG.md)
 - convencao_de_relatorios: [README](./auditorias/README.md)
 
@@ -31,7 +31,7 @@ O novo layout renderiza corretamente nos 7 templates, o formulario funciona sem 
 |---|---|---|---|---|---|
 | EPIC-F1-01 | Fundo Tematico e Container Principal | Criar o wrapper FullPageBackground e adaptar renderGraphicOverlay como layer de fundo fixa | nenhuma | done | [EPIC-F1-01-FUNDO-TEMATICO-E-CONTAINER.md](./EPIC-F1-01-FUNDO-TEMATICO-E-CONTAINER.md) |
 | EPIC-F1-02 | Card do Formulario e Rodape Minimo | Criar o FormCard centralizado e o MinimalFooter | nenhuma | done | [EPIC-F1-02-CARD-FORMULARIO-E-RODAPE.md](./EPIC-F1-02-CARD-FORMULARIO-E-RODAPE.md) |
-| EPIC-F1-03 | Remocao de Blocos Legados e Integracao | Remover header, hero, about da view publica; reposicionar GamificacaoBlock; integrar todos os componentes novos em LandingPageView | EPIC-F1-01, EPIC-F1-02 | done | [EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md](./EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md) |
+| EPIC-F1-03 | Remocao de Blocos Legados e Integracao | Remover header, hero, about da view publica; reposicionar GamificacaoBlock; integrar todos os componentes novos em LandingPageView | EPIC-F1-01, EPIC-F1-02 | active | [EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md](./EPIC-F1-03-REMOCAO-BLOCOS-E-INTEGRACAO.md) |
 
 ## Dependencias entre Epicos
 
@@ -74,7 +74,11 @@ EPIC-F1-02 ──┘
 - [x] GamificacaoBlock posicionado abaixo do FormCard com mesma largura maxima
 - [x] formulario funcional sem regressao (submit, reset, estados)
 - [x] layout responsivo em 375px, 768px e 1280px
-- [ ] gate de auditoria preparado para futura rodada em `auditorias/`
+- [x] gate de auditoria preparado para futura rodada em `auditorias/`
+
+## Follow-up Bloqueante da Auditoria F1-R01
+
+- [ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md](./issues/ISSUE-F1-03-004-ALINHAR-COR-RODAPE-ESPORTE-RADICAL-E-CONTRATO.md)
 
 ## Estado Atual vs Refacao Necessaria
 

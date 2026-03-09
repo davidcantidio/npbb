@@ -1373,7 +1373,7 @@ def preview_batch(
             result = _read_xlsx_preview(batch.arquivo_bronze)
     except Exception:
         raise_http_error(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             code="PREVIEW_PARSE_ERROR",
             message="Nao foi possivel ler o arquivo do lote para gerar o preview.",
         )

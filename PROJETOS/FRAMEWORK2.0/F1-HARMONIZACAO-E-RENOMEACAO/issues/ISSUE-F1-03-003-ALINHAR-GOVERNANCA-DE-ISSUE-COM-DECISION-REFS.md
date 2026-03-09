@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-09"
 task_instruction_mode: "optional"
@@ -33,14 +33,14 @@ regras de task instructions por referencia a `SPEC-TASK-INSTRUCTIONS.md`.
 
 ## Definition of Done da Issue
 
-- [ ] `decision_refs` incluido no template
-- [ ] duplicacao de regra de task instruction removida
+- [x] `decision_refs` incluido no template
+- [x] duplicacao de regra de task instruction removida
 
 ## Tasks Decupadas
 
-- [ ] T1: atualizar template de issue em `GOV-ISSUE-FIRST.md`
-- [ ] T2: substituir copia de criterios em `GOV-SCRUM.md`
-- [ ] T3: revisar referencias finais
+- [x] T1: atualizar template de issue em `GOV-ISSUE-FIRST.md`
+- [x] T2: substituir copia de criterios em `GOV-SCRUM.md`
+- [x] T3: revisar referencias finais
 
 ## Arquivos Reais Envolvidos
 

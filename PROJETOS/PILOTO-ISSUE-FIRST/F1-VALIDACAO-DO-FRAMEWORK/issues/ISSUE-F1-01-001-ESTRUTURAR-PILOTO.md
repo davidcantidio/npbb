@@ -20,7 +20,7 @@ Esta issue cobre a criacao da base documental do piloto: PRD, protocolo de decis
 
 - Red: verificar se o piloto ainda nao oferece um caminho claro `PRD -> fase -> epico -> issue`.
 - Green: criar os arquivos e os links minimos para habilitar essa navegacao.
-- Refactor: revisar nomes, caminhos e status para manter consistencia com `PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md`.
+- Refactor: revisar nomes, caminhos e status para manter consistencia com `PROJETOS/COMUM/GOV-ISSUE-FIRST.md`.
 
 ## Criterios de Aceitacao
 
@@ -44,8 +44,8 @@ Esta issue cobre a criacao da base documental do piloto: PRD, protocolo de decis
 
 ## Arquivos Reais Envolvidos
 
-- `PROJETOS/COMUM/SCRUM-GOV.md`
-- `PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md`
+- `PROJETOS/COMUM/GOV-SCRUM.md`
+- `PROJETOS/COMUM/GOV-ISSUE-FIRST.md`
 - `PROJETOS/PILOTO-ISSUE-FIRST/PRD-PILOTO-ISSUE-FIRST.md`
 - `PROJETOS/PILOTO-ISSUE-FIRST/F1-VALIDACAO-DO-FRAMEWORK/F1_PILOTO_ISSUE_FIRST_EPICS.md`
 - `PROJETOS/PILOTO-ISSUE-FIRST/F1-VALIDACAO-DO-FRAMEWORK/EPIC-F1-01-VALIDAR-FLUXO-ISSUE-FIRST.md`

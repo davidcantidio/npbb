@@ -35,7 +35,7 @@ Registrar decisoes especificas do projeto `dashboard-leads-etaria` quando houver
 
 ## Regras Locais
 
-- usar `PROJETOS/COMUM/DECISION-PROTOCOL.md` como taxonomia base
+- usar `PROJETOS/COMUM/GOV-DECISOES.md` como taxonomia base
 - registrar neste arquivo apenas decisoes especificas do projeto
 - qualquer mudanca estrutural deve referenciar o documento comum correspondente
 - decisoes sobre contratos de API ou thresholds de cobertura devem apontar para o PRD do projeto

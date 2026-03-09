@@ -34,4 +34,4 @@ Abrir a pagina de analise etaria com base tipada e transparência inicial sobre 
 ## Encerramento
 
 - decisao: pendente
-- observacoes: manter a sprint alinhada aos limites de `SPRINT-LIMITS.md`
+- observacoes: manter a sprint alinhada aos limites de `GOV-SPRINT-LIMITES.md`

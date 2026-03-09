@@ -35,4 +35,4 @@ Fechar a base de dados do dashboard: modelo Lead, migration e schemas de respost
 ## Encerramento
 
 - decisao: pendente
-- observacoes: manter a sprint alinhada aos limites de `SPRINT-LIMITS.md`
+- observacoes: manter a sprint alinhada aos limites de `GOV-SPRINT-LIMITES.md`

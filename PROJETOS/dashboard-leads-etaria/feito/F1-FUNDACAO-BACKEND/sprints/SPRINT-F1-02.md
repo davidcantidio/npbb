@@ -34,4 +34,4 @@ Entregar o endpoint de analise etaria com servico, rota e cobertura de testes.
 ## Encerramento
 
 - decisao: pendente
-- observacoes: manter a sprint alinhada aos limites de `SPRINT-LIMITS.md`
+- observacoes: manter a sprint alinhada aos limites de `GOV-SPRINT-LIMITES.md`

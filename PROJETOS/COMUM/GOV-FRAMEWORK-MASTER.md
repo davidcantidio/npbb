@@ -1,0 +1,99 @@
+---
+doc_id: "GOV-FRAMEWORK-MASTER.md"
+version: "2.0"
+status: "active"
+owner: "PM"
+last_updated: "2026-03-09"
+---
+
+# GOV-FRAMEWORK-MASTER
+
+> Este documento e o mapa de alto nivel do framework. As regras detalhadas de intake,
+> scrum, auditoria, limites e execucao vivem em documentos especializados e devem ser
+> referenciadas, nao copiadas.
+
+## 1. Fluxo Canonico
+
+```text
+PROJETOS/
+  boot-prompt.md
+  COMUM/
+    GOV-FRAMEWORK-MASTER.md
+    GOV-SCRUM.md
+    GOV-INTAKE.md
+    GOV-AUDITORIA.md
+    GOV-SPRINT-LIMITES.md
+    GOV-WORK-ORDER.md
+    GOV-DECISOES.md
+    GOV-ISSUE-FIRST.md
+    SPEC-TASK-INSTRUCTIONS.md
+    SPEC-ANTI-MONOLITO.md
+    TEMPLATE-*.md
+    PROMPT-*.md
+    SESSION-*.md
+  <PROJETO>/
+    INTAKE-<PROJETO>.md
+    PRD-<PROJETO>.md
+    AUDIT-LOG.md
+    feito/
+    F<N>-<NOME>/
+      F<N>_<PROJETO>_EPICS.md
+      EPIC-F<N>-<NN>-<NOME>.md
+      issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md
+      sprints/SPRINT-F<N>-<NN>.md
+      auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md
+```
+
+`Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias`
+
+## 2. Premissas do Repositorio
+
+- projetos ativos seguem apenas o padrao `issue-first`
+- todo projeto ativo precisa ter `INTAKE-<PROJETO>.md`, `PRD-<PROJETO>.md` e `AUDIT-LOG.md`
+- artefatos em `PROJETOS/COMUM/` usam prefixos funcionais: `GOV-`, `TEMPLATE-`, `PROMPT-`, `SESSION-`, `SPEC-`
+- `done` e status documental; arquivamento fisico continua em `feito/`
+- `BLOQUEADO` e `BLOCKED_LIMIT` sao estados operacionais e nao status canonicos persistidos
+
+## 3. Fontes de Verdade por Tema
+
+| Tema | Fonte primaria |
+|---|---|
+| ciclo de trabalho, status e DoD | `GOV-SCRUM.md` |
+| gate `Intake -> PRD` e taxonomias | `GOV-INTAKE.md` |
+| auditoria de fase, vereditos e remediacao | `GOV-AUDITORIA.md` |
+| limites de sprint e tamanho | `GOV-SPRINT-LIMITES.md` |
+| contratos de execucao com side effect | `GOV-WORK-ORDER.md` |
+| estrutura de fase, epico, issue e sprint | `GOV-ISSUE-FIRST.md` |
+| rules de `task_instruction_mode` | `SPEC-TASK-INSTRUCTIONS.md` |
+| thresholds anti-monolito | `SPEC-ANTI-MONOLITO.md` |
+| decisoes estruturais compartilhadas | `GOV-DECISOES.md` |
+| operacao interativa em chat | `SESSION-MAPA.md` |
+
+## 4. Artefatos Canonicos do Projeto
+
+| Artefato | Nome |
+|---|---|
+| intake principal | `INTAKE-<PROJETO>.md` |
+| intake derivado | `INTAKE-<PROJETO>-<SLUG>.md` |
+| PRD | `PRD-<PROJETO>.md` |
+| log de auditoria | `AUDIT-LOG.md` |
+| manifesto da fase | `F<N>_<PROJETO>_EPICS.md` |
+| manifesto do epico | `EPIC-F<N>-<NN>-<NOME>.md` |
+| issue | `ISSUE-F<N>-<NN>-<MMM>-<NOME>.md` |
+| sprint | `SPRINT-F<N>-<NN>.md` |
+| relatorio de auditoria | `RELATORIO-AUDITORIA-F<N>-R<NN>.md` |
+
+## 5. Modos de Operacao
+
+- `boot-prompt.md`: entrada para Cloud Agent autonomo; descobre a unidade elegivel e executa
+- `SESSION-MAPA.md`: entrada para chat interativo; o PM escolhe o prompt de sessao e acompanha as confirmacoes HITL
+
+## 6. Responsabilidade Deste Documento
+
+- descrever o mapa completo do framework
+- registrar quais documentos sao normativos para cada tema
+- evitar duplicacao de gate, veredito, checklist ou threshold ja definido em outro artefato
+
+Regras detalhadas de intake nao devem ser redefinidas aqui. Use `GOV-INTAKE.md`.
+Regras detalhadas de auditoria nao devem ser redefinidas aqui. Use `GOV-AUDITORIA.md`.
+Regras detalhadas de task instructions nao devem ser redefinidas aqui. Use `SPEC-TASK-INSTRUCTIONS.md`.

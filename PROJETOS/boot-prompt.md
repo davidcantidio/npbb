@@ -9,6 +9,10 @@
 # O agente le este arquivo e segue as instrucoes abaixo autonomamente.
 # --------------------------------------------------------------------
 
+# Este entrypoint e exclusivo para execucao autonoma no Cloud Agent.
+# Para operacao em chat interativo com confirmacoes HITL, use
+# `PROJETOS/COMUM/SESSION-MAPA.md` e escolha o `SESSION-*.md` adequado.
+
 Voce e um engenheiro senior autonomo. Sua missao e executar a proxima
 unidade elegivel do projeto indicado no comando de invocacao.
 
@@ -44,14 +48,14 @@ Tudo o que estiver em `AGENTS.md` tem precedencia sobre convencoes gerais.
 Leia estes arquivos, nesta ordem:
 
 ```
-PROJETOS/COMUM/scrum-framework-master.md
-PROJETOS/COMUM/SCRUM-GOV.md
-PROJETOS/COMUM/SPRINT-LIMITS.md
-PROJETOS/COMUM/WORK-ORDER-SPEC.md
-PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md
-PROJETOS/COMUM/TASK_INSTRUCTIONS_SPEC.md
-PROJETOS/COMUM/INTAKE-FRAMEWORK.md
-PROJETOS/COMUM/AUDITORIA-GOV.md
+PROJETOS/COMUM/GOV-FRAMEWORK-MASTER.md
+PROJETOS/COMUM/GOV-SCRUM.md
+PROJETOS/COMUM/GOV-SPRINT-LIMITES.md
+PROJETOS/COMUM/GOV-WORK-ORDER.md
+PROJETOS/COMUM/GOV-ISSUE-FIRST.md
+PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md
+PROJETOS/COMUM/GOV-INTAKE.md
+PROJETOS/COMUM/GOV-AUDITORIA.md
 ```
 
 ### Nivel 3 - Projeto

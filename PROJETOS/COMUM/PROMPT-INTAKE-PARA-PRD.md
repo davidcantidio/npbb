@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-INTAKE-PARA-PRD.md"
-version: "1.1"
+version: "2.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-08"
+last_updated: "2026-03-09"
 ---
 
 # Prompt Canonico - Intake para PRD
@@ -18,14 +18,10 @@ Voce e um engenheiro de produto responsavel por transformar um intake estruturad
 
 ### Leitura obrigatoria
 
-1. `AGENTS.md`
-2. `PROJETOS/COMUM/scrum-framework-master.md`
-3. `PROJETOS/COMUM/SCRUM-GOV.md`
-4. `PROJETOS/COMUM/WORK-ORDER-SPEC.md`
-5. `PROJETOS/COMUM/ISSUE-FIRST-TEMPLATES.md`
-6. `PROJETOS/COMUM/INTAKE-FRAMEWORK.md`
-7. `PROJETOS/<PROJETO>/INTAKE-*.md`
-8. `PROJETOS/<PROJETO>/DECISION-PROTOCOL.md`, se existir
+1. siga `PROJETOS/boot-prompt.md`, Niveis 1 e 2
+2. leia o `INTAKE-*.md` informado
+3. se o projeto ja existir, leia tambem `PRD-*.md`, `AUDIT-LOG.md` e `DECISION-PROTOCOL.md`, quando existirem
+4. use `PROJETOS/COMUM/GOV-INTAKE.md` como fonte unica do gate `Intake -> PRD`
 
 ### Passagem 1 - Validacao do intake
 
@@ -52,6 +48,7 @@ So execute esta passagem se o intake estiver pronto.
 - preserve restricoes, nao-objetivos e riscos do intake
 - traduza o contexto em fases, epicos e criterios de fatiamento coerentes
 - inclua referencia explicita ao arquivo `INTAKE-*.md` usado como origem
+- se o intake estiver em `source_mode: backfilled`, preserve a rastreabilidade da evidencia usada no backfill
 - se `intake_kind` for `problem`, `refactor` ou `audit-remediation`, produza um PRD de remediacao controlada, com escopo minimo necessario, riscos, rollback e criterios de validacao
 - nao reclassifique remediation como novo produto sem justificativa documentada
 

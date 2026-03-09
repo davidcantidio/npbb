@@ -35,4 +35,4 @@ Estruturar o modulo dashboard no frontend com manifesto, layout, home e rotas pr
 ## Encerramento
 
 - decisao: pendente
-- observacoes: manter a sprint alinhada aos limites de `SPRINT-LIMITS.md`
+- observacoes: manter a sprint alinhada aos limites de `GOV-SPRINT-LIMITES.md`

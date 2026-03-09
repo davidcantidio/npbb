@@ -12,7 +12,7 @@ last_updated: "2026-03-08"
 
 - [Intake](./INTAKE-DASHBOARD-LEADS-ETARIA.md)
 - [PRD](./PRD-DASHBOARD-LEADS-ETARIA.md)
-- [Framework de Auditoria](../COMUM/AUDITORIA-GOV.md)
+- [Framework de Auditoria](../COMUM/GOV-AUDITORIA.md)
 
 ## Politica
 

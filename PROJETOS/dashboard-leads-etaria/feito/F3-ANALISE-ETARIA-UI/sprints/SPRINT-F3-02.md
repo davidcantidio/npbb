@@ -34,4 +34,4 @@ Adicionar KPI cards, grafico e filtros principais na pagina de analise etaria.
 ## Encerramento
 
 - decisao: pendente
-- observacoes: manter a sprint alinhada aos limites de `SPRINT-LIMITS.md`
+- observacoes: manter a sprint alinhada aos limites de `GOV-SPRINT-LIMITES.md`

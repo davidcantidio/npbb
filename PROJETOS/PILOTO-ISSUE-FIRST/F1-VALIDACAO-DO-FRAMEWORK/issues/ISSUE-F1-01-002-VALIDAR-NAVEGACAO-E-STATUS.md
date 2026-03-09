@@ -20,7 +20,7 @@ Esta issue foca na camada de consulta: links Markdown, wikilinks qualificados, m
 
 - Red: identificar pontos de ambiguidade na consulta quando o leitor sai do epico para a sprint ou para a issue.
 - Green: criar uma sprint com tabela de issues e links qualificados, sem duplicar criterios ou tarefas.
-- Refactor: revisar nomes e status para garantir alinhamento com `SPRINT-LIMITS.md` e `WORK-ORDER-SPEC.md`.
+- Refactor: revisar nomes e status para garantir alinhamento com `GOV-SPRINT-LIMITES.md` e `GOV-WORK-ORDER.md`.
 
 ## Criterios de Aceitacao
 
@@ -43,8 +43,8 @@ Esta issue foca na camada de consulta: links Markdown, wikilinks qualificados, m
 
 ## Arquivos Reais Envolvidos
 
-- `PROJETOS/COMUM/SPRINT-LIMITS.md`
-- `PROJETOS/COMUM/WORK-ORDER-SPEC.md`
+- `PROJETOS/COMUM/GOV-SPRINT-LIMITES.md`
+- `PROJETOS/COMUM/GOV-WORK-ORDER.md`
 - `PROJETOS/PILOTO-ISSUE-FIRST/F1-VALIDACAO-DO-FRAMEWORK/EPIC-F1-01-VALIDAR-FLUXO-ISSUE-FIRST.md`
 - `PROJETOS/PILOTO-ISSUE-FIRST/F1-VALIDACAO-DO-FRAMEWORK/issues/ISSUE-F1-01-001-ESTRUTURAR-PILOTO.md`
 - `PROJETOS/PILOTO-ISSUE-FIRST/F1-VALIDACAO-DO-FRAMEWORK/sprints/SPRINT-F1-01.md`

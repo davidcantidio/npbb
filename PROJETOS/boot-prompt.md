@@ -230,4 +230,3 @@ Se for abrir PR:
 
 - titulo sugerido: `feat: <nome da issue> (<ISSUE-ID>)`
 - corpo: checklist dos criterios de aceitacao da issue ou checklist do relatorio de auditoria
-- nunca commitar direto na `main`

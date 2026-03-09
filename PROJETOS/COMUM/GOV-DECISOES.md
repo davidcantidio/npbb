@@ -56,7 +56,7 @@ decision:
 
 | Decision ID | Data | Escopo | Risk Tier | Status | Decisao |
 |---|---|---|---|---|---|
-| `dec-2026-03-09-001` | `2026-03-09` | `framework/planning` | `R1` | `APPROVED` | `PROMPT-PLANEJAR-FASE.md` e complementar ao fluxo de `SESSION-PLANEJAR-PROJETO.md`; nao sera depreciado. |
+| `dec-2026-03-09-001` | `2026-03-09` | `framework/planning` | `R1` | `APPROVED` | `PROMPT-PLANEJAR-FASE.md` permanece como artefato complementar consumido por `SESSION-PLANEJAR-PROJETO.md`; nao deve substituir o fluxo de sessao e nao esta depreciado. |
 
 ## Notas de Uso
 

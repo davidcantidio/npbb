@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-06-001-INSERIR-CHECKLIST-DE-TRANSICAO-DE-GATE-NO-TEMPLATE-DE-FASE.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-09"
 task_instruction_mode: "optional"
@@ -33,14 +33,14 @@ incluir checklist verificavel de `not_ready -> pending -> hold/approved`.
 
 ## Definition of Done da Issue
 
-- [ ] checklist adicionado ao template de fase
-- [ ] checklist coerente com a governanca de auditoria
+- [x] checklist adicionado ao template de fase
+- [x] checklist coerente com a governanca de auditoria
 
 ## Tasks Decupadas
 
-- [ ] T1: revisar estados de gate atuais
-- [ ] T2: inserir checklist verificavel no template de fase
-- [ ] T3: revisar consistencia com `GOV-AUDITORIA.md`
+- [x] T1: revisar estados de gate atuais
+- [x] T2: inserir checklist verificavel no template de fase
+- [x] T3: revisar consistencia com `GOV-AUDITORIA.md`
 
 ## Arquivos Reais Envolvidos
 

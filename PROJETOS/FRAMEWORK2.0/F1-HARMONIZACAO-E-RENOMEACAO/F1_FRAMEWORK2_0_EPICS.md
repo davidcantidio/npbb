@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-09"
-audit_gate: "not_ready"
+audit_gate: "hold"
 ---
 
 # Epicos - FRAMEWORK2.0 / F1 - HARMONIZACAO E RENOMEACAO
@@ -22,8 +22,8 @@ template de fase possui checklist de transicao de gate.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `hold`
+- ultima_auditoria: `F1-R01`
 
 ## Checklist de Transicao de Gate
 
@@ -33,9 +33,9 @@ template de fase possui checklist de transicao de gate.
 - [ ] DoD da fase foi revisado
 
 ### `pending -> hold/approved`
-- [ ] existe `RELATORIO-AUDITORIA-F1-R01.md`
-- [ ] `AUDIT-LOG.md` foi atualizado
-- [ ] veredito e estado do gate estao coerentes
+- [x] existe `RELATORIO-AUDITORIA-F1-R01.md`
+- [x] `AUDIT-LOG.md` foi atualizado
+- [x] veredito e estado do gate estao coerentes
 
 ## Epicos
 
@@ -43,7 +43,7 @@ template de fase possui checklist de transicao de gate.
 |---|---|---|---|---|---|
 | EPIC-F1-01 | Renomeacao para Convencao de Prefixo | Renomear `PROJETOS/COMUM/` e atualizar referencias obrigatorias. | nenhuma | done | [EPIC-F1-01-RENOMEACAO-PARA-CONVENCAO-DE-PREFIXO.md](./EPIC-F1-01-RENOMEACAO-PARA-CONVENCAO-DE-PREFIXO.md) |
 | EPIC-F1-02 | Deprecacao do Legado | Retirar o legado duplicado do caminho de leitura canonica. | EPIC-F1-01 | done | [EPIC-F1-02-DEPRECACAO-DO-LEGADO.md](./EPIC-F1-02-DEPRECACAO-DO-LEGADO.md) |
-| EPIC-F1-03 | Unificacao de Responsabilidades e Eliminacao de Drift | Consolidar regras, links e referencias normativas. | EPIC-F1-01 | active | [EPIC-F1-03-UNIFICACAO-DE-RESPONSABILIDADES-E-ELIMINACAO-DE-DRIFT.md](./EPIC-F1-03-UNIFICACAO-DE-RESPONSABILIDADES-E-ELIMINACAO-DE-DRIFT.md) |
+| EPIC-F1-03 | Unificacao de Responsabilidades e Eliminacao de Drift | Consolidar regras, links e referencias normativas. | EPIC-F1-01 | done | [EPIC-F1-03-UNIFICACAO-DE-RESPONSABILIDADES-E-ELIMINACAO-DE-DRIFT.md](./EPIC-F1-03-UNIFICACAO-DE-RESPONSABILIDADES-E-ELIMINACAO-DE-DRIFT.md) |
 | EPIC-F1-04 | Integracao de PROMPT-PLANEJAR-FASE | Registrar a decisao estrutural sobre o prompt de planejamento e alinhar a sessao correspondente. | EPIC-F1-01 | todo | [EPIC-F1-04-INTEGRACAO-DE-PROMPT-PLANEJAR-FASE.md](./EPIC-F1-04-INTEGRACAO-DE-PROMPT-PLANEJAR-FASE.md) |
 | EPIC-F1-05 | Regra Operacional para Backfilled | Fechar a lacuna de intakes retroativos. | EPIC-F1-01 | todo | [EPIC-F1-05-REGRA-OPERACIONAL-PARA-BACKFILLED.md](./EPIC-F1-05-REGRA-OPERACIONAL-PARA-BACKFILLED.md) |
 | EPIC-F1-06 | Checklist de Transicao de Gate | Levar o checklist de gate para o template canonico de fase. | EPIC-F1-01 | todo | [EPIC-F1-06-CHECKLIST-DE-TRANSICAO-DE-GATE.md](./EPIC-F1-06-CHECKLIST-DE-TRANSICAO-DE-GATE.md) |

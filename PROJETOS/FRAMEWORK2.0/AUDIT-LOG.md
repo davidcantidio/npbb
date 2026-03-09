@@ -26,7 +26,7 @@ last_updated: "2026-03-09"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1 - HARMONIZACAO-E-RENOMEACAO | not_ready | n-a | n-a | backlog inicial criado |
+| F1 - HARMONIZACAO-E-RENOMEACAO | hold | F1-R01 | [RELATORIO-AUDITORIA-F1-R01.md](./F1-HARMONIZACAO-E-RENOMEACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | hold por lacuna material de rastreabilidade entre entrega e status documental |
 | F2 - ANTI-MONOLITH-ENFORCEMENT | not_ready | n-a | n-a | depende de F1-01 concluido |
 | F3 - PROMPTS-DE-SESSAO | not_ready | n-a | n-a | depende de F1 concluida |
 
@@ -34,4 +34,4 @@ last_updated: "2026-03-09"
 
 | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| nenhum | - | - | - | - | - | - | - | - | - | - | - | - |
+| F1-R01 | F1 - HARMONIZACAO-E-RENOMEACAO | 2026-03-09 | GPT-5 Codex | fe9ce4d9ce58650a4813362519c06f4aebd1ad76 | none | hold | done | [RELATORIO-AUDITORIA-F1-R01.md](./F1-HARMONIZACAO-E-RENOMEACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | scope-drift(high); architecture-drift(high); architecture-drift(medium) | issue-local | ISSUE-F1-04-001, ISSUE-F1-04-002, ISSUE-F1-05-001, SPRINT-F1-01/02/03 sync | none |

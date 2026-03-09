@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "COMUM/SESSION-IMPLEMENTAR-ISSUE.md",
+                "file": "COMUM/PROMPT-AUDITORIA.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "SESSION-IMPLEMENTAR-ISSUE"
+              "title": "PROMPT-AUDITORIA"
             }
           }
         ]
@@ -183,11 +183,12 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "140fb961b99275e4",
+  "active": "aa76d1e578b19295",
   "lastOpenFiles": [
+    "FRAMEWORK2.0/F1-HARMONIZACAO-E-RENOMEACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md",
+    "COMUM/SESSION-IMPLEMENTAR-ISSUE.md",
     "FRAMEWORK2.0/SESSION-IMPLEMENTAR-ISSUE.md",
     "COMUM/SESSION-MAPA.md",
-    "COMUM/SESSION-IMPLEMENTAR-ISSUE.md",
     "COMUM/GOV-ISSUE-FIRST.md",
     "Sem título.base",
     "FRAMEWORK2.0/SESSION-PLAN-Projeto-completo.md",
@@ -211,7 +212,6 @@
     "FRAMEWORK2.0/F2-ANTI-MONOLITH-ENFORCEMENT/issues/ISSUE-F2-01-001-DEFINIR-THRESHOLDS-ANTI-MONOLITO-POR-LINGUAGEM.md",
     "FRAMEWORK2.0/F1-HARMONIZACAO-E-RENOMEACAO/issues/ISSUE-F1-06-001-INSERIR-CHECKLIST-DE-TRANSICAO-DE-GATE-NO-TEMPLATE-DE-FASE.md",
     "FRAMEWORK2.0/F1-HARMONIZACAO-E-RENOMEACAO/issues/ISSUE-F1-05-001-DOCUMENTAR-REGRA-OPERACIONAL-DE-BACKFILLED-EM-GOV-INTAKE.md",
-    "FRAMEWORK2.0/F1-HARMONIZACAO-E-RENOMEACAO/issues/ISSUE-F1-04-002-AJUSTAR-SESSION-PLANEJAR-PROJETO-AO-CAMINHO-DECIDIDO.md",
     "FRAMEWORK2.0/F3-PROMPTS-DE-SESSAO/sprints",
     "FRAMEWORK2.0/F3-PROMPTS-DE-SESSAO/issues",
     "FRAMEWORK2.0/F3-PROMPTS-DE-SESSAO/auditorias",

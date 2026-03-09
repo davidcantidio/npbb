@@ -6,6 +6,7 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
+from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -64,6 +65,18 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
 
 
 CSV_CONTENT = b"nome,email,cpf\nAlice,alice@ex.com,12345678901\nBob,bob@ex.com,98765432100\n"
+INVALID_XLSX_CONTENT = b"nao-e-um-xlsx-valido"
+
+
+def _make_xlsx_bytes() -> io.BytesIO:
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["nome", "email"])
+    ws.append(["Alice", "alice@ex.com"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
 
 
 class TestPostLeadsBatches:
@@ -89,19 +102,16 @@ class TestPostLeadsBatches:
         with Session(engine) as s:
             headers = _auth_header(client, s)
 
-        from openpyxl import Workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.append(["nome", "email"])
-        ws.append(["Alice", "alice@ex.com"])
-        buf = io.BytesIO()
-        wb.save(buf)
-        buf.seek(0)
-
         resp = client.post(
             "/leads/batches",
             headers=headers,
-            files={"file": ("leads.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "leads.xlsx",
+                    _make_xlsx_bytes(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
             data={"plataforma_origem": "manual", "data_envio": "2026-03-01T10:00:00"},
         )
         assert resp.status_code == 201
@@ -189,6 +199,56 @@ class TestGetBatchPreview:
         assert body["headers"] == ["nome", "email", "cpf"]
         assert len(body["rows"]) == 2
         assert body["total_rows"] == 2
+
+    def test_xlsx_preview(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        upload_resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={
+                "file": (
+                    "leads.xlsx",
+                    _make_xlsx_bytes(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            data={"plataforma_origem": "manual", "data_envio": "2026-03-01T10:00:00"},
+        )
+        batch_id = upload_resp.json()["id"]
+
+        resp = client.get(f"/leads/batches/{batch_id}/preview", headers=headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["headers"] == ["nome", "email"]
+        assert body["rows"] == [["Alice", "alice@ex.com"]]
+        assert body["total_rows"] == 1
+
+    def test_invalid_xlsx_preview_returns_parse_error(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        upload_resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={
+                "file": (
+                    "corrompido.xlsx",
+                    io.BytesIO(INVALID_XLSX_CONTENT),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            data={"plataforma_origem": "manual", "data_envio": "2026-03-01T10:00:00"},
+        )
+        batch_id = upload_resp.json()["id"]
+
+        resp = client.get(f"/leads/batches/{batch_id}/preview", headers=headers)
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == {
+            "code": "PREVIEW_PARSE_ERROR",
+            "message": "Nao foi possivel ler o arquivo do lote para gerar o preview.",
+        }
 
     def test_preview_not_found(self, client, engine):
         with Session(engine) as s:

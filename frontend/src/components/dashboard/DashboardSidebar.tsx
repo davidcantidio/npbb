@@ -40,7 +40,7 @@ export function DashboardSidebar({ entries }: DashboardSidebarProps) {
   const sections = useMemo(() => buildSections(entries), [entries]);
 
   return (
-    <Stack spacing={2}>
+    <Stack component="nav" spacing={2} aria-label="Navegacao do dashboard">
       <Box>
         <Typography variant="subtitle2" fontWeight={900} letterSpacing={0.2}>
           Painel de analises

@@ -59,10 +59,17 @@ type UseAgeAnalysisFiltersResult = {
   queryFilters: AgeAnalysisFiltersQuery;
   invalidDateRange: boolean;
   setDraftFilters: (value: AgeAnalysisFilterFormValues) => void;
-  handleApplyFilters: () => void;
   handleClearFilters: () => void;
   handleSelectEvento: (eventoId: number) => void;
 };
+
+function areFiltersEqual(left: AgeAnalysisFilterFormValues, right: AgeAnalysisFilterFormValues) {
+  return (
+    left.evento_id === right.evento_id &&
+    left.data_inicio === right.data_inicio &&
+    left.data_fim === right.data_fim
+  );
+}
 
 export function useAgeAnalysisFilters(): UseAgeAnalysisFiltersResult {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,13 +80,13 @@ export function useAgeAnalysisFilters(): UseAgeAnalysisFiltersResult {
   const invalidDateRange = hasDateRangeError(draftFilters);
 
   useEffect(() => {
-    setDraftFilters(appliedFilters);
+    setDraftFilters((current) => (areFiltersEqual(current, appliedFilters) ? current : appliedFilters));
   }, [appliedFilters]);
 
-  const handleApplyFilters = () => {
-    if (invalidDateRange) return;
+  useEffect(() => {
+    if (invalidDateRange || areFiltersEqual(draftFilters, appliedFilters)) return;
     setSearchParams(buildSearchParams(draftFilters), { replace: true });
-  };
+  }, [appliedFilters, draftFilters, invalidDateRange, setSearchParams]);
 
   const handleClearFilters = () => {
     setDraftFilters(EMPTY_FILTERS);
@@ -101,7 +108,6 @@ export function useAgeAnalysisFilters(): UseAgeAnalysisFiltersResult {
     queryFilters,
     invalidDateRange,
     setDraftFilters,
-    handleApplyFilters,
     handleClearFilters,
     handleSelectEvento,
   };

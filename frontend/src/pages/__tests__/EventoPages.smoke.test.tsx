@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -344,6 +344,24 @@ describe("Evento pages smoke", () => {
     expect(screen.getByTestId("landing-preview-badge")).toBeInTheDocument();
     expect(await screen.findByText(/Analytics da landing/i)).toBeInTheDocument();
     expect(screen.getByText(/Auditoria de customizacao/i)).toBeInTheDocument();
+    const previewHost = screen.getByTestId("event-lead-preview-host");
+    expect(previewHost).toHaveStyle({
+      position: "relative",
+      overflow: "hidden",
+    });
+    expect(within(previewHost).getByTestId("full-page-background-root")).toHaveAttribute(
+      "data-layer-mode",
+      "embedded",
+    );
+    expect(within(previewHost).getByTestId("full-page-background-layer")).toHaveStyle({
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+    });
+    expect(within(previewHost).getByTestId("full-page-overlay-layer")).toHaveStyle({
+      position: "absolute",
+      pointerEvents: "none",
+    });
 
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(mockedUpdateEventoFormConfig).toHaveBeenCalledTimes(1));

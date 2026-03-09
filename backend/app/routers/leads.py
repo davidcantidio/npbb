@@ -1366,10 +1366,17 @@ def preview_batch(
         )
     filename = batch.nome_arquivo_original or ""
     ext = Path(filename).suffix.lower()
-    if ext == ".csv":
-        result = _read_csv_preview(batch.arquivo_bronze)
-    else:
-        result = _read_xlsx_preview(batch.arquivo_bronze)
+    try:
+        if ext == ".csv":
+            result = _read_csv_preview(batch.arquivo_bronze)
+        else:
+            result = _read_xlsx_preview(batch.arquivo_bronze)
+    except Exception:
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code="PREVIEW_PARSE_ERROR",
+            message="Nao foi possivel ler o arquivo do lote para gerar o preview.",
+        )
     return LeadBatchPreviewResponse(**result)
 
 

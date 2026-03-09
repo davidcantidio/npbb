@@ -33,9 +33,16 @@ function getRenderedRowIds() {
     .map((row) => Number(row.getAttribute("data-testid")?.replace("events-age-table-row-", "")));
 }
 
+function getRowCells(eventId: number) {
+  const row = screen.getByTestId(`events-age-table-row-${eventId}`);
+  return within(row).getAllByRole("cell");
+}
+
 describe("EventsAgeTable", () => {
   it("renders all required fields from PRD section 3.2 and keeps extra columns", () => {
     render(<EventsAgeTable events={[buildEvent({})]} />);
+    const [eventCell, baseCell, clientesBbCell, naoClientesCell, , faixa18a25Cell, faixa26a40Cell, fora1840Cell, , faixaDominanteCell] =
+      getRowCells(1);
 
     expect(screen.getByRole("button", { name: "Evento" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Base" })).toBeInTheDocument();
@@ -48,14 +55,15 @@ describe("EventsAgeTable", () => {
     expect(screen.getByRole("button", { name: "Cobertura BB" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sem info" })).toBeInTheDocument();
 
-    expect(screen.getByText("Evento Alpha")).toBeInTheDocument();
-    expect(screen.getByText("Sao Paulo - SP")).toBeInTheDocument();
-    expect(screen.getByText("4 / 40,0%")).toBeInTheDocument();
-    expect(screen.getByText("6 / 60,0%")).toBeInTheDocument();
-    expect(screen.getByText("5 / 50,0%")).toBeInTheDocument();
-    expect(screen.getByText("3 / 30,0%")).toBeInTheDocument();
-    expect(screen.getByText("2 / 20,0%")).toBeInTheDocument();
-    expect(screen.getByText("18–25")).toBeInTheDocument();
+    expect(eventCell).toHaveTextContent("Evento Alpha");
+    expect(eventCell).toHaveTextContent("Sao Paulo - SP");
+    expect(baseCell).toHaveTextContent("10");
+    expect(clientesBbCell).toHaveTextContent(/4\s*\/\s*40,0%/);
+    expect(naoClientesCell).toHaveTextContent(/6\s*\/\s*60,0%/);
+    expect(faixa18a25Cell).toHaveTextContent(/5\s*\/\s*50,0%/);
+    expect(faixa26a40Cell).toHaveTextContent(/3\s*\/\s*30,0%/);
+    expect(fora1840Cell).toHaveTextContent(/2\s*\/\s*20,0%/);
+    expect(faixaDominanteCell).toHaveTextContent("18–25");
   });
 
   it("renders compact warning banner text when coverage is partial", () => {
@@ -93,8 +101,10 @@ describe("EventsAgeTable", () => {
         ]}
       />,
     );
+    const [, , clientesBbCell, naoClientesCell] = getRowCells(3);
 
-    expect(screen.getAllByText("— / —").length).toBeGreaterThanOrEqual(2);
+    expect(clientesBbCell).toHaveTextContent(/—\s*\/\s*—/);
+    expect(naoClientesCell).toHaveTextContent(/—\s*\/\s*—/);
     expect(screen.getByTestId("coverage-banner-danger-compact")).toBeInTheDocument();
     expect(
       screen.getByText(

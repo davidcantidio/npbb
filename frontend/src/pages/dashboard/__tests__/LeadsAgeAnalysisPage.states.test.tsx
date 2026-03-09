@@ -130,6 +130,22 @@ describe("LeadsAgeAnalysisPage states", () => {
     expect(screen.getByTestId("table-skeleton")).toBeInTheDocument();
   });
 
+  it("keeps rendered content during refetch to avoid a loading flash", async () => {
+    mockedUseAgeAnalysis.mockReturnValue({
+      data: buildFixture(),
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("Base Total")).toBeInTheDocument();
+    expect(screen.queryByTestId("kpi-card-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("chart-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("table-skeleton")).not.toBeInTheDocument();
+  });
+
   it("renders centered empty state", async () => {
     mockedUseAgeAnalysis.mockReturnValue({
       data: buildFixture({

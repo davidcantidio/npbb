@@ -61,18 +61,21 @@ export default function LandingPageView({
   const theme = buildLandingTheme(data);
   const layout = getLayoutVisualSpec(data);
   const isPreview = mode === "preview";
+  const backgroundLayerMode = isPreview ? "embedded" : "fixed";
+  const sectionMinHeight = isPreview ? "auto" : "100vh";
+  const contentMinHeight = isPreview ? "auto" : "calc(100vh - 48px)";
   const content = resolveLandingContent(data);
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <FullPageBackground data={data}>
+      {!isPreview ? <CssBaseline /> : null}
+      <FullPageBackground data={data} fullHeight={!isPreview} layerMode={backgroundLayerMode}>
         <Box
           sx={{
             position: "relative",
-            minHeight: "100vh",
+            minHeight: sectionMinHeight,
             px: { xs: 2, md: 3 },
-            py: { xs: 3, md: 5 },
+            py: isPreview ? { xs: 2, md: 3 } : { xs: 3, md: 5 },
             color: "text.primary",
           }}
         >
@@ -80,7 +83,7 @@ export default function LandingPageView({
 
           <Box
             sx={{
-              minHeight: "calc(100vh - 48px)",
+              minHeight: contentMinHeight,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -91,7 +94,7 @@ export default function LandingPageView({
               alignItems="center"
               sx={{
                 width: "100%",
-                py: { xs: 4, md: 6 },
+                py: isPreview ? { xs: 2, md: 3 } : { xs: 4, md: 6 },
               }}
             >
               <FormCard

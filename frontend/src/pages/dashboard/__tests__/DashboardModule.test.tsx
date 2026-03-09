@@ -184,7 +184,7 @@ describe("Dashboard module", () => {
 
     renderDashboardModule("/dashboard/leads/analise-etaria");
 
-    expect(await screen.findByText("Base total")).toBeInTheDocument();
+    expect(await screen.findByText("Base Total")).toBeInTheDocument();
     expect(screen.getByText("Distribuicao etaria por evento")).toBeInTheDocument();
     expect(screen.getAllByText("Evento Alpha").length).toBeGreaterThan(0);
   });

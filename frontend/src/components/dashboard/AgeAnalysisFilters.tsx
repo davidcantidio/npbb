@@ -1,5 +1,4 @@
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Autocomplete,
   Box,
@@ -23,7 +22,6 @@ type AgeAnalysisFiltersProps = {
   isLoadingEvents: boolean;
   hasInvalidRange: boolean;
   onChange: (nextValue: AgeAnalysisFilterFormValues) => void;
-  onApply: () => void;
   onClear: () => void;
 };
 
@@ -38,7 +36,6 @@ export function AgeAnalysisFilters({
   isLoadingEvents,
   hasInvalidRange,
   onChange,
-  onApply,
   onClear,
 }: AgeAnalysisFiltersProps) {
   const selectedEvento =
@@ -130,14 +127,6 @@ export function AgeAnalysisFilters({
           </Grid>
 
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              variant="contained"
-              startIcon={<SearchRoundedIcon />}
-              onClick={onApply}
-              disabled={hasInvalidRange}
-            >
-              Aplicar filtros
-            </Button>
             <Button variant="outlined" startIcon={<ClearRoundedIcon />} onClick={onClear}>
               Limpar filtros
             </Button>

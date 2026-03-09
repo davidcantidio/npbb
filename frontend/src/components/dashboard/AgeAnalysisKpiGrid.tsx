@@ -26,7 +26,7 @@ export function AgeAnalysisKpiGrid({ data, eventosTotal, appliedFilters }: AgeAn
     <Grid container spacing={2}>
       <Grid item xs={12} sm={6} xl={3}>
         <KpiCard
-          title="Base total"
+          title="Base Total"
           value={formatInteger(data.consolidado.base_total)}
           subtitle="Leads no filtro aplicado."
           helperText={`Gerado em ${new Date(data.generated_at).toLocaleString("pt-BR")}`}
@@ -51,7 +51,7 @@ export function AgeAnalysisKpiGrid({ data, eventosTotal, appliedFilters }: AgeAn
       </Grid>
       <Grid item xs={12} sm={6} xl={3}>
         <KpiCard
-          title="Faixa dominante"
+          title="Faixa Dominante"
           value={getDominantAgeRangeLabel(dominantConsolidatedRange)}
           titleTooltip={KPI_TOOLTIP_COPY.dominantRange}
           subtitle="Faixa predominante considerando toda a base consolidada."

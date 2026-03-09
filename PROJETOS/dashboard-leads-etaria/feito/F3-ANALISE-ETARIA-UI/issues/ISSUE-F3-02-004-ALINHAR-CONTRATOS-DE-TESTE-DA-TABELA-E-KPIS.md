@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-02-004-ALINHAR-CONTRATOS-DE-TESTE-DA-TABELA-E-KPIS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 task_instruction_mode: "required"
@@ -37,23 +37,23 @@ mascarar lacunas funcionais reais.
 
 ## Criterios de Aceitacao
 
-- [ ] `EventsAgeTable.test.tsx` passa com asserts coerentes para formato de valores BB e dados parciais.
-- [ ] `LeadsAgeAnalysisPage.states.test.tsx` passa nos cenarios de KPI cards sem depender de labels divergentes.
-- [ ] Labels de KPI e valores exibidos permanecem aderentes ao PRD/F3 e a utilitarios de formatacao.
-- [ ] Ajustes nao desabilitam nem afrouxam os cenarios criticos de regressao.
+- [x] `EventsAgeTable.test.tsx` passa com asserts coerentes para formato de valores BB e dados parciais.
+- [x] `LeadsAgeAnalysisPage.states.test.tsx` passa nos cenarios de KPI cards sem depender de labels divergentes.
+- [x] Labels de KPI e valores exibidos permanecem aderentes ao PRD/F3 e a utilitarios de formatacao.
+- [x] Ajustes nao desabilitam nem afrouxam os cenarios criticos de regressao.
 
 ## Definition of Done da Issue
 
-- [ ] Todos os criterios de aceitacao validados localmente
-- [ ] Falhas bloqueantes da auditoria F3-R01 relacionadas a contrato tabela/KPI eliminadas
-- [ ] Evidencia de teste anexada no fechamento da issue
+- [x] Todos os criterios de aceitacao validados localmente
+- [x] Falhas bloqueantes da auditoria F3-R01 relacionadas a contrato tabela/KPI eliminadas
+- [x] Evidencia de teste anexada no fechamento da issue
 
 ## Tarefas Decupadas
 
-- [ ] T1: Revisar contratos atuais de renderizacao em `EventsAgeTable` e `AgeAnalysisKpiGrid`.
-- [ ] T2: Ajustar implementacao e/ou asserts para convergencia deterministica de labels/formato.
-- [ ] T3: Executar testes de tabela e estados da pagina com foco nos cenarios que falharam na auditoria.
-- [ ] T4: Registrar resultados e vincular fechamento ao relatorio F3-R01.
+- [x] T1: Revisar contratos atuais de renderizacao em `EventsAgeTable` e `AgeAnalysisKpiGrid`.
+- [x] T2: Ajustar implementacao e/ou asserts para convergencia deterministica de labels/formato.
+- [x] T3: Executar testes de tabela e estados da pagina com foco nos cenarios que falharam na auditoria.
+- [x] T4: Registrar resultados e vincular fechamento ao relatorio F3-R01.
 
 ## Instructions por Task
 
@@ -88,6 +88,11 @@ mascarar lacunas funcionais reais.
 ## Artifact Minimo
 
 - `frontend/src/components/dashboard/__tests__/EventsAgeTable.test.tsx`
+
+## Evidencia de Validacao
+
+- comando: `cd /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/frontend && npm run test -- --run src/components/dashboard/__tests__/EventsAgeTable.test.tsx src/pages/dashboard/__tests__/LeadsAgeAnalysisPage.states.test.tsx src/components/dashboard/__tests__/InfoTooltip.test.tsx`
+- resultado: `3 arquivos, 14 testes passando`
 
 ## Dependencias
 

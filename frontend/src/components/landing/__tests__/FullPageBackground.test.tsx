@@ -41,7 +41,7 @@ describe("FullPageBackground", () => {
     expect(getTemplateOverlayVariant(fixture)).toBe("generico");
   });
 
-  it("renderiza camada fixa cobrindo viewport, metadata de QA e slot de children", () => {
+  it("renderiza camada fixa cobrindo viewport por padrao, metadata de QA e slot de children", () => {
     const { container } = render(
       <FullPageBackground data={createTemplateFixture("corporativo")}>
         <div data-testid="background-child">conteudo</div>
@@ -49,6 +49,7 @@ describe("FullPageBackground", () => {
     );
 
     expect(screen.getByTestId("background-child")).toBeInTheDocument();
+    expect(screen.getByTestId("full-page-background-root")).toHaveAttribute("data-layer-mode", "fixed");
 
     const backgroundLayer = screen.getByTestId("full-page-background-layer");
     expect(backgroundLayer).toHaveStyle({
@@ -60,6 +61,7 @@ describe("FullPageBackground", () => {
     });
     expect(backgroundLayer).toHaveAttribute("data-template-category", "corporativo");
     expect(backgroundLayer).toHaveAttribute("data-overlay-variant", "corporativo");
+    expect(backgroundLayer).toHaveAttribute("data-layer-mode", "fixed");
 
     const overlayLayer = screen.getByTestId("full-page-overlay-layer");
     expect(overlayLayer).toHaveStyle({
@@ -72,6 +74,7 @@ describe("FullPageBackground", () => {
     });
     expect(overlayLayer).toHaveAttribute("data-template-category", "corporativo");
     expect(overlayLayer).toHaveAttribute("data-overlay-variant", "corporativo");
+    expect(overlayLayer).toHaveAttribute("data-layer-mode", "fixed");
 
     const contentLayer = screen.getByTestId("full-page-background-content");
     expect(contentLayer).toHaveStyle({
@@ -81,5 +84,49 @@ describe("FullPageBackground", () => {
     });
 
     expect(container.querySelectorAll("img")).toHaveLength(0);
+  });
+
+  it("renderiza camada embutida em modo embedded sem ocupar viewport inteira", () => {
+    render(
+      <FullPageBackground data={createTemplateFixture("show_musical")} fullHeight={false} layerMode="embedded">
+        <div data-testid="background-child">conteudo</div>
+      </FullPageBackground>,
+    );
+
+    const root = screen.getByTestId("full-page-background-root");
+    expect(root).toHaveAttribute("data-layer-mode", "embedded");
+    expect(root).toHaveStyle({
+      position: "relative",
+      minHeight: "auto",
+      overflow: "hidden",
+    });
+
+    const backgroundLayer = screen.getByTestId("full-page-background-layer");
+    expect(backgroundLayer).toHaveStyle({
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+      minHeight: "100%",
+      zIndex: "0",
+    });
+    expect(backgroundLayer).toHaveAttribute("data-layer-mode", "embedded");
+
+    const overlayLayer = screen.getByTestId("full-page-overlay-layer");
+    expect(overlayLayer).toHaveStyle({
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+      minHeight: "100%",
+      pointerEvents: "none",
+      zIndex: "1",
+    });
+    expect(overlayLayer).toHaveAttribute("data-layer-mode", "embedded");
+
+    const contentLayer = screen.getByTestId("full-page-background-content");
+    expect(contentLayer).toHaveStyle({
+      position: "relative",
+      zIndex: "2",
+      minHeight: "auto",
+    });
   });
 });

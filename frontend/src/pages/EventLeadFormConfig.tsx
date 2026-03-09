@@ -564,7 +564,18 @@ export default function EventLeadFormConfig() {
                   </Typography>
                 </Stack>
               ) : previewData ? (
-                <Box sx={{ mt: 1, borderRadius: 4, overflow: "hidden", border: 1, borderColor: "divider" }}>
+                <Box
+                  data-testid="event-lead-preview-host"
+                  sx={{
+                    mt: 1,
+                    position: "relative",
+                    isolation: "isolate",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    border: 1,
+                    borderColor: "divider",
+                  }}
+                >
                   <LandingPageView data={previewData} mode="preview" />
                 </Box>
               ) : (

@@ -1,13 +1,16 @@
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
-import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Snackbar, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 
 import { AgeAnalysisFilters, ALL_EVENTS_OPTION_ID } from "../../components/dashboard/AgeAnalysisFilters";
 import { AgeAnalysisKpiGrid } from "../../components/dashboard/AgeAnalysisKpiGrid";
 import { AgeDistributionChart } from "../../components/dashboard/AgeDistributionChart";
+import { ChartSkeleton } from "../../components/dashboard/ChartSkeleton";
 import { ConsolidatedPanel } from "../../components/dashboard/ConsolidatedPanel";
 import { CoverageBanner } from "../../components/dashboard/CoverageBanner";
 import { EventsAgeTable } from "../../components/dashboard/EventsAgeTable";
+import { KpiCardSkeleton } from "../../components/dashboard/KpiCardSkeleton";
+import { TableSkeleton } from "../../components/dashboard/TableSkeleton";
 import { useAgeAnalysis } from "../../hooks/useAgeAnalysis";
 import { useAgeAnalysisFilters } from "./useAgeAnalysisFilters";
 import { useReferenciaEventos } from "./useReferenciaEventos";
@@ -53,7 +56,6 @@ export default function LeadsAgeAnalysisPage() {
     queryFilters,
     invalidDateRange,
     setDraftFilters,
-    handleApplyFilters,
     handleClearFilters,
     handleSelectEvento,
   } = useAgeAnalysisFilters();
@@ -65,13 +67,19 @@ export default function LeadsAgeAnalysisPage() {
   const { data, isLoading, error, refetch } = useAgeAnalysis(queryFilters);
 
   const [isCoverageBannerDismissed, setIsCoverageBannerDismissed] = useState(false);
+  const [isErrorToastOpen, setIsErrorToastOpen] = useState(false);
   const queryFiltersKey = useMemo(() => JSON.stringify(queryFilters), [queryFilters]);
 
   useEffect(() => {
     setIsCoverageBannerDismissed(false);
   }, [queryFiltersKey]);
 
+  useEffect(() => {
+    setIsErrorToastOpen(Boolean(error));
+  }, [error]);
+
   const isEmpty = Boolean(data && data.consolidado.base_total === 0);
+  const showInitialLoadingState = isLoading && !data;
 
   return (
     <Stack spacing={3}>
@@ -90,31 +98,56 @@ export default function LeadsAgeAnalysisPage() {
         isLoadingEvents={isLoadingEvents}
         hasInvalidRange={invalidDateRange}
         onChange={setDraftFilters}
-        onApply={handleApplyFilters}
         onClear={handleClearFilters}
       />
 
       {eventsError ? <Alert severity="warning">{eventsError}</Alert> : null}
-      {error ? (
+      <Snackbar
+        open={Boolean(error) && isErrorToastOpen}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setIsErrorToastOpen(false);
+        }}
+      >
         <Alert
           severity="error"
+          variant="filled"
+          onClose={() => setIsErrorToastOpen(false)}
           action={
             <Button color="inherit" size="small" onClick={() => void refetch()}>
               Tentar novamente
             </Button>
           }
+          sx={{ alignItems: "center" }}
         >
           {error}
         </Alert>
+      </Snackbar>
+
+      {showInitialLoadingState ? (
+        <Stack spacing={3}>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2,
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                sm: "repeat(2, minmax(0, 1fr))",
+                xl: "repeat(4, minmax(0, 1fr))",
+              },
+            }}
+          >
+            {Array.from({ length: 4 }).map((_, index) => (
+              <KpiCardSkeleton key={index} />
+            ))}
+          </Box>
+          <ChartSkeleton />
+          <TableSkeleton />
+        </Stack>
       ) : null}
 
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : null}
-
-      {!isLoading && data ? (
+      {data ? (
         <>
           {!isCoverageBannerDismissed && !isEmpty ? (
             <CoverageBanner

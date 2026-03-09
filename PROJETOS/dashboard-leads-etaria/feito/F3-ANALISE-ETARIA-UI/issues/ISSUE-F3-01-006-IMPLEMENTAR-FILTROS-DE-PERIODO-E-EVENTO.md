@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-006-IMPLEMENTAR-FILTROS-DE-PERIODO-E-EVENTO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-08"
 ---
@@ -29,29 +29,29 @@ Reusar componentes de date picker e select existentes no projeto. Consultar
 
 ## Criterios de Aceitacao
 
-- [ ] Seletor de período com date pickers para data início e data fim
-- [ ] Dropdown/select de evento com busca (lista de eventos disponíveis)
-- [ ] Opção "Todos os eventos" como default do seletor de evento
-- [ ] Filtros refletidos na URL como query params (deep link suportado)
-- [ ] Alteração de filtro dispara nova chamada à API via hook `useAgeAnalysis`
-- [ ] Botão "Limpar filtros" restaura estado default
+- [x] Seletor de período com date pickers para data início e data fim
+- [x] Dropdown/select de evento com busca (lista de eventos disponíveis)
+- [x] Opção "Todos os eventos" como default do seletor de evento
+- [x] Filtros refletidos na URL como query params (deep link suportado)
+- [x] Alteração de filtro dispara nova chamada à API via hook `useAgeAnalysis`
+- [x] Botão "Limpar filtros" restaura estado default
 
 ## Definition of Done da Issue
 
-- [ ] Seletor de período com date pickers para data início e data fim
-- [ ] Dropdown/select de evento com busca (lista de eventos disponíveis)
-- [ ] Opção "Todos os eventos" como default do seletor de evento
-- [ ] Filtros refletidos na URL como query params (deep link suportado)
-- [ ] Alteração de filtro dispara nova chamada à API via hook `useAgeAnalysis`
-- [ ] Botão "Limpar filtros" restaura estado default
+- [x] Seletor de período com date pickers para data início e data fim
+- [x] Dropdown/select de evento com busca (lista de eventos disponíveis)
+- [x] Opção "Todos os eventos" como default do seletor de evento
+- [x] Filtros refletidos na URL como query params (deep link suportado)
+- [x] Alteração de filtro dispara nova chamada à API via hook `useAgeAnalysis`
+- [x] Botão "Limpar filtros" restaura estado default
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar componente `AgeAnalysisFilters.tsx`
-- [ ] T2: Implementar date pickers de período
-- [ ] T3: Implementar dropdown de eventos (consumir lista de eventos da API existente)
-- [ ] T4: Sincronizar filtros com query params da URL
-- [ ] T5: Conectar filtros ao hook `useAgeAnalysis`
+- [x] T1: Criar componente `AgeAnalysisFilters.tsx`
+- [x] T2: Implementar date pickers de período
+- [x] T3: Implementar dropdown de eventos (consumir lista de eventos da API existente)
+- [x] T4: Sincronizar filtros com query params da URL
+- [x] T5: Conectar filtros ao hook `useAgeAnalysis`
 
 ## Arquivos Reais Envolvidos
 
@@ -61,6 +61,11 @@ Reusar componentes de date picker e select existentes no projeto. Consultar
 ## Artifact Minimo
 
 - `frontend/src/components/dashboard/AgeAnalysisFilters.tsx`
+
+## Evidencia de Validacao
+
+- comando: `cd /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/frontend && npm run test -- --run src/pages/dashboard/__tests__/LeadsAgeAnalysisPage.filters.test.tsx`
+- resultado: `1 arquivo, 4 testes passando`
 
 ## Dependencias
 

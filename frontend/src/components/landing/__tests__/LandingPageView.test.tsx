@@ -139,6 +139,40 @@ describe("LandingPageView", () => {
     expect(screen.queryByText(/Categoria: categoria-interna/i)).not.toBeInTheDocument();
   });
 
+  it("mantem camadas fixed em modo publico", () => {
+    render(<LandingPageView data={createLandingFixture()} mode="public" />);
+
+    expect(screen.getByTestId("full-page-background-root")).toHaveAttribute("data-layer-mode", "fixed");
+    expect(screen.getByTestId("full-page-background-layer")).toHaveStyle({
+      position: "fixed",
+      inset: "0",
+      width: "100vw",
+      minHeight: "100vh",
+    });
+    expect(screen.getByTestId("full-page-background-content")).toHaveStyle({
+      minHeight: "100vh",
+    });
+  });
+
+  it("usa camadas embutidas no preview sem ocupar viewport inteira", () => {
+    render(<LandingPageView data={createLandingFixture()} mode="preview" />);
+
+    expect(screen.getByTestId("full-page-background-root")).toHaveAttribute("data-layer-mode", "embedded");
+    expect(screen.getByTestId("full-page-background-layer")).toHaveStyle({
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+      minHeight: "100%",
+    });
+    expect(screen.getByTestId("full-page-overlay-layer")).toHaveStyle({
+      position: "absolute",
+      pointerEvents: "none",
+    });
+    expect(screen.getByTestId("full-page-background-content")).toHaveStyle({
+      minHeight: "auto",
+    });
+  });
+
   it("prioriza cta_personalizado do evento sobre o CTA do template", () => {
     const fixture = createLandingFixture({
       evento: {

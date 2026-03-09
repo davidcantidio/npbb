@@ -13,9 +13,9 @@ last_updated: "2026-03-09"
 Preencha e cole junto com este prompt:
 
 ```
-PROJETO:       <nome do projeto, ex: FRAMEWORK2.0
+PROJETO:       FRAMEWORK2.0
 PRD_PATH:      /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/FRAMEWORK2.0/PRD-FRAMEWORK2.0.md
-ESCOPO:        Projeto Completo
+ESCOPO:        projeto completo
 PROFUNDIDADE:  completo
 TASK_MODE:     por issue
 OBSERVACOES:   nenhuma
@@ -34,8 +34,8 @@ descoberta autônoma e não se aplicam neste modo.
 Após concluir a leitura dos três níveis, leia o PRD informado pelo PM: `{{PRD_PATH}}`
 
 Em seguida, execute o planejamento usando `PROJETOS/COMUM/PROMPT-PLANEJAR-FASE.md`
-como guia de estrutura e conteúdo dos artefatos, respeitando o `ESCOPO` e a
-`PROFUNDIDADE` informados.
+como referencia canonica de estrutura e conteudo dos artefatos, respeitando o
+`ESCOPO` e a `PROFUNDIDADE` informados.
 
 ---
 

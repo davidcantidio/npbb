@@ -64,6 +64,9 @@ Para `intake_kind: problem | refactor | audit-remediation`, tambem sao obrigator
 
 ## Intakes Retroativos (`source_mode: backfilled`)
 
+`backfilled` existe para reconstruir um intake a partir de evidencias ja existentes.
+Ele nao cria uma via reduzida de intake nem autoriza PRD com menos clareza.
+
 Contextos validos de origem:
 
 - PRD existente sem intake formal
@@ -73,17 +76,20 @@ Contextos validos de origem:
 
 Regras operacionais:
 
+- `backfilled` muda a origem da evidencia, nao os campos minimos obrigatorios
+- o intake retroativo continua obrigado a preencher problema ou oportunidade, publico ou operador principal, job to be done dominante, fluxo principal esperado, objetivo de negocio e metricas de sucesso, restricoes e nao-objetivos, dependencias e integracoes, arquitetura ou superficies impactadas, riscos relevantes e lacunas conhecidas
+- quando `intake_kind` for `problem`, `refactor` ou `audit-remediation`, o backfill tambem continua obrigado a registrar sintoma observado, impacto operacional, evidencia tecnica, componente(s) afetado(s) e riscos de nao agir
+- a rastreabilidade de origem continua obrigatoria em todo backfill e deve apontar o documento, auditoria ou contexto historico usado como base
 - o gate `Intake -> PRD` continua valendo integralmente
-- o que muda e a origem da evidencia, nao o nivel minimo de clareza exigido
+- `backfilled` nao dispensa nenhuma secao exigida pelo gate e nao cria excecao para avancar com lacunas criticas
 - campos historicos desconhecidos podem ficar como `nao_definido` somente se isso nao bloquear objetivo, escopo, restricoes, arquitetura ou riscos
 - todo `nao_definido` precisa aparecer em `Lacunas Conhecidas`
-- a secao de rastreabilidade deve apontar o documento, auditoria ou contexto usado para o backfill
 
 ## Gate de Prontidao para PRD
 
 Esta e a fonte unica do gate `Intake -> PRD`.
 
-A etapa de geracao do PRD so deve avancar quando o `INTAKE-*.md` responder, com clareza suficiente:
+A etapa de geracao do PRD so deve avancar quando o `INTAKE-*.md`, inclusive em `source_mode: backfilled`, responder com clareza suficiente:
 
 - por que isso existe
 - para quem existe

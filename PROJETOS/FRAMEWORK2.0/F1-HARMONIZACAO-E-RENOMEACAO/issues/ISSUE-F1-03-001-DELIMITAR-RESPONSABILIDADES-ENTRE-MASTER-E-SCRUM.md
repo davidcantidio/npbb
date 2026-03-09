@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-09"
 task_instruction_mode: "optional"
@@ -33,14 +33,14 @@ sem duplicar gates ou regras detalhadas.
 
 ## Definition of Done da Issue
 
-- [ ] responsabilidades separadas
-- [ ] duplicacoes principais removidas
+- [x] responsabilidades separadas
+- [x] duplicacoes principais removidas
 
 ## Tasks Decupadas
 
-- [ ] T1: mapear sobreposicoes entre os dois documentos
-- [ ] T2: mover ou substituir duplicacoes por referencias
-- [ ] T3: revisar o resultado final
+- [x] T1: mapear sobreposicoes entre os dois documentos
+- [x] T2: mover ou substituir duplicacoes por referencias
+- [x] T3: revisar o resultado final
 
 ## Arquivos Reais Envolvidos
 

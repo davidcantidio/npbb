@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-03-UNIFICACAO-DE-RESPONSABILIDADES-E-ELIMINACAO-DE-DRIFT.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-09"
 ---
@@ -23,16 +23,16 @@ que descrevem o mesmo tema com variacoes sutis.
 
 ## Definition of Done do Epico
 
-- [ ] responsabilidades delimitadas entre master e scrum
-- [ ] gate `Intake -> PRD` consolidado em `GOV-INTAKE.md`
+- [x] responsabilidades delimitadas entre master e scrum
+- [x] gate `Intake -> PRD` consolidado em `GOV-INTAKE.md`
 - [ ] issue template com `decision_refs`
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-03-001 | Delimitar responsabilidades entre master e scrum | Separar mapa do framework de regras scrum. | 3 | todo | [ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md](./issues/ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md) |
-| ISSUE-F1-03-002 | Consolidar leitura canonica e gate intake para PRD | Apontar prompts para a ordem unica e centralizar o gate de intake. | 3 | todo | [ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md](./issues/ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md) |
+| ISSUE-F1-03-001 | Delimitar responsabilidades entre master e scrum | Separar mapa do framework de regras scrum. | 3 | done | [ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md](./issues/ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md) |
+| ISSUE-F1-03-002 | Consolidar leitura canonica e gate intake para PRD | Apontar prompts para a ordem unica e centralizar o gate de intake. | 3 | done | [ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md](./issues/ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md) |
 | ISSUE-F1-03-003 | Alinhar governanca de issue com decision refs e spec task instructions | Completar rastreabilidade e reduzir duplicacao de regra. | 3 | todo | [ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md](./issues/ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md) |
 
 ## Artifact Minimo do Epico

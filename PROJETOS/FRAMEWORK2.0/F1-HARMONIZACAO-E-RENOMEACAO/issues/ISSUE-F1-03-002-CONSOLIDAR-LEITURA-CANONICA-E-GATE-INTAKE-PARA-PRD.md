@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-09"
 task_instruction_mode: "optional"
@@ -33,14 +33,14 @@ e `PROMPT-AUDITORIA.md` apontarem para `boot-prompt.md` em vez de manter listas 
 
 ## Definition of Done da Issue
 
-- [ ] prompts sem listas paralelas desnecessarias
-- [ ] gate consolidado em `GOV-INTAKE.md`
+- [x] prompts sem listas paralelas desnecessarias
+- [x] gate consolidado em `GOV-INTAKE.md`
 
 ## Tasks Decupadas
 
-- [ ] T1: mapear duplicacoes de leitura e gate
-- [ ] T2: ajustar prompts para o ponteiro unico
-- [ ] T3: revisar `GOV-INTAKE.md` como fonte unica
+- [x] T1: mapear duplicacoes de leitura e gate
+- [x] T2: ajustar prompts para o ponteiro unico
+- [x] T3: revisar `GOV-INTAKE.md` como fonte unica
 
 ## Arquivos Reais Envolvidos
 

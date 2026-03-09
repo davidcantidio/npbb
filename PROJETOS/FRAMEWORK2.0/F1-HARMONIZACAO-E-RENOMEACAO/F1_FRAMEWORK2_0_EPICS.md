@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-09"
-audit_gate: "not_ready"
+audit_gate: "hold"
 ---
 
 # Epicos - FRAMEWORK2.0 / F1 - HARMONIZACAO E RENOMEACAO
@@ -22,8 +22,8 @@ template de fase possui checklist de transicao de gate.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `hold`
+- ultima_auditoria: `F1-R01`
 
 ## Checklist de Transicao de Gate
 
@@ -33,9 +33,9 @@ template de fase possui checklist de transicao de gate.
 - [ ] DoD da fase foi revisado
 
 ### `pending -> hold/approved`
-- [ ] existe `RELATORIO-AUDITORIA-F1-R01.md`
-- [ ] `AUDIT-LOG.md` foi atualizado
-- [ ] veredito e estado do gate estao coerentes
+- [x] existe `RELATORIO-AUDITORIA-F1-R01.md`
+- [x] `AUDIT-LOG.md` foi atualizado
+- [x] veredito e estado do gate estao coerentes
 
 ## Epicos
 

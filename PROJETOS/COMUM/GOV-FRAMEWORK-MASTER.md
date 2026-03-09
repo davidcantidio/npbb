@@ -12,7 +12,7 @@ last_updated: "2026-03-09"
 > scrum, auditoria, limites e execucao vivem em documentos especializados e devem ser
 > referenciadas, nao copiadas.
 
-## 1. Fluxo Canonico
+## 1. Estrutura Canonica do Repositorio
 
 ```text
 PROJETOS/
@@ -44,15 +44,14 @@ PROJETOS/
       auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md
 ```
 
-`Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias`
+A cadeia operacional do framework vive em `GOV-SCRUM.md`.
 
 ## 2. Premissas do Repositorio
 
 - projetos ativos seguem apenas o padrao `issue-first`
 - todo projeto ativo precisa ter `INTAKE-<PROJETO>.md`, `PRD-<PROJETO>.md` e `AUDIT-LOG.md`
 - artefatos em `PROJETOS/COMUM/` usam prefixos funcionais: `GOV-`, `TEMPLATE-`, `PROMPT-`, `SESSION-`, `SPEC-`
-- `done` e status documental; arquivamento fisico continua em `feito/`
-- `BLOQUEADO` e `BLOCKED_LIMIT` sao estados operacionais e nao status canonicos persistidos
+- regras de status, estados operacionais e arquivamento de fase vivem em `GOV-SCRUM.md`
 
 ## 3. Fontes de Verdade por Tema
 
@@ -93,6 +92,7 @@ PROJETOS/
 - descrever o mapa completo do framework
 - registrar quais documentos sao normativos para cada tema
 - evitar duplicacao de gate, veredito, checklist ou threshold ja definido em outro artefato
+- nao redefinir cadeia de trabalho, status ou Definition of Done aqui; use `GOV-SCRUM.md`
 
 Regras detalhadas de intake nao devem ser redefinidas aqui. Use `GOV-INTAKE.md`.
 Regras detalhadas de auditoria nao devem ser redefinidas aqui. Use `GOV-AUDITORIA.md`.

@@ -34,8 +34,8 @@ descoberta autônoma e não se aplicam neste modo.
 Após concluir a leitura dos três níveis, leia o PRD informado pelo PM: `{{PRD_PATH}}`
 
 Em seguida, execute o planejamento usando `PROJETOS/COMUM/PROMPT-PLANEJAR-FASE.md`
-como guia de estrutura e conteúdo dos artefatos, respeitando o `ESCOPO` e a
-`PROFUNDIDADE` informados.
+como referencia canonica de estrutura e conteudo dos artefatos, respeitando o
+`ESCOPO` e a `PROFUNDIDADE` informados.
 
 ---
 

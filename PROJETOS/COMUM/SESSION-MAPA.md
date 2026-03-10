@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-MAPA.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # SESSION-MAPA
@@ -34,6 +34,7 @@ PROJETOS/COMUM/
   SESSION-PLANEJAR-PROJETO.md
   SESSION-IMPLEMENTAR-ISSUE.md
   SESSION-AUDITAR-FASE.md
+  SESSION-REMEDIAR-HOLD.md
   SESSION-REFATORAR-MONOLITO.md
   SESSION-MAPA.md
 ```
@@ -47,6 +48,7 @@ PROJETOS/COMUM/
 | planejamento | `PROJETOS/COMUM/SESSION-PLANEJAR-PROJETO.md` | PRD -> fases, epicos, issues e sprints | active |
 | implementacao | `PROJETOS/COMUM/SESSION-IMPLEMENTAR-ISSUE.md` | execucao de issue especifica | active |
 | auditoria | `PROJETOS/COMUM/SESSION-AUDITAR-FASE.md` | gate de fase e follow-ups | active |
+| remediacao pos-hold | `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md` | relatorio hold -> issues locais ou intakes de remediacao | active |
 | refatoracao | `PROJETOS/COMUM/SESSION-REFATORAR-MONOLITO.md` | intake de remediacao -> mini-projeto de decomposicao | active |
 
 ## Gatilhos Rapidos
@@ -58,6 +60,7 @@ PROJETOS/COMUM/
 | planejar projeto ou fase | `SESSION-PLANEJAR-PROJETO` |
 | executar uma issue | `SESSION-IMPLEMENTAR-ISSUE` |
 | auditar uma fase | `SESSION-AUDITAR-FASE` |
+| rotear follow-ups de auditoria hold | `SESSION-REMEDIAR-HOLD` |
 | transformar monolito em remediacao estruturada | `SESSION-REFATORAR-MONOLITO` |
 
 ## Relacao com o Boot Prompt

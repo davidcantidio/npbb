@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-05-001-DOCUMENTAR-REGRA-OPERACIONAL-DE-BACKFILLED-EM-GOV-INTAKE.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -33,14 +33,14 @@ Esta issue fecha contexts validos, campos obrigatorios e relacao com o gate.
 
 ## Definition of Done da Issue
 
-- [ ] secao de backfilled criada
-- [ ] gate para backfill explicitado
+- [x] secao de backfilled criada
+- [x] gate para backfill explicitado
 
 ## Tasks Decupadas
 
-- [ ] T1: definir contexts validos de origem
-- [ ] T2: definir campos minimos obrigatorios em backfill
-- [ ] T3: revisar o gate com a nova secao
+- [x] T1: definir contexts validos de origem
+- [x] T2: definir campos minimos obrigatorios em backfill
+- [x] T3: revisar o gate com a nova secao
 
 ## Arquivos Reais Envolvidos
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-ISSUE.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # SESSION-IMPLEMENTAR-ISSUE - Execucao de Issue em Sessao de Chat
@@ -64,8 +64,73 @@ EXECUTANDO: <Tn ou acao>
 Nao grave arquivo, nao rode alteracao destrutiva e nao atualize status sem
 confirmacao explicita do PM.
 
-### Passo 3 - Fechamento
+### Passo 3 - Fechamento e cascata de status
 
-Ao final, apresente checklist de DoD e resultado dos testes.
+Ao concluir a execução da issue, execute a cascata de fechamento definida em
+`GOV-SCRUM.md` seção "Procedimento de Fechamento de Issue", anunciando cada
+arquivo antes de gravar:
 
-Antes de atualizar status de issue, epico ou fase, anuncie cada arquivo.
+**3.1 — Fechar a issue**
+
+```text
+FECHANDO: {{ISSUE_PATH}}
+  status: todo → done
+  last_updated: <data>
+  DoD: todos os itens marcados? <sim/nao>
+─────────────────────────────────────────
+→ "sim" para gravar
+→ "ajustar [instrucao]"
+```
+
+**3.2 — Atualizar o épico pai**
+
+Abra o `EPIC-*.md` referenciado pela issue. Atualize a linha da issue na tabela.
+Verifique se todas as issues do épico estão `done`.
+
+```text
+ATUALIZANDO: <caminho do EPIC-*.md>
+  linha da issue na tabela: status → done
+  todas as issues do épico done? <sim/nao>
+  → épico: <todo→active | active→active | active→done>
+─────────────────────────────────────────
+→ "sim" para gravar
+→ "ajustar [instrucao]"
+```
+
+**3.3 — Atualizar o manifesto da fase**
+
+Abra o `F<N>_<PROJETO>_EPICS.md`. Atualize a linha do épico na tabela.
+Verifique se todos os épicos da fase estão `done`.
+
+```text
+ATUALIZANDO: <caminho do manifesto da fase>
+  linha do épico na tabela: status → <novo status>
+  todos os épicos da fase done? <sim/nao>
+  → fase: <todo→active | active→active>
+  → audit_gate: <mantém not_ready | not_ready→pending>
+─────────────────────────────────────────
+→ "sim" para gravar
+→ "ajustar [instrucao]"
+```
+
+> Se `audit_gate` mudar para `pending`, informe o PM:
+> *"Todos os épicos estão done. A fase está pronta para auditoria.
+> Use SESSION-AUDITAR-FASE.md para iniciar a próxima rodada."*
+
+**3.4 — Atualizar a sprint**
+
+Abra o `SPRINT-*.md` que contém esta issue. Atualize a linha da issue na tabela.
+Verifique se todas as issues da sprint estão `done` ou `cancelled`.
+
+```text
+ATUALIZANDO: <caminho do SPRINT-*.md>
+  linha da issue na tabela: status → done
+  todas as issues da sprint encerradas? <sim/nao>
+  → sprint: <active→active | active→done>
+─────────────────────────────────────────
+→ "sim" para gravar
+→ "ajustar [instrucao]"
+```
+
+**Não pule nenhum dos quatro passos.** Status inconsistente no épico ou no
+manifesto da fase bloqueia a leitura correta pelo próximo agente ou sessão.

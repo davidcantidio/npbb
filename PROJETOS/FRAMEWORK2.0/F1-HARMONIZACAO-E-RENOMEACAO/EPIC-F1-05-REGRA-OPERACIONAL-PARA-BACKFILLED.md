@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F1-05-REGRA-OPERACIONAL-PARA-BACKFILLED.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # EPIC-F1-05 - Regra Operacional para Backfilled
@@ -23,15 +23,15 @@ Novos projetos retroativos deixam de bloquear por falta de regra de intake.
 
 ## Definition of Done do Epico
 
-- [ ] contexts validos de origem declarados
-- [ ] campos obrigatorios em backfill documentados
-- [ ] gate explicita se vale integralmente em backfill
+- [x] contexts validos de origem declarados
+- [x] campos obrigatorios em backfill documentados
+- [x] gate explicita se vale integralmente em backfill
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-05-001 | Documentar regra operacional de backfilled em GOV-INTAKE | Fechar a lacuna de intakes retroativos. | 3 | todo | [ISSUE-F1-05-001-DOCUMENTAR-REGRA-OPERACIONAL-DE-BACKFILLED-EM-GOV-INTAKE.md](./issues/ISSUE-F1-05-001-DOCUMENTAR-REGRA-OPERACIONAL-DE-BACKFILLED-EM-GOV-INTAKE.md) |
+| ISSUE-F1-05-001 | Documentar regra operacional de backfilled em GOV-INTAKE | Fechar a lacuna de intakes retroativos. | 3 | done | [ISSUE-F1-05-001-DOCUMENTAR-REGRA-OPERACIONAL-DE-BACKFILLED-EM-GOV-INTAKE.md](./issues/ISSUE-F1-05-001-DOCUMENTAR-REGRA-OPERACIONAL-DE-BACKFILLED-EM-GOV-INTAKE.md) |
 
 ## Artifact Minimo do Epico
 

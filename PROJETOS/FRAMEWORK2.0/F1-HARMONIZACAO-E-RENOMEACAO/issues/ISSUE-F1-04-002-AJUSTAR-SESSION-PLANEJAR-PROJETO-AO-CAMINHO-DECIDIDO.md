@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-04-002-AJUSTAR-SESSION-PLANEJAR-PROJETO-AO-CAMINHO-DECIDIDO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 task_instruction_mode: "optional"
 decision_refs:
   - "dec-2026-03-09-001"
@@ -34,14 +34,14 @@ Esta issue consome a decisao registrada na issue anterior e atualiza
 
 ## Definition of Done da Issue
 
-- [ ] sessao de planejamento alinhada a decisao
-- [ ] exemplos e parametros revisados
+- [x] sessao de planejamento alinhada a decisao
+- [x] exemplos e parametros revisados
 
 ## Tasks Decupadas
 
-- [ ] T1: revisar a referencia atual da sessao
-- [ ] T2: atualizar a sessao para o caminho decidido
-- [ ] T3: revisar exemplos e prompt local de `FRAMEWORK2.0`
+- [x] T1: revisar a referencia atual da sessao
+- [x] T2: atualizar a sessao para o caminho decidido
+- [x] T3: revisar exemplos e prompt local de `FRAMEWORK2.0`
 
 ## Arquivos Reais Envolvidos
 

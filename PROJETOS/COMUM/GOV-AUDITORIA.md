@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-AUDITORIA.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # GOV-AUDITORIA
@@ -37,7 +37,7 @@ Formalizar a etapa `Tasks -> Auditorias` como gate final de governanca de cada f
 - `auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md`
 - nova entrada em `AUDIT-LOG.md`
 - atualizacao do gate de auditoria no manifesto da fase
-- follow-ups transformados em `issue-local` ou `new-intake` quando houver `hold`
+- follow-ups classificados por destino e transformados em `issue-local`, `new-intake` ou `cancelled` (com justificativa) quando houver `hold`
 
 ## Classes Canonicas de Achado
 
@@ -107,6 +107,25 @@ Estados operacionais do gate dentro do manifesto da fase:
   - nao cabe como ajuste pontual dentro da fase auditada
 - o `AUDIT-LOG.md` deve registrar quais follow-ups nasceram de cada `hold` e qual foi o destino de cada um
 
+## Procedimento Pos-Hold
+
+Apos qualquer auditoria com veredito `hold`, o PM deve classificar e encaminhar
+os follow-ups bloqueantes antes de retomar o desenvolvimento normal.
+
+```
+Para cada follow-up bloqueante no relatorio:
+  issue-local -> criar ISSUE-*.md na fase atual e seguir o ciclo normal
+  new-intake  -> criar INTAKE-<PROJETO>-<SLUG>.md com intake_kind audit-remediation
+  cancelled   -> registrar a justificativa no AUDIT-LOG sem gerar artefato novo
+
+Em todos os casos:
+  atualizar AUDIT-LOG com o destino final e a referencia correspondente
+  manter o gate da fase em hold ate existir nova rodada com veredito go
+```
+
+Um mesmo relatorio pode conter destinos mistos. O fluxo interativo canonico
+para esse roteamento e `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`.
+
 ## Modelo Operacional Recomendado
 
 - recomendacao: usar IA auditora independente da IA implementadora
@@ -115,7 +134,9 @@ Estados operacionais do gate dentro do manifesto da fase:
 
 ## Artefatos Vinculados
 
-- prompt canonico: `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
+- prompt de auditoria: `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
+- session de auditoria: `PROJETOS/COMUM/SESSION-AUDITAR-FASE.md`
+- session de remediacao pos-hold: `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`
 - template de relatorio: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md`
 - template de log: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-LOG.md`
 - spec de thresholds estruturais: `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`

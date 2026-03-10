@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 task_instruction_mode: "optional"
 decision_refs:
   - "dec-2026-03-09-001"
@@ -34,14 +34,14 @@ como artefato complementar e registrar isso em `GOV-DECISOES.md`.
 
 ## Definition of Done da Issue
 
-- [ ] decisao registrada
-- [ ] rastreabilidade para o prompt consumidor preservada
+- [x] decisao registrada
+- [x] rastreabilidade para o prompt consumidor preservada
 
 ## Tasks Decupadas
 
-- [ ] T1: revisar o papel do prompt de planejamento
-- [ ] T2: registrar a decisao em `GOV-DECISOES.md`
-- [ ] T3: revisar a rastreabilidade resultante
+- [x] T1: revisar o papel do prompt de planejamento
+- [x] T2: registrar a decisao em `GOV-DECISOES.md`
+- [x] T3: revisar a rastreabilidade resultante
 
 ## Arquivos Reais Envolvidos
 

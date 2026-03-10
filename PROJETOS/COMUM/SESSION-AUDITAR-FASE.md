@@ -71,3 +71,26 @@ GERANDO: <arquivo>
 ```
 
 Sem confirmacao explicita do PM, a sessao deve parar antes de qualquer gravacao.
+
+### Passo 4 - Pós-Hold
+
+Execute somente se o veredito for `hold`.
+
+Após gravar o relatório e atualizar o AUDIT-LOG, informe o PM:
+
+```text
+AUDITORIA CONCLUÍDA — VEREDITO: hold
+─────────────────────────────────────────
+Follow-ups bloqueantes: <N>
+Follow-ups não bloqueantes: <N>
+─────────────────────────────────────────
+Próximo passo: use SESSION-REMEDIAR-HOLD.md para converter os
+follow-ups nos artefatos corretos (issue-local, new-intake ou cancelled).
+
+RELATORIO_PATH: <caminho do relatório recém-gravado>
+AUDIT_LOG_PATH: <caminho do AUDIT-LOG>
+─────────────────────────────────────────
+Cole SESSION-REMEDIAR-HOLD.md em uma nova sessão com os parâmetros acima.
+```
+
+Esta sessão encerra aqui. O roteamento de remediação ocorre em sessão separada.

@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-SCRUM.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # GOV-SCRUM
@@ -103,6 +103,31 @@ O significado operacional e os criterios de auditoria vivem em `GOV-AUDITORIA.md
 - `instruction` nao e documento independente; vive inline na issue
 - os criterios de quando `required` e obrigatorio vivem exclusivamente em `SPEC-TASK-INSTRUCTIONS.md`
 - issue `required` sem bloco completo de `Instructions por Task` nao e elegivel para execucao
+
+## Procedimento de Fechamento de Issue
+
+Ao concluir uma issue, a cascata de fechamento deve ser executada em ordem.
+Pular um passo deixa backlog, fase e sprint incoerentes para a proxima leitura.
+
+1. Fechar a issue: marcar `status: done`, atualizar `last_updated` e confirmar
+   que todos os itens do DoD estao marcados.
+2. Atualizar o epico pai: ajustar a linha da issue na tabela `Issues do Epico`;
+   se todas as issues estiverem encerradas, marcar o epico como `done`,
+   senao manter `active` quando ja houver entrega parcial.
+3. Atualizar o manifesto da fase: ajustar a linha do epico na tabela `Epicos`;
+   quando todos os epicos estiverem `done`, mover o `audit_gate` para `pending`;
+   antes disso, a fase permanece `todo` ou `active` conforme o progresso.
+4. Atualizar a sprint: ajustar a linha da issue na tabela `Issues Selecionadas`;
+   quando todas as issues da sprint estiverem `done` ou `cancelled`, marcar a
+   sprint como `done`.
+
+Regras de aplicacao:
+
+- a cascata e sempre `issue -> epico -> fase -> sprint`
+- `audit_gate: pending` so pode existir quando todos os epicos da fase estiverem `done`
+- o agente nao deve marcar a fase como `done` diretamente; isso continua
+  reservado ao fechamento do gate de auditoria com veredito `go`
+- issue `cancelled` conta como encerrada para calculo de completude do epico e da sprint
 
 ## Arquivamento de Fase
 

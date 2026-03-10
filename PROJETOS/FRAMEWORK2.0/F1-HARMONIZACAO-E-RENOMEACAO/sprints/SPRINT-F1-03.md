@@ -1,9 +1,9 @@
 ---
 doc_id: "SPRINT-F1-03.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # SPRINT-F1-03
@@ -22,10 +22,10 @@ Eliminar drift normativo remanescente e levar o checklist de gate ao template de
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-03-001 | Delimitar responsabilidades entre master e scrum | 3 | todo | [ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md](../issues/ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md) |
-| ISSUE-F1-03-002 | Consolidar leitura canonica e gate intake para PRD | 3 | todo | [ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md](../issues/ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md) |
-| ISSUE-F1-03-003 | Alinhar governanca de issue com decision refs e spec task instructions | 3 | todo | [ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md](../issues/ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md) |
-| ISSUE-F1-06-001 | Inserir checklist de transicao de gate no template de fase | 3 | todo | [ISSUE-F1-06-001-INSERIR-CHECKLIST-DE-TRANSICAO-DE-GATE-NO-TEMPLATE-DE-FASE.md](../issues/ISSUE-F1-06-001-INSERIR-CHECKLIST-DE-TRANSICAO-DE-GATE-NO-TEMPLATE-DE-FASE.md) |
+| ISSUE-F1-03-001 | Delimitar responsabilidades entre master e scrum | 3 | done | [ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md](../issues/ISSUE-F1-03-001-DELIMITAR-RESPONSABILIDADES-ENTRE-MASTER-E-SCRUM.md) |
+| ISSUE-F1-03-002 | Consolidar leitura canonica e gate intake para PRD | 3 | done | [ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md](../issues/ISSUE-F1-03-002-CONSOLIDAR-LEITURA-CANONICA-E-GATE-INTAKE-PARA-PRD.md) |
+| ISSUE-F1-03-003 | Alinhar governanca de issue com decision refs e spec task instructions | 3 | done | [ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md](../issues/ISSUE-F1-03-003-ALINHAR-GOVERNANCA-DE-ISSUE-COM-DECISION-REFS.md) |
+| ISSUE-F1-06-001 | Inserir checklist de transicao de gate no template de fase | 3 | done | [ISSUE-F1-06-001-INSERIR-CHECKLIST-DE-TRANSICAO-DE-GATE-NO-TEMPLATE-DE-FASE.md](../issues/ISSUE-F1-06-001-INSERIR-CHECKLIST-DE-TRANSICAO-DE-GATE-NO-TEMPLATE-DE-FASE.md) |
 
 ## Riscos e Bloqueios
 
@@ -34,5 +34,5 @@ Eliminar drift normativo remanescente e levar o checklist de gate ao template de
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes: conclusao de F1 prepara abertura segura de F3
+- decisao: concluida
+- observacoes: sprint reconciliada com o backlog real e pronta para nova rodada de auditoria da fase

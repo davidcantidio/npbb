@@ -1,9 +1,9 @@
 ---
 doc_id: "SPRINT-F1-01.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # SPRINT-F1-01
@@ -26,7 +26,7 @@ estrutural sobre o prompt de planejamento.
 | ISSUE-F1-01-001 | Inventariar mapa de renomeacao e impacto em projetos ativos | 3 | done | [ISSUE-F1-01-001-INVENTARIAR-MAPA-DE-RENOMEACAO-E-IMPACTO-EM-PROJETOS-ATIVOS.md](../issues/ISSUE-F1-01-001-INVENTARIAR-MAPA-DE-RENOMEACAO-E-IMPACTO-EM-PROJETOS-ATIVOS.md) |
 | ISSUE-F1-01-002 | Renomear arquivos de COMUM e alinhar referencias internas | 5 | done | [ISSUE-F1-01-002-RENOMEAR-ARQUIVOS-DE-COMUM-E-ALINHAR-REFERENCIAS-INTERNAS.md](../issues/ISSUE-F1-01-002-RENOMEAR-ARQUIVOS-DE-COMUM-E-ALINHAR-REFERENCIAS-INTERNAS.md) |
 | ISSUE-F1-01-003 | Atualizar boot prompt e session mapa para a convencao nova | 3 | done | [ISSUE-F1-01-003-ATUALIZAR-BOOT-PROMPT-E-SESSION-MAPA.md](../issues/ISSUE-F1-01-003-ATUALIZAR-BOOT-PROMPT-E-SESSION-MAPA.md) |
-| ISSUE-F1-04-001 | Avaliar PROMPT-PLANEJAR-FASE e registrar decisao em GOV-DECISOES | 2 | todo | [ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md](../issues/ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md) |
+| ISSUE-F1-04-001 | Avaliar PROMPT-PLANEJAR-FASE e registrar decisao em GOV-DECISOES | 2 | done | [ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md](../issues/ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md) |
 
 ## Riscos e Bloqueios
 
@@ -35,5 +35,5 @@ estrutural sobre o prompt de planejamento.
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes: a sprint so fecha quando os nomes novos forem coerentes entre docs comuns e entrypoints
+- decisao: concluida
+- observacoes: todas as issues selecionadas foram reconciliadas com o estado material real da fase

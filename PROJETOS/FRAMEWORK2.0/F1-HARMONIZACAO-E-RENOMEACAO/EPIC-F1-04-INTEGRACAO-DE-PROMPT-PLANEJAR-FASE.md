@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F1-04-INTEGRACAO-DE-PROMPT-PLANEJAR-FASE.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # EPIC-F1-04 - Integracao de PROMPT-PLANEJAR-FASE
@@ -26,15 +26,15 @@ fica registrada em `GOV-DECISOES.md`.
 
 ## Definition of Done do Epico
 
-- [ ] decisao registrada
-- [ ] sessao de planejamento alinhada ao caminho decidido
+- [x] decisao registrada
+- [x] sessao de planejamento alinhada ao caminho decidido
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-04-001 | Avaliar PROMPT-PLANEJAR-FASE e registrar decisao em GOV-DECISOES | Resolver a dependencia estrutural do fluxo de planejamento. | 2 | todo | [ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md](./issues/ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md) |
-| ISSUE-F1-04-002 | Ajustar SESSION-PLANEJAR-PROJETO ao caminho decidido | Garantir que a sessao use a referencia certa. | 3 | todo | [ISSUE-F1-04-002-AJUSTAR-SESSION-PLANEJAR-PROJETO-AO-CAMINHO-DECIDIDO.md](./issues/ISSUE-F1-04-002-AJUSTAR-SESSION-PLANEJAR-PROJETO-AO-CAMINHO-DECIDIDO.md) |
+| ISSUE-F1-04-001 | Avaliar PROMPT-PLANEJAR-FASE e registrar decisao em GOV-DECISOES | Resolver a dependencia estrutural do fluxo de planejamento. | 2 | done | [ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md](./issues/ISSUE-F1-04-001-AVALIAR-PROMPT-PLANEJAR-FASE-E-REGISTRAR-DECISAO.md) |
+| ISSUE-F1-04-002 | Ajustar SESSION-PLANEJAR-PROJETO ao caminho decidido | Garantir que a sessao use a referencia certa. | 3 | done | [ISSUE-F1-04-002-AJUSTAR-SESSION-PLANEJAR-PROJETO-AO-CAMINHO-DECIDIDO.md](./issues/ISSUE-F1-04-002-AJUSTAR-SESSION-PLANEJAR-PROJETO-AO-CAMINHO-DECIDIDO.md) |
 
 ## Artifact Minimo do Epico
 

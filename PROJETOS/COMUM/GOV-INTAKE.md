@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-INTAKE.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # GOV-INTAKE
@@ -109,6 +109,40 @@ A IA nao pode:
 - transformar wishlist em escopo fechado sem nao-objetivos claros
 - ignorar restricoes de dados, seguranca, rollout ou operacao
 - tratar remediacao estrutural como ajuste pontual quando o proprio intake declarar escopo sistemico
+
+## Convivencia de PRD Derivado com PRD Principal
+
+Quando um intake `audit-remediation` ou `refactor` gerar um PRD proprio, o
+padrao canonico de convivencia com o PRD principal do projeto e o seguinte:
+
+**PRD sibling com ponteiro no PRD principal (padrao C)**
+
+- o PRD de remediacao vive como documento independente no formato
+  `PRD-<PROJETO>-<SLUG>.md`, na raiz do projeto, ao lado do PRD principal
+- o PRD sibling referencia o PRD principal e o intake de origem em seu cabecalho
+- o PRD principal ganha uma secao `## PRDs Derivados` na ultima posicao do
+  documento, com uma linha por sibling:
+
+```markdown
+## PRDs Derivados
+
+| PRD | Intake de Origem | Auditoria de Origem | Escopo |
+|---|---|---|---|
+| [PRD-<PROJETO>-<SLUG>.md](./PRD-<PROJETO>-<SLUG>.md) | [INTAKE-<PROJETO>-<SLUG>.md](./INTAKE-<PROJETO>-<SLUG>.md) | F<N>-R<NN> | <resumo de uma linha> |
+```
+
+- o PRD sibling e o PRD principal tem ciclos de auditoria independentes; as
+  fases do sibling nao aparecem no manifesto de fases do principal
+- a secao `## PRDs Derivados` do principal e atualizada a cada novo sibling,
+  mas nenhuma outra secao do principal e alterada
+- se o PRD principal ainda nao tiver a secao `## PRDs Derivados`, ela deve ser
+  criada no momento em que o primeiro sibling for gerado
+
+Nao e permitido:
+
+- adicionar fases de remediacao diretamente ao PRD principal
+- gerar PRD de remediacao sem apontar o intake de origem no cabecalho do sibling
+- omitir o ponteiro no PRD principal quando o sibling existir
 
 ## Artefatos Vinculados
 

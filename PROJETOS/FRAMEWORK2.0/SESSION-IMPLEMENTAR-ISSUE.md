@@ -11,10 +11,10 @@ last_updated: "2026-03-09"
 ## Parametros obrigatorios
 
 ```
-PROJETO:     <nome do projeto>
-FASE:        <F<N>-NOME>
-ISSUE_ID:    <ISSUE-F<N>-<NN>-<MMM>>
-ISSUE_PATH:  <caminho completo do arquivo de issue>
+PROJETO:     FRAMEWORK2.0
+FASE:        F1-HARMONIZACAO-E-RENOMEACAO
+ISSUE_ID:    <ISSUE-F<1>-<01>-<001>>
+ISSUE_PATH:  ISSUE-F1-01-001-INVENTARIAR-MAPA-DE-RENOMEACAO-E-IMPACTO-EM-PROJETOS-ATIVOS
 ```
 
 ## Prompt

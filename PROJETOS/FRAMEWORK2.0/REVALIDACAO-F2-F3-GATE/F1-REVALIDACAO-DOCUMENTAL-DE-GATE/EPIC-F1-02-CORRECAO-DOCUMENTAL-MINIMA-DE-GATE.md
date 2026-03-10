@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-02-CORRECAO-DOCUMENTAL-MINIMA-DE-GATE.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
 ---
@@ -37,7 +37,7 @@ desse envelope devem ser bloqueadas, nao absorvidas.
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F1-02-001 | Ajustar manifesto F2 ao split canonico de gate | Aplicar o split do checklist em F2 ou registrar no-op controlado. | 2 | todo | [ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md](./issues/ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md) |
-| ISSUE-F1-02-002 | Ajustar manifesto F3 ao split canonico de gate | Aplicar o split do checklist em F3 ou registrar no-op controlado. | 2 | todo | [ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md](./issues/ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md) |
+| ISSUE-F1-02-002 | Ajustar manifesto F3 ao split canonico de gate | Aplicar o split do checklist em F3 ou registrar no-op controlado. | 2 | done | [ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md](./issues/ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md) |
 
 ## Artifact Minimo do Epico
 

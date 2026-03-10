@@ -1,7 +1,7 @@
 ---
 doc_id: "F1_REVALIDACAO_F2_F3_GATE_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
 audit_gate: "not_ready"
@@ -53,7 +53,7 @@ qualquer correcao limitada ao checklist/gate, sem alteracao de `status`,
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F1-01 | Baseline de Aderencia F2/F3 vs Template Canonico | Produzir o delta objetivo por manifesto e delimitar o escopo permitido de ajuste. | intake e PRD derivados | todo | [EPIC-F1-01-BASELINE-DE-ADERENCIA-F2-F3-VS-TEMPLATE-CANONICO.md](./EPIC-F1-01-BASELINE-DE-ADERENCIA-F2-F3-VS-TEMPLATE-CANONICO.md) |
-| EPIC-F1-02 | Correcao Documental Minima de Gate | Aplicar apenas o patch minimo de checklist/gate ou registrar no-op controlado por manifesto. | EPIC-F1-01 | todo | [EPIC-F1-02-CORRECAO-DOCUMENTAL-MINIMA-DE-GATE.md](./EPIC-F1-02-CORRECAO-DOCUMENTAL-MINIMA-DE-GATE.md) |
+| EPIC-F1-02 | Correcao Documental Minima de Gate | Aplicar apenas o patch minimo de checklist/gate ou registrar no-op controlado por manifesto. | EPIC-F1-01 | active | [EPIC-F1-02-CORRECAO-DOCUMENTAL-MINIMA-DE-GATE.md](./EPIC-F1-02-CORRECAO-DOCUMENTAL-MINIMA-DE-GATE.md) |
 | EPIC-F1-03 | Evidencia e Encerramento Rastreavel | Consolidar o resultado final sem criar auditoria formal nem atualizar `AUDIT-LOG.md`. | EPIC-F1-02 | todo | [EPIC-F1-03-EVIDENCIA-E-ENCERRAMENTO-RASTREAVEL.md](./EPIC-F1-03-EVIDENCIA-E-ENCERRAMENTO-RASTREAVEL.md) |
 
 ## Dependencias entre Epicos

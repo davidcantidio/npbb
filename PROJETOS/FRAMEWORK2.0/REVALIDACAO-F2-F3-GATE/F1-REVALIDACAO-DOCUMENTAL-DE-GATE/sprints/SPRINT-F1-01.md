@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F1-01.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
 ---
@@ -26,7 +26,7 @@ alem de checklist/gate.
 |---|---|---|---|---|
 | ISSUE-F1-01-001 | Comparar manifestos F2 e F3 com o template canonico de gate | 3 | todo | [ISSUE-F1-01-001-COMPARAR-MANIFESTOS-F2-E-F3-COM-O-TEMPLATE-CANONICO-DE-GATE.md](../issues/ISSUE-F1-01-001-COMPARAR-MANIFESTOS-F2-E-F3-COM-O-TEMPLATE-CANONICO-DE-GATE.md) |
 | ISSUE-F1-02-001 | Ajustar manifesto F2 ao split canonico de gate | 2 | todo | [ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md](../issues/ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md) |
-| ISSUE-F1-02-002 | Ajustar manifesto F3 ao split canonico de gate | 2 | todo | [ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md](../issues/ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md) |
+| ISSUE-F1-02-002 | Ajustar manifesto F3 ao split canonico de gate | 2 | done | [ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md](../issues/ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md) |
 | ISSUE-F1-03-001 | Consolidar evidencia da revalidacao sem simular auditoria | 2 | todo | [ISSUE-F1-03-001-CONSOLIDAR-EVIDENCIA-DA-REVALIDACAO-SEM-SIMULAR-AUDITORIA.md](../issues/ISSUE-F1-03-001-CONSOLIDAR-EVIDENCIA-DA-REVALIDACAO-SEM-SIMULAR-AUDITORIA.md) |
 
 ## Riscos e Bloqueios

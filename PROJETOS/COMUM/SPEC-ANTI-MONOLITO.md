@@ -1,9 +1,9 @@
 ---
 doc_id: "SPEC-ANTI-MONOLITO.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # SPEC-ANTI-MONOLITO
@@ -29,9 +29,29 @@ Referencia observada no projeto ativo `dashboard-leads-etaria`:
 Com base nisso, o threshold de aviso inicia acima do maior arquivo funcional do
 dashboard e o threshold bloqueante fica reservado para outliers claros.
 
+## Niveis Operacionais
+
+- `warn`: threshold que exige registro explicito de atencao estrutural no relatorio
+  de auditoria, mesmo quando o gate nao for bloqueado
+- `block`: threshold que exige justificativa explicita para nao bloquear o gate
+  com achado estrutural
+
+Nao existe terceiro nivel implicito nesta versao. Toda avaliacao operacional
+deve usar apenas `warn` ou `block`.
+
+## Dimensoes Estruturais Obrigatorias
+
+Esta versao cobre `TypeScript/React` e `Python` nas mesmas duas dimensoes
+estruturais obrigatorias:
+
+- dimensao de arquivo: concentracao de codigo, conceitos publicos e dominios de import
+- dimensao de funcao: concentracao de logica, profundidade, superficie de chamada e branching
+
+As tabelas abaixo sao a fonte canonica de `warn` e `block` para cada dimensao.
+
 ## Thresholds por Arquivo
 
-| Metrica | Aviso | Bloqueante |
+| Metrica | warn | block |
 |---|---|---|
 | linhas de codigo logico por arquivo | `> 400` | `> 600` |
 | exports/conceitos publicos distintos no mesmo arquivo | `> 7` | `> 12` |
@@ -39,7 +59,7 @@ dashboard e o threshold bloqueante fica reservado para outliers claros.
 
 ## Thresholds por Funcao
 
-| Metrica | Aviso | Bloqueante |
+| Metrica | warn | block |
 |---|---|---|
 | linhas por funcao | `> 60` | `> 100` |
 | niveis de aninhamento | `> 3` | `> 4` |
@@ -47,6 +67,10 @@ dashboard e o threshold bloqueante fica reservado para outliers claros.
 | ramos condicionais relevantes no mesmo corpo | `> 10` | `> 15` |
 
 ## Aplicacao por Linguagem
+
+Todos os thresholds `warn` e `block` desta versao valem para `TypeScript/React`
+e `Python`. A diferenca entre as linguagens esta apenas em como interpretar cada
+metrica, conforme as regras abaixo.
 
 ### TypeScript/React
 
@@ -62,9 +86,10 @@ dashboard e o threshold bloqueante fica reservado para outliers claros.
 
 ## Mapeamento para Auditoria
 
-- cruzar um threshold de aviso gera achado `medium` por padrao
-- cruzar um threshold bloqueante gera achado `high` por padrao
-- `hold` continua dependente do contexto, mas thresholds bloqueantes exigem justificativa explicita para nao bloquear
+- cruzar um threshold `warn` gera achado `medium` por padrao
+- cruzar um threshold `block` gera achado `high` por padrao
+- cruzar `block` exige justificativa explicita para nao bloquear o gate
+- o auditor nao deve inferir thresholds ou niveis adicionais fora desta tabela
 - quando houver trend positiva clara entre rodadas, registrar na tabela de complexidade estrutural do relatorio
 
 ## Excecoes Permitidas

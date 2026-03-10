@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-001-DEFINIR-THRESHOLDS-ANTI-MONOLITO-POR-LINGUAGEM.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -37,15 +37,15 @@ Esta issue inaugura `SPEC-ANTI-MONOLITO.md` como fonte canonica para
 
 ## Definition of Done da Issue
 
-- [ ] thresholds definidos por dimensao estrutural
-- [ ] linguagens cobertas declaradas
-- [ ] sem criterio subjetivo residual no spec
+- [x] thresholds definidos por dimensao estrutural
+- [x] linguagens cobertas declaradas
+- [x] sem criterio subjetivo residual no spec
 
 ## Tasks Decupadas
 
-- [ ] T1: definir dimensoes estruturais obrigatorias do spec
-- [ ] T2: registrar thresholds `warn` e `block`
-- [ ] T3: revisar legibilidade e operacionalidade do texto
+- [x] T1: definir dimensoes estruturais obrigatorias do spec
+- [x] T2: registrar thresholds `warn` e `block`
+- [x] T3: revisar legibilidade e operacionalidade do texto
 
 ## Arquivos Reais Envolvidos
 

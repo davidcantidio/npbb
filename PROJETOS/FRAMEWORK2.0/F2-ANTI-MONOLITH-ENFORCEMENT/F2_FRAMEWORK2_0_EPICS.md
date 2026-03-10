@@ -31,10 +31,17 @@ spec e o prompt de monolito gera intake de remediacao valido.
 - [ ] todas as issues filhas estao `done`
 - [ ] DoD da fase foi revisado
 
-### `pending -> hold/approved`
+### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F2-R01.md`
 - [ ] `AUDIT-LOG.md` foi atualizado
-- [ ] veredito e estado do gate estao coerentes
+- [ ] o veredito da auditoria e `hold`
+- [ ] o estado do gate foi atualizado para `hold`
+
+### `pending -> approved`
+- [ ] existe `RELATORIO-AUDITORIA-F2-R01.md`
+- [ ] `AUDIT-LOG.md` foi atualizado
+- [ ] o veredito da auditoria e `go`
+- [ ] o estado do gate foi atualizado para `approved`
 
 ## Epicos
 

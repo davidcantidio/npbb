@@ -1,6 +1,6 @@
 ---
 doc_id: "RELATORIO-AUDITORIA-F<N>-R<NN>.md"
-version: "2.0"
+version: "2.1"
 status: "planned"
 verdict: "hold"
 scope_type: "phase"
@@ -30,6 +30,26 @@ last_updated: "YYYY-MM-DD"
 - issues:
 - testes:
 - diff/commit:
+
+## Prestacao de Contas dos Follow-ups Anteriores
+
+> Preencher apenas quando `round > 1` e a rodada imediatamente anterior
+> referenciada em `compares_to` tiver veredito `hold`. Omitir completamente em
+> rodadas iniciais ou quando a rodada anterior for `go`.
+>
+> Listar apenas os follow-ups da rodada hold imediatamente anterior (identificada
+> em `compares_to`). Nao incluir follow-ups de rodadas mais antigas.
+
+| Follow-up | Tipo | Destino Final | Status verificado | Arquivo ou registro | Observacoes |
+|---|---|---|---|---|---|
+| B1 | bloqueante | issue-local | done | [ISSUE-*.md](./issues/ISSUE-*.md) | encerrado |
+| N1 | nao bloqueante | new-intake | criado | [INTAKE-*.md](../../INTAKE-*.md) | nao bloqueia |
+| C1 | bloqueante | cancelled | registrado no log | `AUDIT-LOG.md` | justificativa registrada |
+
+Resultado da prestacao de contas: `completa` / `parcial — ver observacoes`
+
+> `parcial` nao impede o veredito `go`, mas exige justificativa explicita de por
+> que o follow-up pendente nao bloqueia o gate desta rodada.
 
 ## Conformidades
 

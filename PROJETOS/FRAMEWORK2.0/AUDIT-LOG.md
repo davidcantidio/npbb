@@ -1,6 +1,6 @@
 ---
 doc_id: "AUDIT-LOG.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
@@ -29,6 +29,15 @@ last_updated: "2026-03-10"
 | F1 - HARMONIZACAO-E-RENOMEACAO | approved | F1-R02 | [RELATORIO-AUDITORIA-F1-R02.md](./F1-HARMONIZACAO-E-RENOMEACAO/auditorias/RELATORIO-AUDITORIA-F1-R02.md) | gate aprovado apos reconciliacao documental dos follow-ups de F1-R01 |
 | F2 - ANTI-MONOLITH-ENFORCEMENT | not_ready | n-a | n-a | fase liberada para desenvolvimento |
 | F3 - PROMPTS-DE-SESSAO | not_ready | n-a | n-a | aguardando priorizacao apos F2 |
+
+## Resolucoes de Follow-ups
+
+| Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
+|---|---|---|---|---|---|---|---|
+| 2026-03-10 | F1-R01 | F1 - HARMONIZACAO-E-RENOMEACAO | B1 | issue-local | Reconciliar status de epicos, issues e manifesto da F1 com evidencias ja implementadas | ISSUE-F1-06-002-RECONCILIAR-STATUS-DE-EPICOS-ISSUES-E-MANIFESTO.md | bloqueante |
+| 2026-03-10 | F1-R01 | F1 - HARMONIZACAO-E-RENOMEACAO | B2 | issue-local | Normalizar `SPRINT-F1-01.md`, `SPRINT-F1-02.md` e `SPRINT-F1-03.md` com selecao e status reais | ISSUE-F1-03-004-NORMALIZAR-MANIFESTOS-DE-SPRINT-DA-F1.md | bloqueante |
+| 2026-03-10 | F1-R01 | F1 - HARMONIZACAO-E-RENOMEACAO | B3 | issue-local | Revisar DoD da fase e transicao operacional de gate mantendo manifesto e `AUDIT-LOG.md` coerentes | ISSUE-F1-06-003-REVISAR-DOD-DA-FASE-E-TRANSICAO-DE-GATE.md | bloqueante; issue cancelada como superada por F1-R02 em 2026-03-10 |
+| 2026-03-10 | F1-R01 | F1 - HARMONIZACAO-E-RENOMEACAO | N1 | new-intake | Revalidar manifestos F2/F3 contra o checklist split `pending -> hold` / `pending -> approved` | INTAKE-FRAMEWORK2.0-REVALIDAR-MANIFESTOS-F2-F3-CHECKLIST-DE-GATE.md | nao bloqueante |
 
 ## Rodadas
 

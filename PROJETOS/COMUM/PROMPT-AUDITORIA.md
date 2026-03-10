@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-AUDITORIA.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # Prompt Canonico - Auditoria de Fase
@@ -35,10 +35,13 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 2. verifique se a arvore esta limpa
 3. se a arvore estiver suja, marque a auditoria como `provisional`
 4. valide aderencia ao intake, PRD, manifesto da fase, epicos e issues
-5. inspecione bugs provaveis, regressoes, code smells, arquivos monoliticos, funcoes monoliticas, gaps de testes e ausencia de docstrings em codigo compartilhado, publico ou complexo
-6. classifique cada achado com categoria e severidade
-7. diferencie follow-up `issue-local` de `new-intake` conforme o escopo da remediacao
-8. emita veredito `go`, `hold` ou `cancelled`
+5. se houver rodada anterior com `hold`, use a secao `Resolucoes de Follow-ups`
+   do `AUDIT-LOG.md` e o campo `Audit ID de Origem` para verificar cada
+   follow-up da rodada imediatamente anterior
+6. inspecione bugs provaveis, regressoes, code smells, arquivos monoliticos, funcoes monoliticas, gaps de testes e ausencia de docstrings em codigo compartilhado, publico ou complexo
+7. classifique cada achado com categoria e severidade
+8. diferencie follow-up `issue-local` de `new-intake` conforme o escopo da remediacao
+9. emita veredito `go`, `hold` ou `cancelled`
 
 ### Regras de julgamento
 
@@ -54,10 +57,12 @@ Use o template `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md` e preencha:
 
 - resumo executivo
 - evidencias lidas
+- prestacao de contas dos follow-ups anteriores, quando a rodada imediatamente
+  anterior tiver veredito `hold`
 - conformidades
 - nao conformidades
 - verificacao de `decision_refs`
-- analise de complexidade estrutural
+- analise de complexidade estrutural usando `SPEC-ANTI-MONOLITO.md`
 - bugs e riscos antecipados
 - cobertura de testes
 - decisao final
@@ -66,4 +71,7 @@ Use o template `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md` e preencha:
 
 ### Regra final
 
-Se houver auditoria anterior com `hold`, voce deve ler o ultimo relatorio, verificar explicitamente se os follow-ups foram resolvidos e manter a rastreabilidade entre relatorio, log e novo intake quando a remediacao for estrutural.
+Se houver auditoria anterior com `hold`, voce deve ler o ultimo relatorio,
+verificar explicitamente se os follow-ups foram resolvidos usando o
+`Audit ID de Origem` no `AUDIT-LOG.md` e manter a rastreabilidade entre
+relatorio, log e novo intake quando a remediacao for estrutural.

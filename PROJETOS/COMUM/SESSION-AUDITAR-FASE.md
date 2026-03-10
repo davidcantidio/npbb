@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-AUDITAR-FASE.md"
-version: "1.0"
+version: "1.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-10"
 ---
 
 # SESSION-AUDITAR-FASE - Auditoria de Fase em Sessao de Chat
@@ -29,11 +29,91 @@ os epicos e issues da fase, o ultimo relatorio da fase e use:
 - `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md`
 - `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`
 
-### Passo 0 - Escopo auditado
+### Passo 0 - Pre-checagem de elegibilidade
+
+Antes de qualquer leitura de escopo, verifique se a fase está apta para nova
+rodada.
+
+Leia o `AUDIT-LOG.md` do projeto. Localize a entrada mais recente da fase na
+tabela de Rodadas e verifique seu veredito:
+
+- se o veredito da rodada mais recente for `go` ou se não houver rodada anterior,
+  a fase é elegível — prossiga para o Passo 1
+- se o veredito da rodada mais recente for `hold`, execute a verificação abaixo
+
+**Verificação de follow-ups da rodada hold imediatamente anterior**
+
+Identifique o `Audit ID` da rodada `hold` mais recente. Na seção
+`Resolucoes de Follow-ups`, considere apenas as linhas em que:
+
+- `Audit ID de Origem` = `Audit ID` da rodada `hold` mais recente
+- `Fase` = fase auditada
+
+Se a seção `Resolucoes de Follow-ups` não existir, se a coluna
+`Audit ID de Origem` estiver ausente ou se não houver rastreabilidade
+suficiente para identificar os follow-ups da rodada `hold` imediatamente
+anterior, responda `BLOQUEADO` e pare sem gerar relatório.
+
+Para cada follow-up dessa rodada, determine a situação pelo tipo:
+
+| Tipo | Como verificar | Elegível para encerrar? |
+|---|---|---|
+| `ISSUE-*.md` | ler o `status` no frontmatter do arquivo | `done` ou `cancelled` |
+| `INTAKE-*.md` | verificar se o arquivo existe e tem intake_kind registrado | sempre elegível — intake aberto não bloqueia nova rodada |
+| `cancelled` (sem arquivo) | a linha no log já registra o destino como `cancelled` | sempre elegível |
+
+Apresente:
+
+```text
+PRE-CHECAGEM DE ELEGIBILIDADE
+─────────────────────────────────────────
+Rodada hold de referência: <Audit ID>
+Gate atual da fase:        <hold>
+
+Follow-ups bloqueantes dessa rodada:
+| Ref | Tipo | Destino | Status atual | Elegível? |
+|---|---|---|---|---|
+| ISSUE-*.md | bloqueante | issue-local | todo/active/done/cancelled | sim/nao |
+
+Follow-ups nao bloqueantes dessa rodada:
+| Ref | Tipo | Destino | Status atual |
+|---|---|---|---|
+| INTAKE-*.md | nao bloqueante | new-intake | criado |
+| — | nao bloqueante | cancelled | registrado no log |
+
+Resultado: <ELEGÍVEL | BLOQUEADO>
+─────────────────────────────────────────
+```
+
+**Regra de elegibilidade:** a nova rodada só pode prosseguir se todas as
+`ISSUE-*.md` de follow-ups **bloqueantes** da rodada hold imediatamente anterior
+estiverem `done` ou `cancelled`. `INTAKE-*.md` e entradas `cancelled` nunca
+bloqueiam nova rodada.
+
+Follow-ups de rodadas anteriores mais antigas e follow-ups de outras fases
+não entram nesta verificação.
+
+Se o resultado for `BLOQUEADO`:
+
+```text
+BLOQUEADO — issues de follow-up bloqueantes ainda abertas:
+- <ISSUE-*.md> (status: todo/active)
+...
+A nova rodada não pode iniciar até que essas issues sejam encerradas.
+→ Use SESSION-IMPLEMENTAR-ISSUE.md para cada issue pendente.
+```
+
+Encerre a sessão sem produzir relatório, sem atualizar o log e sem mudar o gate.
+
+Se o resultado for `ELEGÍVEL`, prossiga para o Passo 1.
+
+---
+
+### Passo 1 - Escopo auditado
 
 Apresente fontes de evidencia e riscos de contexto antes de qualquer veredito.
 
-### Passo 1 - Achados preliminares
+### Passo 2 - Achados preliminares
 
 Apresente os achados em categorias. Em caso de monolito acima de threshold, ofereca:
 
@@ -43,7 +123,7 @@ MONOLITO DETECTADO: <arquivo ou funcao>
 → "seguir auditoria" para manter o achado no relatorio
 ```
 
-### Passo 2 - Veredito proposto
+### Passo 3 - Veredito proposto
 
 Apresente:
 
@@ -61,7 +141,7 @@ follow-up padrao:
 
 Nao grave relatorio, audit log ou intake de follow-up neste passo.
 
-### Passo 3 - Gravacao
+### Passo 4 - Gravacao
 
 Antes de gravar cada artefato, anuncie:
 
@@ -72,7 +152,7 @@ GERANDO: <arquivo>
 
 Sem confirmacao explicita do PM, a sessao deve parar antes de qualquer gravacao.
 
-### Passo 4 - Pós-Hold
+### Passo 5 - Pós-Hold
 
 Execute somente se o veredito for `hold`.
 

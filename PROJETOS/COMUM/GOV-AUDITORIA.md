@@ -1,6 +1,6 @@
 ---
 doc_id: "GOV-AUDITORIA.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
@@ -38,6 +38,10 @@ Formalizar a etapa `Tasks -> Auditorias` como gate final de governanca de cada f
 - nova entrada em `AUDIT-LOG.md`
 - atualizacao do gate de auditoria no manifesto da fase
 - follow-ups classificados por destino e transformados em `issue-local`, `new-intake` ou `cancelled` (com justificativa) quando houver `hold`
+- quando a rodada suceder um `hold`: secao "Prestacao de Contas dos Follow-ups
+  Anteriores" listando cada follow-up gerado pelo hold anterior com seu status
+  final verificado; esta secao e obrigatoria e nao pode ser substituida por
+  declaracao generica de resolucao
 
 ## Classes Canonicas de Achado
 
@@ -95,6 +99,17 @@ Estados operacionais do gate dentro do manifesto da fase:
 - se a arvore estiver suja, a auditoria deve ser marcada como `provisional`
 - `provisional` pode apontar riscos e follow-ups, mas nao fecha fase
 - cada rodada precisa apontar para a anterior quando houver continuidade ou supersedencia
+- cada entrada da secao `Resolucoes de Follow-ups` do `AUDIT-LOG.md` deve
+  registrar o `Audit ID de Origem` da rodada `hold` que gerou o item
+- nova rodada apos `hold` so pode iniciar quando todas as issues de follow-ups
+  **bloqueantes** da rodada anterior estiverem `done` ou `cancelled`; issues nao
+  bloqueantes abertas nao impedem a nova rodada mas devem aparecer no relatorio
+  como contexto
+- o relatorio de cada rodada apos `hold` deve incluir uma secao de prestacao de
+  contas dos follow-ups da rodada anterior, declarando explicitamente o status
+  final de cada follow-up gerado pelo hold; declarar "follow-ups resolvidos"
+  sem listar e verificar cada item individualmente e nao conformidade de
+  auditoria
 
 ## Follow-ups
 
@@ -107,36 +122,54 @@ Estados operacionais do gate dentro do manifesto da fase:
   - nao cabe como ajuste pontual dentro da fase auditada
 - o `AUDIT-LOG.md` deve registrar quais follow-ups nasceram de cada `hold` e qual foi o destino de cada um
 
-## Procedimento Pos-Hold
-
-Apos qualquer auditoria com veredito `hold`, o PM deve classificar e encaminhar
-os follow-ups bloqueantes antes de retomar o desenvolvimento normal.
-
-```
-Para cada follow-up bloqueante no relatorio:
-  issue-local -> criar ISSUE-*.md na fase atual e seguir o ciclo normal
-  new-intake  -> criar INTAKE-<PROJETO>-<SLUG>.md com intake_kind audit-remediation
-  cancelled   -> registrar a justificativa no AUDIT-LOG sem gerar artefato novo
-
-Em todos os casos:
-  atualizar AUDIT-LOG com o destino final e a referencia correspondente
-  manter o gate da fase em hold ate existir nova rodada com veredito go
-```
-
-Um mesmo relatorio pode conter destinos mistos. O fluxo interativo canonico
-para esse roteamento e `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`.
-
 ## Modelo Operacional Recomendado
 
 - recomendacao: usar IA auditora independente da IA implementadora
 - fallback aceitavel: mesma IA em sessao separada, lendo apenas artefatos, diff e evidencias
 - qualquer auditoria deve julgar aderencia, risco, cobertura de testes, saude estrutural do codigo e rastreabilidade da remediacao
 
+## Procedimento Pós-Hold
+
+Após qualquer auditoria com veredito `hold`, o PM deve executar o seguinte
+algoritmo antes de retomar o desenvolvimento:
+
+```
+Para cada follow-up bloqueante no relatório:
+  │
+  ├─ followup_destination = issue-local
+  │     └─→ criar ISSUE-*.md na fase atual
+  │          → ciclo normal: SESSION-IMPLEMENTAR-ISSUE
+  │
+  ├─ followup_destination = new-intake
+  │     └─→ criar INTAKE-<PROJETO>-<SLUG>.md
+  │          → intake_kind: audit-remediation
+  │          → source_mode: audit-derived
+  │          → ciclo completo independente:
+  │            SESSION-CRIAR-PRD → SESSION-PLANEJAR-PROJETO
+  │            → execução e auditoria própria do novo escopo
+  │
+  └─ followup_destination = cancelled
+        └─→ registrar justificativa no AUDIT-LOG
+             → nenhum artefato gerado
+
+Em todos os casos:
+  → atualizar AUDIT-LOG com destino e referência de cada follow-up
+  → gate da fase permanece hold até nova rodada com veredito go
+```
+
+Um relatório pode conter follow-ups com destinos mistos. O SESSION canônico
+para executar este procedimento é `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`.
+
+O ciclo da fase só pode ser retomado — e nova rodada de auditoria solicitada —
+após todos os follow-ups **bloqueantes** terem sido endereçados (issue criada,
+intake criado ou cancelamento justificado). Follow-ups não bloqueantes podem
+ser tratados em paralelo sem travar a fase.
+
 ## Artefatos Vinculados
 
 - prompt de auditoria: `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
 - session de auditoria: `PROJETOS/COMUM/SESSION-AUDITAR-FASE.md`
-- session de remediacao pos-hold: `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`
-- template de relatorio: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md`
+- session de remediação pós-hold: `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`
+- template de relatório: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md`
 - template de log: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-LOG.md`
 - spec de thresholds estruturais: `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`

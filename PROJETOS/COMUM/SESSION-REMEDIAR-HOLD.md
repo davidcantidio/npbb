@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-REMEDIAR-HOLD.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
@@ -54,6 +54,10 @@ Leia também antes de qualquer ação:
 
 Leia `{{RELATORIO_PATH}}`. Extraia todos os follow-ups das seções
 "Follow-ups Bloqueantes" e "Follow-ups Não Bloqueantes".
+
+Derive também o `Audit ID de Origem` desta remediação a partir do relatório,
+usando `phase` + `round` do frontmatter no formato `F<N>-R<NN>`; exemplo:
+`phase: "F1"` e `round: 1` geram `F1-R01`.
 
 Para cada follow-up, determine o destino canônico conforme `GOV-AUDITORIA.md`:
 
@@ -178,13 +182,19 @@ AUDIT-LOG no Passo 4.
 
 Após todos os passos anteriores, atualize `{{AUDIT_LOG_PATH}}`:
 
-- atualize a tabela "Gate Atual por Fase": estado `hold`, referência ao relatório
-- adicione linha na tabela de Rodadas com todos os campos preenchidos
-- para cada follow-up, registre o destino final e a referência ao artefato
-  gerado (`ISSUE-*.md` gerada, `INTAKE-*.md` gerado, ou justificativa de `cancelled`)
+- preserve a linha da rodada e o gate já gravados pela sessão de auditoria; não
+  duplique a tabela `Rodadas`
+- atualize a seção `Resolucoes de Follow-ups` com uma linha por follow-up
+- preencha `Audit ID de Origem` com o identificador derivado de
+  `{{RELATORIO_PATH}}`
+- preencha `Fase` com a fase auditada
+- para `issue-local`, `Ref` aponta para a `ISSUE-*.md` gerada
+- para `new-intake`, `Ref` aponta para o `INTAKE-*.md` gerado
+- para `cancelled`, use `n/a` em `Ref` e registre a justificativa em
+  `Observacoes`
 
 ```
-GERANDO: atualização de {{AUDIT_LOG_PATH}}
+GERANDO: atualização da seção Resolucoes de Follow-ups em {{AUDIT_LOG_PATH}}
 ─────────────────────────────────────────
 <diff da atualização proposta>
 ─────────────────────────────────────────

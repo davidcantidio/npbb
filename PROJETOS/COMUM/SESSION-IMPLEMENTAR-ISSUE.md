@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-ISSUE.md"
-version: "1.1"
+version: "1.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-10"
@@ -47,6 +47,42 @@ Riscos:
 ```
 
 Se `task_instruction_mode: required` estiver incompleto, responda `BLOQUEADO`.
+
+**Verificacao de defasagem de estado de auditoria**
+
+Se a issue referenciar um relatorio de auditoria de origem (campo `Auditoria de
+Origem` nas dependencias ou `origin_audit_id`), execute esta verificacao antes
+de prosseguir:
+
+1. leia o `AUDIT-LOG.md` do projeto
+2. compare o estado atual do gate da fase com o estado assumido pela issue
+3. verifique se existe rodada de auditoria posterior a referenciada pela issue
+
+Se houver rodada posterior:
+
+```text
+ALERTA — DEFASAGEM DE ESTADO DE AUDITORIA
+─────────────────────────────────────────
+Issue assume: <rodada X, gate Y>
+Estado atual: <rodada Z, gate W>
+
+Rodada posterior encontrada: <ID>
+  veredito: <go | hold>
+  data: <data>
+
+Situacoes possiveis:
+  A) a issue foi superada pela rodada posterior e nao precisa ser executada
+  B) a issue ainda e valida mas suas instrucoes estao desatualizadas
+  C) a rodada posterior foi executada prematuramente com esta issue ainda aberta
+
+Nao e possivel determinar automaticamente qual situacao se aplica.
+─────────────────────────────────────────
+→ "situacao A" para encerrar a issue como cancelled com justificativa
+→ "situacao B" para prosseguir ciente da defasagem — PM assume responsabilidade
+→ "situacao C" para parar e escalar ao PM sem alterar nenhum arquivo
+```
+
+**Pare aqui. Aguarde resposta do PM antes de qualquer execucao.**
 
 ### Passo 1 - Plano de execucao
 

@@ -85,7 +85,14 @@ Regras obrigatorias:
 
 - nome do arquivo sugerido:
   `INTAKE-<PROJETO>-REFACTOR-<SLUG>.md`
-- frontmatter obrigatorio deve incluir:
+- reproduza o frontmatter canonico completo do `TEMPLATE-INTAKE.md`, sem
+  remover chaves, sem renomear campos e sem mudar a ordem base do template
+- o frontmatter final deve conter, no minimo:
+  - `doc_id`
+  - `version`
+  - `status`
+  - `owner`
+  - `last_updated`
   - `project: "<PROJETO>"`
   - `intake_kind: "refactor"`
   - `source_mode: "audit-derived"`
@@ -93,9 +100,27 @@ Regras obrigatorias:
   - `origin_phase`
   - `origin_audit_id`
   - `origin_report_path`
+  - `product_type`
+  - `delivery_surface`
+  - `business_domain`
+  - `criticality`
+  - `data_sensitivity`
+  - `integrations`
+  - `change_type`
+  - `audit_rigor`
+- para os campos taxonomicos do frontmatter (`product_type`,
+  `delivery_surface`, `business_domain`, `criticality`, `data_sensitivity`,
+  `change_type`, `audit_rigor`), use apenas valores validos de
+  `PROJETOS/COMUM/GOV-INTAKE.md`; se nao houver base suficiente para escolher
+  com seguranca, devolva `BLOQUEADO` em vez de inventar taxonomia
 - preserve todas as secoes do template canonico de intake
+- preencha explicitamente todas as secoes `0` a `16`, mantendo titulos,
+  checklist e estrutura do template
 - quando um dado nao puder ser comprovado com os insumos lidos, use
-  `nao_definido` ou `nao_aplicavel` e registre a lacuna na secao `14. Lacunas Conhecidas`
+  `nao_definido` ou `nao_aplicavel` somente em campos cujo desconhecimento nao
+  bloqueie objetivo, escopo, restricoes, arquitetura, riscos ou taxonomias
+  controladas; toda ocorrencia deve ser registrada na secao
+  `14. Lacunas Conhecidas`
 - nao crie thresholds, severidades ou categorias fora do
   `SPEC-ANTI-MONOLITO.md`
 
@@ -105,8 +130,17 @@ O intake final deve deixar explicito:
 
 - rastreabilidade completa da auditoria de origem
 - problema estrutural resumido e por que ele agora exige remediacao
+- publico principal, operadores envolvidos e quem patrocina a remediacao
+- job principal, jobs secundarios e a tarefa atual que sera substituida
+- fluxo principal desejado em etapas curtas, sem depender de contexto externo
 - componente(s) afetado(s) e evidencia tecnica do monolito
 - proposta inicial de decomposicao em modulos, responsabilidades ou fatias
+- objetivo de negocio, metricas leading, metricas lagging e criterio minimo de
+  sucesso
+- restricoes tecnicas e operacionais, alem de nao-objetivos explicitos
+- dependencias, integracoes e dados de entrada/saida esperados
+- arquitetura afetada por superficie e estrategia inicial de rollout
+- riscos relevantes de produto, tecnicos, operacionais, de dados e de adocao
 - riscos de compatibilidade de interface, rollout e regressao
 - testes de regressao minimos para proteger o comportamento atual
 - limites do escopo da remediacao e nao-objetivos
@@ -123,3 +157,5 @@ Esse intake deve:
 - estar alinhado ao `TEMPLATE-INTAKE.md` sem remover secoes obrigatorias
 - carregar para a secao de refatoracao a evidencia estrutural vinda do achado
 - fornecer handoff claro para a futura sessao que criara o PRD da remediacao
+- ficar pronto para validacao contra os campos minimos obrigatorios de
+  `PROJETOS/COMUM/GOV-INTAKE.md` sem preenchimento adicional fora do prompt

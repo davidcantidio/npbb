@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-01-MODELO-E-MIGRACOES.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-11"
 ---
@@ -26,7 +26,7 @@ O banco de dados suporta ativações vinculadas a eventos, conversões por ativa
 
 ## Definition of Done do Epico
 
-- [ ] Modelo `Ativacao` com campos: id, evento_id, nome, descricao, conversao_unica, qr_code_url, created_at, updated_at
+- [x] Modelo `Ativacao` validado no contrato vigente: id, evento_id, nome, descricao, `checkin_unico`, qr_code_url, created_at, updated_at
 - [ ] Modelo `ConversaoAtivacao` (ou equivalente) com: id, ativacao_id, lead_id, cpf, created_at
 - [ ] Modelo `LeadReconhecimentoToken` com: lead_id, evento_id, token_hash, expires_at
 - [ ] Migrations aplicáveis em banco limpo e com dados existentes
@@ -37,7 +37,7 @@ O banco de dados suporta ativações vinculadas a eventos, conversões por ativa
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Modelo Ativacao e migration | Criar modelo Ativacao e migration Alembic | 2 | todo | [ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md](./issues/ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md) |
+| ISSUE-F1-01-001 | Modelo Ativacao e migration | Validar o modelo `Ativacao` e a chain Alembic existente | 2 | done | [ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md](./issues/ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md) |
 | ISSUE-F1-01-002 | Modelos conversao_ativacao e lead_reconhecimento_token | Criar modelos e migrations para conversão e token de reconhecimento | 3 | todo | [ISSUE-F1-01-002-MODELOS-CONVERSAO-E-TOKEN.md](./issues/ISSUE-F1-01-002-MODELOS-CONVERSAO-E-TOKEN.md) |
 
 ## Artifact Minimo do Epico

@@ -1,7 +1,7 @@
 ---
 doc_id: "F1_LP_EPICS.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-11"
 audit_gate: "not_ready"
@@ -47,7 +47,7 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Modelo e Migrações | Tabelas ativacao, conversao_ativacao e lead_reconhecimento_token com migrations Alembic | nenhuma | todo | [EPIC-F1-01-MODELO-E-MIGRACOES.md](./EPIC-F1-01-MODELO-E-MIGRACOES.md) |
+| EPIC-F1-01 | Modelo e Migrações | Tabelas ativacao, conversao_ativacao e lead_reconhecimento_token com migrations Alembic | nenhuma | active | [EPIC-F1-01-MODELO-E-MIGRACOES.md](./EPIC-F1-01-MODELO-E-MIGRACOES.md) |
 | EPIC-F1-02 | CRUD de Ativações | Endpoints para criar, editar e listar ativações (operador autenticado) | EPIC-F1-01 | todo | [EPIC-F1-02-CRUD-ATIVACOES.md](./EPIC-F1-02-CRUD-ATIVACOES.md) |
 | EPIC-F1-03 | Geração de QR e Endpoint de Landing | Serviço de geração de QR e endpoint GET landing com contexto de ativação | EPIC-F1-01 | todo | [EPIC-F1-03-QR-E-ENDPOINT-LANDING.md](./EPIC-F1-03-QR-E-ENDPOINT-LANDING.md) |
 

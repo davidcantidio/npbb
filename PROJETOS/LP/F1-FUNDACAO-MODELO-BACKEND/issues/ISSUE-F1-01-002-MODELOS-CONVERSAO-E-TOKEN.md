@@ -5,7 +5,10 @@ status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
-decision_refs: []
+decision_refs:
+  - "PRD 6.2 - Tabela conversao_ativacao"
+  - "PRD 6.3 - Token de Reconhecimento"
+  - "PRD 7.3 - Banco / Migrações"
 ---
 
 # ISSUE-F1-01-002 - Modelos conversao_ativacao e lead_reconhecimento_token
@@ -124,4 +127,4 @@ Conforme PRD seções 6.2 e 6.3:
 
 - [ISSUE-F1-01-001](./ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md)
 - [Epic](../EPIC-F1-01-MODELO-E-MIGRACOES.md)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

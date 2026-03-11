@@ -83,9 +83,9 @@ Cada ativação de um evento terá seu próprio QR-code; o visitante acessa via 
 
 ### 5.1 Mecanismo de Reconhecimento
 
-**Decisão:** Cookie HTTP-only + token opcional na URL para fallback.
+**Decisão:** Cookie HTTP-only emitido pelo backend + token opcional na URL para fallback.
 
-- **Cookie:** `lp_lead_token` com valor opaco (hash ou UUID) vinculado ao `lead_id` + `evento_id`; TTL de 7 dias; domínio do frontend.
+- **Cookie:** `lp_lead_token` com valor opaco (hash ou UUID) vinculado ao `lead_id` + `evento_id`; TTL de 7 dias; emitido via `Set-Cookie` pelo backend para o domínio da aplicação.
 - **Fallback:** parâmetro `?token=` na URL quando o visitante compartilha o link (ex.: WhatsApp) — token de uso único ou de curta validade.
 - **Persistência:** 7 dias — suficiente para eventos multi-dia; respeita LGPD (não armazena CPF no cookie).
 
@@ -159,7 +159,7 @@ Cada ativação de um evento terá seu próprio QR-code; o visitante acessa via 
 
 - Novo modelo `Ativacao`; endpoints para CRUD de ativações (operador).
 - Endpoint `GET /eventos/:id/ativacoes/:ativacao_id/landing` — payload da landing com contexto de ativação.
-- Endpoint `POST /leads/` — extensão para receber `ativacao_id`, validar CPF (dígito), registrar conversão, retornar token de reconhecimento.
+- Endpoint `POST /leads/` — extensão para receber `ativacao_id`, validar CPF (dígito), registrar conversão, retornar token de reconhecimento e emitir `Set-Cookie` para `lp_lead_token`.
 - Endpoint `GET /leads/reconhecer?token=` — valida token e retorna se lead está reconhecido para o evento.
 - Geração de QR: serviço que gera imagem ou URL do QR (lib como `qrcode` em Python ou endpoint que retorna SVG/PNG).
 
@@ -167,7 +167,7 @@ Cada ativação de um evento terá seu próprio QR-code; o visitante acessa via 
 
 - Nova rota `/eventos/:evento_id/ativacoes/:ativacao_id` (ou equivalente).
 - Landing com fluxo CPF-first: estado inicial mostra apenas CPF; após validação, exibe formulário completo.
-- Lógica de reconhecimento: ao carregar, verifica cookie/token; se reconhecido, pula etapa CPF.
+- Lógica de reconhecimento: ao carregar, encaminha `?token=` quando presente e depende do cookie `lp_lead_token` já emitido pelo backend; se reconhecido, pula etapa CPF.
 - Opção "Registrar outro CPF" na ativação de conversão única.
 - Tratamento de bloqueio: mensagem clara quando CPF duplicado em ativação única.
 
@@ -199,7 +199,7 @@ Retorna payload da landing com: evento, ativação, formulário configurado, tem
 - Demais campos do formulário
 
 **Response (extensão):**
-- `token_reconhecimento` — para ser armazenado em cookie pelo frontend
+- `token_reconhecimento` — valor opaco retornado junto com `Set-Cookie: lp_lead_token=...`; a persistência do cookie é responsabilidade do backend
 - `lead_reconhecido` — boolean
 - `conversao_registrada` — boolean
 - `bloqueado_cpf_duplicado` — boolean (quando aplicável)
@@ -310,7 +310,7 @@ Atribuição de conversões por ativação e experiência fluida para leads reco
 ### 13.3 Reconhecimento
 
 - [ ] Lead reconhecido (cookie/token) não repete CPF em nova ativação do mesmo evento
-- [ ] Token de reconhecimento retornado no submit e armazenado em cookie
+- [ ] Token de reconhecimento retornado no submit e cookie `lp_lead_token` emitido via `Set-Cookie`
 
 ### 13.4 Conversão por Ativação
 

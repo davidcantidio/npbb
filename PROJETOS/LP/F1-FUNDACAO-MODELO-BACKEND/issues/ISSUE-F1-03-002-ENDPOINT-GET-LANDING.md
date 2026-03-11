@@ -5,7 +5,10 @@ status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
-decision_refs: []
+decision_refs:
+  - "PRD 7.1 - Backend"
+  - "PRD 8.1 - GET /eventos/:evento_id/ativacoes/:ativacao_id/landing"
+  - "PRD 13.1 - Modelo e Ativações"
 ---
 
 # ISSUE-F1-03-002 - Endpoint GET landing
@@ -116,4 +119,4 @@ Endpoint público: `GET /eventos/:evento_id/ativacoes/:ativacao_id/landing`. Ret
 ## Dependencias
 
 - [EPIC-F1-01](../EPIC-F1-01-MODELO-E-MIGRACOES.md)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

@@ -4,8 +4,11 @@ version: "1.0"
 status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
-task_instruction_mode: "optional"
-decision_refs: []
+task_instruction_mode: "required"
+decision_refs:
+  - "PRD 5.3 - Opção Registrar outro CPF"
+  - "PRD 4 - Fluxo Principal"
+  - "PRD 13.4 - Conversão por Ativação"
 ---
 
 # ISSUE-F3-02-002 - Opção "Registrar outro CPF" em ativação única
@@ -44,6 +47,77 @@ Quando ativação tem conversao_unica = true e lead já converteu nessa ativaç�
 - [ ] T3: Implementar fluxo ao clicar (limpar estado, exibir CPF)
 - [ ] T4: Testes Playwright
 
+## Instructions por Task
+
+### T1
+- objetivo: detectar o estado de lead reconhecido que já converteu na ativação atual
+- precondicoes: reconhecimento já funcional e payload/submit expõem essa condição
+- arquivos_a_ler_ou_tocar:
+  - `frontend/src/`
+  - contrato de payload ou resposta do submit
+- passos_atomicos:
+  1. Identificar a fonte do estado "já converteu nesta ativação"
+  2. Distinguir esse caso do lead apenas reconhecido em outra ativação
+  3. Persistir estado suficiente para renderizar a mensagem correta
+- comandos_permitidos:
+  - `cd frontend && npm run test`
+- resultado_esperado: tela identifica corretamente quando mostrar a opção de novo CPF
+- testes_ou_validacoes_obrigatorias:
+  - teste de componente/integrado
+- stop_conditions:
+  - parar se o backend não expuser sinal inequívoco de "já converteu nesta ativação"
+
+### T2
+- objetivo: renderizar a mensagem de bloqueio suave e o link de novo CPF
+- precondicoes: T1 concluída
+- arquivos_a_ler_ou_tocar:
+  - `frontend/src/`
+- passos_atomicos:
+  1. Exibir mensagem "Você já se cadastrou nesta ativação" ou copy equivalente
+  2. Exibir link/botão "Registrar outro CPF" ou "Cadastrar outra pessoa"
+  3. Posicionar o CTA no fluxo sem conflitar com a confirmação padrão
+- comandos_permitidos:
+  - `cd frontend && npm run test`
+- resultado_esperado: usuário entende por que não pode repetir a mesma conversão e como seguir
+- testes_ou_validacoes_obrigatorias:
+  - teste de renderização
+- stop_conditions:
+  - nenhuma
+
+### T3
+- objetivo: reabrir a etapa de CPF para um novo cadastro ao acionar o link
+- precondicoes: T1 e T2 concluídas
+- arquivos_a_ler_ou_tocar:
+  - `frontend/src/`
+- passos_atomicos:
+  1. Limpar o estado de "já converteu nesta ativação" apenas para a sessão corrente
+  2. Reexibir o campo CPF
+  3. Permitir que o novo CPF válido avance até o submit normal
+- comandos_permitidos:
+  - `cd frontend && npm run test`
+- resultado_esperado: fluxo de terceiro CPF funciona sem quebrar o reconhecimento base
+- testes_ou_validacoes_obrigatorias:
+  - teste de interação
+- stop_conditions:
+  - parar se a máquina de estados da landing não permitir retorno controlado à etapa CPF
+
+### T4
+- objetivo: cobrir o fluxo "Registrar outro CPF" com E2E
+- precondicoes: T1, T2 e T3 concluídas
+- arquivos_a_ler_ou_tocar:
+  - `frontend/e2e/`
+- passos_atomicos:
+  1. Testar renderização da mensagem e do link
+  2. Testar clique no link e retorno do campo CPF
+  3. Testar envio de novo CPF válido na mesma ativação
+- comandos_permitidos:
+  - `cd frontend && npx playwright test`
+- resultado_esperado: o fluxo de exceção fica protegido contra regressão
+- testes_ou_validacoes_obrigatorias:
+  - Playwright ou equivalente
+- stop_conditions:
+  - nenhuma
+
 ## Arquivos Reais Envolvidos
 
 - `frontend/src/`
@@ -59,4 +133,4 @@ Quando ativação tem conversao_unica = true e lead já converteu nessa ativaç�
 
 - [ISSUE-F3-02-001](./ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md)
 - [EPIC-F3-02](../EPIC-F3-02-EXPERIENCIA-FLUIDA.md)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

@@ -5,7 +5,10 @@ status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
-decision_refs: []
+decision_refs:
+  - "PRD 5.1 - Mecanismo de Reconhecimento"
+  - "PRD 6.3 - Token de Reconhecimento"
+  - "PRD 8.2 - POST /leads/"
 ---
 
 # ISSUE-F3-01-001 - Geração e validação de token de reconhecimento
@@ -16,7 +19,7 @@ Como sistema, quero gerar e validar tokens de reconhecimento para leads que conv
 
 ## Contexto Tecnico
 
-Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persistir em lead_reconhecimento_token. POST /leads retorna token_reconhecimento. GET /leads/reconhecer?token= valida. Conforme PRD seções 5.1 e 6.3.
+Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persistir em lead_reconhecimento_token. POST /leads retorna token_reconhecimento e emite `Set-Cookie` para `lp_lead_token`. GET /leads/reconhecer?token= valida. Conforme PRD seções 5.1, 6.3 e 8.2.
 
 ## Plano TDD
 
@@ -26,7 +29,7 @@ Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persisti
 
 ## Criterios de Aceitacao
 
-- Given lead converteu, When POST /leads retorna, Then token_reconhecimento presente
+- Given lead converteu, When POST /leads retorna, Then token_reconhecimento presente e `Set-Cookie` emitido
 - Given token válido, When GET /leads/reconhecer?token=, Then lead_reconhecido = true
 - Given token expirado, When GET reconhecer, Then lead_reconhecido = false
 - Given token de outro evento, When GET reconhecer para evento X, Then não reconhecido para X
@@ -34,7 +37,7 @@ Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persisti
 ## Definition of Done da Issue
 
 - [ ] Serviço gera token e persiste em lead_reconhecimento_token
-- [ ] POST /leads retorna token_reconhecimento no response
+- [ ] POST /leads retorna token_reconhecimento no response e emite `Set-Cookie`
 - [ ] GET /leads/reconhecer?token= valida e retorna status
 - [ ] TTL 7 dias
 - [ ] Testes backend
@@ -74,9 +77,10 @@ Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persisti
   - `backend/app/api/` ou routers de leads
   - `backend/app/schemas/`
 - passos_atomicos:
-  1. Após registrar conversão, chamar serviço de geração de token
-  2. Adicionar token_reconhecimento ao response
-  3. Só retornar quando ativacao_id presente e conversão registrada
+    1. Após registrar conversão, chamar serviço de geração de token
+    2. Adicionar token_reconhecimento ao response
+    3. Emitir `Set-Cookie` HTTP-only para `lp_lead_token` com TTL de 7 dias
+    4. Só retornar quando ativacao_id presente e conversão registrada
 - comandos_permitidos:
   - `cd backend && python -m uvicorn app.main:app --reload`
 - resultado_esperado: response inclui token_reconhecimento
@@ -110,7 +114,7 @@ Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persisti
 - arquivos_a_ler_ou_tocar:
   - `backend/tests/`
 - passos_atomicos:
-  1. Teste: POST retorna token
+   1. Teste: POST retorna token e header `Set-Cookie`
   2. Teste: GET reconhecer com token válido
   3. Teste: GET reconhecer com token expirado
   4. Teste: GET landing com token retorna lead_reconhecido
@@ -139,4 +143,4 @@ Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persisti
 
 - [EPIC-F1-01](../../F1-FUNDACAO-MODELO-BACKEND/EPIC-F1-01-MODELO-E-MIGRACOES.md)
 - [EPIC-F2-02](../../F2-FLUXO-CPF-FIRST-E-CONVERSAO/EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

@@ -47,7 +47,7 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F3-01 | Mecanismo de Reconhecimento | Cookie lp_lead_token + token na URL; validação e lead_reconhecido | F1, F2 | todo | [EPIC-F3-01-MECANISMO-RECONHECIMENTO.md](./EPIC-F3-01-MECANISMO-RECONHECIMENTO.md) |
+| EPIC-F3-01 | Mecanismo de Reconhecimento | Cookie `lp_lead_token` emitido pelo backend + token na URL; validação e lead_reconhecido | F1, F2 | todo | [EPIC-F3-01-MECANISMO-RECONHECIMENTO.md](./EPIC-F3-01-MECANISMO-RECONHECIMENTO.md) |
 | EPIC-F3-02 | Experiência Fluida e "Registrar outro CPF" | Lead reconhecido pula CPF; ativação múltipla formulário direto; opção registrar outro | F2, EPIC-F3-01 | todo | [EPIC-F3-02-EXPERIENCIA-FLUIDA.md](./EPIC-F3-02-EXPERIENCIA-FLUIDA.md) |
 
 ## Dependencias entre Epicos
@@ -62,7 +62,7 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 - Token na URL `?token=` para fallback (link compartilhado)
 - Tabela lead_reconhecimento_token para persistência
 - Endpoint GET /leads/reconhecer?token=
-- POST /leads retorna token_reconhecimento para cookie
+- POST /leads retorna token_reconhecimento e emite `Set-Cookie` para `lp_lead_token`
 - Lead reconhecido: pular etapa CPF
 - Ativação múltipla: formulário direto
 - Ativação única: opção "Registrar outro CPF" quando já converteu
@@ -73,7 +73,7 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 
 ## Definition of Done da Fase
 
-- [ ] Cookie lp_lead_token armazenado no submit
+- [ ] Cookie `lp_lead_token` emitido via `Set-Cookie` no submit
 - [ ] Token na URL validado
 - [ ] Lead reconhecido não repete CPF
 - [ ] Ativação múltipla: formulário direto

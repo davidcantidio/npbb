@@ -5,7 +5,10 @@ status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
-decision_refs: []
+decision_refs:
+  - "PRD 4 - Fluxo Principal"
+  - "PRD 8.3 - Validação de CPF"
+  - "PRD 13.2 - Fluxo CPF-first"
 ---
 
 # ISSUE-F2-01-002 - Fluxo CPF-first e validação de dígito
@@ -113,4 +116,4 @@ Estado inicial da landing: apenas campo CPF. Validação de dígito verificador 
 
 - [ISSUE-F2-01-001](./ISSUE-F2-01-001-ROTA-E-PAGINA-LANDING.md)
 - [EPIC-F2-02](../EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md) (para contrato POST)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

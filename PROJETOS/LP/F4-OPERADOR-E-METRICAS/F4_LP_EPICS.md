@@ -15,7 +15,7 @@ Implementar interface de configuração de ativações (QR, tipo de conversão),
 
 ## Gate de Saida da Fase
 
-O operador pode configurar ativações via interface, visualizar conversões por ativação e acessar métricas (número de ativações, conversões por ativação, taxa de reconhecimento).
+O operador pode configurar ativações via interface, visualizar conversões por ativação e acessar métricas leading e lagging (número de ativações, conversões por ativação, taxa de reconhecimento, conversões atribuíveis e redução de abandono por repetição de CPF).
 
 ## Estado do Gate de Auditoria
 
@@ -62,7 +62,7 @@ O operador pode configurar ativações via interface, visualizar conversões por
 - Exibição de QR na interface
 - Configuração de conversão única/múltipla
 - Listagem de conversões por ativação
-- Métricas: ativações por evento, conversões por ativação, taxa de reconhecimento
+- Métricas leading e lagging: ativações por evento, conversões por ativação, taxa de reconhecimento, conversões atribuíveis e redução de abandono por repetição de CPF
 - Observabilidade básica
 
 ### Fora

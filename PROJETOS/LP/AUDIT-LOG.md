@@ -22,7 +22,10 @@ last_updated: "2026-03-11"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| preencher |  |  |  |  |
+| F1 | not_ready | nao_aplicavel | nao_aplicavel | Aguardando primeira auditoria formal |
+| F2 | not_ready | nao_aplicavel | nao_aplicavel | Aguardando primeira auditoria formal |
+| F3 | not_ready | nao_aplicavel | nao_aplicavel | Aguardando primeira auditoria formal |
+| F4 | not_ready | nao_aplicavel | nao_aplicavel | Aguardando primeira auditoria formal |
 
 ## Resolucoes de Follow-ups
 

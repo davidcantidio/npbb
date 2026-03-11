@@ -5,7 +5,10 @@ status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
-decision_refs: []
+decision_refs:
+  - "PRD 6.1 - Tabela ativacao"
+  - "PRD 7.3 - Banco / Migrações"
+  - "PRD 13.1 - Modelo e Ativações"
 ---
 
 # ISSUE-F1-01-001 - Modelo Ativacao e migration
@@ -117,4 +120,4 @@ Conforme PRD seção 6.1: tabela `ativacao` com id, evento_id, nome, descricao, 
 
 - [Epic](../EPIC-F1-01-MODELO-E-MIGRACOES.md)
 - [Fase](../F1_LP_EPICS.md)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

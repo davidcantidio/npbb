@@ -5,7 +5,10 @@ status: "todo"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
-decision_refs: []
+decision_refs:
+  - "PRD 7.1 - Backend"
+  - "PRD 8.2 - POST /leads/"
+  - "PRD 13.4 - Conversão por Ativação"
 ---
 
 # ISSUE-F2-02-001 - Extensão POST /leads com ativacao_id e registro de conversão
@@ -115,4 +118,4 @@ Estender request do POST /leads com ativacao_id (obrigatório quando acesso via 
 ## Dependencias
 
 - [EPIC-F1-01](../../F1-FUNDACAO-MODELO-BACKEND/EPIC-F1-01-MODELO-E-MIGRACOES.md)
-- [PRD](../../../PRD-LP-QR-ATIVACOES.md)
+- [PRD](../../PRD-LP-QR-ATIVACOES.md)

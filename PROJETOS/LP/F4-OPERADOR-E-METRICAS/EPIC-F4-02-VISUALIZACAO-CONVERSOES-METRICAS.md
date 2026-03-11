@@ -20,13 +20,14 @@ O operador visualiza conversões por ativação e métricas para avaliar desempe
 
 - Backend: endpoints ou extensão de endpoints para agregar conversões
 - Frontend: tabela ou cards de conversões por ativação; KPIs
-- Métricas: número de ativações por evento, conversões por ativação, taxa de reconhecimento
+- Métricas leading: número de ativações por evento, conversões por ativação, taxa de reconhecimento
+- Métricas lagging: conversões atribuíveis, redução de abandono por repetição de CPF
 
 ## Definition of Done do Epico
 
 - [ ] Endpoint ou dados para listar conversões por ativação
 - [ ] Interface exibe conversões por ativação
-- [ ] Métricas leading acessíveis (ativações, conversões, taxa reconhecimento)
+- [ ] Métricas leading e lagging acessíveis
 - [ ] Observabilidade básica (logs, métricas expostas)
 - [ ] Testes
 

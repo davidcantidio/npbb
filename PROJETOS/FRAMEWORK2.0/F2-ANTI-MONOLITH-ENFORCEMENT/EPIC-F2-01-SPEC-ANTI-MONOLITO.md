@@ -3,7 +3,7 @@ doc_id: "EPIC-F2-01-SPEC-ANTI-MONOLITO.md"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-11"
 ---
 
 # EPIC-F2-01 - SPEC-ANTI-MONOLITO
@@ -26,8 +26,8 @@ nao apenas por percepcao subjetiva.
 
 ## Definition of Done do Epico
 
-- [ ] thresholds por linguagem documentados
-- [ ] calibracao minima registrada
+- [x] thresholds por linguagem documentados
+- [x] calibracao minima registrada
 - [ ] governanca de auditoria apontando para o spec
 
 ## Issues do Epico
@@ -35,7 +35,7 @@ nao apenas por percepcao subjetiva.
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F2-01-001 | Definir thresholds anti-monolito por linguagem | Fixar thresholds objetivos para TS/React e Python. | 2 | done | [ISSUE-F2-01-001-DEFINIR-THRESHOLDS-ANTI-MONOLITO-POR-LINGUAGEM.md](./issues/ISSUE-F2-01-001-DEFINIR-THRESHOLDS-ANTI-MONOLITO-POR-LINGUAGEM.md) |
-| ISSUE-F2-01-002 | Calibrar thresholds usando dashboard leads etaria | Validar os valores com um projeto ativo de referencia. | 3 | todo | [ISSUE-F2-01-002-CALIBRAR-THRESHOLDS-USANDO-DASHBOARD-LEADS-ETARIA.md](./issues/ISSUE-F2-01-002-CALIBRAR-THRESHOLDS-USANDO-DASHBOARD-LEADS-ETARIA.md) |
+| ISSUE-F2-01-002 | Calibrar thresholds usando dashboard leads etaria | Validar os valores com um projeto ativo de referencia. | 3 | done | [ISSUE-F2-01-002-CALIBRAR-THRESHOLDS-USANDO-DASHBOARD-LEADS-ETARIA.md](./issues/ISSUE-F2-01-002-CALIBRAR-THRESHOLDS-USANDO-DASHBOARD-LEADS-ETARIA.md) |
 | ISSUE-F2-01-003 | Integrar spec anti-monolito a governanca de auditoria | Fazer a auditoria consumir o spec como fonte de threshold. | 2 | todo | [ISSUE-F2-01-003-INTEGRAR-SPEC-ANTI-MONOLITO-A-GOVERNANCA-DE-AUDITORIA.md](./issues/ISSUE-F2-01-003-INTEGRAR-SPEC-ANTI-MONOLITO-A-GOVERNANCA-DE-AUDITORIA.md) |
 
 ## Artifact Minimo do Epico

@@ -1,9 +1,9 @@
 ---
 doc_id: "SPEC-ANTI-MONOLITO.md"
-version: "1.1"
+version: "1.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-11"
 ---
 
 # SPEC-ANTI-MONOLITO
@@ -21,13 +21,41 @@ Definir thresholds objetivos para os achados `monolithic-file` e
 
 ## Calibracao Inicial
 
-Referencia observada no projeto ativo `dashboard-leads-etaria`:
+Calibracao minima validada em `2026-03-11` usando o codigo atual do repositorio
+e a trilha documental do projeto ativo `dashboard-leads-etaria`.
 
-- frontend dashboard: maior arquivo funcional localizado com `293` linhas
-- backend dashboard: maior arquivo funcional localizado com `380` linhas
+Amostra considerada, excluindo testes, docs arquivadas, arquivos gerados e
+artefatos de build:
 
-Com base nisso, o threshold de aviso inicia acima do maior arquivo funcional do
-dashboard e o threshold bloqueante fica reservado para outliers claros.
+- backend dashboard:
+  - `backend/app/services/dashboard_service.py` com `381` linhas
+  - `backend/app/schemas/dashboard.py` com `169` linhas
+  - `backend/app/routers/dashboard.py` com `94` linhas
+- frontend dashboard:
+  - `frontend/src/components/dashboard/EventsAgeTable.tsx` com `283` linhas
+  - `frontend/src/components/dashboard/AgeDistributionChart.tsx` com `224` linhas
+  - `frontend/src/pages/dashboard/LeadsAgeAnalysisPage.tsx` com `175` linhas
+  - `frontend/src/components/dashboard/ConsolidatedPanel.tsx` com `158` linhas
+  - `frontend/src/components/dashboard/AgeAnalysisFilters.tsx` com `139` linhas
+
+Sinais observados na amostra:
+
+- maior arquivo funcional backend: `381` linhas
+- maior arquivo funcional frontend: `283` linhas
+- maior funcao Python observada: `build_age_analysis` com `53` linhas em
+  `backend/app/services/dashboard_service.py`
+- componentes React como `LeadsAgeAnalysisPage`, `ConsolidatedPanel` e
+  `AgeAnalysisFilters` ultrapassam `60` linhas quando contados de forma bruta,
+  mas o excedente observado vem majoritariamente da arvore declarativa de JSX,
+  nao de branching pesado ou profundidade estrutural anormal
+
+Decisao de calibracao:
+
+- thresholds numericos `warn/block` foram mantidos
+- a regra de interpretacao para `TypeScript/React` foi refinada para evitar
+  falso positivo de `monolithic-function` em componentes declarativos
+- o threshold de aviso continua acima do maior arquivo funcional observado no
+  dashboard, e o threshold bloqueante permanece reservado para outliers claros
 
 ## Niveis Operacionais
 
@@ -76,7 +104,11 @@ metrica, conforme as regras abaixo.
 
 - conte componentes, hooks, helpers exportados e builders visiveis como `exports`
 - conte dominios por raiz de import funcional, nao por arquivo individual
-- componentes com JSX muito extenso entram no threshold de arquivo, mesmo com funcoes pequenas
+- normalize imports locais do mesmo modulo funcional como um unico dominio
+- componentes com JSX muito extenso entram primeiro no threshold de arquivo
+- na dimensao de funcao, priorize a logica imperativa do componente
+  (hooks, handlers, helpers e branching relevante); JSX declarativo extenso, por
+  si so, nao deve classificar `monolithic-function`
 
 ### Python
 

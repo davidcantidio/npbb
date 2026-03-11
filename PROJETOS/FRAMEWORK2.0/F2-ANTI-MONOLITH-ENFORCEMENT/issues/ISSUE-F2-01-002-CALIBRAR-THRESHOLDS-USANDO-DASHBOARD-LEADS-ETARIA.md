@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-002-CALIBRAR-THRESHOLDS-USANDO-DASHBOARD-LEADS-ETARIA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -37,15 +37,15 @@ usa medidas reais do projeto para justificar a primeira versao do spec.
 
 ## Definition of Done da Issue
 
-- [ ] amostra minima do projeto de referencia analisada
-- [ ] nota de calibracao registrada no spec
-- [ ] thresholds revisados se necessario
+- [x] amostra minima do projeto de referencia analisada
+- [x] nota de calibracao registrada no spec
+- [x] thresholds revisados se necessario
 
 ## Tasks Decupadas
 
-- [ ] T1: identificar arquivos/funcoes representativos no projeto de referencia
-- [ ] T2: comparar medidas observadas com os thresholds propostos
-- [ ] T3: registrar a calibracao no `SPEC-ANTI-MONOLITO.md`
+- [x] T1: identificar arquivos/funcoes representativos no projeto de referencia
+- [x] T2: comparar medidas observadas com os thresholds propostos
+- [x] T3: registrar a calibracao no `SPEC-ANTI-MONOLITO.md`
 
 ## Arquivos Reais Envolvidos
 

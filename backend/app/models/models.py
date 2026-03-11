@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, DateTime, Numeric, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Index, Numeric, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlmodel import Field, Relationship
 
@@ -262,6 +262,9 @@ class Evento(SQLModel, table=True):
     territorios: List["EventoTerritorio"] = Relationship(back_populates="evento")
     tags: List["EventoTag"] = Relationship(back_populates="evento")
     ativacoes: List["Ativacao"] = Relationship(back_populates="evento")
+    lead_reconhecimento_tokens: List["LeadReconhecimentoToken"] = Relationship(
+        back_populates="evento"
+    )
     gamificacoes: List["Gamificacao"] = Relationship(back_populates="evento")
     cotas: List["CotaCortesia"] = Relationship(back_populates="evento")
     paginas_questionario: List["QuestionarioPagina"] = Relationship(back_populates="evento")
@@ -382,6 +385,8 @@ class Lead(SQLModel, table=True):
     cupons: List["Cupom"] = Relationship(back_populates="lead")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="lead")
     conversoes: List["LeadConversao"] = Relationship(back_populates="lead")
+    conversoes_ativacao: List["ConversaoAtivacao"] = Relationship(back_populates="lead")
+    reconhecimento_tokens: List["LeadReconhecimentoToken"] = Relationship(back_populates="lead")
 
 
 class LeadConversao(SQLModel, table=True):
@@ -561,6 +566,7 @@ class Ativacao(SQLModel, table=True):
     termo_uso_obj: Optional["TermoUsoAtivacao"] = Relationship(back_populates="ativacao")
     investimentos: List["Investimento"] = Relationship(back_populates="ativacao")
     ativacao_leads: List["AtivacaoLead"] = Relationship(back_populates="ativacao")
+    conversoes_ativacao: List["ConversaoAtivacao"] = Relationship(back_populates="ativacao")
     cupons: List["Cupom"] = Relationship(back_populates="ativacao")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="ativacao")
     landing_analytics_events: List["LandingAnalyticsEvent"] = Relationship(back_populates="ativacao")
@@ -627,6 +633,32 @@ class AtivacaoLead(SQLModel, table=True):
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")
     gamificacao: Optional[Gamificacao] = Relationship()
+
+
+class ConversaoAtivacao(SQLModel, table=True):
+    __tablename__ = "conversao_ativacao"
+    __table_args__ = (Index("ix_conversao_ativacao_ativacao_id_cpf", "ativacao_id", "cpf"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ativacao_id: int = Field(foreign_key="ativacao.id")
+    lead_id: int = Field(foreign_key="lead.id")
+    cpf: str = Field(max_length=11)
+    created_at: datetime = Field(default_factory=now_utc)
+
+    ativacao: Optional[Ativacao] = Relationship(back_populates="conversoes_ativacao")
+    lead: Optional[Lead] = Relationship(back_populates="conversoes_ativacao")
+
+
+class LeadReconhecimentoToken(SQLModel, table=True):
+    __tablename__ = "lead_reconhecimento_token"
+
+    token_hash: str = Field(primary_key=True, index=True, max_length=64)
+    lead_id: int = Field(foreign_key="lead.id")
+    evento_id: int = Field(foreign_key="evento.id")
+    expires_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+
+    lead: Optional[Lead] = Relationship(back_populates="reconhecimento_tokens")
+    evento: Optional[Evento] = Relationship(back_populates="lead_reconhecimento_tokens")
 
 
 class EventoLandingCustomizationAudit(SQLModel, table=True):

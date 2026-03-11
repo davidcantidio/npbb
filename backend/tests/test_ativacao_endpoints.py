@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -18,6 +19,7 @@ from app.models.models import (
     TipoEvento,
     Usuario,
 )
+from app.schemas.ativacao import AtivacaoCreate, AtivacaoUpdate
 from app.utils.security import hash_password
 
 
@@ -180,7 +182,27 @@ def seed_cupom(session: Session, *, ativacao_id: int, codigo: str = "CUPOM1") ->
     return cupom
 
 
-def test_evento_ativacoes_get_retorna_lista_vazia(client, engine):
+def test_ativacao_create_schema_aceita_conversao_unica_e_normaliza_nome():
+    payload = AtivacaoCreate.model_validate(
+        {
+            "nome": "  Ativacao QR  ",
+            "descricao": "  Mensagem  ",
+            "conversao_unica": False,
+        }
+    )
+
+    assert payload.nome == "Ativacao QR"
+    assert payload.descricao == "Mensagem"
+    assert payload.conversao_unica is False
+    assert payload.checkin_unico is False
+
+
+def test_ativacao_update_schema_rejeita_aliases_divergentes():
+    with pytest.raises(ValidationError):
+        AtivacaoUpdate.model_validate({"conversao_unica": True, "checkin_unico": False})
+
+
+def test_eventos_ativacoes_get_retorna_lista_vazia(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
@@ -199,13 +221,13 @@ def test_evento_ativacoes_get_retorna_lista_vazia(client, engine):
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
     resp = client.get(
-        f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+        f"/eventos/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 200
     assert resp.json() == []
 
 
-def test_evento_ativacoes_post_cria_e_get_retorna(client, engine):
+def test_eventos_ativacoes_post_cria_lista_e_get_by_id(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
@@ -227,13 +249,13 @@ def test_evento_ativacoes_post_cria_e_get_retorna(client, engine):
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
     resp_create = client.post(
-        f"/evento/{evento_id}/ativacoes",
+        f"/eventos/{evento_id}/ativacoes",
         json={
             "nome": "Ativacao 1",
             "descricao": "Mensagem",
+            "conversao_unica": False,
             "mensagem_qrcode": "QR Code",
             "gamificacao_id": gamificacao_id,
-            "checkin_unico": True,
         },
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -244,21 +266,34 @@ def test_evento_ativacoes_post_cria_e_get_retorna(client, engine):
     assert created["descricao"] == "Mensagem"
     assert created["mensagem_qrcode"] == "QR Code"
     assert created["gamificacao_id"] == gamificacao_id
-    assert created["checkin_unico"] is True
+    assert created["conversao_unica"] is False
+    assert created["checkin_unico"] is False
     assert created["redireciona_pesquisa"] is False
     assert created["termo_uso"] is False
     assert created["gera_cupom"] is False
 
     resp_list = client.get(
-        f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+        f"/eventos/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp_list.status_code == 200
     payload = resp_list.json()
     assert len(payload) == 1
     assert payload[0]["id"] == created["id"]
+    assert payload[0]["conversao_unica"] is False
+
+    resp_get_by_id = client.get(
+        f"/eventos/{evento_id}/ativacoes/{created['id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_get_by_id.status_code == 200
+    by_id_payload = resp_get_by_id.json()
+    assert by_id_payload["id"] == created["id"]
+    assert by_id_payload["evento_id"] == evento_id
+    assert by_id_payload["nome"] == "Ativacao 1"
+    assert by_id_payload["conversao_unica"] is False
 
 
-def test_ativacao_put_atualiza_campos_e_switches(client, engine):
+def test_eventos_ativacoes_patch_atualiza_campos(client, engine):
     old_dt = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
     with Session(engine) as session:
@@ -285,17 +320,14 @@ def test_ativacao_put_atualiza_campos_e_switches(client, engine):
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
 
-    resp_update = client.put(
-        f"/ativacao/{ativacao_id}",
+    resp_update = client.patch(
+        f"/eventos/{evento_id}/ativacoes/{ativacao_id}",
         json={
             "nome": "Ativacao Editada",
             "descricao": "Nova mensagem",
+            "conversao_unica": True,
             "mensagem_qrcode": "Novo QR",
             "gamificacao_id": gamificacao_id,
-            "redireciona_pesquisa": True,
-            "checkin_unico": True,
-            "termo_uso": True,
-            "gera_cupom": True,
         },
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -307,15 +339,45 @@ def test_ativacao_put_atualiza_campos_e_switches(client, engine):
     assert updated["descricao"] == "Nova mensagem"
     assert updated["mensagem_qrcode"] == "Novo QR"
     assert updated["gamificacao_id"] == gamificacao_id
-    assert updated["redireciona_pesquisa"] is True
+    assert updated["conversao_unica"] is True
     assert updated["checkin_unico"] is True
-    assert updated["termo_uso"] is True
-    assert updated["gera_cupom"] is True
 
     updated_at = datetime.fromisoformat(updated["updated_at"])
     if updated_at.tzinfo is None:
         updated_at = updated_at.replace(tzinfo=timezone.utc)
     assert updated_at > old_dt
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("get", "/eventos/1/ativacoes"),
+        ("post", "/eventos/1/ativacoes"),
+        ("get", "/eventos/1/ativacoes/1"),
+        ("patch", "/eventos/1/ativacoes/1"),
+    ],
+)
+def test_eventos_ativacoes_sem_token_retorna_401(client, method, path):
+    payload = {"nome": "Ativacao sem token", "conversao_unica": True}
+    kwargs = {"json": payload} if method in {"post", "patch"} else {}
+    response = getattr(client, method)(path, **kwargs)
+
+    assert response.status_code == 401
+
+
+def test_eventos_ativacoes_post_retorna_404_quando_evento_nao_existe(client, engine):
+    with Session(engine) as session:
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    response = client.post(
+        "/eventos/9999/ativacoes",
+        json={"nome": "Ativacao", "conversao_unica": True},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
 
 
 def test_ativacao_delete_remove(client, engine):
@@ -345,7 +407,7 @@ def test_ativacao_delete_remove(client, engine):
     assert resp_delete.status_code == 204
 
     resp_list = client.get(
-        f"/evento/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+        f"/eventos/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp_list.status_code == 200
     assert resp_list.json() == []
@@ -402,15 +464,15 @@ def test_ativacoes_aplica_visibilidade_agencia(client, engine):
     token = login_and_get_token(client, "agencia@agencia.com.br", "Senha123!")
 
     resp_list = client.get(
-        f"/evento/{evento_out_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
+        f"/eventos/{evento_out_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp_list.status_code == 404
     assert resp_list.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
 
-    resp_update = client.put(
-        f"/ativacao/{ativacao_out_id}",
+    resp_update = client.patch(
+        f"/eventos/{evento_out_id}/ativacoes/{ativacao_out_id}",
         json={"nome": "Nao pode"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp_update.status_code == 404
-    assert resp_update.json()["detail"]["code"] == "ATIVACAO_NOT_FOUND"
+    assert resp_update.json()["detail"]["code"] == "EVENTO_NOT_FOUND"

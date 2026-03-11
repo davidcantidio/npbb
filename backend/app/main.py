@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.responses import JSONResponse
 
 from app.routers.agencias import router as agencias_router
+from app.routers.ativacao import eventos_router as eventos_ativacao_router
 from app.routers.ativacao import router as ativacao_router
 from app.routers.auth import router as auth_router
 from app.routers.ativos import router as ativos_router
@@ -173,6 +174,7 @@ app.include_router(agencias_router)
 app.include_router(eventos_router)
 app.include_router(gamificacao_router)
 app.include_router(ativacao_router)
+app.include_router(eventos_ativacao_router)
 app.include_router(ativos_router)
 app.include_router(ingressos_router)
 app.include_router(leads_router)

@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-01-001-FORMALIZAR-SESSION-MAPA-COM-INVENTARIO-E-STATUS-CORRETOS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -37,15 +37,15 @@ sessao, com nomenclatura final, status e finalidade.
 
 ## Definition of Done da Issue
 
-- [ ] inventario final de prompts de sessao listado
-- [ ] status e papel de cada prompt descritos
-- [ ] nomes canonicos revisados
+- [x] inventario final de prompts de sessao listado
+- [x] status e papel de cada prompt descritos
+- [x] nomes canonicos revisados
 
 ## Tasks Decupadas
 
-- [ ] T1: revisar o inventario de prompts de sessao previstos
-- [ ] T2: atualizar `SESSION-MAPA.md` com nomes e status corretos
-- [ ] T3: revisar coerencia entre mapa e artefatos reais
+- [x] T1: revisar o inventario de prompts de sessao previstos
+- [x] T2: atualizar `SESSION-MAPA.md` com nomes e status corretos
+- [x] T3: revisar coerencia entre mapa e artefatos reais
 
 ## Arquivos Reais Envolvidos
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F3-01-REGISTRO-E-VALIDACAO-DOS-PROMPTS-ANTECIPADOS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 ---
 
 # EPIC-F3-01 - Registro e Validacao dos Prompts Antecipados
@@ -33,7 +33,7 @@ e deixam de apontar para nomes ou regras obsoletas.
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-01-001 | Formalizar session mapa com inventario e status corretos | Consolidar o ponto de entrada para chat. | 2 | todo | [ISSUE-F3-01-001-FORMALIZAR-SESSION-MAPA-COM-INVENTARIO-E-STATUS-CORRETOS.md](./issues/ISSUE-F3-01-001-FORMALIZAR-SESSION-MAPA-COM-INVENTARIO-E-STATUS-CORRETOS.md) |
+| ISSUE-F3-01-001 | Formalizar session mapa com inventario e status corretos | Consolidar o ponto de entrada para chat. | 2 | done | [ISSUE-F3-01-001-FORMALIZAR-SESSION-MAPA-COM-INVENTARIO-E-STATUS-CORRETOS.md](./issues/ISSUE-F3-01-001-FORMALIZAR-SESSION-MAPA-COM-INVENTARIO-E-STATUS-CORRETOS.md) |
 | ISSUE-F3-01-002 | Revalidar prompts antecipados no estado pos F1 | Corrigir os prompts ja criados para o estado final de F1. | 3 | todo | [ISSUE-F3-01-002-REVALIDAR-PROMPTS-ANTECIPADOS-NO-ESTADO-POS-F1.md](./issues/ISSUE-F3-01-002-REVALIDAR-PROMPTS-ANTECIPADOS-NO-ESTADO-POS-F1.md) |
 
 ## Artifact Minimo do Epico

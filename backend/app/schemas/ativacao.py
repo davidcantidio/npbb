@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 
 class AtivacaoLeadRead(BaseModel):
@@ -37,11 +37,30 @@ def _normalize_optional(text: str | None) -> str | None:
     return value or None
 
 
+def _validate_boolean_aliases(
+    data: object,
+    *,
+    primary_field: str,
+    alias_field: str,
+) -> object:
+    if not isinstance(data, dict):
+        return data
+
+    if primary_field in data and alias_field in data and data[primary_field] != data[alias_field]:
+        raise ValueError(f"{primary_field} e {alias_field} nao podem divergir")
+
+    return data
+
+
 class AtivacaoRead(BaseModel):
     id: int
     evento_id: int
     nome: str
     descricao: str | None = None
+    conversao_unica: bool = Field(
+        validation_alias=AliasChoices("conversao_unica", "checkin_unico")
+    )
+    checkin_unico: bool = Field(validation_alias=AliasChoices("checkin_unico", "conversao_unica"))
     mensagem_qrcode: str | None = None
     gamificacao_id: int | None = None
     landing_url: str | None = None
@@ -49,7 +68,6 @@ class AtivacaoRead(BaseModel):
     url_promotor: str | None = None
 
     redireciona_pesquisa: bool
-    checkin_unico: bool
     termo_uso: bool
     gera_cupom: bool
 
@@ -62,13 +80,29 @@ class AtivacaoRead(BaseModel):
 class AtivacaoCreate(BaseModel):
     nome: str = Field(min_length=1, max_length=100)
     descricao: str | None = Field(default=None, max_length=240)
+    conversao_unica: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("conversao_unica", "checkin_unico"),
+    )
+    checkin_unico: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("checkin_unico", "conversao_unica"),
+    )
     mensagem_qrcode: str | None = Field(default=None, max_length=240)
     gamificacao_id: int | None = Field(default=None, ge=1)
 
     redireciona_pesquisa: bool = False
-    checkin_unico: bool = False
     termo_uso: bool = False
     gera_cupom: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_boolean_aliases(cls, data: object):
+        return _validate_boolean_aliases(
+            data,
+            primary_field="conversao_unica",
+            alias_field="checkin_unico",
+        )
 
     @model_validator(mode="after")
     def normalize_strings(self):
@@ -84,13 +118,29 @@ class AtivacaoCreate(BaseModel):
 class AtivacaoUpdate(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=100)
     descricao: str | None = Field(default=None, max_length=240)
+    conversao_unica: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("conversao_unica", "checkin_unico"),
+    )
+    checkin_unico: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("checkin_unico", "conversao_unica"),
+    )
     mensagem_qrcode: str | None = Field(default=None, max_length=240)
     gamificacao_id: int | None = Field(default=None, ge=1)
 
     redireciona_pesquisa: bool | None = None
-    checkin_unico: bool | None = None
     termo_uso: bool | None = None
     gera_cupom: bool | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_boolean_aliases(cls, data: object):
+        return _validate_boolean_aliases(
+            data,
+            primary_field="conversao_unica",
+            alias_field="checkin_unico",
+        )
 
     @model_validator(mode="after")
     def normalize_strings(self):

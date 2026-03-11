@@ -33,7 +33,7 @@ Status: todo
 Como pessoa responsavel pela janela de migracao, quero um preflight com work order, decision e rollback definido para bloquear execucao incompleta antes de tocar no banco.
 
 **Plano TDD**
-1. `Red`: usar `Infra/production/.env.example`, `docs/RUNBOOK_RESTORE_POSTGRES_VPS.md`, `PROJETOS/WORK-ORDER-SPEC.md` e `PROJETOS/DECISION-PROTOCOL.md` para tornar explicita a falha quando faltarem `SUPABASE_DATABASE_URL`, `LOCAL_DATABASE_URL`, `idempotency_key`, aprovacao humana ou `rollback_plan`.
+1. `Red`: usar `Infra/production/.env.example`, `docs/RUNBOOK_RESTORE_POSTGRES_VPS.md`, `PROJETOS/COMUM/GOV-WORK-ORDER.md` e `PROJETOS/COMUM/GOV-DECISOES.md` para tornar explicita a falha quando faltarem `SUPABASE_DATABASE_URL`, `LOCAL_DATABASE_URL`, `idempotency_key`, aprovacao humana ou `rollback_plan`.
 2. `Green`: complementar `docs/RUNBOOK_RESTORE_POSTGRES_VPS.md` com checklist de preflight e definir `artifacts/phase-f2/work-order-and-decision.md` com os blocos YAML canonicos de `work_order` e `decision`.
 3. `Refactor`: unificar nomenclatura de variaveis, risco e rollback entre o PRD, o runbook e o artifact para remover instrucoes conflitantes.
 
@@ -78,5 +78,5 @@ Como pessoa mantenedora do backend, quero reaplicar as migrations apos o restore
 ## Dependencias
 
 - [PRD](../prd_vps_migration.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

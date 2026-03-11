@@ -12,7 +12,7 @@ last_updated: "2026-03-08"
 
 - [Intake](./INTAKE-LANDING-PAGE-FORM-FIRST.md)
 - [PRD](./PRD-LANDING-PAGE-FORM-FIRST.md)
-- [Framework de Auditoria](../COMUM/AUDITORIA-GOV.md)
+- [Framework de Auditoria](../COMUM/GOV-AUDITORIA.md)
 
 ## Politica
 

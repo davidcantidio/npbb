@@ -66,8 +66,13 @@ from app.schemas.formulario_lead import (
     FormularioLeadCampoRead,
     FormularioLeadConfigRead,
     FormularioLeadConfigUpsert,
+    FormularioLeadPreviewRequest,
 )
-from app.schemas.landing_public import EventoLandingCustomizationAuditRead, LandingAnalyticsSummaryRead
+from app.schemas.landing_public import (
+    EventoLandingCustomizationAuditRead,
+    LandingAnalyticsSummaryRead,
+    LandingPageRead,
+)
 from app.schemas.gamificacao import GamificacaoCreate, GamificacaoRead
 from app.schemas.questionario import (
     QuestionarioEstruturaRead,
@@ -80,8 +85,12 @@ from app.services.formulario_lead_catalog import (
     FORMULARIO_CAMPOS_ORDEM_BY_LOWER,
 )
 from app.services.landing_pages import (
+    build_landing_fields_from_config,
+    build_landing_payload,
+    get_formulario_template_name_by_id,
     hydrate_ativacao_public_urls,
     list_landing_customization_audits,
+    normalize_template_override_input,
     summarize_landing_analytics,
 )
 from app.services.questionario import load_questionario_estrutura, replace_questionario_estrutura
@@ -624,6 +633,17 @@ def _normalize_estado(value: str | None) -> str | None:
     return text.upper() if text else None
 
 
+def _normalize_template_override_or_error(value: str | None) -> str | None:
+    normalized = normalize_template_override_input(value)
+    if value is not None and str(value).strip() and normalized is None:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="LANDING_TEMPLATE_OVERRIDE_INVALID",
+            message="template_override fora do catalogo homologado",
+        )
+    return normalized
+
+
 STATUS_PREVISTO = "Previsto"
 STATUS_A_CONFIRMAR = "A Confirmar"
 STATUS_CONFIRMADO = "Confirmado"
@@ -972,6 +992,65 @@ def obter_formulario_lead_config(
             ],
             **url_updates,
         }
+    )
+
+
+@router.post("/{evento_id}/landing-preview", response_model=LandingPageRead)
+@router.post("/{evento_id}/landing-preview/", response_model=LandingPageRead)
+def preview_formulario_lead_landing(
+    evento_id: int,
+    payload: FormularioLeadPreviewRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    evento = session.get(Evento, evento_id)
+    if not evento:
+        _raise_http(
+            status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+        )
+
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA and current_user.agencia_id:
+        if evento.agencia_id != current_user.agencia_id:
+            _raise_http(
+                status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado"
+            )
+
+    transient_updates: dict[str, str | None] = {}
+    if "template_override" in payload.model_fields_set:
+        transient_updates["template_override"] = _normalize_template_override_or_error(
+            payload.template_override
+        )
+    if "cta_personalizado" in payload.model_fields_set:
+        transient_updates["cta_personalizado"] = _normalize_str(payload.cta_personalizado)
+    if "descricao_curta" in payload.model_fields_set:
+        transient_updates["descricao_curta"] = _normalize_str(payload.descricao_curta)
+
+    preview_evento = evento.model_copy(update=transient_updates) if transient_updates else evento
+
+    preview_kwargs: dict[str, object] = {}
+    if "template_id" in payload.model_fields_set:
+        if payload.template_id is not None:
+            _validate_fk(
+                session,
+                FormularioLandingTemplate,
+                payload.template_id,
+                "FORM_TEMPLATE_NOT_FOUND",
+                "Template nao encontrado",
+            )
+        preview_kwargs["template_name_override"] = get_formulario_template_name_by_id(
+            session, payload.template_id
+        )
+
+    if "campos" in payload.model_fields_set:
+        preview_kwargs["fields_override"] = build_landing_fields_from_config(payload.campos or [])
+
+    return build_landing_payload(
+        session,
+        evento=preview_evento,
+        ativacao=None,
+        backend_base_url=str(request.base_url),
+        **preview_kwargs,
     )
 
 

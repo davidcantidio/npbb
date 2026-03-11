@@ -214,6 +214,13 @@ def _resolve_category_alias(value: str | None) -> str | None:
     return None
 
 
+def _resolve_template_name_category(value: str | None) -> str | None:
+    explicit = _resolve_category_alias(value)
+    if explicit:
+        return explicit
+    return _match_keywords(value, {**SUBTIPO_KEYWORDS, **TIPO_KEYWORDS})
+
+
 def normalize_template_override_input(value: str | None) -> str | None:
     token = _normalize_token(value)
     if not token:
@@ -274,7 +281,7 @@ def resolve_template_category(
     if explicit:
         return explicit
 
-    explicit_template = _resolve_category_alias(template_name)
+    explicit_template = _resolve_template_name_category(template_name)
     if explicit_template:
         return explicit_template
 

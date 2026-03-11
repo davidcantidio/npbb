@@ -78,5 +78,5 @@ Como pessoa que aprova a fase, quero um smoke operacional objetivo para decidir 
 ## Dependencias
 
 - [PRD](../prd_vps_migration.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

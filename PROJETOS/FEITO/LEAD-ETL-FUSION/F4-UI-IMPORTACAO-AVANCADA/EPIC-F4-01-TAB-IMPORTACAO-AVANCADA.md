@@ -77,5 +77,5 @@ Como pessoa que aprova o preview avancado, quero executar o commit ETL a partir 
 ## Dependencias
 
 - [PRD](../PRD-LEAD-ETL-FUSION.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

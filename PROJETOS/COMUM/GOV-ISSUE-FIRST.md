@@ -73,6 +73,8 @@ audit_gate: "not_ready"
 
 ## Checklist de Transicao de Gate
 
+> A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
+
 ### `not_ready -> pending`
 - [ ] todos os epicos estao `done`
 - [ ] todas as issues filhas estao `done`

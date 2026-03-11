@@ -78,5 +78,5 @@ Como pessoa que aprova a migracao, quero validar um restore drill periodico para
 ## Dependencias
 
 - [PRD](../prd_vps_migration.md)
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)

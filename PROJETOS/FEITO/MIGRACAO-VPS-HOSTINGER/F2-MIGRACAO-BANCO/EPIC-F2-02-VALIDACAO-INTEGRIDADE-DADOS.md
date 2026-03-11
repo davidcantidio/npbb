@@ -62,7 +62,7 @@ Status: todo
 Como pessoa que aprova a migracao, quero um resumo unico com comparacao de dados, alembic, validacao e rollback para decidir `promote | hold` de forma auditavel.
 
 **Plano TDD**
-1. `Red`: usar `PROJETOS/SCRUM-GOV.md`, `PROJETOS/DECISION-PROTOCOL.md` e `artifacts/phase-f2/validation-summary.md` para tratar como falha qualquer fase sem um resumo unico de gate, evidencias, decisao e rollback.
+1. `Red`: usar `PROJETOS/COMUM/GOV-SCRUM.md`, `PROJETOS/COMUM/GOV-DECISOES.md` e `artifacts/phase-f2/validation-summary.md` para tratar como falha qualquer fase sem um resumo unico de gate, evidencias, decisao e rollback.
 2. `Green`: gerar `artifacts/phase-f2/validation-summary.md` com status dos dois epicos, resultado de contagens, resultado do `alembic upgrade head`, resultado da suite de integridade e decisao `promote | hold`.
 3. `Refactor`: padronizar o formato do resumo para que as fases seguintes possam consumir o mesmo modelo de aprovacao operacional.
 
@@ -77,5 +77,5 @@ Como pessoa que aprova a migracao, quero um resumo unico com comparacao de dados
 ## Dependencias
 
 - [PRD](../prd_vps_migration.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

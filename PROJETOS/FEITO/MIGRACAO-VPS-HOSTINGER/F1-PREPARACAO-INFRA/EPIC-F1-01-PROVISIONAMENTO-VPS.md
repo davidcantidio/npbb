@@ -78,5 +78,5 @@ Como pessoa responsavel pela operacao, quero uma baseline minima de seguranca e 
 ## Dependencias
 
 - [PRD](../prd_vps_migration.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

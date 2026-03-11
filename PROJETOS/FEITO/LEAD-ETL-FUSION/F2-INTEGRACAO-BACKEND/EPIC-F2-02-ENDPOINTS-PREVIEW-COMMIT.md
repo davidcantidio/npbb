@@ -77,5 +77,5 @@ Como pessoa que depende do fluxo atual de importacao, quero que o router ETL con
 ## Dependencias
 
 - [PRD](../PRD-LEAD-ETL-FUSION.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

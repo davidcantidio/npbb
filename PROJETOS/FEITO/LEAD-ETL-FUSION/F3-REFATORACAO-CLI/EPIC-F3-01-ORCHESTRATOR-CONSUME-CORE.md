@@ -77,5 +77,5 @@ Como pessoa que roda a CLI em producao ou analise, quero preservar flags, fluxo 
 ## Dependencias
 
 - [PRD](../PRD-LEAD-ETL-FUSION.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

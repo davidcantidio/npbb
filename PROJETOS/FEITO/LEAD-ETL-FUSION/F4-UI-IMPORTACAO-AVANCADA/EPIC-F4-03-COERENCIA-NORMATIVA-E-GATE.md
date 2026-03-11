@@ -77,5 +77,5 @@ Como pessoa que conduz a revisao final da fase, quero um resumo unico com os gat
 ## Dependencias
 
 - [PRD](../PRD-LEAD-ETL-FUSION.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

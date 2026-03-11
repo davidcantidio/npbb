@@ -77,5 +77,5 @@ Como pessoa que aprova o encerramento da migracao, quero um summary unico com st
 ## Dependencias
 
 - [PRD](../prd_vps_migration.md)
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)

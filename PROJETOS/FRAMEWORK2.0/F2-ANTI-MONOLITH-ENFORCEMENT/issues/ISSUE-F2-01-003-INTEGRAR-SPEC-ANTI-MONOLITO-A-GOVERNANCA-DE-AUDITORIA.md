@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-003-INTEGRAR-SPEC-ANTI-MONOLITO-A-GOVERNANCA-DE-AUDITORIA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -37,15 +37,15 @@ governanca. O destino correto e `GOV-AUDITORIA.md`.
 
 ## Definition of Done da Issue
 
-- [ ] governanca de auditoria aponta para o spec
-- [ ] nao ha duplicacao de threshold na regra de auditoria
-- [ ] referencias cruzadas minimas revisadas
+- [x] governanca de auditoria aponta para o spec
+- [x] nao ha duplicacao de threshold na regra de auditoria
+- [x] referencias cruzadas minimas revisadas
 
 ## Tasks Decupadas
 
-- [ ] T1: revisar `GOV-AUDITORIA.md` em busca de thresholds duplicados
-- [ ] T2: apontar a regra para `SPEC-ANTI-MONOLITO.md`
-- [ ] T3: revisar impacto em `PROMPT-AUDITORIA.md`
+- [x] T1: revisar `GOV-AUDITORIA.md` em busca de thresholds duplicados
+- [x] T2: apontar a regra para `SPEC-ANTI-MONOLITO.md`
+- [x] T3: revisar impacto em `PROMPT-AUDITORIA.md`
 
 ## Arquivos Reais Envolvidos
 

@@ -69,7 +69,7 @@ Inspecao dos componentes de landing lidos nao encontrou novo achado bloqueante d
 |---|---|---|---|---|---|---|---|---|
 | A-01 | test-gap | medium | ISSUE-F3-01-002 | Sem relatorio canonico e tabela de ratios por template para contraste de card/campos/rodape | `ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md`, `frontend/src/components/landing/__tests__/LandingAccessibility.test.tsx` | A fase nao comprova WCAG com artefato independente e auditavel | sim | issue-local |
 | A-02 | scope-drift | medium | ISSUE-F3-01-003 | Status `done` com artefatos declarados ausentes | `ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md`, verificacao de filesystem em `artifacts/phase-f3/` | A validacao nao e reproduzivel por evidencias persistidas | sim | issue-local |
-| A-03 | architecture-drift | medium | RELATORIO-AUDITORIA-F3-R01 | Relatorio anterior nao atende contrato de auditoria formal de fase | `RELATORIO-AUDITORIA-F3-R01.md`, `PROJETOS/COMUM/AUDITORIA-GOV.md` | Gate anterior nao poderia ser considerado valido | sim | issue-local |
+| A-03 | architecture-drift | medium | RELATORIO-AUDITORIA-F3-R01 | Relatorio anterior nao atende contrato de auditoria formal de fase | `RELATORIO-AUDITORIA-F3-R01.md`, `PROJETOS/COMUM/GOV-AUDITORIA.md` | Gate anterior nao poderia ser considerado valido | sim | issue-local |
 | A-04 | scope-drift | low | Manifesto, epico e sprint F3 | Status e tabelas inconsistentes no commit base; corrigidos nesta rodada | `F3_LANDING_PAGE_FORM_FIRST_EPICS.md`, `EPIC-F3-01-REGRESSAO-VISUAL-E-CONFORMIDADE.md`, `SPRINT-F3-01.md` | Ruido documental sem impacto funcional apos a reconciliacao | nao | issue-local |
 
 ## Bugs e Riscos Antecipados
@@ -78,7 +78,7 @@ Inspecao dos componentes de landing lidos nao encontrou novo achado bloqueante d
 |---|---|---|---|---|---|---|
 | R-01 | test-gap | medium | Um template especifico pode seguir com contraste insuficiente sem que a fase tenha ratios por template e por rodape registrados como artifact canonico | `ISSUE-F3-01-002-VALIDAR-CONTRASTE-WCAG.md`, `frontend/src/components/landing/__tests__/LandingAccessibility.test.tsx` | Fechar `ISSUE-F3-01-002` com relatorio canonico, tabela de ratios e rastreabilidade no repositorio | sim |
 | R-02 | scope-drift | medium | A validacao de gamificacao nao pode ser reexecutada ou revisada de modo independente enquanto os artefatos declarados pela `ISSUE-F3-01-003` seguirem ausentes | `ISSUE-F3-01-003-VALIDAR-GAMIFICACAO.md`, ausencia dos caminhos declarados em `artifacts/phase-f3/` | Reconciliar a issue com os artefatos reais ou reexecutar a validacao para gerar os arquivos faltantes | sim |
-| R-03 | architecture-drift | medium | Reutilizar relatorio de escopo issue como gate de fase pode aprovar indevidamente uma fase sem SHA, log ou cobertura completa | `RELATORIO-AUDITORIA-F3-R01.md`, `PROJETOS/COMUM/AUDITORIA-GOV.md` | Manter apenas relatorios de fase com SHA valido e registro em `AUDIT-LOG.md` como gate oficial | nao |
+| R-03 | architecture-drift | medium | Reutilizar relatorio de escopo issue como gate de fase pode aprovar indevidamente uma fase sem SHA, log ou cobertura completa | `RELATORIO-AUDITORIA-F3-R01.md`, `PROJETOS/COMUM/GOV-AUDITORIA.md` | Manter apenas relatorios de fase com SHA valido e registro em `AUDIT-LOG.md` como gate oficial | nao |
 
 ## Cobertura de Testes
 

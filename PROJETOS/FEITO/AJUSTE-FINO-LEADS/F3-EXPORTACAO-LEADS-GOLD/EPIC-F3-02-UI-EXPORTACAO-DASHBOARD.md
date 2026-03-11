@@ -122,7 +122,7 @@ Como operador do Dashboard de Leads, quero um botão "Exportar Leads Ouro" que a
 ## 6. Dependências
 
 - [PRD Refino Leads v2](../PRD_Refino_Leads_v2.md) — Seções 4.1–4.4, 4.6, 4.10
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)
 - EPIC-F3-01 (endpoint de exportação disponível)
 - EPIC-F1-01 (dropdown de eventos com data — opcional, melhora UX do modal)

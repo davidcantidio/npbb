@@ -77,5 +77,5 @@ Como pessoa dona da carga de leads, quero que o commit respeite `strict` e a ded
 ## Dependencias
 
 - [PRD](../PRD-LEAD-ETL-FUSION.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)

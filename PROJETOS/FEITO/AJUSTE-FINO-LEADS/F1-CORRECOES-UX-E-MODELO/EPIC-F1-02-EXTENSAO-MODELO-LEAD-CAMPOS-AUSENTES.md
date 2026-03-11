@@ -127,5 +127,5 @@ Como consumidor da API de leads, quero que os endpoints de listagem e detalhamen
 ## 6. Dependências
 
 - [PRD Refino Leads v2](../PRD_Refino_Leads_v2.md) — Seção 3.3
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)

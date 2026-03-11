@@ -138,5 +138,5 @@ Como operador de mapeamento de leads, quero que o dropdown de seleção de event
 ## 6. Dependências
 
 - [PRD Refino Leads v2](../PRD_Refino_Leads_v2.md) — Seções 3.1 e 3.2
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)

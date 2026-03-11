@@ -34,10 +34,15 @@ import {
   type LandingAnalyticsSummary,
   type LandingCustomizationAuditItem,
 } from "../services/eventos";
+import { toApiErrorMessage } from "../services/http";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import { useAuth } from "../store/auth";
 import LandingPageView from "../components/landing/LandingPageView";
-import { getLandingByEvento, type LandingPageData } from "../services/landing_public";
+import {
+  previewEventoLanding,
+  type LandingPageData,
+  type PreviewEventoLandingPayload,
+} from "../services/landing_public";
 
 const TEMPLATE_OVERRIDE_OPTIONS = [
   "generico",
@@ -48,22 +53,9 @@ const TEMPLATE_OVERRIDE_OPTIONS = [
   "evento_cultural",
   "tecnologia",
 ] as const;
-const TEMPLATE_OVERRIDE_OPTION_SET = new Set<string>(TEMPLATE_OVERRIDE_OPTIONS);
 
 const LANDING_CUSTOMIZATION_MESSAGE =
   "Customizacao controlada: somente template_override, cta_personalizado e descricao_curta podem ser alterados sem sair do catalogo homologado da marca BB. O visual do fundo e determinado pelo template selecionado.";
-
-function resolvePreviewTemplateOverride(value: string): string | null | undefined {
-  const normalized = String(value || "")
-    .trim()
-    .toLowerCase();
-
-  if (!normalized) {
-    return null;
-  }
-
-  return TEMPLATE_OVERRIDE_OPTION_SET.has(normalized) ? normalized : undefined;
-}
 
 export default function EventLeadFormConfig() {
   const { id } = useParams();
@@ -96,6 +88,8 @@ export default function EventLeadFormConfig() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditItems, setAuditItems] = useState<LandingCustomizationAuditItem[]>([]);
   const hasLoadedInitialPreviewRef = useRef(false);
+  const previewAbortControllerRef = useRef<AbortController | null>(null);
+  const previewRequestVersionRef = useRef(0);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -119,6 +113,43 @@ export default function EventLeadFormConfig() {
     }
     return items;
   }, [camposPossiveis]);
+
+  const camposPayload = useMemo(() => {
+    const ordemByLower = new Map(camposPossiveisUniq.map((nome, index) => [nome.toLowerCase(), index]));
+    const payload = camposPossiveisUniq
+      .map((nome, index) => {
+        if (!camposAtivos.has(nome)) return null;
+        return {
+          nome_campo: nome,
+          obrigatorio: camposObrigatorios[nome] ?? true,
+          ordem: index,
+        };
+      })
+      .filter(Boolean) as PreviewEventoLandingPayload["campos"];
+
+    const extras = [...camposAtivos].filter((nome) => !ordemByLower.has(nome.toLowerCase()));
+    extras.sort((a, b) => a.localeCompare(b));
+    extras.forEach((nome, index) => {
+      payload.push({
+        nome_campo: nome,
+        obrigatorio: camposObrigatorios[nome] ?? true,
+        ordem: camposPossiveisUniq.length + index,
+      });
+    });
+
+    return payload;
+  }, [camposAtivos, camposObrigatorios, camposPossiveisUniq]);
+
+  const previewPayload = useMemo<PreviewEventoLandingPayload>(
+    () => ({
+      template_id: templateId,
+      template_override: landingMeta.template_override.trim() || null,
+      cta_personalizado: landingMeta.cta_personalizado.trim() || null,
+      descricao_curta: landingMeta.descricao_curta.trim() || null,
+      campos: camposPayload,
+    }),
+    [camposPayload, landingMeta.cta_personalizado, landingMeta.descricao_curta, landingMeta.template_override, templateId],
+  );
 
   const toggleCampo = useCallback((nome: string) => {
     setCamposAtivos((prev) => {
@@ -186,32 +217,37 @@ export default function EventLeadFormConfig() {
     }
   }, []);
 
-  const loadPreview = useCallback(async (templateOverride?: string | null) => {
-    if (!Number.isFinite(eventoId)) return;
+  const loadPreview = useCallback(async () => {
+    if (!token || !Number.isFinite(eventoId)) return;
+
+    previewAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    previewAbortControllerRef.current = controller;
+    const requestVersion = previewRequestVersionRef.current + 1;
+    previewRequestVersionRef.current = requestVersion;
+
     setPreviewLoading(true);
     setPreviewError(null);
     try {
-      const response =
-        templateOverride == null
-          ? await getLandingByEvento(eventoId)
-          : await getLandingByEvento(eventoId, { templateOverride });
+      const response = await previewEventoLanding(token, eventoId, previewPayload, {
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted || requestVersion !== previewRequestVersionRef.current) return;
       setPreviewData(response);
       hasLoadedInitialPreviewRef.current = true;
-    } catch (err: any) {
-      setPreviewError(err?.message || "Erro ao carregar preview da landing.");
+    } catch (err) {
+      if (controller.signal.aborted || requestVersion !== previewRequestVersionRef.current) return;
+      setPreviewError(toApiErrorMessage(err, "Erro ao carregar preview da landing."));
     } finally {
-      setPreviewLoading(false);
+      if (!controller.signal.aborted && requestVersion === previewRequestVersionRef.current) {
+        setPreviewLoading(false);
+      }
     }
-  }, [eventoId]);
+  }, [eventoId, previewPayload, token]);
 
-  const refreshPreview = useCallback(
-    async (rawTemplateOverride?: string) => {
-      const resolved = resolvePreviewTemplateOverride(rawTemplateOverride ?? landingMeta.template_override);
-      if (typeof resolved === "undefined") return;
-      await loadPreview(resolved);
-    },
-    [landingMeta.template_override, loadPreview],
-  );
+  const refreshPreview = useCallback(async () => {
+    await loadPreview();
+  }, [loadPreview]);
 
   const loadGovernanceData = useCallback(async () => {
     if (!token || !Number.isFinite(eventoId)) return;
@@ -276,28 +312,6 @@ export default function EventLeadFormConfig() {
 
     setSaving(true);
     try {
-      const ordemByLower = new Map(camposPossiveisUniq.map((nome, index) => [nome.toLowerCase(), index]));
-      const camposPayload = camposPossiveisUniq
-        .map((nome, index) => {
-          if (!camposAtivos.has(nome)) return null;
-          return {
-            nome_campo: nome,
-            obrigatorio: camposObrigatorios[nome] ?? true,
-            ordem: index,
-          };
-        })
-        .filter(Boolean) as Array<{ nome_campo: string; obrigatorio: boolean; ordem: number }>;
-
-      const extras = [...camposAtivos].filter((nome) => !ordemByLower.has(nome.toLowerCase()));
-      extras.sort((a, b) => a.localeCompare(b));
-      extras.forEach((nome, index) => {
-        camposPayload.push({
-          nome_campo: nome,
-          obrigatorio: camposObrigatorios[nome] ?? true,
-          ordem: camposPossiveisUniq.length + index,
-        });
-      });
-
       const updated = await updateEventoFormConfig(token, eventoId, {
         template_id: templateId ?? null,
         campos: camposPayload,
@@ -330,7 +344,6 @@ export default function EventLeadFormConfig() {
       setCamposObrigatorios(nextObrigatorios);
 
       setSnackbar({ open: true, message: "Configuração salva com sucesso.", severity: "success" });
-      void refreshPreview(updatedEvento.template_override ?? "");
       void loadGovernanceData();
     } catch (err: any) {
       setSnackbar({
@@ -342,16 +355,13 @@ export default function EventLeadFormConfig() {
       setSaving(false);
     }
   }, [
-    token,
-    eventoId,
-    templateId,
+    camposPayload,
     camposPossiveis,
-    camposPossiveisUniq,
-    camposAtivos,
-    camposObrigatorios,
+    eventoId,
     landingMeta,
-    refreshPreview,
     loadGovernanceData,
+    templateId,
+    token,
   ]);
 
   useEffect(() => {
@@ -363,18 +373,21 @@ export default function EventLeadFormConfig() {
   }, [loadGovernanceData]);
 
   useEffect(() => {
-    if (loading || !config || !Number.isFinite(eventoId)) return;
-
-    const resolved = resolvePreviewTemplateOverride(landingMeta.template_override);
-    if (typeof resolved === "undefined") return;
+    if (loading || !config || !token || !Number.isFinite(eventoId)) return;
 
     const delayMs = hasLoadedInitialPreviewRef.current ? 250 : 0;
     const timer = window.setTimeout(() => {
-      void loadPreview(resolved);
+      void loadPreview();
     }, delayMs);
 
     return () => window.clearTimeout(timer);
-  }, [config, eventoId, landingMeta.template_override, loadPreview, loading]);
+  }, [config, eventoId, loadPreview, loading, token]);
+
+  useEffect(() => {
+    return () => {
+      previewAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   const subtitle = Number.isFinite(eventoId)
     ? `Configure o tema e os campos do formulário do evento #${eventoId}.`
@@ -462,7 +475,7 @@ export default function EventLeadFormConfig() {
                 renderInput={(params) => <TextField {...params} label="Tema" placeholder="Selecione..." />}
               />
               <Typography variant="caption" color="text.secondary" display="block" sx={{ pt: 0.5 }}>
-                Trocar tema altera a selecao local ate clicar em "Salvar".
+                O preview atualiza em tempo real; clique em "Salvar" apenas para persistir.
               </Typography>
             </Box>
 
@@ -669,7 +682,7 @@ export default function EventLeadFormConfig() {
                 Campos possíveis
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Marque os campos que estarao ativos no formulario e salve para persistir.
+                Marque os campos que estarao ativos no formulario. O preview responde imediatamente; "Salvar" persiste a configuracao.
               </Typography>
             </Box>
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-AUDITORIA.md"
-version: "2.2"
+version: "2.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-11"
 ---
 
 # GOV-AUDITORIA
@@ -20,6 +20,7 @@ Formalizar a etapa `Tasks -> Auditorias` como gate final de governanca de cada f
 - cada rodada de auditoria deve produzir relatorio em `auditorias/` e entrada em `AUDIT-LOG.md`
 - a auditoria deve avaliar aderencia funcional, riscos, cobertura de testes e saude estrutural do codigo
 - thresholds de `monolithic-file` e `monolithic-function` vivem exclusivamente em `SPEC-ANTI-MONOLITO.md`
+- `GOV-AUDITORIA.md`, prompts e templates de auditoria nao devem duplicar thresholds estruturais; qualquer mudanca futura de `warn/block` deve ocorrer apenas em `SPEC-ANTI-MONOLITO.md`
 
 ## Inputs Obrigatorios da Auditoria
 
@@ -73,6 +74,7 @@ Formalizar a etapa `Tasks -> Auditorias` como gate final de governanca de cada f
 - `hold` tambem e obrigatorio para achado `medium` com risco claro de manutencao, erro, regressao ou expansao incorreta
 - `go` so e permitido quando restarem no maximo achados `medium` ou `low` nao bloqueantes, explicitamente registrados
 - use `SPEC-ANTI-MONOLITO.md` como criterio de threshold antes de classificar um achado estrutural como bloqueante
+- ao julgar `monolithic-file` ou `monolithic-function`, o auditor deve usar `SPEC-ANTI-MONOLITO.md` como fonte normativa do threshold aplicado e nao pode substituir o spec por criterio local do relatorio, prompt ou template
 - ausencia de docstring isolada nao bloqueia por si so; so bloqueia quando combinada com alta complexidade, compartilhamento relevante ou dificuldade real de manutencao/auditoria
 - opiniao sem evidencia nao e achado; cada nao conformidade precisa apontar trecho, modulo, diff, teste ou comportamento observavel
 
@@ -85,6 +87,8 @@ Formalizar a etapa `Tasks -> Auditorias` como gate final de governanca de cada f
 - `provisional`: rodada sem commit SHA valido ou com worktree sujo; nunca aprova gate
 
 ## Gate de Auditoria da Fase
+
+> O template de checklist de transição para o manifesto da fase vive em `GOV-ISSUE-FIRST.md`.
 
 Estados operacionais do gate dentro do manifesto da fase:
 

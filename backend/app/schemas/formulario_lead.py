@@ -81,3 +81,31 @@ class FormularioLeadConfigUpsert(BaseModel):
         if duplicates:
             raise ValueError(f"Campos duplicados no payload: {', '.join(sorted(duplicates))}")
         return self
+
+
+class FormularioLeadPreviewRequest(BaseModel):
+    template_id: int | None = None
+    template_override: str | None = Field(default=None, max_length=50)
+    cta_personalizado: str | None = Field(default=None, max_length=200)
+    descricao_curta: str | None = Field(default=None, max_length=500)
+    campos: list[FormularioLeadCampoWrite] | None = None
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    @model_validator(mode="after")
+    def validate_unique_campos(self):
+        if self.campos is None:
+            return self
+
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for campo in self.campos:
+            key = campo.nome_campo.strip().lower()
+            if not key:
+                continue
+            if key in seen:
+                duplicates.add(campo.nome_campo)
+            seen.add(key)
+        if duplicates:
+            raise ValueError(f"Campos duplicados no payload: {', '.join(sorted(duplicates))}")
+        return self

@@ -18,7 +18,7 @@ testado e validado.
 - Testes backend: `backend/tests/`
 - Testes frontend: `frontend/src/` (ou diretório de testes do frontend)
 - Artefato de evidência: `artifacts/phase-f4/aflpd-validation-summary.md`
-- Governança: `PROJETOS/COMUM/SCRUM-GOV.md`, `PROJETOS/COMUM/DECISION-PROTOCOL.md`
+- Governança: `PROJETOS/COMUM/GOV-SCRUM.md`, `PROJETOS/COMUM/GOV-DECISOES.md`
 
 ## 3. Riscos e Armadilhas
 - Divergência silenciosa entre implementação e PRD — cada critério de aceite deve ser verificado individualmente
@@ -136,4 +136,4 @@ pós-deploy.
 - Este épico é exclusivamente documental — nenhum código produzido
 - O artefato `aflpd-validation-summary.md` é a entrega principal da fase
 - A decisão final (`promote`/`hold`) é do PO — o épico apenas fornece a evidência
-- Após decisão `promote`, as 4 fases devem ser movidas para `feito/` conforme SCRUM-GOV
+- Após decisão `promote`, as 4 fases devem ser movidas para `feito/` conforme GOV-SCRUM

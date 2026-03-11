@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-AUDITORIA.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-11"
 ---
 
 # Prompt Canonico - Auditoria de Fase
@@ -27,7 +27,7 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 2. leia o manifesto da fase auditada
 3. leia epicos e issues da fase
 4. leia o ultimo relatorio da fase, se existir
-5. use `PROJETOS/COMUM/GOV-AUDITORIA.md`, `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md` e `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md` como referencias normativas adicionais
+5. use `PROJETOS/COMUM/GOV-AUDITORIA.md`, `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md` e `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md` como referencias normativas adicionais; para `monolithic-file` e `monolithic-function`, trate o spec como fonte unica de thresholds
 
 ### Procedimento obrigatorio
 
@@ -38,7 +38,7 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 5. se houver rodada anterior com `hold`, use a secao `Resolucoes de Follow-ups`
    do `AUDIT-LOG.md` e o campo `Audit ID de Origem` para verificar cada
    follow-up da rodada imediatamente anterior
-6. inspecione bugs provaveis, regressoes, code smells, arquivos monoliticos, funcoes monoliticas, gaps de testes e ausencia de docstrings em codigo compartilhado, publico ou complexo
+6. inspecione bugs provaveis, regressoes, code smells, arquivos monoliticos, funcoes monoliticas, gaps de testes e ausencia de docstrings em codigo compartilhado, publico ou complexo, usando `SPEC-ANTI-MONOLITO.md` como criterio normativo para achados estruturais
 7. classifique cada achado com categoria e severidade
 8. diferencie follow-up `issue-local` de `new-intake` conforme o escopo da remediacao
 9. emita veredito `go`, `hold` ou `cancelled`
@@ -48,6 +48,7 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 - nao aprove por simpatia; aprove por evidencia
 - `go` so e permitido com aderencia suficiente, testes coerentes e commit SHA valido
 - `hold` e obrigatorio quando houver desvio material, risco relevante sem cobertura ou lacuna de rastreabilidade
+- ao registrar `monolithic-file` ou `monolithic-function`, cite o threshold aplicado a partir de `SPEC-ANTI-MONOLITO.md` e nao use criterio local alternativo
 - ausencia isolada de docstring nao bloqueia por si so; so bloqueia quando agrava codigo complexo, compartilhado ou de manutencao dificil
 - `cancelled` so quando a rodada nao puder ser concluida por falta de insumo ou contexto invalido
 

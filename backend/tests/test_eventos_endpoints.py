@@ -831,6 +831,220 @@ def test_evento_put_form_config_aplica_visibilidade_agencia(client, engine):
     assert resp.status_code == 404
 
 
+def test_evento_landing_preview_aplica_overrides_transientes_sem_persistir(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session, "Corporativo")
+        seed_user(session, "preview@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Preview",
+            cidade="Brasilia",
+            estado="DF",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 2),
+        )
+        evento.template_override = "corporativo"
+        evento.cta_personalizado = "CTA persistido"
+        evento.descricao_curta = "Descricao persistida"
+        session.add(evento)
+
+        template_padrao = FormularioLandingTemplate(nome="Padrao", html_conteudo="<html></html>")
+        template_surf = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        session.add(template_padrao)
+        session.add(template_surf)
+        session.commit()
+        session.refresh(evento)
+        session.refresh(template_padrao)
+        session.refresh(template_surf)
+
+        config = FormularioLeadConfig(
+            evento_id=evento.id,
+            nome="Config Preview",
+            template_id=template_padrao.id,
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            FormularioLeadCampo(
+                config_id=config.id,
+                nome_campo="Email",
+                obrigatorio=True,
+                ordem=0,
+            )
+        )
+        session.commit()
+        evento_id = evento.id
+        template_padrao_id = template_padrao.id
+        template_surf_id = template_surf.id
+
+    token = login_and_get_token(client, "preview@example.com", "Senha123!")
+    resp = client.post(
+        f"/evento/{evento_id}/landing-preview",
+        json={
+            "template_id": template_surf_id,
+            "template_override": "show_musical",
+            "cta_personalizado": "Quero ir",
+            "descricao_curta": "Descricao do preview",
+            "campos": [
+                {"nome_campo": "Nome", "obrigatorio": True, "ordem": 0},
+                {"nome_campo": "Telefone", "obrigatorio": False, "ordem": 1},
+            ],
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["template"]["categoria"] == "show_musical"
+    assert payload["template"]["tema"] == "Show"
+    assert payload["evento"]["cta_personalizado"] == "Quero ir"
+    assert payload["evento"]["descricao_curta"] == "Descricao do preview"
+    assert [campo["key"] for campo in payload["formulario"]["campos"]] == ["nome", "telefone"]
+    assert payload["formulario"]["campos_obrigatorios"] == ["nome"]
+    assert payload["formulario"]["campos_opcionais"] == ["telefone"]
+
+    with Session(engine) as session:
+        persisted = session.get(Evento, evento_id)
+        assert persisted is not None
+        assert persisted.template_override == "corporativo"
+        assert persisted.cta_personalizado == "CTA persistido"
+        assert persisted.descricao_curta == "Descricao persistida"
+
+        config = session.exec(
+            select(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id)
+        ).first()
+        assert config is not None
+        assert config.template_id == template_padrao_id
+
+        campos = session.exec(
+            select(FormularioLeadCampo)
+            .where(FormularioLeadCampo.config_id == config.id)
+            .order_by(FormularioLeadCampo.ordem, FormularioLeadCampo.id)
+        ).all()
+        assert [(campo.nome_campo, campo.obrigatorio) for campo in campos] == [("Email", True)]
+
+
+def test_evento_landing_preview_prioriza_template_id_quando_override_local_esta_vazio(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session, "Corporativo")
+        seed_user(session, "preview-template@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Preview Tema",
+            cidade="Brasilia",
+            estado="DF",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 2),
+        )
+        evento.template_override = "corporativo"
+        session.add(evento)
+        template_surf = FormularioLandingTemplate(nome="Surf", html_conteudo="<html></html>")
+        session.add(template_surf)
+        session.commit()
+        session.refresh(evento)
+        session.refresh(template_surf)
+        evento_id = evento.id
+        template_surf_id = template_surf.id
+
+    token = login_and_get_token(client, "preview-template@example.com", "Senha123!")
+    resp = client.post(
+        f"/evento/{evento_id}/landing-preview",
+        json={"template_id": template_surf_id, "template_override": None},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["template"]["categoria"] == "esporte_radical"
+    assert payload["template"]["tema"] == "Radical"
+
+
+def test_evento_landing_preview_valida_template_override_template_id_e_campos_duplicados(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "preview-validacao@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Preview Validacao",
+            cidade="Brasilia",
+            estado="DF",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "preview-validacao@example.com", "Senha123!")
+
+    invalid_template_resp = client.post(
+        f"/evento/{evento_id}/landing-preview",
+        json={"template_id": 9999},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert invalid_template_resp.status_code == 400
+    assert invalid_template_resp.json()["detail"]["code"] == "FORM_TEMPLATE_NOT_FOUND"
+
+    invalid_override_resp = client.post(
+        f"/evento/{evento_id}/landing-preview",
+        json={"template_override": "nao-homologado"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert invalid_override_resp.status_code == 400
+    assert invalid_override_resp.json()["detail"]["code"] == "LANDING_TEMPLATE_OVERRIDE_INVALID"
+
+    duplicate_fields_resp = client.post(
+        f"/evento/{evento_id}/landing-preview",
+        json={
+            "campos": [
+                {"nome_campo": "Email", "obrigatorio": True, "ordem": 0},
+                {"nome_campo": "email", "obrigatorio": False, "ordem": 1},
+            ]
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert duplicate_fields_resp.status_code == 422
+
+
+def test_evento_landing_preview_aplica_visibilidade_agencia(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        ag2 = seed_agencia(session, "Sherpa", "sherpa.com.br")
+        tipo = seed_tipo(session)
+        seed_user(
+            session,
+            "agencia-preview@agencia.com.br",
+            "Senha123!",
+            "agencia",
+            agencia_id=ag2.id,
+        )
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Preview Restrito",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "agencia-preview@agencia.com.br", "Senha123!")
+    resp = client.post(
+        f"/evento/{evento_id}/landing-preview",
+        json={},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+
+
 def test_list_formulario_campos_catalogo(client, engine):
     with Session(engine) as session:
         seed_user(session, "user@example.com", "Senha123!", "npbb")

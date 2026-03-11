@@ -152,7 +152,7 @@ export type LandingAnalyticsTrackPayload = {
   landing_session_id?: string | null;
 };
 
-type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
+export type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
   gamificacoes?: GamificacaoPublic[] | null;
 };
 
@@ -160,7 +160,25 @@ export type GetLandingByEventoOptions = {
   templateOverride?: string | null;
 };
 
-function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPageData {
+export type LandingPreviewFieldInput = {
+  nome_campo: string;
+  obrigatorio: boolean;
+  ordem: number;
+};
+
+export type PreviewEventoLandingPayload = {
+  template_id?: number | null;
+  template_override?: string | null;
+  cta_personalizado?: string | null;
+  descricao_curta?: string | null;
+  campos?: LandingPreviewFieldInput[];
+};
+
+export type PreviewEventoLandingOptions = {
+  signal?: AbortSignal;
+};
+
+export function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPageData {
   return {
     ...payload,
     gamificacoes: Array.isArray(payload.gamificacoes) ? payload.gamificacoes : [],
@@ -184,6 +202,24 @@ export async function getLandingByEvento(
   const res = await fetchWithAuth(buildEventoLandingPath(eventoId, options), { retries: 0 });
   const payload = await handleApiResponse<LandingPageDataRaw>(res);
   return normalizeLandingPageData(payload);
+}
+
+export async function previewEventoLanding(
+  token: string,
+  eventoId: number,
+  payload: PreviewEventoLandingPayload,
+  options?: PreviewEventoLandingOptions,
+): Promise<LandingPageData> {
+  const res = await fetchWithAuth(`/evento/${eventoId}/landing-preview`, {
+    token,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    retries: 0,
+    signal: options?.signal,
+  });
+  const data = await handleApiResponse<LandingPageDataRaw>(res);
+  return normalizeLandingPageData(data);
 }
 
 export async function getLandingByAtivacao(ativacaoId: number): Promise<LandingPageData> {

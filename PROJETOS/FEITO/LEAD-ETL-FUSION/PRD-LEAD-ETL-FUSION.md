@@ -288,7 +288,7 @@ PROJETOS/
 │   ├── DECISION-PROTOCOL.md
 │   ├── WORK-ORDER-SPEC.md
 │   ├── SPRINT-LIMITS.md
-│   └── SCRUM-GOV.md
+│   └── GOV-SCRUM.md
 │
 └── LEAD-ETL-FUSION/
     ├── feito/                  ← fases concluidas saem da area ativa e vao para arquivo operacional
@@ -317,7 +317,7 @@ PROJETOS/
 
 Estes quatro arquivos devem existir em `PROJETOS/COMUM/` antes de qualquer trabalho nas fases. Eles estabelecem o contrato de operação do projeto.
 
-**`SCRUM-GOV.md`** — define a cadeia `PRD → Fases → Épicos → Issues → Microtasks`. Deve incluir:
+**`GOV-SCRUM.md`** — define a cadeia `PRD → Fases → Épicos → Issues → Microtasks`. Deve incluir:
 - fluxo de decomposição de trabalho (5 níveis)
 - DoD por tipo de item (PRD, Fase, Épico, Issue, Microtask, Sprint)
 - regras anti "jira inflation" (sem tarefa sem quebra, sem sprint como camada estrutural, sem datas inventadas)
@@ -414,7 +414,7 @@ Como <papel>, quero <ação> para <resultado>.
 
 ## Dependências
 - [PRD](../../PRD-LEAD-ETL-FUSION.md)
-- [SCRUM-GOV](../SCRUM-GOV.md)
+- [GOV-SCRUM](../../COMUM/GOV-SCRUM.md)
 - [DECISION-PROTOCOL](../DECISION-PROTOCOL.md)
 ```
 

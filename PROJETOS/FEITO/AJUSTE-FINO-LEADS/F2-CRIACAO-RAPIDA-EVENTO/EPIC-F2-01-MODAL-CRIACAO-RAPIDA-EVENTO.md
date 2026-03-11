@@ -120,6 +120,6 @@ Como operador de mapeamento de leads, quero que a opção "Criar evento rapidame
 ## 6. Dependências
 
 - [PRD Refino Leads v2](../PRD_Refino_Leads_v2.md) — Seção 3.4
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)
 - F1 concluída (dropdown de eventos com data — EPIC-F1-01)

@@ -26,7 +26,7 @@ Registrar decisoes do projeto Landing Page Form-Only quando houver alteracao de 
 
 ## Regras Locais
 
-- usar `PROJETOS/COMUM/DECISION-PROTOCOL.md` como taxonomia base
+- usar `PROJETOS/COMUM/GOV-DECISOES.md` como taxonomia base
 - registrar neste arquivo apenas decisoes especificas do projeto
 - qualquer mudanca estrutural deve referenciar o documento comum correspondente
 - decisoes sobre paleta de cores ou tokens visuais devem referenciar o Manual BB

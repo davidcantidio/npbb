@@ -132,6 +132,6 @@ Como operador do Dashboard de Leads, quero acessar um endpoint de exportação q
 ## 6. Dependências
 
 - [PRD Refino Leads v2](../PRD_Refino_Leads_v2.md) — Seções 4.5, 4.7, 4.8, 4.9
-- [SCRUM-GOV](../../COMUM/SCRUM-GOV.md)
-- [DECISION-PROTOCOL](../../COMUM/DECISION-PROTOCOL.md)
+- [GOV-SCRUM](../../../../COMUM/GOV-SCRUM.md)
+- [GOV-DECISOES](../../../../COMUM/GOV-DECISOES.md)
 - Dependência opcional: EPIC-F1-02 (campos extras no modelo Lead)

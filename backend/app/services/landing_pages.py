@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlmodel import Session, select
 
 from app.models.models import (
@@ -56,6 +58,7 @@ ANALYTICS_EVENT_FORM_START = "form_start"
 ANALYTICS_EVENT_SUBMIT_ATTEMPT = "submit_attempt"
 ANALYTICS_EVENT_SUBMIT_SUCCESS = "submit_success"
 ANALYTICS_EVENT_CTA_EXPOSURE = "cta_exposure"
+_UNSET = object()
 
 
 def get_event_form_config(
@@ -79,6 +82,13 @@ def get_event_form_config(
     return config, campos, template_name
 
 
+def get_formulario_template_name_by_id(session: Session, template_id: int | None) -> str | None:
+    if template_id is None:
+        return None
+    template = session.get(FormularioLandingTemplate, template_id)
+    return template.nome if template else None
+
+
 def hydrate_ativacao_public_urls(
     ativacao: Ativacao, *, backend_base_url: str | None = None
 ) -> bool:
@@ -99,25 +109,36 @@ def hydrate_ativacao_public_urls(
     return changed
 
 
+def build_landing_fields_from_config(campos: list[Any]) -> list[LandingFieldRead]:
+    ordered_campos = sorted(
+        list(campos),
+        key=lambda campo: (
+            int(getattr(campo, "ordem", 0) or 0),
+            str(getattr(campo, "nome_campo", "") or "").strip().lower(),
+        ),
+    )
+    fields: list[LandingFieldRead] = []
+    for campo in ordered_campos:
+        definition = get_form_field_definition(getattr(campo, "nome_campo", ""))
+        fields.append(
+            LandingFieldRead(
+                key=definition["key"],
+                label=definition["label"],
+                input_type=definition["input_type"],
+                required=bool(getattr(campo, "obrigatorio", False)),
+                autocomplete=definition.get("autocomplete"),
+                placeholder=definition.get("placeholder"),
+            )
+        )
+    return fields
+
+
 def get_landing_fields(
     session: Session, *, evento: Evento
 ) -> tuple[list[LandingFieldRead], str | None]:
     _, campos_db, template_name = get_event_form_config(session, evento_id=evento.id or 0)
     if campos_db:
-        fields = []
-        for campo in campos_db:
-            definition = get_form_field_definition(campo.nome_campo)
-            fields.append(
-                LandingFieldRead(
-                    key=definition["key"],
-                    label=definition["label"],
-                    input_type=definition["input_type"],
-                    required=bool(campo.obrigatorio),
-                    autocomplete=definition.get("autocomplete"),
-                    placeholder=definition.get("placeholder"),
-                )
-            )
-        return fields, template_name
+        return build_landing_fields_from_config(campos_db), template_name
 
     default_fields = []
     for nome_campo, obrigatorio in FORMULARIO_CAMPOS_DEFAULT:
@@ -198,8 +219,14 @@ def build_landing_payload(
     ativacao: Ativacao | None = None,
     backend_base_url: str | None = None,
     template_override: str | None = None,
+    template_name_override: str | None | object = _UNSET,
+    fields_override: list[LandingFieldRead] | object = _UNSET,
 ) -> LandingPageRead:
     fields, template_name = get_landing_fields(session, evento=evento)
+    if fields_override is not _UNSET:
+        fields = list(fields_override)
+    if template_name_override is not _UNSET:
+        template_name = template_name_override
     template = get_template_config(
         session,
         evento=evento,

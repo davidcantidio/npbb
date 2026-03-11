@@ -246,7 +246,7 @@ PROJETOS/
 │   ├── DECISION-PROTOCOL.md
 │   ├── WORK-ORDER-SPEC.md
 │   ├── SPRINT-LIMITS.md
-│   └── SCRUM-GOV.md
+│   └── GOV-SCRUM.md
 │
 ├── LEAD-ETL-FUSION/
 │   └── ...

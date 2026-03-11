@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-03-QR-E-ENDPOINT-LANDING.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-11"
 ---
@@ -35,7 +35,7 @@ Cada ativação possui QR-code único; a landing pode ser carregada com contexto
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-03-001 | Serviço de geração de QR | Implementar geração de QR-code por ativação | 2 | todo | [ISSUE-F1-03-001-SERVICO-GERACAO-QR.md](./issues/ISSUE-F1-03-001-SERVICO-GERACAO-QR.md) |
+| ISSUE-F1-03-001 | Serviço de geração de QR | Implementar geração de QR-code por ativação | 2 | done | [ISSUE-F1-03-001-SERVICO-GERACAO-QR.md](./issues/ISSUE-F1-03-001-SERVICO-GERACAO-QR.md) |
 | ISSUE-F1-03-002 | Endpoint GET landing | Endpoint que retorna payload da landing com contexto | 3 | todo | [ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md](./issues/ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md) |
 
 ## Artifact Minimo do Epico

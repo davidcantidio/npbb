@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-001-SERVICO-GERACAO-QR.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-11"
 task_instruction_mode: "required"
@@ -35,15 +35,15 @@ URL do QR: `/eventos/:evento_id/ativacoes/:ativacao_id` ou `/e/:evento_id/a/:ati
 
 ## Definition of Done da Issue
 
-- [ ] Serviço gera QR para URL da landing
-- [ ] qr_code_url populado ao criar/atualizar ativação
-- [ ] Teste unitário do serviço passa
+- [x] Serviço gera QR para URL da landing
+- [x] qr_code_url populado ao criar/atualizar ativação
+- [x] Teste unitário do serviço passa
 
 ## Tarefas Decupadas
 
-- [ ] T1: Implementar serviço de geração de QR (lib qrcode ou segno)
-- [ ] T2: Integrar geração no fluxo de criação/atualização de ativação
-- [ ] T3: Adicionar teste unitário
+- [x] T1: Implementar serviço de geração de QR (lib qrcode ou segno)
+- [x] T2: Integrar geração no fluxo de criação/atualização de ativação
+- [x] T3: Adicionar teste unitário
 
 ## Instructions por Task
 

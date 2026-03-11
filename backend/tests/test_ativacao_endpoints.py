@@ -271,6 +271,9 @@ def test_eventos_ativacoes_post_cria_lista_e_get_by_id(client, engine):
     assert created["redireciona_pesquisa"] is False
     assert created["termo_uso"] is False
     assert created["gera_cupom"] is False
+    assert created["landing_url"] == f"http://localhost:5173/landing/ativacoes/{created['id']}"
+    assert created["url_promotor"] == f"http://localhost:5173/landing/ativacoes/{created['id']}"
+    assert created["qr_code_url"].startswith("data:image/svg+xml;base64,")
 
     resp_list = client.get(
         f"/eventos/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
@@ -291,6 +294,9 @@ def test_eventos_ativacoes_post_cria_lista_e_get_by_id(client, engine):
     assert by_id_payload["evento_id"] == evento_id
     assert by_id_payload["nome"] == "Ativacao 1"
     assert by_id_payload["conversao_unica"] is False
+    assert by_id_payload["landing_url"] == created["landing_url"]
+    assert by_id_payload["url_promotor"] == created["url_promotor"]
+    assert by_id_payload["qr_code_url"] == created["qr_code_url"]
 
 
 def test_eventos_ativacoes_patch_atualiza_campos(client, engine):
@@ -341,6 +347,9 @@ def test_eventos_ativacoes_patch_atualiza_campos(client, engine):
     assert updated["gamificacao_id"] == gamificacao_id
     assert updated["conversao_unica"] is True
     assert updated["checkin_unico"] is True
+    assert updated["landing_url"] == f"http://localhost:5173/landing/ativacoes/{ativacao_id}"
+    assert updated["url_promotor"] == f"http://localhost:5173/landing/ativacoes/{ativacao_id}"
+    assert updated["qr_code_url"].startswith("data:image/svg+xml;base64,")
 
     updated_at = datetime.fromisoformat(updated["updated_at"])
     if updated_at.tzinfo is None:

@@ -25,7 +25,7 @@ Fechar a fundação do backend: modelos, migrations, CRUD de ativações, geraç
 | ISSUE-F1-01-001 | Modelo Ativacao e migration | 2 | done | [ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md](../issues/ISSUE-F1-01-001-MODELO-ATIVACAO-E-MIGRATION.md) |
 | ISSUE-F1-01-002 | Modelos conversao_ativacao e lead_reconhecimento_token | 3 | todo | [ISSUE-F1-01-002-MODELOS-CONVERSAO-E-TOKEN.md](../issues/ISSUE-F1-01-002-MODELOS-CONVERSAO-E-TOKEN.md) |
 | ISSUE-F1-02-001 | Schemas e endpoints CRUD de ativações | 3 | todo | [ISSUE-F1-02-001-SCHEMAS-E-ENDPOINTS-CRUD-ATIVACOES.md](../issues/ISSUE-F1-02-001-SCHEMAS-E-ENDPOINTS-CRUD-ATIVACOES.md) |
-| ISSUE-F1-03-001 | Serviço de geração de QR | 2 | todo | [ISSUE-F1-03-001-SERVICO-GERACAO-QR.md](../issues/ISSUE-F1-03-001-SERVICO-GERACAO-QR.md) |
+| ISSUE-F1-03-001 | Serviço de geração de QR | 2 | done | [ISSUE-F1-03-001-SERVICO-GERACAO-QR.md](../issues/ISSUE-F1-03-001-SERVICO-GERACAO-QR.md) |
 | ISSUE-F1-03-002 | Endpoint GET landing | 3 | todo | [ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md](../issues/ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md) |
 
 ## Riscos e Bloqueios

@@ -154,6 +154,12 @@ task_instruction_mode: "optional"
 - [ ] T2: atualizar o teste unitario correspondente
 ```
 
+## Commit apos Cada Task
+
+- apos concluir cada task, o executor deve fazer commit antes de prosseguir
+- formato da mensagem: ver `GOV-COMMIT-POR-TASK.md`
+- a regra aplica-se a issues `optional` e `required`
+
 ## Checklist de Consistencia
 
 Antes de marcar uma issue `required` como pronta para execucao, confirme:

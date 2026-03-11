@@ -104,6 +104,13 @@ O significado operacional e os criterios de auditoria vivem em `GOV-AUDITORIA.md
 - os criterios de quando `required` e obrigatorio vivem exclusivamente em `SPEC-TASK-INSTRUCTIONS.md`
 - issue `required` sem bloco completo de `Instructions por Task` nao e elegivel para execucao
 
+## Commit por Task
+
+- apos cada task concluida, o executor deve fazer commit com mensagem descritiva
+- formato e regras vivem em `GOV-COMMIT-POR-TASK.md`
+- o commit deve conter PROJETO, ISSUE_ID, TASK_ID e descricao breve
+- sem commit por task, a cascata de fechamento nao deve ser executada
+
 ## Procedimento de Fechamento de Issue
 
 Ao concluir uma issue, a cascata de fechamento deve ser executada em ordem.

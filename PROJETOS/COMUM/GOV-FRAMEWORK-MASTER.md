@@ -24,6 +24,7 @@ PROJETOS/
     GOV-AUDITORIA.md
     GOV-SPRINT-LIMITES.md
     GOV-WORK-ORDER.md
+    GOV-COMMIT-POR-TASK.md
     GOV-DECISOES.md
     GOV-ISSUE-FIRST.md
     SPEC-TASK-INSTRUCTIONS.md
@@ -64,6 +65,7 @@ A cadeia operacional do framework vive em `GOV-SCRUM.md`.
 | contratos de execucao com side effect | `GOV-WORK-ORDER.md` |
 | estrutura de fase, epico, issue e sprint | `GOV-ISSUE-FIRST.md` |
 | rules de `task_instruction_mode` | `SPEC-TASK-INSTRUCTIONS.md` |
+| commit apos cada task | `GOV-COMMIT-POR-TASK.md` |
 | thresholds anti-monolito | `SPEC-ANTI-MONOLITO.md` |
 | decisoes estruturais compartilhadas | `GOV-DECISOES.md` |
 | operacao interativa em chat | `SESSION-MAPA.md` |

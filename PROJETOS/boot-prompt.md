@@ -54,6 +54,7 @@ PROJETOS/COMUM/GOV-SPRINT-LIMITES.md
 PROJETOS/COMUM/GOV-WORK-ORDER.md
 PROJETOS/COMUM/GOV-ISSUE-FIRST.md
 PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md
+PROJETOS/COMUM/GOV-COMMIT-POR-TASK.md
 PROJETOS/COMUM/GOV-INTAKE.md
 PROJETOS/COMUM/GOV-AUDITORIA.md
 ```
@@ -179,9 +180,10 @@ Principios obrigatorios:
 
 1. Confirmar entendimento do escopo
 2. Se `task_instruction_mode: required`, executar cada task seguindo sua instrucao atomica correspondente
-3. Executar `Red`, `Green` e `Refactor` conforme o arquivo da issue
-4. Rodar os testes diretamente relacionados
-5. Registrar desvios como proposta de decisao quando necessario
+3. **Apos cada task concluida**, fazer commit com mensagem descritiva conforme `GOV-COMMIT-POR-TASK.md` (PROJETO, ISSUE_ID, TASK_ID, descricao breve)
+4. Executar `Red`, `Green` e `Refactor` conforme o arquivo da issue
+5. Rodar os testes diretamente relacionados
+6. Registrar desvios como proposta de decisao quando necessario
 
 ### Sequencia minima para AUDITORIA
 

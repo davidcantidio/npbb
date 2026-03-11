@@ -97,6 +97,14 @@ EXECUTANDO: <Tn ou acao>
 → "sim" / "pular" / "ajustar [instrucao]"
 ```
 
+**Apos cada task concluida**, antes de prosseguir para a proxima task ou para o
+fechamento, faca commit com mensagem descritiva conforme `GOV-COMMIT-POR-TASK.md`:
+
+```text
+COMMIT: <PROJETO> <ISSUE_ID> <TASK_ID>: <descricao breve>
+Ex.: LP ISSUE-F1-01-001 T1: criar modelo Ativacao em models.py
+```
+
 Nao grave arquivo, nao rode alteracao destrutiva e nao atualize status sem
 confirmacao explicita do PM.
 

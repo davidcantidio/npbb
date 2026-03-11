@@ -133,13 +133,13 @@ describe("ISSUE-F3-01-001 — Regressao visual de fundo tematico", () => {
     const data = createTemplateFixture("corporativo");
     render(<LandingPageView data={data} mode="public" />);
 
-    expect(screen.getByTestId("minimal-footer")).toHaveStyle({ color: "rgba(255, 255, 255, 0.75)" });
+    expect(screen.getByTestId("minimal-footer")).toHaveStyle({ color: "rgba(248, 250, 252, 0.82)" });
   });
 
   it("usa cor de rodape do template evento_cultural", () => {
     const data = createTemplateFixture("evento_cultural");
     render(<LandingPageView data={data} mode="public" />);
 
-    expect(screen.getByTestId("minimal-footer")).toHaveStyle({ color: "rgba(51, 51, 189, 0.75)" });
+    expect(screen.getByTestId("minimal-footer")).toHaveStyle({ color: "rgba(17, 24, 39, 0.82)" });
   });
 });

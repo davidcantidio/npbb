@@ -29,11 +29,11 @@ import {
   updateEventoQuestionario,
 } from "../../services/eventos";
 import { listAgencias } from "../../services/agencias";
-import { getLandingByEvento, type LandingPageData } from "../../services/landing_public";
+import { previewEventoLanding, type LandingPageData } from "../../services/landing_public";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
-vi.mock("../../services/landing_public", () => ({ getLandingByEvento: vi.fn() }));
+vi.mock("../../services/landing_public", () => ({ previewEventoLanding: vi.fn() }));
 vi.mock("../../services/eventos", () => ({
   createEventoAtivacao: vi.fn(),
   createEventoGamificacao: vi.fn(),
@@ -85,7 +85,7 @@ const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
 const mockedCreateEventoAtivacao = vi.mocked(createEventoAtivacao);
 const mockedGetEventoQuestionario = vi.mocked(getEventoQuestionario);
 const mockedUpdateEventoQuestionario = vi.mocked(updateEventoQuestionario);
-const mockedGetLandingByEvento = vi.mocked(getLandingByEvento);
+const mockedPreviewEventoLanding = vi.mocked(previewEventoLanding);
 
 function createLandingPreviewPayload(overrides: Partial<LandingPageData> = {}): LandingPageData {
   return {
@@ -208,7 +208,7 @@ describe("Evento pages smoke", () => {
     mockedUpdateEvento.mockResolvedValue({ id: 10 } as never);
 
     mockedGetEvento.mockResolvedValue({ id: 1, nome: "Evento QA" } as never);
-    mockedGetLandingByEvento.mockResolvedValue(createLandingPreviewPayload() as never);
+    mockedPreviewEventoLanding.mockResolvedValue(createLandingPreviewPayload() as never);
     mockedGetLandingAnalytics.mockResolvedValue([
       {
         event_id: 1,
@@ -333,7 +333,7 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/clicar em "Salvar"\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/preview atualiza em tempo real/i)).toBeInTheDocument();
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Hero image URL/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/hero_image_url/i)).not.toBeInTheDocument();
@@ -362,6 +362,20 @@ describe("Evento pages smoke", () => {
       position: "absolute",
       pointerEvents: "none",
     });
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenCalledWith(
+        "token",
+        1,
+        expect.objectContaining({
+          template_id: null,
+          template_override: null,
+          cta_personalizado: null,
+          descricao_curta: null,
+          campos: [{ nome_campo: "Email", obrigatorio: true, ordem: 0 }],
+        }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(mockedUpdateEventoFormConfig).toHaveBeenCalledTimes(1));
@@ -372,25 +386,26 @@ describe("Evento pages smoke", () => {
         descricao_curta: null,
       }),
     );
-    expect(mockedGetLandingByEvento).toHaveBeenCalledWith(1);
+    expect(mockedPreviewEventoLanding).toHaveBeenCalled();
   });
 
-  it("auto-refreshes the preview when template_override changes to a valid option", async () => {
+  it("auto-refreshes the preview when the selected theme changes", async () => {
     const user = userEvent.setup();
-    mockedGetLandingByEvento
+    mockedListFormularioTemplates.mockResolvedValue([{ id: 7, nome: "Surf" }] as never);
+    mockedPreviewEventoLanding
       .mockResolvedValueOnce(createLandingPreviewPayload() as never)
       .mockResolvedValueOnce(
         createLandingPreviewPayload({
           template: {
-            categoria: "show_musical",
-            tema: "Show",
-            mood: "Vibrante, noturno e memoravel.",
-            cta_text: "Quero ir",
-            color_primary: "#735CC6",
-            color_secondary: "#FF6E91",
-            color_background: "#140F2E",
-            color_text: "#F8FAFC",
-            hero_layout: "dark-overlay",
+            categoria: "esporte_radical",
+            tema: "Radical",
+            mood: "Alta energia, autenticidade e movimento.",
+            cta_text: "Quero fazer parte",
+            color_primary: "#FF6E91",
+            color_secondary: "#FCFC30",
+            color_background: "#FFF7FB",
+            color_text: "#1F2937",
+            hero_layout: "full-bleed",
             cta_variant: "gradient",
             graphics_style: "dynamic",
             tone_of_voice: "enthusiasm",
@@ -410,20 +425,186 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
+    const input = screen.getByLabelText(/^Tema$/i);
+    await user.click(input);
+    await user.type(input, "Surf");
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+        "token",
+        1,
+        expect.objectContaining({ template_id: 7 }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
+    expect(await screen.findByRole("button", { name: /quero fazer parte/i })).toBeInTheDocument();
+  });
+
+  it("auto-refreshes the preview when copy and active fields change", async () => {
+    const user = userEvent.setup();
+    mockedPreviewEventoLanding
+      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
+      .mockResolvedValueOnce(
+        createLandingPreviewPayload({
+          evento: {
+            cta_personalizado: "Receber novidades",
+            descricao_curta: "Preview com Nome e Email.",
+          },
+          formulario: {
+            campos: [
+              {
+                key: "email",
+                label: "Email",
+                input_type: "email",
+                required: true,
+                autocomplete: "email",
+                placeholder: "voce@exemplo.com",
+              },
+              {
+                key: "nome",
+                label: "Nome",
+                input_type: "text",
+                required: true,
+                autocomplete: "name",
+                placeholder: "Como voce gostaria de ser chamado?",
+              },
+            ],
+            campos_obrigatorios: ["email", "nome"],
+            campos_opcionais: [],
+          },
+          template: {
+            cta_text: "Receber novidades",
+          },
+        }) as never,
+      );
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+        <Routes>
+          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/CTA personalizado/i), "Receber novidades");
+    await user.type(screen.getByLabelText(/Descricao curta/i), "Preview com Nome e Email.");
+    await user.click(
+      within(screen.getByTestId("lead-field-card-nome")).getByRole("checkbox", { name: /Ativo/i }),
+    );
+
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+        "token",
+        1,
+        expect.objectContaining({
+          cta_personalizado: "Receber novidades",
+          descricao_curta: "Preview com Nome e Email.",
+          campos: [
+            { nome_campo: "Email", obrigatorio: true, ordem: 0 },
+            { nome_campo: "Nome", obrigatorio: true, ordem: 1 },
+          ],
+        }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
+    expect(await screen.findByRole("button", { name: /receber novidades/i })).toBeInTheDocument();
+  });
+
+  it("keeps the latest preview when an older request resolves later", async () => {
+    const user = userEvent.setup();
+    let resolveOldPreview: ((value: LandingPageData) => void) | null = null;
+    let resolveLatestPreview: ((value: LandingPageData) => void) | null = null;
+
+    mockedPreviewEventoLanding
+      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOldPreview = resolve as (value: LandingPageData) => void;
+          }) as never,
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveLatestPreview = resolve as (value: LandingPageData) => void;
+          }) as never,
+      );
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+        <Routes>
+          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+
     const input = screen.getByLabelText(/template override/i);
     await user.clear(input);
     await user.type(input, "show_musical");
+    await waitFor(() => expect(mockedPreviewEventoLanding).toHaveBeenCalledTimes(2));
 
-    await waitFor(() =>
-      expect(mockedGetLandingByEvento).toHaveBeenLastCalledWith(1, {
-        templateOverride: "show_musical",
+    await user.clear(input);
+    await user.type(input, "tecnologia");
+    await waitFor(() => expect(mockedPreviewEventoLanding).toHaveBeenCalledTimes(3));
+
+    resolveLatestPreview?.(
+      createLandingPreviewPayload({
+        template: {
+          categoria: "tecnologia",
+          tema: "Tech",
+          mood: "Futuro, comunidade e inovacao.",
+          cta_text: "Quero participar",
+          color_primary: "#54DCFC",
+          color_secondary: "#83FFEA",
+          color_background: "#07111F",
+          color_text: "#F8FAFC",
+          hero_layout: "dark-overlay",
+          cta_variant: "gradient",
+          graphics_style: "grid",
+          tone_of_voice: "enthusiasm",
+          cta_experiment_enabled: false,
+          cta_variants: [],
+        },
       }),
     );
-    expect(await screen.findByRole("button", { name: /quero ir/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /quero participar/i })).toBeInTheDocument();
+
+    resolveOldPreview?.(
+      createLandingPreviewPayload({
+        template: {
+          categoria: "show_musical",
+          tema: "Show",
+          mood: "Vibrante, noturno e memoravel.",
+          cta_text: "Quero ir",
+          color_primary: "#735CC6",
+          color_secondary: "#FF6E91",
+          color_background: "#140F2E",
+          color_text: "#F8FAFC",
+          hero_layout: "dark-overlay",
+          cta_variant: "gradient",
+          graphics_style: "dynamic",
+          tone_of_voice: "enthusiasm",
+          cta_experiment_enabled: false,
+          cta_variants: [],
+        },
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /quero participar/i })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: /quero ir/i })).not.toBeInTheDocument();
   });
 
-  it("keeps the last preview when template_override input is invalid", async () => {
+  it("keeps the last preview visible and surfaces validation errors from preview requests", async () => {
     const user = userEvent.setup();
+    mockedPreviewEventoLanding
+      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
+      .mockRejectedValueOnce(new Error("template_override fora do catalogo homologado") as never);
 
     render(
       <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
@@ -439,9 +620,9 @@ describe("Evento pages smoke", () => {
     await user.clear(input);
     await user.type(input, "template-nao-homologado");
 
-    await new Promise((resolve) => setTimeout(resolve, 350));
-
-    expect(mockedGetLandingByEvento).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText(/template_override fora do catalogo homologado/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
   });
 

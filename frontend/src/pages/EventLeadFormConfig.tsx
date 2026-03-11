@@ -702,6 +702,7 @@ export default function EventLeadFormConfig() {
                   return (
                     <Box
                       key={nome}
+                      data-testid={`lead-field-card-${nome.toLowerCase().replace(/\s+/g, "-")}`}
                       sx={{
                         px: 1.5,
                         py: 0.75,

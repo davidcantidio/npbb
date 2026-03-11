@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-02-002-REGISTRAR-DECISION-REFS-E-TENDENCIA-ENTRE-RODADAS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -37,15 +37,15 @@ formalizando `decision_refs` e leitura comparativa de rounds anteriores.
 
 ## Definition of Done da Issue
 
-- [ ] `decision_refs` presente no template
-- [ ] secao de tendencia entre rodadas definida
-- [ ] preenchimento continua valido sem historico anterior
+- [x] `decision_refs` presente no template
+- [x] secao de tendencia entre rodadas definida
+- [x] preenchimento continua valido sem historico anterior
 
 ## Tasks Decupadas
 
-- [ ] T1: adicionar `decision_refs` ao template
-- [ ] T2: criar bloco de tendencia entre rodadas
-- [ ] T3: revisar compatibilidade com rodada inicial
+- [x] T1: adicionar `decision_refs` ao template
+- [x] T2: criar bloco de tendencia entre rodadas
+- [x] T3: revisar compatibilidade com rodada inicial
 
 ## Arquivos Reais Envolvidos
 

@@ -15,13 +15,13 @@ import {
 } from "./landingFixtures";
 
 const EXPECTED_FOOTER_TEXT_COLORS = {
-  corporativo: "rgba(255, 255, 255, 0.75)",
-  esporte_convencional: "rgba(255, 255, 255, 0.75)",
-  esporte_radical: "rgba(255, 255, 255, 0.85)",
-  evento_cultural: "rgba(51, 51, 189, 0.75)",
-  show_musical: "rgba(255, 255, 255, 0.65)",
-  tecnologia: "rgba(255, 255, 255, 0.70)",
-  generico: "rgba(255, 255, 255, 0.75)",
+  corporativo: "rgba(248, 250, 252, 0.82)",
+  esporte_convencional: "rgba(248, 250, 252, 0.82)",
+  esporte_radical: "rgba(17, 24, 39, 0.82)",
+  evento_cultural: "rgba(17, 24, 39, 0.82)",
+  show_musical: "rgba(248, 250, 252, 0.82)",
+  tecnologia: "rgba(248, 250, 252, 0.82)",
+  generico: "rgba(248, 250, 252, 0.82)",
 } as const;
 
 describe("landingStyle contract", () => {

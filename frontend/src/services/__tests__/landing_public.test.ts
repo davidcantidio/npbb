@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getLandingByAtivacao, getLandingByEvento } from "../landing_public";
+import { getLandingByAtivacao, getLandingByEvento, previewEventoLanding } from "../landing_public";
 import { fetchWithAuth, handleApiResponse } from "../http";
 
 vi.mock("../http", () => ({
@@ -101,6 +101,44 @@ describe("landing_public service", () => {
     await getLandingByEvento(10, { templateOverride: "   " });
 
     expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/landing", { retries: 0 });
+  });
+
+  it("envia payload autenticado para o preview transiente por evento", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce({
+      ...landingBasePayload,
+      gamificacoes: null,
+    });
+    const signal = {} as AbortSignal;
+
+    const payload = await previewEventoLanding(
+      "token-preview",
+      10,
+      {
+        template_id: 4,
+        template_override: "show_musical",
+        cta_personalizado: "Quero ir",
+        descricao_curta: "Descricao curta",
+        campos: [{ nome_campo: "Nome", obrigatorio: true, ordem: 0 }],
+      },
+      { signal },
+    );
+
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/evento/10/landing-preview", {
+      token: "token-preview",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        template_id: 4,
+        template_override: "show_musical",
+        cta_personalizado: "Quero ir",
+        descricao_curta: "Descricao curta",
+        campos: [{ nome_campo: "Nome", obrigatorio: true, ordem: 0 }],
+      }),
+      retries: 0,
+      signal,
+    });
+    expect(payload.gamificacoes).toEqual([]);
   });
 
   it("normaliza gamificacoes nula para lista vazia no endpoint por ativacao", async () => {

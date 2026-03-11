@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-02-METRICAS-NO-TEMPLATE-DE-AUDITORIA.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-11"
 ---
@@ -25,16 +25,16 @@ comparavel entre rodadas.
 
 ## Definition of Done do Epico
 
-- [ ] template de auditoria com secao de complexidade estrutural
-- [ ] `decision_refs` disponivel no fluxo de auditoria
-- [ ] tendencia entre rodadas documentavel
+- [x] template de auditoria com secao de complexidade estrutural
+- [x] `decision_refs` disponivel no fluxo de auditoria
+- [x] tendencia entre rodadas documentavel
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F2-02-001 | Adicionar secao de complexidade estrutural ao template de auditoria | Levar thresholds e trend para o relatorio. | 3 | done | [ISSUE-F2-02-001-ADICIONAR-SECAO-DE-COMPLEXIDADE-ESTRUTURAL-AO-TEMPLATE-DE-AUDITORIA.md](./issues/ISSUE-F2-02-001-ADICIONAR-SECAO-DE-COMPLEXIDADE-ESTRUTURAL-AO-TEMPLATE-DE-AUDITORIA.md) |
-| ISSUE-F2-02-002 | Registrar decision refs e tendencia entre rodadas | Completar a camada de rastreabilidade do template. | 2 | todo | [ISSUE-F2-02-002-REGISTRAR-DECISION-REFS-E-TENDENCIA-ENTRE-RODADAS.md](./issues/ISSUE-F2-02-002-REGISTRAR-DECISION-REFS-E-TENDENCIA-ENTRE-RODADAS.md) |
+| ISSUE-F2-02-002 | Registrar decision refs e tendencia entre rodadas | Completar a camada de rastreabilidade do template. | 2 | done | [ISSUE-F2-02-002-REGISTRAR-DECISION-REFS-E-TENDENCIA-ENTRE-RODADAS.md](./issues/ISSUE-F2-02-002-REGISTRAR-DECISION-REFS-E-TENDENCIA-ENTRE-RODADAS.md) |
 
 ## Artifact Minimo do Epico
 

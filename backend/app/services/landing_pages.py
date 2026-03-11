@@ -19,6 +19,7 @@ from app.models.models import (
     Lead,
     now_utc,
 )
+from app.schemas.landing import LandingPayload
 from app.schemas.landing_public import (
     GamificacaoPublicSchema,
     LandingAccessRead,
@@ -30,7 +31,6 @@ from app.schemas.landing_public import (
     LandingEventRead,
     LandingFieldRead,
     LandingFormRead,
-    LandingPageRead,
     LandingSubmitRequest,
     LandingSubmitResponse,
 )
@@ -218,10 +218,11 @@ def build_landing_payload(
     evento: Evento,
     ativacao: Ativacao | None = None,
     backend_base_url: str | None = None,
+    token: str | None = None,
     template_override: str | None = None,
     template_name_override: str | None | object = _UNSET,
     fields_override: list[LandingFieldRead] | object = _UNSET,
-) -> LandingPageRead:
+) -> LandingPayload:
     fields, template_name = get_landing_fields(session, evento=evento)
     if fields_override is not _UNSET:
         fields = list(fields_override)
@@ -249,7 +250,7 @@ def build_landing_payload(
     ativacao_info = _build_ativacao_info(ativacao)
     gamificacoes = _build_gamificacoes_for_ativacao(session, ativacao=ativacao)
 
-    return LandingPageRead(
+    return LandingPayload(
         ativacao_id=ativacao.id if ativacao else None,
         ativacao=ativacao_info,
         gamificacoes=gamificacoes,
@@ -287,6 +288,8 @@ def build_landing_payload(
             qr_code_url=ativacao.qr_code_url if ativacao else None,
             url_promotor=ativacao.url_promotor if ativacao else event_urls["url_landing"],
         ),
+        lead_reconhecido=False,
+        token=token,
     )
 
 

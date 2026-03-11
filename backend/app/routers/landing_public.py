@@ -7,6 +7,7 @@ from sqlmodel import Session
 
 from app.db.database import get_session
 from app.models.models import Ativacao, Evento
+from app.schemas.landing import LandingPayload
 from app.schemas.gamificacao_landing import (
     GamificacaoCompleteRequest,
     GamificacaoCompleteResponse,
@@ -14,7 +15,6 @@ from app.schemas.gamificacao_landing import (
 from app.schemas.landing_public import (
     LandingAnalyticsTrackRequest,
     LandingAnalyticsTrackResponse,
-    LandingPageRead,
     LandingSubmitRequest,
     LandingSubmitResponse,
     LandingTemplateConfigRead,
@@ -57,6 +57,22 @@ def _get_ativacao_or_404(session: Session, ativacao_id: int) -> Ativacao:
     return ativacao
 
 
+def _get_ativacao_for_evento_or_404(
+    session: Session,
+    *,
+    evento_id: int,
+    ativacao_id: int,
+) -> Ativacao:
+    ativacao = _get_ativacao_or_404(session, ativacao_id)
+    if ativacao.evento_id != evento_id:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="ATIVACAO_NOT_FOUND",
+            message="Ativacao nao encontrada",
+        )
+    return ativacao
+
+
 def _normalize_preview_template_override(template_override: str | None) -> str | None:
     normalized = normalize_template_override_input(template_override)
     if template_override is not None and str(template_override).strip() and normalized is None:
@@ -68,7 +84,7 @@ def _normalize_preview_template_override(template_override: str | None) -> str |
     return normalized
 
 
-@router.get("/eventos/{evento_id}/landing", response_model=LandingPageRead)
+@router.get("/eventos/{evento_id}/landing", response_model=LandingPayload)
 def get_evento_landing(
     evento_id: int,
     request: Request,
@@ -85,19 +101,61 @@ def get_evento_landing(
     )
 
 
-@router.get("/ativacoes/{ativacao_id}/landing", response_model=LandingPageRead)
-def get_ativacao_landing(
-    ativacao_id: int,
+def _build_ativacao_landing_payload(
+    *,
+    session: Session,
+    ativacao: Ativacao,
     request: Request,
-    session: Session = Depends(get_session),
-):
-    ativacao = _get_ativacao_or_404(session, ativacao_id)
+    token: str | None,
+) -> LandingPayload:
     evento = _get_evento_or_404(session, ativacao.evento_id)
     return build_landing_payload(
         session,
         evento=evento,
         ativacao=ativacao,
         backend_base_url=str(request.base_url),
+        token=token,
+    )
+
+
+@router.get("/ativacoes/{ativacao_id}/landing", response_model=LandingPayload)
+def get_ativacao_landing(
+    ativacao_id: int,
+    request: Request,
+    token: str | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    ativacao = _get_ativacao_or_404(session, ativacao_id)
+    return _build_ativacao_landing_payload(
+        session=session,
+        ativacao=ativacao,
+        request=request,
+        token=token,
+    )
+
+
+@router.get(
+    "/eventos/{evento_id}/ativacoes/{ativacao_id}/landing",
+    response_model=LandingPayload,
+)
+def get_evento_ativacao_landing(
+    evento_id: int,
+    ativacao_id: int,
+    request: Request,
+    token: str | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    _get_evento_or_404(session, evento_id)
+    ativacao = _get_ativacao_for_evento_or_404(
+        session,
+        evento_id=evento_id,
+        ativacao_id=ativacao_id,
+    )
+    return _build_ativacao_landing_payload(
+        session=session,
+        ativacao=ativacao,
+        request=request,
+        token=token,
     )
 
 

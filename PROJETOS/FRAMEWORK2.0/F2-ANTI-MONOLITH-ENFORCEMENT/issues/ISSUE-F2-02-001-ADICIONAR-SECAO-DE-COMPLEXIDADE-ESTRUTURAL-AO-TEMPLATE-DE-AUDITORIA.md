@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-02-001-ADICIONAR-SECAO-DE-COMPLEXIDADE-ESTRUTURAL-AO-TEMPLATE-DE-AUDITORIA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -37,15 +37,15 @@ monolito e seus indicadores associados.
 
 ## Definition of Done da Issue
 
-- [ ] secao de complexidade estrutural presente no template
-- [ ] thresholds e indicadores suportados no layout
-- [ ] comparacao entre rodadas viavel
+- [x] secao de complexidade estrutural presente no template
+- [x] thresholds e indicadores suportados no layout
+- [x] comparacao entre rodadas viavel
 
 ## Tasks Decupadas
 
-- [ ] T1: desenhar os campos minimos da secao estrutural
-- [ ] T2: integrar os campos ao template de relatorio
-- [ ] T3: revisar a utilidade para rodadas subsequentes
+- [x] T1: desenhar os campos minimos da secao estrutural
+- [x] T2: integrar os campos ao template de relatorio
+- [x] T3: revisar a utilidade para rodadas subsequentes
 
 ## Arquivos Reais Envolvidos
 

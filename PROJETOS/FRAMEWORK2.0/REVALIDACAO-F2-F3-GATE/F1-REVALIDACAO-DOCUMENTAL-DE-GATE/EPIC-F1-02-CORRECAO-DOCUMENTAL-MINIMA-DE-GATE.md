@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-02-CORRECAO-DOCUMENTAL-MINIMA-DE-GATE.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-10"
 ---
@@ -27,16 +27,16 @@ desse envelope devem ser bloqueadas, nao absorvidas.
 
 ## Definition of Done do Epico
 
-- [ ] F2 foi tratada como patch minimo ou no-op controlado
-- [ ] F3 foi tratada como patch minimo ou no-op controlado
-- [ ] nenhum campo fora de checklist/gate foi alterado
-- [ ] a validacao final confirma preservacao de `status`, `audit_gate`, `gate_atual` e `ultima_auditoria`
+- [x] F2 foi tratada como patch minimo ou no-op controlado
+- [x] F3 foi tratada como patch minimo ou no-op controlado
+- [x] nenhum campo fora de checklist/gate foi alterado
+- [x] a validacao final confirma preservacao de `status`, `audit_gate`, `gate_atual` e `ultima_auditoria`
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-02-001 | Ajustar manifesto F2 ao split canonico de gate | Aplicar o split do checklist em F2 ou registrar no-op controlado. | 2 | todo | [ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md](./issues/ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md) |
+| ISSUE-F1-02-001 | Ajustar manifesto F2 ao split canonico de gate | Aplicar o split do checklist em F2 ou registrar no-op controlado. | 2 | done | [ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md](./issues/ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md) |
 | ISSUE-F1-02-002 | Ajustar manifesto F3 ao split canonico de gate | Aplicar o split do checklist em F3 ou registrar no-op controlado. | 2 | done | [ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md](./issues/ISSUE-F1-02-002-AJUSTAR-MANIFESTO-F3-AO-SPLIT-CANONICO-DE-GATE.md) |
 
 ## Artifact Minimo do Epico

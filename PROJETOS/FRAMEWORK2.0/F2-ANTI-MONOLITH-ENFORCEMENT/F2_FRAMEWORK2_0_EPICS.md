@@ -3,7 +3,7 @@ doc_id: "F2_FRAMEWORK2_0_EPICS.md"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-11"
 audit_gate: "not_ready"
 ---
 
@@ -48,7 +48,7 @@ spec e o prompt de monolito gera intake de remediacao valido.
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F2-01 | SPEC-ANTI-MONOLITO | Definir e calibrar thresholds objetivos por linguagem. | EPIC-F1-01 done | active | [EPIC-F2-01-SPEC-ANTI-MONOLITO.md](./EPIC-F2-01-SPEC-ANTI-MONOLITO.md) |
-| EPIC-F2-02 | Metricas no Template de Auditoria | Levar complexidade estrutural e decision refs ao relatorio. | EPIC-F2-01 | todo | [EPIC-F2-02-METRICAS-NO-TEMPLATE-DE-AUDITORIA.md](./EPIC-F2-02-METRICAS-NO-TEMPLATE-DE-AUDITORIA.md) |
+| EPIC-F2-02 | Metricas no Template de Auditoria | Levar complexidade estrutural e decision refs ao relatorio. | EPIC-F2-01 | active | [EPIC-F2-02-METRICAS-NO-TEMPLATE-DE-AUDITORIA.md](./EPIC-F2-02-METRICAS-NO-TEMPLATE-DE-AUDITORIA.md) |
 | EPIC-F2-03 | PROMPT-MONOLITO-PARA-INTAKE | Transformar achado estrutural em intake de remediacao rastreavel. | EPIC-F2-01 | todo | [EPIC-F2-03-PROMPT-MONOLITO-PARA-INTAKE.md](./EPIC-F2-03-PROMPT-MONOLITO-PARA-INTAKE.md) |
 
 ## Dependencias entre Epicos

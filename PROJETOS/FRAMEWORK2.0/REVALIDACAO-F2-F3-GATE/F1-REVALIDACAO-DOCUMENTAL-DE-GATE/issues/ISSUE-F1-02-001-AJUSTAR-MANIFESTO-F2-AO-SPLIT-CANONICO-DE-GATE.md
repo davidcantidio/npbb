@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-02-001-AJUSTAR-MANIFESTO-F2-AO-SPLIT-CANONICO-DE-GATE.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-10"
 task_instruction_mode: "required"
@@ -38,16 +38,16 @@ Qualquer divergencia fora de checklist/gate e bloqueio de escopo.
 
 ## Definition of Done da Issue
 
-- [ ] F2 foi tratada como patch minimo ou no-op controlado
-- [ ] nenhum campo fora de checklist/gate foi alterado
-- [ ] `status`, `audit_gate`, `gate_atual` e `ultima_auditoria` permaneceram preservados
-- [ ] existe stop condition explicita para drift fora do escopo
+- [x] F2 foi tratada como patch minimo ou no-op controlado
+- [x] nenhum campo fora de checklist/gate foi alterado
+- [x] `status`, `audit_gate`, `gate_atual` e `ultima_auditoria` permaneceram preservados
+- [x] existe stop condition explicita para drift fora do escopo
 
 ## Tasks Decupadas
 
-- [ ] T1: confirmar na baseline se F2 exige patch ou no-op
-- [ ] T2: aplicar o patch minimo em F2 ou registrar no-op controlado
-- [ ] T3: validar que nao houve alteracao fora de checklist/gate
+- [x] T1: confirmar na baseline se F2 exige patch ou no-op
+- [x] T2: aplicar o patch minimo em F2 ou registrar no-op controlado
+- [x] T3: validar que nao houve alteracao fora de checklist/gate
 
 ## Instructions por Task
 
@@ -119,6 +119,14 @@ Qualquer divergencia fora de checklist/gate e bloqueio de escopo.
 - stop_conditions:
   - parar se a validacao revelar drift fora do escopo aprovado
   - parar se a issue depender de reinterpretar a prontidao operacional de F2
+
+## Resultado da Execucao
+
+- classificacao final: `patch minimo`
+- baseline consumida: F2 classificada como `drift confirmado` em `ISSUE-F1-01-001`
+- alteracao aplicada: split de `pending -> hold/approved` para `pending -> hold` e `pending -> approved` em `F2_FRAMEWORK2_0_EPICS.md`
+- validacao final: `status`, `audit_gate`, `gate_atual` e `ultima_auditoria` permaneceram preservados, e o diff ficou restrito ao bloco de checklist/gate
+- stop condition mantida: qualquer drift fora de checklist/gate permanece `BLOQUEADO`
 
 ## Arquivos Reais Envolvidos
 

@@ -1,21 +1,42 @@
 ---
 doc_id: "PROMPT-MONOLITO-PARA-INTAKE.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-11"
 ---
 
 # PROMPT-MONOLITO-PARA-INTAKE
 
+## Objetivo
+
+Converter um achado estrutural `monolithic-file` ou `monolithic-function` em um
+`INTAKE-<PROJETO>-REFACTOR-<SLUG>.md` rastreavel, pronto para iniciar um fluxo
+de remediacao estrutural sem perder a origem da auditoria.
+
 ## Como usar
 
-Cole este prompt em uma sessao com acesso ao repositorio e informe:
+Cole este prompt em uma sessao com acesso ao repositorio e entregue um pacote
+minimo de entrada. Se algum dado ainda nao existir, declare explicitamente
+`nao_definido`, `nao_disponivel` ou registre a lacuna; nao invente contexto.
 
-- caminho do relatorio de auditoria de origem
-- componente alvo
-- metricas observadas
+### Entrada minima obrigatoria
+
 - projeto que recebera o intake de remediacao
+- projeto e fase de origem do achado, quando aplicavel
+- `Audit ID` e caminho do relatorio de auditoria de origem
+- classificacao do achado: `monolithic-file` ou `monolithic-function`
+- componente alvo com caminho completo; para funcao monolitica, incluir nome da
+  funcao ou metodo
+- linguagem ou stack avaliada
+- metricas observadas que cruzaram threshold no
+  `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`, informando ao menos:
+  - metrica
+  - valor observado
+  - nivel cruzado (`warn` ou `block`)
+- impacto operacional de nao agir
+- confirmacao de que o destino correto e `new-intake`, e nao `issue-local`
+- riscos de compatibilidade, regressao ou rollout ja conhecidos, se existirem
 
 ## Prompt
 
@@ -29,28 +50,76 @@ estrutural rastreavel.
 2. leia o relatorio de auditoria de origem
 3. leia `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`
 4. leia `PROJETOS/COMUM/TEMPLATE-INTAKE.md`
-5. leia o `AUDIT-LOG.md` do projeto, se existir
+5. leia o `AUDIT-LOG.md` do projeto de origem, se existir
 
 ### Validacao minima
 
 Antes de escrever o intake, confirme:
 
-- qual arquivo ou funcao disparou o achado
-- quais metricas cruzaram threshold
+- o achado e realmente `monolithic-file` ou `monolithic-function`
+- qual arquivo, componente ou funcao disparou o achado
+- quais metricas cruzaram threshold canonico e em qual nivel (`warn` ou `block`)
 - qual o impacto operacional de nao agir
-- se o destino recomendado e mesmo `new-intake`
+- qual auditoria originou a remediacao (`origin_audit_id` e
+  `origin_report_path`)
+- qual projeto recebera o intake
+- se o destino recomendado continua sendo `new-intake`
+- se ha contexto minimo para descrever decomposicao, riscos de interface e
+  testes de regressao
 
-Se faltar qualquer um desses insumos, pare e devolva `BLOQUEADO`.
+Devolva `BLOQUEADO` sem gerar intake se qualquer uma destas condicoes ocorrer:
+
+- faltar `Audit ID`, relatorio de origem ou projeto destino
+- faltar componente alvo identificavel
+- nao houver metrica estrutural vinculada ao `SPEC-ANTI-MONOLITO.md`
+- o achado nao for estrutural ou couber melhor como `issue-local`
+- nao houver contexto minimo para explicar impacto, risco ou objetivo da
+  remediacao
+
+### Regras de saida
+
+Gere exatamente um intake compativel com
+`PROJETOS/COMUM/TEMPLATE-INTAKE.md`.
+
+Regras obrigatorias:
+
+- nome do arquivo sugerido:
+  `INTAKE-<PROJETO>-REFACTOR-<SLUG>.md`
+- frontmatter obrigatorio deve incluir:
+  - `project: "<PROJETO>"`
+  - `intake_kind: "refactor"`
+  - `source_mode: "audit-derived"`
+  - `origin_project`
+  - `origin_phase`
+  - `origin_audit_id`
+  - `origin_report_path`
+- preserve todas as secoes do template canonico de intake
+- quando um dado nao puder ser comprovado com os insumos lidos, use
+  `nao_definido` ou `nao_aplicavel` e registre a lacuna na secao `14. Lacunas Conhecidas`
+- nao crie thresholds, severidades ou categorias fora do
+  `SPEC-ANTI-MONOLITO.md`
+
+### Conteudo minimo do intake gerado
+
+O intake final deve deixar explicito:
+
+- rastreabilidade completa da auditoria de origem
+- problema estrutural resumido e por que ele agora exige remediacao
+- componente(s) afetado(s) e evidencia tecnica do monolito
+- proposta inicial de decomposicao em modulos, responsabilidades ou fatias
+- riscos de compatibilidade de interface, rollout e regressao
+- testes de regressao minimos para proteger o comportamento atual
+- limites do escopo da remediacao e nao-objetivos
+- perguntas que o PRD precisara responder antes da execucao
+- checklist de prontidao do PRD mantido no formato do template
 
 ### Saida esperada
 
-Gerar um intake no formato `INTAKE-<PROJETO>-REFACTOR-<SLUG>.md` com:
+Responda apenas com o conteudo completo do intake gerado.
 
-- `intake_kind: refactor`
-- `source_mode: audit-derived`
-- `origin_audit_id` e `origin_report_path`
-- problema resumido
-- proposta de decomposicao em modulos
-- riscos de compatibilidade de interface
-- testes de regressao minimos
-- lacunas conhecidas, quando existirem
+Esse intake deve:
+
+- ser rastreavel de volta ao relatorio e `Audit ID` de origem
+- estar alinhado ao `TEMPLATE-INTAKE.md` sem remover secoes obrigatorias
+- carregar para a secao de refatoracao a evidencia estrutural vinda do achado
+- fornecer handoff claro para a futura sessao que criara o PRD da remediacao

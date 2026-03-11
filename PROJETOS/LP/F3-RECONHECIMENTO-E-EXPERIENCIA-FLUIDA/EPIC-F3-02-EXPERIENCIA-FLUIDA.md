@@ -1,0 +1,52 @@
+---
+doc_id: "EPIC-F3-02-EXPERIENCIA-FLUIDA.md"
+version: "1.0"
+status: "todo"
+owner: "PM"
+last_updated: "2026-03-11"
+---
+
+# EPIC-F3-02 - Experiência Fluida e "Registrar outro CPF"
+
+## Objetivo
+
+Lead reconhecido pula etapa CPF. Em ativação múltipla, vai direto ao formulário completo. Em ativação única quando já converteu, exibe opção "Registrar outro CPF" (ou "Cadastrar outra pessoa"). Conforme PRD seções 4, 5.3 e 5.4.
+
+## Resultado de Negocio Mensuravel
+
+Experiência fluida para leads recorrentes; ativação única permite registrar outro CPF quando o lead usa o celular para converter terceiros.
+
+## Contexto Arquitetural
+
+- GET landing retorna lead_reconhecido
+- Frontend: se lead_reconhecido, pular etapa CPF
+- Ativação múltipla: formulário direto, submit registra nova conversão
+- Ativação única + já converteu: mensagem "Você já se cadastrou" + link "Registrar outro CPF"
+- Ao clicar "Registrar outro CPF": limpar estado e exibir CPF novamente
+
+## Definition of Done do Epico
+
+- [ ] Lead reconhecido: pular etapa CPF, ir direto ao formulário
+- [ ] Ativação múltipla: formulário direto, submit registra nova conversão
+- [ ] Ativação única + já converteu: mensagem + opção "Registrar outro CPF"
+- [ ] Ao clicar "Registrar outro CPF": exibir CPF novamente para novo cadastro
+- [ ] Testes E2E cobrindo fluxos
+
+## Issues do Epico
+
+| Issue ID | Nome | Objetivo | SP | Status | Documento |
+|---|---|---|---|---|---|
+| ISSUE-F3-02-001 | Lead reconhecido pula CPF e ativação múltipla | Pular CPF quando reconhecido; formulário direto em múltipla | 3 | todo | [ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md](./issues/ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md) |
+| ISSUE-F3-02-002 | Opção "Registrar outro CPF" em ativação única | Exibir opção quando já converteu; fluxo para novo CPF | 2 | todo | [ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md](./issues/ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md) |
+
+## Artifact Minimo do Epico
+
+- `frontend/src/` (lógica de fluxo)
+- `frontend/e2e/` (testes)
+
+## Dependencias
+
+- [EPIC-F3-01](./EPIC-F3-01-MECANISMO-RECONHECIMENTO.md)
+- [F2](../F2-FLUXO-CPF-FIRST-E-CONVERSAO/F2_LP_EPICS.md)
+- [PRD](../PRD-LP-QR-ATIVACOES.md)
+- [Fase](./F3_LP_EPICS.md)

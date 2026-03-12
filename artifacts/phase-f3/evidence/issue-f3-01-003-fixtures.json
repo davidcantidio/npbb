@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-03-12T18:33:42.722264+00:00",
+  "fixtures": [
+    {
+      "template_key": "corporativo",
+      "template_category": "corporativo",
+      "evento_id": 3,
+      "evento_nome": "Evento Playwright F3 - corporativo",
+      "ativacao_id": 2,
+      "ativacao_nome": "Ativacao Playwright F3 - corporativo",
+      "gamificacao_id": 1
+    },
+    {
+      "template_key": "esporte_convencional",
+      "template_category": "esporte_convencional",
+      "evento_id": 4,
+      "evento_nome": "Evento Playwright F3 - esporte_convencional",
+      "ativacao_id": 3,
+      "ativacao_nome": "Ativacao Playwright F3 - esporte_convencional",
+      "gamificacao_id": 2
+    },
+    {
+      "template_key": "esporte_radical",
+      "template_category": "esporte_radical",
+      "evento_id": 5,
+      "evento_nome": "Evento Playwright F3 - esporte_radical",
+      "ativacao_id": 4,
+      "ativacao_nome": "Ativacao Playwright F3 - esporte_radical",
+      "gamificacao_id": 3
+    },
+    {
+      "template_key": "evento_cultural",
+      "template_category": "evento_cultural",
+      "evento_id": 6,
+      "evento_nome": "Evento Playwright F3 - evento_cultural",
+      "ativacao_id": 5,
+      "ativacao_nome": "Ativacao Playwright F3 - evento_cultural",
+      "gamificacao_id": 4
+    },
+    {
+      "template_key": "show_musical",
+      "template_category": "show_musical",
+      "evento_id": 7,
+      "evento_nome": "Evento Playwright F3 - show_musical",
+      "ativacao_id": 6,
+      "ativacao_nome": "Ativacao Playwright F3 - show_musical",
+      "gamificacao_id": 5
+    },
+    {
+      "template_key": "tecnologia",
+      "template_category": "tecnologia",
+      "evento_id": 8,
+      "evento_nome": "Evento Playwright F3 - tecnologia",
+      "ativacao_id": 7,
+      "ativacao_nome": "Ativacao Playwright F3 - tecnologia",
+      "gamificacao_id": 6
+    },
+    {
+      "template_key": "generico",
+      "template_category": "generico",
+      "evento_id": 9,
+      "evento_nome": "Evento Playwright F3 - generico",
+      "ativacao_id": 8,
+      "ativacao_nome": "Ativacao Playwright F3 - generico",
+      "gamificacao_id": 7
+    }
+  ],
+  "issue_id": "ISSUE-F3-01-003",
+  "total": 7
+}

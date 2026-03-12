@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -462,3 +462,88 @@ def test_get_leads_reconhecer_retorna_lead_quando_token_valido(client, engine):
 
     assert resp.status_code == 200
     assert resp.json() == {"lead_reconhecido": True, "lead_id": lead_id}
+
+
+def test_get_leads_reconhecer_retorna_false_para_token_invalido(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento Invalido")
+        evento_id = evento.id
+
+    resp = client.get(
+        "/leads/reconhecer",
+        params={"token": "token-inexistente", "evento_id": evento_id},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"lead_reconhecido": False, "lead_id": None}
+
+
+def test_get_leads_reconhecer_retorna_false_para_token_expirado(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento Expirado")
+        evento_id = evento.id
+        lead = Lead(
+            nome="Maria",
+            email="maria@example.com",
+            cpf="52998224725",
+            evento_nome=evento.nome,
+            cidade=evento.cidade,
+            estado=evento.estado,
+            fonte_origem="landing_publica",
+            opt_in="aceito",
+            opt_in_flag=True,
+        )
+        session.add(lead)
+        session.commit()
+        session.refresh(lead)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
+        session.commit()
+        record = session.exec(select(LeadReconhecimentoToken)).one()
+        record.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        session.add(record)
+        session.commit()
+
+    resp = client.get(
+        "/leads/reconhecer",
+        params={"token": token, "evento_id": evento_id},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"lead_reconhecido": False, "lead_id": None}
+
+
+def test_get_leads_reconhecer_retorna_false_para_evento_divergente(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento_a = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento A")
+        evento_b = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento B")
+        evento_b_id = evento_b.id
+        lead = Lead(
+            nome="Maria",
+            email="maria@example.com",
+            cpf="52998224725",
+            evento_nome=evento_a.nome,
+            cidade=evento_a.cidade,
+            estado=evento_a.estado,
+            fonte_origem="landing_publica",
+            opt_in="aceito",
+            opt_in_flag=True,
+        )
+        session.add(lead)
+        session.commit()
+        session.refresh(lead)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento_a.id)
+        session.commit()
+
+    resp = client.get(
+        "/leads/reconhecer",
+        params={"token": token, "evento_id": evento_b_id},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"lead_reconhecido": False, "lead_id": None}

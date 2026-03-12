@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,6 +16,7 @@ from app.models.models import (
     Gamificacao,
     LandingAnalyticsEvent,
     Lead,
+    LeadReconhecimentoToken,
     StatusEvento,
     TipoEvento,
     Usuario,
@@ -477,6 +478,64 @@ def test_public_landing_por_evento_reconhece_via_cookie_emitido_no_submit(client
     payload = landing_resp.json()
     assert payload["lead_reconhecido"] is True
     assert payload["token"] is None
+
+
+def test_public_landing_por_ativacao_nao_reconhece_token_expirado(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Token Expirado",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        lead = seed_lead(session, evento=evento)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
+        session.commit()
+        record = session.exec(select(LeadReconhecimentoToken)).one()
+        record.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        session.add(record)
+        session.commit()
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/ativacoes/{ativacao_id}/landing?token={token}")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["lead_reconhecido"] is False
+    assert payload["token"] == token
+
+
+def test_public_landing_por_ativacao_nao_reconhece_token_de_outro_evento(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento_a = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB A",
+        )
+        evento_b = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB B",
+        )
+        ativacao_b = seed_ativacao(session, evento_id=evento_b.id)
+        lead = seed_lead(session, evento=evento_a)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento_a.id)
+        session.commit()
+        ativacao_b_id = ativacao_b.id
+
+    resp = client.get(f"/ativacoes/{ativacao_b_id}/landing?token={token}")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["lead_reconhecido"] is False
+    assert payload["token"] == token
 
 
 def test_public_landing_submit_por_ativacao_rejeita_cpf_invalido(client, engine):

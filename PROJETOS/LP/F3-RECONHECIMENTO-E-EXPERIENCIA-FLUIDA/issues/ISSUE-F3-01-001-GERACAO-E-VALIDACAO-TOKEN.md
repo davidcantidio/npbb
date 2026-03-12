@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 5.1 - Mecanismo de Reconhecimento"
@@ -36,18 +36,18 @@ Token opaco (hash ou UUID) vinculado a lead_id + evento_id. TTL 7 dias. Persisti
 
 ## Definition of Done da Issue
 
-- [ ] Serviço gera token e persiste em lead_reconhecimento_token
-- [ ] POST /leads retorna token_reconhecimento no response e emite `Set-Cookie`
-- [ ] GET /leads/reconhecer?token= valida e retorna status
-- [ ] TTL 7 dias
-- [ ] Testes backend
+- [x] Serviço gera token e persiste em lead_reconhecimento_token
+- [x] POST /leads retorna token_reconhecimento no response e emite `Set-Cookie`
+- [x] GET /leads/reconhecer?token= valida e retorna status
+- [x] TTL 7 dias
+- [x] Testes backend
 
 ## Tarefas Decupadas
 
-- [ ] T1: Implementar serviço de geração e persistência de token
-- [ ] T2: Estender POST /leads para retornar token
-- [ ] T3: Implementar GET /leads/reconhecer e integrar no GET landing
-- [ ] T4: Adicionar testes
+- [x] T1: Implementar serviço de geração e persistência de token
+- [x] T2: Estender POST /leads para retornar token
+- [x] T3: Implementar GET /leads/reconhecer e integrar no GET landing
+- [x] T4: Adicionar testes
 
 ## Instructions por Task
 

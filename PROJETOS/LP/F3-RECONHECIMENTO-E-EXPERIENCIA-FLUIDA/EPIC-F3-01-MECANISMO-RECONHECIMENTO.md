@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F3-01-MECANISMO-RECONHECIMENTO.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 ---
 
 # EPIC-F3-01 - Mecanismo de Reconhecimento
@@ -36,7 +36,7 @@ O lead que converteu em uma ativação é reconhecido ao acessar outra ativaçã
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-01-001 | Geração e validação de token de reconhecimento | Backend: gerar token, persistir, validar | 3 | todo | [ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md](./issues/ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md) |
+| ISSUE-F3-01-001 | Geração e validação de token de reconhecimento | Backend: gerar token, persistir, validar | 3 | done | [ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md](./issues/ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md) |
 | ISSUE-F3-01-002 | Cookie e integração com GET landing | Integrar cookie emitido pelo backend e GET landing com lead_reconhecido | 3 | todo | [ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md](./issues/ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md) |
 
 ## Artifact Minimo do Epico

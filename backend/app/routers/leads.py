@@ -24,7 +24,7 @@ from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
-from app.models.models import Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
+from app.models.models import Ativacao, Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
 from app.modules.leads_publicidade.application.leads_import_usecases import (
     importar_leads_usecase,
     preview_import_sample_usecase,
@@ -61,7 +61,10 @@ from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
 from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
 from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListResponse
+from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
 from app.services.leads_export import generate_gold_export
+from app.services.landing_page_submission import get_public_lead_success_message, submit_public_lead
+from app.utils.cpf import validate_and_normalize_cpf
 from app.utils.http_errors import raise_http_error
 from app.utils.text_normalize import normalize_text
 from app.utils.fuzzy_match import best_match
@@ -166,6 +169,96 @@ def _get_lead_or_404(*, session: Session, lead_id: int) -> Lead:
             message="Lead nao encontrado",
         )
     return lead
+
+
+def _get_public_submit_context(
+    session: Session,
+    *,
+    payload: LandingSubmitRequest,
+) -> tuple[Evento, Ativacao | None, str | None]:
+    ativacao: Ativacao | None = None
+
+    if payload.ativacao_id is not None:
+        ativacao = session.get(Ativacao, payload.ativacao_id)
+        if ativacao is None:
+            raise_http_error(
+                status.HTTP_404_NOT_FOUND,
+                code="ATIVACAO_NOT_FOUND",
+                message="Ativacao nao encontrada",
+                field="ativacao_id",
+            )
+
+        if payload.event_id is not None and payload.event_id != ativacao.evento_id:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="EVENTO_ATIVACAO_MISMATCH",
+                message="event_id diverge da ativacao informada",
+                field="event_id",
+            )
+        if not payload.cpf:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="CPF_REQUIRED",
+                message="cpf obrigatorio quando ativacao_id for informado",
+                field="cpf",
+            )
+        try:
+            cpf_for_conversion = validate_and_normalize_cpf(payload.cpf)
+        except ValueError:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="CPF_INVALID",
+                message="CPF invalido",
+                field="cpf",
+            )
+
+        evento = session.get(Evento, ativacao.evento_id)
+        if evento is None:
+            raise_http_error(
+                status.HTTP_404_NOT_FOUND,
+                code="EVENTO_NOT_FOUND",
+                message="Evento nao encontrado",
+                field="event_id",
+            )
+        return evento, ativacao, cpf_for_conversion
+
+    if payload.event_id is None:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EVENT_ID_REQUIRED",
+            message="event_id obrigatorio quando ativacao_id nao for informado",
+            field="event_id",
+        )
+
+    evento = session.get(Evento, payload.event_id)
+    if evento is None:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="EVENTO_NOT_FOUND",
+            message="Evento nao encontrado",
+            field="event_id",
+        )
+    return evento, None, None
+
+
+@router.post("", response_model=LandingSubmitResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=LandingSubmitResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+def criar_lead_publico(
+    payload: LandingSubmitRequest,
+    session: Session = Depends(get_session),
+):
+    evento, ativacao, cpf_for_conversion = _get_public_submit_context(
+        session,
+        payload=payload,
+    )
+    return submit_public_lead(
+        session,
+        evento=evento,
+        ativacao=ativacao,
+        payload=payload,
+        success_message=get_public_lead_success_message(session, evento=evento),
+        cpf_for_conversion=cpf_for_conversion,
+    )
 
 
 @router.get("", response_model=LeadListResponse)

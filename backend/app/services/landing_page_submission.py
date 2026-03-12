@@ -185,6 +185,22 @@ def register_conversao_ativacao(
     return True
 
 
+def _find_duplicate_conversao_ativacao(
+    session: Session,
+    *,
+    ativacao: Ativacao | None,
+    cpf: str | None,
+) -> ConversaoAtivacao | None:
+    if ativacao is None or ativacao.id is None or not cpf or not ativacao.checkin_unico:
+        return None
+
+    return session.exec(
+        select(ConversaoAtivacao)
+        .where(ConversaoAtivacao.ativacao_id == ativacao.id)
+        .where(ConversaoAtivacao.cpf == cpf)
+    ).first()
+
+
 def _track_submit_success_analytics_if_needed(
     session: Session,
     *,
@@ -218,6 +234,27 @@ def submit_public_lead(
     success_message: str,
     cpf_for_conversion: str | None = None,
 ) -> LandingSubmitResponse:
+    duplicate_conversao = _find_duplicate_conversao_ativacao(
+        session,
+        ativacao=ativacao,
+        cpf=cpf_for_conversion,
+    )
+    if duplicate_conversao is not None:
+        ativacao_lead = session.exec(
+            select(AtivacaoLead)
+            .where(AtivacaoLead.ativacao_id == duplicate_conversao.ativacao_id)
+            .where(AtivacaoLead.lead_id == duplicate_conversao.lead_id)
+        ).first()
+        return LandingSubmitResponse(
+            lead_id=duplicate_conversao.lead_id,
+            event_id=evento.id or 0,
+            ativacao_id=ativacao.id if ativacao else None,
+            ativacao_lead_id=ativacao_lead.id if ativacao_lead else None,
+            mensagem_sucesso=success_message,
+            conversao_registrada=False,
+            bloqueado_cpf_duplicado=True,
+        )
+
     email = str(payload.email).strip().lower() if payload.email else None
     lead = resolve_or_create_public_lead(
         session,

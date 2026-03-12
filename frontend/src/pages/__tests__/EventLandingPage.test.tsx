@@ -126,6 +126,8 @@ const landingFixture: LandingPageData = {
     qr_code_url: "data:image/svg+xml;base64,PHN2Zy8+",
     url_promotor: "https://npbb.example/landing/ativacoes/1",
   },
+  lead_reconhecido: false,
+  token: null,
   gamificacoes: [
     {
       id: 321,
@@ -254,6 +256,29 @@ describe("EventLandingPage", () => {
     expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: "abc123" });
     expect(mockedGetLandingByAtivacao).not.toHaveBeenCalled();
     expect(mockedGetLandingByEvento).not.toHaveBeenCalled();
+  });
+
+  it("carrega direto no formulario quando o backend reconhece o lead", async () => {
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce({
+      ...landingFixture,
+      lead_reconhecido: true,
+      token: "abc123",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.queryByTestId("cpf-first-input")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /continuar/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/nome \*/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email \*/i)).toBeInTheDocument();
+    expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: "abc123" });
   });
 
   it("mostra apenas CPF no primeiro acesso da ativacao", async () => {

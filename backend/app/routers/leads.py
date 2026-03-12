@@ -64,6 +64,7 @@ from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListRespo
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
 from app.services.leads_export import generate_gold_export
 from app.services.landing_page_submission import get_public_lead_success_message, submit_public_lead
+from app.services.reconhecimento import set_lead_recognition_cookie
 from app.utils.cpf import validate_and_normalize_cpf
 from app.utils.http_errors import raise_http_error
 from app.utils.text_normalize import normalize_text
@@ -245,13 +246,14 @@ def _get_public_submit_context(
 @router.post("/", response_model=LandingSubmitResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def criar_lead_publico(
     payload: LandingSubmitRequest,
+    response: FastAPIResponse,
     session: Session = Depends(get_session),
 ):
     evento, ativacao, cpf_for_conversion = _get_public_submit_context(
         session,
         payload=payload,
     )
-    return submit_public_lead(
+    result = submit_public_lead(
         session,
         evento=evento,
         ativacao=ativacao,
@@ -259,6 +261,9 @@ def criar_lead_publico(
         success_message=get_public_lead_success_message(session, evento=evento),
         cpf_for_conversion=cpf_for_conversion,
     )
+    if result.token_reconhecimento:
+        set_lead_recognition_cookie(response, result.token_reconhecimento)
+    return result
 
 
 @router.get("", response_model=LeadListResponse)

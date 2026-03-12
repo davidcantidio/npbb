@@ -145,6 +145,7 @@ class LandingSubmitResponse(BaseModel):
     mensagem_sucesso: str
     conversao_registrada: bool = False
     bloqueado_cpf_duplicado: bool = False
+    token_reconhecimento: str | None = None
 
 
 class LandingAnalyticsTrackRequest(BaseModel):

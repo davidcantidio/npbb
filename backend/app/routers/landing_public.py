@@ -33,6 +33,7 @@ from app.services.landing_page_submission import (
 )
 from app.services.landing_pages import get_event_form_config as get_event_form_config_service
 from app.services.qr_code import build_qr_code_svg
+from app.services.reconhecimento import set_lead_recognition_cookie
 from app.utils.cpf import validate_and_normalize_cpf
 from app.utils.http_errors import raise_http_error
 
@@ -192,16 +193,20 @@ def get_ativacao_template_config(
 def submit_evento_landing(
     evento_id: int,
     payload: LandingSubmitRequest,
+    response: Response,
     session: Session = Depends(get_session),
 ):
     evento = _get_evento_or_404(session, evento_id)
-    return submit_landing_lead(
+    result = submit_landing_lead(
         session,
         evento=evento,
         ativacao=None,
         payload=payload,
         success_message=get_public_lead_success_message(session, evento=evento),
     )
+    if result.token_reconhecimento:
+        set_lead_recognition_cookie(response, result.token_reconhecimento)
+    return result
 
 
 @router.post(
@@ -212,6 +217,7 @@ def submit_evento_landing(
 def submit_ativacao_landing(
     ativacao_id: int,
     payload: LandingSubmitRequest,
+    response: Response,
     session: Session = Depends(get_session),
 ):
     ativacao = _get_ativacao_or_404(session, ativacao_id)
@@ -227,7 +233,7 @@ def submit_ativacao_landing(
                 message="CPF invalido",
                 field="cpf",
             )
-    return submit_landing_lead(
+    result = submit_landing_lead(
         session,
         evento=evento,
         ativacao=ativacao,
@@ -235,6 +241,9 @@ def submit_ativacao_landing(
         success_message=get_public_lead_success_message(session, evento=evento),
         cpf_for_conversion=cpf_for_conversion,
     )
+    if result.token_reconhecimento:
+        set_lead_recognition_cookie(response, result.token_reconhecimento)
+    return result
 
 
 @router.get("/ativacoes/{ativacao_id}/qr-code")

@@ -16,6 +16,7 @@ from app.models.models import (
 )
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
 from app.services.landing_page_templates import TEMPLATE_REGISTRY, get_template_config
+from app.services.reconhecimento import gerar_token
 
 ANALYTICS_EVENT_SUBMIT_SUCCESS = "submit_success"
 
@@ -273,6 +274,9 @@ def submit_public_lead(
         lead=lead,
         cpf=cpf_for_conversion,
     )
+    token_reconhecimento: str | None = None
+    if ativacao is not None and lead.id is not None and evento.id is not None and conversao_registrada:
+        token_reconhecimento = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
     _track_submit_success_analytics_if_needed(
         session,
         evento=evento,
@@ -292,6 +296,7 @@ def submit_public_lead(
         mensagem_sucesso=success_message,
         conversao_registrada=conversao_registrada,
         bloqueado_cpf_duplicado=False,
+        token_reconhecimento=token_reconhecimento,
     )
 
 

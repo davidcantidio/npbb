@@ -297,6 +297,9 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
     assert payload["lead_id"] > 0
     assert payload["conversao_registrada"] is True
     assert payload["bloqueado_cpf_duplicado"] is False
+    assert payload["token_reconhecimento"]
+    assert resp.cookies.get("lp_lead_token") == payload["token_reconhecimento"]
+    assert "lp_lead_token=" in (resp.headers.get("set-cookie") or "")
 
     with Session(engine) as session:
         lead = session.get(Lead, payload["lead_id"])
@@ -344,6 +347,7 @@ def test_public_landing_submit_bloqueia_cpf_duplicado_em_ativacao_unica(client, 
     assert resp1.status_code == 201
     assert resp1.json()["conversao_registrada"] is True
     assert resp1.json()["bloqueado_cpf_duplicado"] is False
+    assert resp1.json()["token_reconhecimento"]
 
     assert resp2.status_code == 201
     payload = resp2.json()
@@ -351,6 +355,9 @@ def test_public_landing_submit_bloqueia_cpf_duplicado_em_ativacao_unica(client, 
     assert payload["bloqueado_cpf_duplicado"] is True
     assert payload["lead_id"] == resp1.json()["lead_id"]
     assert payload["ativacao_lead_id"] == resp1.json()["ativacao_lead_id"]
+    assert payload["token_reconhecimento"] is None
+    assert resp2.cookies.get("lp_lead_token") is None
+    assert resp2.headers.get("set-cookie") is None
 
     with Session(engine) as session:
         conversoes = session.exec(
@@ -384,6 +391,9 @@ def test_public_landing_submit_sem_cpf_permanece_compativel_sem_registrar_conver
     assert resp.status_code == 201
     payload = resp.json()
     assert payload["conversao_registrada"] is False
+    assert payload["token_reconhecimento"] is None
+    assert resp.cookies.get("lp_lead_token") is None
+    assert resp.headers.get("set-cookie") is None
 
     with Session(engine) as session:
         conversoes = session.exec(

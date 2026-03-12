@@ -83,7 +83,15 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
         <LandingPageView
           data={data}
           mode="public"
-          submitted={{ lead_id: 1, event_id: 10, ativacao_id: 1, ativacao_lead_id: 1, mensagem_sucesso: "OK" }}
+          submitted={{
+            lead_id: 1,
+            event_id: 10,
+            ativacao_id: 1,
+            ativacao_lead_id: 1,
+            mensagem_sucesso: "OK",
+            conversao_registrada: true,
+            bloqueado_cpf_duplicado: false,
+          }}
         />,
       );
       expect(screen.getByRole("button", { name: /cadastrar outro email/i })).toBeInTheDocument();

@@ -18,6 +18,7 @@ from app.models.models import (
     StatusEvento,
     TipoEvento,
 )
+from app.services.reconhecimento import gerar_token
 
 
 def make_engine():
@@ -428,3 +429,36 @@ def test_post_leads_retorna_400_quando_event_id_diverge_da_ativacao(client, engi
 
     assert resp.status_code == 400
     assert resp.json()["detail"]["code"] == "EVENTO_ATIVACAO_MISMATCH"
+
+
+def test_get_leads_reconhecer_retorna_lead_quando_token_valido(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Evento Reconhecer")
+        evento_id = evento.id
+        lead = Lead(
+            nome="Maria",
+            email="maria@example.com",
+            cpf="52998224725",
+            evento_nome=evento.nome,
+            cidade=evento.cidade,
+            estado=evento.estado,
+            fonte_origem="landing_publica",
+            opt_in="aceito",
+            opt_in_flag=True,
+        )
+        session.add(lead)
+        session.commit()
+        session.refresh(lead)
+        lead_id = lead.id
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
+        session.commit()
+
+    resp = client.get(
+        "/leads/reconhecer",
+        params={"token": token, "evento_id": evento_id},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json() == {"lead_reconhecido": True, "lead_id": lead_id}

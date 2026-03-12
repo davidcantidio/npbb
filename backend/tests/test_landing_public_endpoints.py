@@ -20,6 +20,7 @@ from app.models.models import (
     TipoEvento,
     Usuario,
 )
+from app.services.reconhecimento import gerar_token
 from app.utils.security import hash_password
 
 
@@ -139,6 +140,24 @@ def seed_ativacao(
     session.commit()
     session.refresh(ativacao)
     return ativacao
+
+
+def seed_lead(session: Session, *, evento: Evento) -> Lead:
+    lead = Lead(
+        nome="Maria",
+        email="maria@example.com",
+        cpf="52998224725",
+        evento_nome=evento.nome,
+        cidade=evento.cidade,
+        estado=evento.estado,
+        fonte_origem="landing_publica",
+        opt_in="aceito",
+        opt_in_flag=True,
+    )
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+    return lead
 
 
 def login_and_get_token(client: TestClient, email: str, password: str) -> str:
@@ -321,6 +340,30 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
         assert conversao.cpf == "52998224725"
 
 
+def test_public_landing_por_ativacao_reconhece_via_token_query(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Token Query",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        lead = seed_lead(session, evento=evento)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
+        session.commit()
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/ativacoes/{ativacao_id}/landing?token={token}")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["lead_reconhecido"] is True
+    assert payload["token"] == token
+
+
 def test_public_landing_submit_bloqueia_cpf_duplicado_em_ativacao_unica(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)
@@ -400,6 +443,40 @@ def test_public_landing_submit_sem_cpf_permanece_compativel_sem_registrar_conver
             select(ConversaoAtivacao).where(ConversaoAtivacao.ativacao_id == ativacao_id)
         ).all()
         assert conversoes == []
+
+
+def test_public_landing_por_evento_reconhece_via_cookie_emitido_no_submit(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Cookie",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        evento_id = evento.id
+        ativacao_id = ativacao.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Maria",
+            "email": "maria@example.com",
+            "cpf": "529.982.247-25",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert submit_resp.status_code == 201
+    assert submit_resp.cookies.get("lp_lead_token") == submit_resp.json()["token_reconhecimento"]
+
+    landing_resp = client.get(f"/eventos/{evento_id}/landing")
+
+    assert landing_resp.status_code == 200
+    payload = landing_resp.json()
+    assert payload["lead_reconhecido"] is True
+    assert payload["token"] is None
 
 
 def test_public_landing_submit_por_ativacao_rejeita_cpf_invalido(client, engine):

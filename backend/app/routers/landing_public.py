@@ -33,7 +33,11 @@ from app.services.landing_page_submission import (
 )
 from app.services.landing_pages import get_event_form_config as get_event_form_config_service
 from app.services.qr_code import build_qr_code_svg
-from app.services.reconhecimento import set_lead_recognition_cookie
+from app.services.reconhecimento import (
+    LEAD_RECOGNITION_COOKIE_NAME,
+    set_lead_recognition_cookie,
+    validar_token,
+)
 from app.utils.cpf import validate_and_normalize_cpf
 from app.utils.http_errors import raise_http_error
 
@@ -94,14 +98,23 @@ def get_evento_landing(
     evento_id: int,
     request: Request,
     template_override: str | None = Query(default=None, max_length=50),
+    token: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ):
     evento = _get_evento_or_404(session, evento_id)
+    lead_reconhecido = _resolve_lead_reconhecimento(
+        request,
+        session=session,
+        evento_id=evento_id,
+        token=token,
+    )
     return build_landing_payload(
         session,
         evento=evento,
         ativacao=None,
         backend_base_url=str(request.base_url),
+        token=token,
+        lead_reconhecido=lead_reconhecido,
         template_override=_normalize_preview_template_override(template_override),
     )
 
@@ -112,6 +125,7 @@ def _build_ativacao_landing_payload(
     ativacao: Ativacao,
     request: Request,
     token: str | None,
+    lead_reconhecido: bool,
 ) -> LandingPayload:
     evento = _get_evento_or_404(session, ativacao.evento_id)
     return build_landing_payload(
@@ -120,7 +134,21 @@ def _build_ativacao_landing_payload(
         ativacao=ativacao,
         backend_base_url=str(request.base_url),
         token=token,
+        lead_reconhecido=lead_reconhecido,
     )
+
+
+def _resolve_lead_reconhecimento(
+    request: Request,
+    *,
+    session: Session,
+    evento_id: int,
+    token: str | None,
+) -> bool:
+    resolved_token = token or request.cookies.get(LEAD_RECOGNITION_COOKIE_NAME)
+    if not resolved_token:
+        return False
+    return validar_token(session, token=resolved_token, evento_id=evento_id) is not None
 
 
 @router.get("/ativacoes/{ativacao_id}/landing", response_model=LandingPayload)
@@ -131,11 +159,18 @@ def get_ativacao_landing(
     session: Session = Depends(get_session),
 ):
     ativacao = _get_ativacao_or_404(session, ativacao_id)
+    lead_reconhecido = _resolve_lead_reconhecimento(
+        request,
+        session=session,
+        evento_id=ativacao.evento_id,
+        token=token,
+    )
     return _build_ativacao_landing_payload(
         session=session,
         ativacao=ativacao,
         request=request,
         token=token,
+        lead_reconhecido=lead_reconhecido,
     )
 
 
@@ -156,11 +191,18 @@ def get_evento_ativacao_landing(
         evento_id=evento_id,
         ativacao_id=ativacao_id,
     )
+    lead_reconhecido = _resolve_lead_reconhecimento(
+        request,
+        session=session,
+        evento_id=evento_id,
+        token=token,
+    )
     return _build_ativacao_landing_payload(
         session=session,
         ativacao=ativacao,
         request=request,
         token=token,
+        lead_reconhecido=lead_reconhecido,
     )
 
 

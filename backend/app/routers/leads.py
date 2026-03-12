@@ -62,9 +62,10 @@ from app.schemas.lead_import import LeadImportMapping
 from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
 from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListResponse
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
+from app.schemas.reconhecimento import LeadRecognitionRead
 from app.services.leads_export import generate_gold_export
 from app.services.landing_page_submission import get_public_lead_success_message, submit_public_lead
-from app.services.reconhecimento import set_lead_recognition_cookie
+from app.services.reconhecimento import set_lead_recognition_cookie, validar_token
 from app.utils.cpf import validate_and_normalize_cpf
 from app.utils.http_errors import raise_http_error
 from app.utils.text_normalize import normalize_text
@@ -264,6 +265,19 @@ def criar_lead_publico(
     if result.token_reconhecimento:
         set_lead_recognition_cookie(response, result.token_reconhecimento)
     return result
+
+
+@router.get("/reconhecer", response_model=LeadRecognitionRead)
+def reconhecer_lead_publico(
+    token: str,
+    evento_id: int,
+    session: Session = Depends(get_session),
+):
+    result = validar_token(session, token=token, evento_id=evento_id)
+    return LeadRecognitionRead(
+        lead_reconhecido=result is not None,
+        lead_id=result.lead_id if result else None,
+    )
 
 
 @router.get("", response_model=LeadListResponse)

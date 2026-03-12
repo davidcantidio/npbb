@@ -60,6 +60,7 @@ def _find_existing_public_lead(
             select(Lead)
             .where(func.lower(Lead.email) == email)
             .where(Lead.evento_nome == evento.nome)
+            .where(Lead.cpf.is_(None))
         ).first()
 
     return None

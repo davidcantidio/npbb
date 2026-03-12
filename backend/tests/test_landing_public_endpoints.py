@@ -344,6 +344,41 @@ def test_public_landing_submit_sem_cpf_permanece_compativel_sem_registrar_conver
         assert conversoes == []
 
 
+def test_public_landing_submit_por_ativacao_rejeita_cpf_invalido(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB CPF Invalido",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao_id = ativacao.id
+
+    resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Laura",
+            "email": "laura@example.com",
+            "cpf": "529.982.247-26",
+            "consentimento_lgpd": True,
+        },
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "CPF_INVALID"
+
+    with Session(engine) as session:
+        leads = session.exec(select(Lead).where(Lead.email == "laura@example.com")).all()
+        assert leads == []
+        conversoes = session.exec(
+            select(ConversaoAtivacao).where(ConversaoAtivacao.ativacao_id == ativacao_id)
+        ).all()
+        assert conversoes == []
+
+
 def test_public_template_config_e_qr_code_endpoint(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)

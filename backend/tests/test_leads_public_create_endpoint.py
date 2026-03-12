@@ -255,6 +255,63 @@ def test_post_leads_reaproveita_lead_existente_sem_duplicar_vinculo(client, engi
         assert all(conversao.lead_id == original_lead_id for conversao in conversoes)
 
 
+def test_post_leads_nao_reaproveita_mesmo_email_quando_cpf_conflita(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(session, agencia_id=agencia.id, tipo_id=tipo.id, nome="Hackathon BB")
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        lead = Lead(
+            nome="Maria",
+            email="maria@example.com",
+            cpf="11144477735",
+            evento_nome=evento.nome,
+            cidade=evento.cidade,
+            estado=evento.estado,
+            fonte_origem="landing_publica",
+            opt_in="aceito",
+            opt_in_flag=True,
+        )
+        session.add(lead)
+        session.commit()
+        session.refresh(lead)
+        original_lead_id = lead.id
+        ativacao_id = ativacao.id
+
+    resp = client.post(
+        "/leads",
+        json={
+            "nome": "Maria",
+            "email": "maria@example.com",
+            "cpf": "529.982.247-25",
+            "ativacao_id": ativacao_id,
+            "consentimento_lgpd": True,
+        },
+    )
+
+    assert resp.status_code == 201
+    payload = resp.json()
+    assert payload["lead_id"] != original_lead_id
+    assert payload["conversao_registrada"] is True
+
+    with Session(engine) as session:
+        original = session.get(Lead, original_lead_id)
+        assert original is not None
+        assert original.cpf == "11144477735"
+
+        new_lead = session.get(Lead, payload["lead_id"])
+        assert new_lead is not None
+        assert new_lead.cpf == "52998224725"
+
+        conversao = session.exec(
+            select(ConversaoAtivacao)
+            .where(ConversaoAtivacao.ativacao_id == ativacao_id)
+            .where(ConversaoAtivacao.lead_id == payload["lead_id"])
+        ).first()
+        assert conversao is not None
+        assert conversao.cpf == "52998224725"
+
+
 def test_post_leads_sem_ativacao_exige_event_id_e_nao_registra_conversao(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)

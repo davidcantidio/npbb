@@ -33,7 +33,7 @@ from app.services.landing_page_submission import (
 )
 from app.services.landing_pages import get_event_form_config as get_event_form_config_service
 from app.services.qr_code import build_qr_code_svg
-from app.utils.cpf import is_valid_cpf
+from app.utils.cpf import validate_and_normalize_cpf
 from app.utils.http_errors import raise_http_error
 
 router = APIRouter(tags=["landing-public"])
@@ -216,13 +216,24 @@ def submit_ativacao_landing(
 ):
     ativacao = _get_ativacao_or_404(session, ativacao_id)
     evento = _get_evento_or_404(session, ativacao.evento_id)
+    cpf_for_conversion: str | None = None
+    if payload.cpf:
+        try:
+            cpf_for_conversion = validate_and_normalize_cpf(payload.cpf)
+        except ValueError:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="CPF_INVALID",
+                message="CPF invalido",
+                field="cpf",
+            )
     return submit_landing_lead(
         session,
         evento=evento,
         ativacao=ativacao,
         payload=payload,
         success_message=get_public_lead_success_message(session, evento=evento),
-        cpf_for_conversion=payload.cpf if payload.cpf and is_valid_cpf(payload.cpf) else None,
+        cpf_for_conversion=cpf_for_conversion,
     )
 
 

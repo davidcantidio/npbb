@@ -22,13 +22,6 @@ type FormState = Record<string, string>;
 const DUPLICATE_CPF_BLOCKED_MESSAGE =
   "Este CPF ja foi cadastrado nesta ativacao. Se estiver cadastrando outra pessoa, informe outro CPF.";
 
-function shouldUnlockCpfFirstOnLoad(data: LandingPageData, resolvedAtivacaoId: number | null) {
-  if (!resolvedAtivacaoId || !Number.isFinite(resolvedAtivacaoId)) return false;
-  if (!data.ativacao_id) return false;
-  if (!data.lead_reconhecido) return false;
-  return data.formulario.campos.some((field) => field.key === "cpf");
-}
-
 export default function EventLandingPage() {
   const { eventId, ativacaoId, evento_id, ativacao_id } = useParams();
   const location = useLocation();
@@ -96,11 +89,6 @@ export default function EventLandingPage() {
     setError(null);
 
     const load = async () => {
-      const applyLandingData = (response: LandingPageData) => {
-        setData(response);
-        setCpfFirstUnlocked(shouldUnlockCpfFirstOnLoad(response, resolvedAtivacaoId));
-      };
-
       try {
         if (
           resolvedEventId &&
@@ -112,7 +100,7 @@ export default function EventLandingPage() {
             token: landingToken,
           });
           if (!active) return;
-          applyLandingData(response);
+          setData(response);
           return;
         }
         if (resolvedAtivacaoId && Number.isFinite(resolvedAtivacaoId)) {
@@ -125,19 +113,19 @@ export default function EventLandingPage() {
                 token: landingToken,
               });
               if (!active) return;
-              applyLandingData(response);
+              setData(response);
               return;
             } catch {
               if (!active) return;
             }
           }
-          applyLandingData(aliasResponse);
+          setData(aliasResponse);
           return;
         }
         if (resolvedEventId && Number.isFinite(resolvedEventId)) {
           const response = await getLandingByEvento(resolvedEventId);
           if (!active) return;
-          applyLandingData(response);
+          setData(response);
           return;
         }
         setError("Landing invalida.");

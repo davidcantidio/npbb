@@ -258,7 +258,7 @@ describe("EventLandingPage", () => {
     expect(mockedGetLandingByEvento).not.toHaveBeenCalled();
   });
 
-  it("carrega direto no formulario quando o backend reconhece o lead", async () => {
+  it("mantem CPF-first mesmo quando a landing vem reconhecida", async () => {
     mockedGetLandingByEventoAtivacao.mockResolvedValueOnce({
       ...landingFixture,
       lead_reconhecido: true,
@@ -274,10 +274,10 @@ describe("EventLandingPage", () => {
     );
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
-    expect(screen.queryByTestId("cpf-first-input")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /continuar/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/nome \*/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/email \*/i)).toBeInTheDocument();
+    expect(screen.getByTestId("cpf-first-input")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
     expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: "abc123" });
   });
 

@@ -91,7 +91,7 @@ export type LandingPageData = {
   formulario: LandingForm;
   marca: LandingBrand;
   acesso: LandingAccess;
-  lead_reconhecido: boolean;
+  lead_reconhecido?: boolean;
   token?: string | null;
 };
 

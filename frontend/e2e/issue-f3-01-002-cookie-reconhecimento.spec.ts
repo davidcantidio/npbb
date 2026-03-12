@@ -124,6 +124,7 @@ async function unlockCpfFirst(page: Page, cpf = "529.982.247-25") {
 
 test("reconhece a segunda landing via cookie emitido no submit", async ({ page }) => {
   let secondLandingCookieHeader = "";
+  let secondLandingWasRecognized = false;
 
   await installAnalyticsMock(page);
 
@@ -145,6 +146,9 @@ test("reconhece a segunda landing via cookie emitido no submit", async ({ page }
         leadReconhecido: isReturnLanding && cookieHeader.includes(`lp_lead_token=${COOKIE_TOKEN}`),
       }),
     );
+    if (isReturnLanding) {
+      secondLandingWasRecognized = cookieHeader.includes(`lp_lead_token=${COOKIE_TOKEN}`);
+    }
   });
 
   await page.route(`**/landing/ativacoes/${ATIVACAO_INICIAL_ID}/submit`, async (route) => {
@@ -182,14 +186,14 @@ test("reconhece a segunda landing via cookie emitido no submit", async ({ page }
   await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_RETORNO_ID}`);
   await expect(page.getByText("Stand Secundario")).toBeVisible();
   expect(secondLandingCookieHeader).toContain(`lp_lead_token=${COOKIE_TOKEN}`);
-  await expect(page.getByTestId("cpf-first-input")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /continuar/i })).toHaveCount(0);
-  await expect(page.getByRole("textbox", { name: /nome/i })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: /email/i })).toBeVisible();
+  expect(secondLandingWasRecognized).toBe(true);
+  await expect(page.getByTestId("cpf-first-input")).toBeVisible();
+  await expect(page.getByRole("button", { name: /continuar/i })).toBeVisible();
 });
 
 test("repassa token na URL para o GET canonico e entra reconhecido", async ({ page }) => {
   let requestedToken = "";
+  let landingWasRecognized = false;
 
   await installAnalyticsMock(page);
 
@@ -204,13 +208,13 @@ test("repassa token na URL para o GET canonico e entra reconhecido", async ({ pa
         token: requestedToken,
       }),
     );
+    landingWasRecognized = requestedToken === URL_TOKEN;
   });
 
   await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_INICIAL_ID}?token=${URL_TOKEN}`);
   await expect(page.getByText("Stand Principal")).toBeVisible();
   expect(requestedToken).toBe(URL_TOKEN);
-  await expect(page.getByTestId("cpf-first-input")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /continuar/i })).toHaveCount(0);
-  await expect(page.getByRole("textbox", { name: /nome/i })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: /email/i })).toBeVisible();
+  expect(landingWasRecognized).toBe(true);
+  await expect(page.getByTestId("cpf-first-input")).toBeVisible();
+  await expect(page.getByRole("button", { name: /continuar/i })).toBeVisible();
 });

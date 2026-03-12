@@ -5,6 +5,7 @@ import {
   getLandingByEvento,
   getLandingByEventoAtivacao,
   previewEventoLanding,
+  submitLandingForm,
 } from "../landing_public";
 import { fetchWithAuth, handleApiResponse } from "../http";
 
@@ -70,6 +71,8 @@ const landingBasePayload = {
     qr_code_url: "data:image/svg+xml;base64,PHN2Zy8+",
     url_promotor: "https://npbb.example/landing/ativacoes/1",
   },
+  lead_reconhecido: false,
+  token: null,
 };
 
 afterEach(() => {
@@ -119,6 +122,8 @@ describe("landing_public service", () => {
 
     expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/ativacoes/1/landing", { retries: 0 });
     expect(payload.gamificacoes).toEqual([]);
+    expect(payload.lead_reconhecido).toBe(false);
+    expect(payload.token).toBeNull();
   });
 
   it("serializa token no endpoint canonico de evento e ativacao", async () => {
@@ -126,6 +131,8 @@ describe("landing_public service", () => {
     mockedHandleApiResponse.mockResolvedValueOnce({
       ...landingBasePayload,
       gamificacoes: null,
+      lead_reconhecido: true,
+      token: " abc123 ",
     });
 
     const payload = await getLandingByEventoAtivacao(10, 1, { token: " abc123 " });
@@ -134,6 +141,8 @@ describe("landing_public service", () => {
       retries: 0,
     });
     expect(payload.gamificacoes).toEqual([]);
+    expect(payload.lead_reconhecido).toBe(true);
+    expect(payload.token).toBe("abc123");
   });
 
   it("envia payload autenticado para o preview transiente por evento", async () => {
@@ -185,5 +194,39 @@ describe("landing_public service", () => {
 
     expect(mockedFetchWithAuth).toHaveBeenCalledWith("/ativacoes/1/landing", { retries: 0 });
     expect(payload.gamificacoes).toEqual([]);
+  });
+
+  it("retorna token_reconhecimento do submit sem persistencia manual", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce({
+      lead_id: 99,
+      event_id: 10,
+      ativacao_id: 1,
+      ativacao_lead_id: 55,
+      mensagem_sucesso: "Sucesso",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
+      token_reconhecimento: "opaque-token",
+    });
+
+    const payload = await submitLandingForm("/landing/ativacoes/1/submit", {
+      nome: "Maria",
+      email: "maria@example.com",
+      cpf: "52998224725",
+      consentimento_lgpd: true,
+    });
+
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: "Maria",
+        email: "maria@example.com",
+        cpf: "52998224725",
+        consentimento_lgpd: true,
+      }),
+      retries: 0,
+    });
+    expect(payload.token_reconhecimento).toBe("opaque-token");
   });
 });

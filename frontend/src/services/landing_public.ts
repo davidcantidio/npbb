@@ -91,6 +91,8 @@ export type LandingPageData = {
   formulario: LandingForm;
   marca: LandingBrand;
   acesso: LandingAccess;
+  lead_reconhecido: boolean;
+  token?: string | null;
 };
 
 export type LandingSubmitPayload = {
@@ -118,6 +120,7 @@ export type LandingSubmitResponse = {
   mensagem_sucesso: string;
   conversao_registrada: boolean;
   bloqueado_cpf_duplicado: boolean;
+  token_reconhecimento?: string | null;
 };
 
 export type GamificacaoState = "presenting" | "active" | "completed";
@@ -156,6 +159,8 @@ export type LandingAnalyticsTrackPayload = {
 
 export type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
   gamificacoes?: GamificacaoPublic[] | null;
+  lead_reconhecido?: boolean | null;
+  token?: string | null;
 };
 
 export type GetLandingByEventoOptions = {
@@ -188,6 +193,8 @@ export function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPa
   return {
     ...payload,
     gamificacoes: Array.isArray(payload.gamificacoes) ? payload.gamificacoes : [],
+    lead_reconhecido: Boolean(payload.lead_reconhecido),
+    token: typeof payload.token === "string" && payload.token.trim() ? payload.token.trim() : null,
   };
 }
 

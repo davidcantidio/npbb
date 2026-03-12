@@ -32,12 +32,15 @@ export { formatDateRange, getFieldLabel } from "./landingHelpers";
 type LandingPageViewProps = {
   data: LandingPageData;
   mode?: "public" | "preview";
+  cpfFirstEnabled?: boolean;
+  cpfFirstUnlocked?: boolean;
   formState?: LandingFormState;
   consentimento?: boolean;
   submitError?: string | null;
   saving?: boolean;
   submitted?: LandingSubmitResponse | null;
   onInputChange?: (key: string, value: string) => void;
+  onCpfFirstContinue?: () => void;
   onConsentimentoChange?: (checked: boolean) => void;
   onSubmit?: () => void;
   onReset?: () => void;
@@ -47,12 +50,15 @@ type LandingPageViewProps = {
 export default function LandingPageView({
   data,
   mode = "public",
+  cpfFirstEnabled = false,
+  cpfFirstUnlocked = false,
   formState = {},
   consentimento = false,
   submitError = null,
   saving = false,
   submitted = null,
   onInputChange,
+  onCpfFirstContinue,
   onConsentimentoChange,
   onSubmit,
   onReset,
@@ -102,12 +108,15 @@ export default function LandingPageView({
                 content={content}
                 layout={layout}
                 isPreview={isPreview}
+                cpfFirstEnabled={cpfFirstEnabled}
+                cpfFirstUnlocked={cpfFirstUnlocked}
                 formState={formState}
                 consentimento={consentimento}
                 submitError={submitError}
                 saving={saving}
                 submitted={submitted}
                 onInputChange={onInputChange}
+                onCpfFirstContinue={onCpfFirstContinue}
                 onConsentimentoChange={onConsentimentoChange}
                 onSubmit={onSubmit}
                 onReset={onReset}

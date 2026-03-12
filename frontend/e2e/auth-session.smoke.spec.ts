@@ -25,12 +25,29 @@ test("keeps UI session stable across protected routes", async ({ page }) => {
   expect(meAfterReload.status()).toBe(200);
 
   await page.goto("/eventos");
-  await expect(page.getByText("Evento Playwright NPBB")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Evento Playwright NPBB", exact: true })).toBeVisible();
 
   await page.goto("/leads");
-  await expect(page.getByRole("heading", { name: "Leads", exact: true })).toBeVisible();
-  await expect(page.getByText("Lead Playwright")).toBeVisible();
-  await expect(page.getByText("Total no banco: 1")).toBeVisible();
+  await expect(page).toHaveURL(/\/leads\/importar$/);
+  await expect(page.getByRole("heading", { name: "Importacao de Leads", exact: true })).toBeVisible();
+
+  const leadsResponse = await page.context().request.get(`${API_URL}/leads?page=1&page_size=20`, {
+    failOnStatusCode: false,
+  });
+  expect(leadsResponse.status()).toBe(200);
+  const leadsBody = (await leadsResponse.json()) as {
+    total: number;
+    items: Array<{ nome: string | null; evento_nome: string | null }>;
+  };
+  expect(leadsBody.total).toBe(1);
+  expect(leadsBody.items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        nome: "Lead Playwright",
+        evento_nome: "Evento Playwright NPBB",
+      }),
+    ]),
+  );
 
   await userMenuButton.click();
   await page.getByRole("menuitem", { name: "Sair" }).click();

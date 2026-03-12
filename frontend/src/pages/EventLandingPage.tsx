@@ -14,6 +14,7 @@ import {
 } from "../services/landing_public";
 import { getLandingSessionId, selectLandingCtaVariant } from "../services/landing_experiments";
 import { ApiError, toApiErrorMessage } from "../services/http";
+import { isValidCpf, normalizeCpf } from "../utils/cpf";
 import LandingPageView from "../components/landing/LandingPageView";
 
 type FormState = Record<string, string>;
@@ -33,6 +34,7 @@ export default function EventLandingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formState, setFormState] = useState<FormState>({});
+  const [cpfFirstUnlocked, setCpfFirstUnlocked] = useState(false);
   const [consentimento, setConsentimento] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -67,6 +69,7 @@ export default function EventLandingPage() {
   useEffect(() => {
     let active = true;
     setFormState({});
+    setCpfFirstUnlocked(false);
     setConsentimento(false);
     setSubmitError(null);
     setSaving(false);
@@ -98,9 +101,22 @@ export default function EventLandingPage() {
           return;
         }
         if (resolvedAtivacaoId && Number.isFinite(resolvedAtivacaoId)) {
-          const response = await getLandingByAtivacao(resolvedAtivacaoId);
+          const aliasResponse = await getLandingByAtivacao(resolvedAtivacaoId);
           if (!active) return;
-          setData(response);
+          const aliasEventId = aliasResponse.evento?.id;
+          if (Number.isFinite(aliasEventId)) {
+            try {
+              const response = await getLandingByEventoAtivacao(aliasEventId, resolvedAtivacaoId, {
+                token: landingToken,
+              });
+              if (!active) return;
+              setData(response);
+              return;
+            } catch {
+              if (!active) return;
+            }
+          }
+          setData(aliasResponse);
           return;
         }
         if (resolvedEventId && Number.isFinite(resolvedEventId)) {
@@ -170,6 +186,27 @@ export default function EventLandingPage() {
         landing_session_id: sessionId,
       }).catch(() => {});
     }
+  };
+
+  const cpfFirstEnabled = useMemo(() => {
+    if (!resolvedAtivacaoId || !effectiveData?.ativacao_id) return false;
+    return effectiveData.formulario.campos.some((field) => field.key === "cpf");
+  }, [effectiveData, resolvedAtivacaoId]);
+
+  const handleCpfFirstContinue = () => {
+    if (!cpfFirstEnabled) return;
+    const cpf = normalizeCpf(formState.cpf || "");
+    if (!cpf) {
+      setSubmitError("Informe seu CPF para continuar.");
+      return;
+    }
+    if (!isValidCpf(cpf)) {
+      setSubmitError("Informe um CPF valido.");
+      return;
+    }
+    setFormState((prev) => ({ ...prev, cpf }));
+    setSubmitError(null);
+    setCpfFirstUnlocked(true);
   };
 
   const handleSubmit = async () => {
@@ -267,6 +304,7 @@ export default function EventLandingPage() {
     if (gamificacaoBusy) return;
     setSubmitted(null);
     setSubmitError(null);
+    setCpfFirstUnlocked(false);
     setConsentimento(false);
     setFormState({});
     setLeadSubmitted(false);
@@ -296,12 +334,15 @@ export default function EventLandingPage() {
         <LandingPageView
           data={effectiveData}
           mode="public"
+          cpfFirstEnabled={cpfFirstEnabled}
+          cpfFirstUnlocked={cpfFirstUnlocked}
           formState={formState}
           consentimento={consentimento}
           submitError={submitError}
           saving={saving}
           submitted={submitted}
           onInputChange={handleInputChange}
+          onCpfFirstContinue={handleCpfFirstContinue}
           onConsentimentoChange={setConsentimento}
           onSubmit={handleSubmit}
           onReset={handleReset}

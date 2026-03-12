@@ -22,6 +22,7 @@ const frontendOrigin = process.env.NPBB_E2E_FRONTEND_ORIGIN ?? `${frontendUrl.or
 const env = {
   ...process.env,
   DATABASE_URL: `sqlite:///${dbPath}`,
+  DIRECT_URL: `sqlite:///${dbPath}`,
   SECRET_KEY: "e2e-secret-key",
   FRONTEND_ORIGIN: frontendOrigin,
   ENV: "development",

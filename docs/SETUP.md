@@ -142,6 +142,10 @@ npm run dev
 - Backend (pasta backend): `PYTHONPATH=.. python -m uvicorn app.main:app --reload` (ou `./scripts/dev_api.sh`)
 - Tests (backend): `python -m pytest -q`
 - Tests (frontend): `npm test -- --run`
+- E2E browser install (frontend): `cd frontend && npx playwright install chromium`
+- E2E listagem (frontend): `cd frontend && npx playwright test --list`
+- E2E suite (frontend): `cd frontend && npm run test:e2e`
+- E2E CPF-first (frontend): `cd frontend && npx playwright test issue-f2-01-003-cpf-first.spec.ts`
 - Lint (frontend): `npm run lint`
 - Typecheck (frontend): `npm run typecheck`
 

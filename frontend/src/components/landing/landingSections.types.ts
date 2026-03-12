@@ -22,12 +22,15 @@ export type LandingFormCardProps = {
   content: ResolvedLandingContent;
   layout: LayoutVisualSpec;
   isPreview: boolean;
+  cpfFirstEnabled?: boolean;
+  cpfFirstUnlocked?: boolean;
   formState: LandingFormState;
   consentimento: boolean;
   submitError: string | null;
   saving: boolean;
   submitted: LandingSubmitResponse | null;
   onInputChange?: (key: string, value: string) => void;
+  onCpfFirstContinue?: () => void;
   onConsentimentoChange?: (checked: boolean) => void;
   onSubmit?: () => void;
   onReset?: () => void;

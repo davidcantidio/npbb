@@ -30,18 +30,23 @@ export default function FormCard({
   content,
   layout,
   isPreview,
+  cpfFirstEnabled = false,
+  cpfFirstUnlocked = false,
   formState,
   consentimento,
   submitError,
   saving,
   submitted,
   onInputChange,
+  onCpfFirstContinue,
   onConsentimentoChange,
   onSubmit,
   onReset,
   onResetDisabled = false,
 }: FormCardProps) {
   const formCardTheme = buildFormCardTheme(data);
+  const cpfField = data.formulario.campos.find((field) => field.key === "cpf") ?? null;
+  const showCpfFirstStep = cpfFirstEnabled && !cpfFirstUnlocked && !submitted;
 
   return (
     <Box
@@ -76,67 +81,100 @@ export default function FormCard({
 
               {submitError ? <Alert severity="error">{submitError}</Alert> : null}
 
-              <Box
-                sx={{
-                  display: "grid",
-                  gap: 2,
-                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                }}
-              >
-                {data.formulario.campos.map((field) => (
+              {showCpfFirstStep && cpfField ? (
+                <>
                   <TextField
-                    key={field.key}
                     fullWidth
-                    required={field.required}
-                    disabled={isPreview}
-                    type={field.input_type}
-                    label={getFieldLabel(field)}
-                    value={formState[field.key] || ""}
-                    onChange={(event) => onInputChange?.(field.key, event.target.value)}
-                    autoComplete={field.autocomplete || undefined}
-                    placeholder={field.placeholder || undefined}
-                    multiline={field.key === "interesses"}
-                    minRows={field.key === "interesses" ? 3 : undefined}
+                    required
+                    type={cpfField.input_type}
+                    label={cpfField.label}
+                    value={formState.cpf || ""}
+                    onChange={(event) => onInputChange?.("cpf", event.target.value)}
+                    autoComplete={cpfField.autocomplete || undefined}
+                    placeholder={cpfField.placeholder || undefined}
+                    inputProps={{ "data-testid": "cpf-first-input" }}
+                  />
+
+                  <Button
+                    fullWidth
+                    size="large"
+                    variant={layout.buttonVariant}
+                    color={layout.buttonColor}
+                    onClick={isPreview ? undefined : onCpfFirstContinue}
+                    disabled={isPreview || saving}
                     sx={{
-                      gridColumn: field.key === "interesses" || field.key === "endereco" ? "1 / -1" : undefined,
+                      minHeight: 52,
+                      ...(layout.buttonStyles || {}),
                     }}
-                  />
-                ))}
-              </Box>
+                  >
+                    Continuar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 2,
+                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                    }}
+                  >
+                    {data.formulario.campos.map((field) => (
+                      <TextField
+                        key={field.key}
+                        fullWidth
+                        required={field.required}
+                        disabled={isPreview || (cpfFirstEnabled && cpfFirstUnlocked && field.key === "cpf")}
+                        type={field.input_type}
+                        label={getFieldLabel(field)}
+                        value={formState[field.key] || ""}
+                        onChange={(event) => onInputChange?.(field.key, event.target.value)}
+                        autoComplete={field.autocomplete || undefined}
+                        placeholder={field.placeholder || undefined}
+                        multiline={field.key === "interesses"}
+                        minRows={field.key === "interesses" ? 3 : undefined}
+                        sx={{
+                          gridColumn: field.key === "interesses" || field.key === "endereco" ? "1 / -1" : undefined,
+                        }}
+                      />
+                    ))}
+                  </Box>
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={consentimento}
-                    disabled={isPreview}
-                    onChange={(_, checked) => onConsentimentoChange?.(checked)}
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={consentimento}
+                        disabled={isPreview}
+                        onChange={(_, checked) => onConsentimentoChange?.(checked)}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        {data.formulario.lgpd_texto}{" "}
+                        <Link href={data.formulario.privacy_policy_url} target="_blank" rel="noreferrer">
+                          Politica de privacidade
+                        </Link>
+                        .
+                      </Typography>
+                    }
                   />
-                }
-                label={
-                  <Typography variant="body2" color="text.secondary">
-                    {data.formulario.lgpd_texto}{" "}
-                    <Link href={data.formulario.privacy_policy_url} target="_blank" rel="noreferrer">
-                      Politica de privacidade
-                    </Link>
-                    .
-                  </Typography>
-                }
-              />
 
-              <Button
-                fullWidth
-                size="large"
-                variant={layout.buttonVariant}
-                color={layout.buttonColor}
-                onClick={isPreview ? undefined : onSubmit}
-                disabled={isPreview || saving}
-                sx={{
-                  minHeight: 52,
-                  ...(layout.buttonStyles || {}),
-                }}
-              >
-                {saving ? <CircularProgress size={22} color="inherit" /> : content.ctaText}
-              </Button>
+                  <Button
+                    fullWidth
+                    size="large"
+                    variant={layout.buttonVariant}
+                    color={layout.buttonColor}
+                    onClick={isPreview ? undefined : onSubmit}
+                    disabled={isPreview || saving}
+                    sx={{
+                      minHeight: 52,
+                      ...(layout.buttonStyles || {}),
+                    }}
+                  >
+                    {saving ? <CircularProgress size={22} color="inherit" /> : content.ctaText}
+                  </Button>
+                </>
+              )}
             </Stack>
           ) : (
             <Stack spacing={2.5}>

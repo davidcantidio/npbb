@@ -211,6 +211,11 @@ const showLandingFixture: LandingPageData = {
   },
 };
 
+async function unlockCpfFirstStep(user: ReturnType<typeof userEvent.setup>, cpf = "529.982.247-25") {
+  await user.type(screen.getByLabelText(/^cpf/i), cpf);
+  await user.click(screen.getByRole("button", { name: /continuar/i }));
+}
+
 describe("EventLandingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -249,6 +254,59 @@ describe("EventLandingPage", () => {
     expect(mockedGetLandingByEvento).not.toHaveBeenCalled();
   });
 
+  it("mostra apenas CPF no primeiro acesso da ativacao", async () => {
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^cpf/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("bloqueia CPF invalido antes de liberar o formulario", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user, "52998224726");
+
+    expect(await screen.findByText("Informe um CPF valido.")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
+  });
+
+  it("libera o formulario completo apos CPF valido", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
+
+    expect(await screen.findByLabelText(/nome \*/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email \*/i)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("52998224725")).toBeDisabled();
+  });
+
   it("renderiza a landing por ativacao e envia o formulario", async () => {
     const user = userEvent.setup();
     render(
@@ -261,6 +319,11 @@ describe("EventLandingPage", () => {
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
     expect(screen.getByText("Escaneie o QR code no totem para se cadastrar.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockedGetLandingByAtivacao).toHaveBeenCalledWith(1);
+      expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: null });
+    });
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Maria");
     await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -271,7 +334,7 @@ describe("EventLandingPage", () => {
         nome: "Maria",
         sobrenome: undefined,
         email: "maria@example.com",
-        cpf: undefined,
+        cpf: "52998224725",
         telefone: undefined,
         data_nascimento: undefined,
         estado: undefined,
@@ -366,6 +429,7 @@ describe("EventLandingPage", () => {
     );
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Maria");
     await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -406,6 +470,7 @@ describe("EventLandingPage", () => {
     );
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Rafa");
     await user.type(screen.getByLabelText(/email \*/i), "rafa@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -448,6 +513,7 @@ describe("EventLandingPage", () => {
     );
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Ana");
     await user.type(screen.getByLabelText(/email \*/i), "ana@bb.com.br");
     await user.click(screen.getByRole("checkbox"));
@@ -491,6 +557,7 @@ describe("EventLandingPage", () => {
     );
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Bia");
     await user.type(screen.getByLabelText(/email \*/i), "bia@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -501,7 +568,7 @@ describe("EventLandingPage", () => {
     await user.click(await screen.findByRole("button", { name: /conclui/i }));
     await user.click(await screen.findByRole("button", { name: /nova pessoa/i }));
 
-    expect(await screen.findByLabelText(/nome \*/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^cpf/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quero participar/i })).toBeDisabled();
     expect(screen.queryByText("Cadastro realizado com sucesso.")).not.toBeInTheDocument();
   });
@@ -526,6 +593,7 @@ describe("EventLandingPage", () => {
     );
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Beto");
     await user.type(screen.getByLabelText(/email \*/i), "beto@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -537,7 +605,7 @@ describe("EventLandingPage", () => {
 
     await user.click(screen.getByRole("button", { name: /cadastrar outro email/i }));
 
-    expect(await screen.findByLabelText(/nome \*/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^cpf/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quero participar/i })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /conclui/i })).not.toBeInTheDocument();
   });
@@ -545,6 +613,9 @@ describe("EventLandingPage", () => {
   it("reinicializa estado ao trocar rota de ativacao", async () => {
     const user = userEvent.setup();
     mockedGetLandingByAtivacao.mockImplementation(async (ativacaoId) =>
+      ativacaoId === 2 ? landingFixtureAtivacao2 : landingFixture,
+    );
+    mockedGetLandingByEventoAtivacao.mockImplementation(async (_eventId, ativacaoId) =>
       ativacaoId === 2 ? landingFixtureAtivacao2 : landingFixture,
     );
 
@@ -561,6 +632,7 @@ describe("EventLandingPage", () => {
     render(<RouterProvider router={router} />);
 
     expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
     await user.type(screen.getByLabelText(/nome \*/i), "Maria");
     await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
     await user.click(screen.getByRole("checkbox"));
@@ -572,7 +644,7 @@ describe("EventLandingPage", () => {
     });
     expect(await screen.findByText("Stand Secundario")).toBeInTheDocument();
     expect(screen.queryByText("Cadastro realizado com sucesso.")).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/nome \*/i)).toHaveValue("");
+    expect(screen.getByLabelText(/^cpf/i)).toHaveValue("");
     expect(screen.getByRole("button", { name: /quero participar/i })).toBeDisabled();
   });
 });

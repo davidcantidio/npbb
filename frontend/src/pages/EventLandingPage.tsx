@@ -19,6 +19,9 @@ import LandingPageView from "../components/landing/LandingPageView";
 
 type FormState = Record<string, string>;
 
+const DUPLICATE_CPF_BLOCKED_MESSAGE =
+  "Este CPF ja foi cadastrado nesta ativacao. Se estiver cadastrando outra pessoa, informe outro CPF.";
+
 export default function EventLandingPage() {
   const { eventId, ativacaoId, evento_id, ativacao_id } = useParams();
   const location = useLocation();
@@ -255,6 +258,18 @@ export default function EventLandingPage() {
         landing_session_id: sessionId,
         consentimento_lgpd: consentimento,
       });
+      if (response.bloqueado_cpf_duplicado) {
+        setSubmitted(null);
+        setLeadSubmitted(false);
+        setAtivacaoLeadId(null);
+        setGamificacaoBlockedReason(null);
+        setSubmitError(DUPLICATE_CPF_BLOCKED_MESSAGE);
+        if (cpfFirstEnabled) {
+          setCpfFirstUnlocked(false);
+        }
+        return;
+      }
+
       const nextAtivacaoLeadId = response.ativacao_lead_id ?? null;
       const hasGamificacao = data.gamificacoes.length > 0;
       setSubmitted(response);

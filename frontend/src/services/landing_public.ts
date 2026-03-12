@@ -116,6 +116,8 @@ export type LandingSubmitResponse = {
   ativacao_id?: number | null;
   ativacao_lead_id?: number | null;
   mensagem_sucesso: string;
+  conversao_registrada: boolean;
+  bloqueado_cpf_duplicado: boolean;
 };
 
 export type GamificacaoState = "presenting" | "active" | "completed";

@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 ---
 
 # EPIC-F2-02 - Registro de Conversão e Bloqueio
@@ -34,7 +34,7 @@ Cada submit com CPF válido registra conversão na ativação correspondente; em
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F2-02-001 | Extensão POST /leads com ativacao_id e registro de conversão | Backend: receber ativacao_id, registrar conversão | 3 | todo | [ISSUE-F2-02-001-EXTENSAO-POST-LEADS.md](./issues/ISSUE-F2-02-001-EXTENSAO-POST-LEADS.md) |
+| ISSUE-F2-02-001 | Extensão POST /leads com ativacao_id e registro de conversão | Backend: receber ativacao_id, registrar conversão | 3 | done | [ISSUE-F2-02-001-EXTENSAO-POST-LEADS.md](./issues/ISSUE-F2-02-001-EXTENSAO-POST-LEADS.md) |
 | ISSUE-F2-02-002 | Bloqueio CPF duplicado e integração frontend | Bloqueio em ativação única; frontend trata resposta | 2 | todo | [ISSUE-F2-02-002-BLOQUEIO-CPF-DUPLICADO.md](./issues/ISSUE-F2-02-002-BLOQUEIO-CPF-DUPLICADO.md) |
 
 ## Artifact Minimo do Epico

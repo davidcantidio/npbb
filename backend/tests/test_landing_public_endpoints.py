@@ -11,6 +11,7 @@ from app.models.models import (
     Agencia,
     Ativacao,
     AtivacaoLead,
+    ConversaoAtivacao,
     Evento,
     Gamificacao,
     LandingAnalyticsEvent,
@@ -277,7 +278,7 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
         json={
             "nome": "Maria",
             "email": "maria@example.com",
-            "cpf": "123.456.789-01",
+            "cpf": "529.982.247-25",
             "telefone": "(61) 99999-0000",
             "consentimento_lgpd": True,
         },
@@ -287,18 +288,60 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
     assert payload["event_id"] == evento_id
     assert payload["ativacao_id"] == ativacao_id
     assert payload["lead_id"] > 0
+    assert payload["conversao_registrada"] is True
+    assert payload["bloqueado_cpf_duplicado"] is False
 
     with Session(engine) as session:
         lead = session.get(Lead, payload["lead_id"])
         assert lead is not None
         assert lead.email == "maria@example.com"
-        assert lead.cpf == "12345678901"
+        assert lead.cpf == "52998224725"
         link = session.exec(
             select(AtivacaoLead)
             .where(AtivacaoLead.ativacao_id == ativacao_id)
             .where(AtivacaoLead.lead_id == payload["lead_id"])
         ).first()
         assert link is not None
+        conversao = session.exec(
+            select(ConversaoAtivacao)
+            .where(ConversaoAtivacao.ativacao_id == ativacao_id)
+            .where(ConversaoAtivacao.lead_id == payload["lead_id"])
+        ).first()
+        assert conversao is not None
+        assert conversao.cpf == "52998224725"
+
+
+def test_public_landing_submit_sem_cpf_permanece_compativel_sem_registrar_conversao(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Sem CPF",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        ativacao_id = ativacao.id
+
+    resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Laura",
+            "email": "laura@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+
+    assert resp.status_code == 201
+    payload = resp.json()
+    assert payload["conversao_registrada"] is False
+
+    with Session(engine) as session:
+        conversoes = session.exec(
+            select(ConversaoAtivacao).where(ConversaoAtivacao.ativacao_id == ativacao_id)
+        ).all()
+        assert conversoes == []
 
 
 def test_public_template_config_e_qr_code_endpoint(client, engine):

@@ -248,5 +248,7 @@ export function createTemplateFixture(
     formulario: BASE_FORMULARIO,
     marca: BASE_MARCA,
     acesso: BASE_ACESSO,
+    lead_reconhecido: false,
+    lead_ja_converteu_nesta_ativacao: false,
   };
 }

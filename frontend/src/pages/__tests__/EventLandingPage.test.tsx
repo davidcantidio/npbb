@@ -128,6 +128,7 @@ const landingFixture: LandingPageData = {
     url_promotor: "https://npbb.example/landing/ativacoes/1",
   },
   lead_reconhecido: false,
+  lead_ja_converteu_nesta_ativacao: false,
   token: null,
   gamificacoes: [
     {

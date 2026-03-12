@@ -159,13 +159,19 @@ export type LandingAnalyticsTrackPayload = {
   landing_session_id?: string | null;
 };
 
-export type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
+export type LandingPageDataRaw = {
+  ativacao_id?: number | null;
   ativacao?:
     | (Omit<LandingAtivacaoInfo, "conversao_unica"> & {
         conversao_unica?: boolean | null;
       })
     | null;
   gamificacoes?: GamificacaoPublic[] | null;
+  evento: LandingEvent;
+  template: LandingTemplateConfig;
+  formulario: LandingForm;
+  marca: LandingBrand;
+  acesso: LandingAccess;
   lead_reconhecido?: boolean | null;
   lead_ja_converteu_nesta_ativacao?: boolean | null;
   token?: string | null;

@@ -116,7 +116,7 @@ export default function EventLeadFormConfig() {
 
   const camposPayload = useMemo(() => {
     const ordemByLower = new Map(camposPossiveisUniq.map((nome, index) => [nome.toLowerCase(), index]));
-    const payload = camposPossiveisUniq
+    const payload: NonNullable<PreviewEventoLandingPayload["campos"]> = camposPossiveisUniq
       .map((nome, index) => {
         if (!camposAtivos.has(nome)) return null;
         return {
@@ -125,7 +125,7 @@ export default function EventLeadFormConfig() {
           ordem: index,
         };
       })
-      .filter(Boolean) as PreviewEventoLandingPayload["campos"];
+      .filter((value): value is NonNullable<PreviewEventoLandingPayload["campos"]>[number] => value !== null);
 
     const extras = [...camposAtivos].filter((nome) => !ordemByLower.has(nome.toLowerCase()));
     extras.sort((a, b) => a.localeCompare(b));

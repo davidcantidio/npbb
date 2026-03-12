@@ -71,14 +71,14 @@ describe("AgeAnalysisKpiGrid", () => {
         eventosTotal={1}
         appliedFilters={{
           evento_id: null,
-          data_inicio: null,
-          data_fim: null,
+          data_inicio: "",
+          data_fim: "",
         }}
       />,
     );
 
     const faixaTooltipButton = screen.getByRole("button", {
-      name: "Saiba mais sobre Faixa dominante",
+      name: "Saiba mais sobre Faixa Dominante",
     });
     expect(faixaTooltipButton).toHaveTextContent("ℹ️");
     await user.hover(faixaTooltipButton);

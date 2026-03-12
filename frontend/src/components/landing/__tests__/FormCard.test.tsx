@@ -80,6 +80,8 @@ function createLandingFixture(overrides: Partial<LandingPageData> = {}): Landing
       url_promotor: "https://npbb.example/landing/ativacoes/1",
     },
     gamificacoes: [],
+    lead_reconhecido: false,
+    lead_ja_converteu_nesta_ativacao: false,
     ...overrides,
   };
 }

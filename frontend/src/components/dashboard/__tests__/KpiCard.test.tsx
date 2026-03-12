@@ -38,19 +38,17 @@ describe("KpiCard", () => {
     expect(screen.getByText("100.0%")).toBeInTheDocument();
   });
 
-  it("renders optional trend information", () => {
+  it("renders optional title tooltip", () => {
     render(
       <KpiCard
         title="Eventos"
         value="8"
         subtitle="Eventos retornados para os filtros aplicados."
         icon={<span>icon</span>}
-        trend={{ direction: "up", label: "Tendencia", value: "5,0%" }}
+        titleTooltip="Quantidade de eventos disponiveis no recorte atual."
       />,
     );
 
-    expect(screen.getByText("Tendencia")).toBeInTheDocument();
-    expect(screen.getByText("+")).toBeInTheDocument();
-    expect(screen.getByText("5,0%")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Saiba mais sobre Eventos" })).toBeInTheDocument();
   });
 });

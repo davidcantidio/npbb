@@ -87,7 +87,31 @@ const mockedGetEventoQuestionario = vi.mocked(getEventoQuestionario);
 const mockedUpdateEventoQuestionario = vi.mocked(updateEventoQuestionario);
 const mockedPreviewEventoLanding = vi.mocked(previewEventoLanding);
 
-function createLandingPreviewPayload(overrides: Partial<LandingPageData> = {}): LandingPageData {
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+type LandingPreviewOverrides = {
+  ativacao_id?: LandingPageData["ativacao_id"];
+  ativacao?: LandingPageData["ativacao"];
+  evento?: Partial<LandingPageData["evento"]>;
+  template?: Partial<LandingPageData["template"]>;
+  formulario?: Partial<LandingPageData["formulario"]>;
+  marca?: Partial<LandingPageData["marca"]>;
+  acesso?: Partial<LandingPageData["acesso"]>;
+  gamificacoes?: LandingPageData["gamificacoes"];
+  lead_reconhecido?: LandingPageData["lead_reconhecido"];
+  lead_ja_converteu_nesta_ativacao?: LandingPageData["lead_ja_converteu_nesta_ativacao"];
+  token?: LandingPageData["token"];
+};
+
+function createLandingPreviewPayload(overrides: LandingPreviewOverrides = {}): LandingPageData {
   return {
     ativacao_id: overrides.ativacao_id ?? null,
     ativacao: overrides.ativacao ?? null,
@@ -160,6 +184,9 @@ function createLandingPreviewPayload(overrides: Partial<LandingPageData> = {}): 
       ...overrides.acesso,
     },
     gamificacoes: overrides.gamificacoes ?? [],
+    lead_reconhecido: overrides.lead_reconhecido ?? false,
+    lead_ja_converteu_nesta_ativacao: overrides.lead_ja_converteu_nesta_ativacao ?? false,
+    token: overrides.token ?? null,
   };
 }
 
@@ -514,23 +541,13 @@ describe("Evento pages smoke", () => {
 
   it("keeps the latest preview when an older request resolves later", async () => {
     const user = userEvent.setup();
-    let resolveOldPreview: ((value: LandingPageData) => void) | null = null;
-    let resolveLatestPreview: ((value: LandingPageData) => void) | null = null;
+    const oldPreview = createDeferred<LandingPageData>();
+    const latestPreview = createDeferred<LandingPageData>();
 
     mockedPreviewEventoLanding
       .mockResolvedValueOnce(createLandingPreviewPayload() as never)
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveOldPreview = resolve as (value: LandingPageData) => void;
-          }) as never,
-      )
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveLatestPreview = resolve as (value: LandingPageData) => void;
-          }) as never,
-      );
+      .mockImplementationOnce(() => oldPreview.promise as never)
+      .mockImplementationOnce(() => latestPreview.promise as never);
 
     render(
       <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
@@ -551,7 +568,7 @@ describe("Evento pages smoke", () => {
     await user.type(input, "tecnologia");
     await waitFor(() => expect(mockedPreviewEventoLanding).toHaveBeenCalledTimes(3));
 
-    resolveLatestPreview?.(
+    latestPreview.resolve(
       createLandingPreviewPayload({
         template: {
           categoria: "tecnologia",
@@ -573,7 +590,7 @@ describe("Evento pages smoke", () => {
     );
     expect(await screen.findByRole("button", { name: /quero participar/i })).toBeInTheDocument();
 
-    resolveOldPreview?.(
+    oldPreview.resolve(
       createLandingPreviewPayload({
         template: {
           categoria: "show_musical",

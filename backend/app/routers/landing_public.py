@@ -145,10 +145,14 @@ def _resolve_lead_reconhecimento(
     evento_id: int,
     token: str | None,
 ) -> bool:
-    resolved_token = token or request.cookies.get(LEAD_RECOGNITION_COOKIE_NAME)
-    if not resolved_token:
+    if token and validar_token(session, token=token, evento_id=evento_id) is not None:
+        return True
+
+    cookie_token = request.cookies.get(LEAD_RECOGNITION_COOKIE_NAME)
+    if not cookie_token:
         return False
-    return validar_token(session, token=resolved_token, evento_id=evento_id) is not None
+
+    return validar_token(session, token=cookie_token, evento_id=evento_id) is not None
 
 
 @router.get("/ativacoes/{ativacao_id}/landing", response_model=LandingPayload)

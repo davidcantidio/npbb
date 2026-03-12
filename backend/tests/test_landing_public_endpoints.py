@@ -480,6 +480,40 @@ def test_public_landing_por_evento_reconhece_via_cookie_emitido_no_submit(client
     assert payload["token"] is None
 
 
+def test_public_landing_faz_fallback_para_cookie_quando_token_query_invalido(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Cookie Fallback",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        evento_id = evento.id
+        ativacao_id = ativacao.id
+
+    submit_resp = client.post(
+        f"/landing/ativacoes/{ativacao_id}/submit",
+        json={
+            "nome": "Maria",
+            "email": "maria@example.com",
+            "cpf": "529.982.247-25",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert submit_resp.status_code == 201
+    assert submit_resp.cookies.get("lp_lead_token") == submit_resp.json()["token_reconhecimento"]
+
+    landing_resp = client.get(f"/eventos/{evento_id}/landing?token=token-invalido")
+
+    assert landing_resp.status_code == 200
+    payload = landing_resp.json()
+    assert payload["lead_reconhecido"] is True
+    assert payload["token"] == "token-invalido"
+
+
 def test_public_landing_por_ativacao_nao_reconhece_token_expirado(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)

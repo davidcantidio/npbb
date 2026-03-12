@@ -92,7 +92,8 @@ export type LandingPageData = {
   formulario: LandingForm;
   marca: LandingBrand;
   acesso: LandingAccess;
-  lead_reconhecido?: boolean;
+  lead_reconhecido: boolean;
+  lead_ja_converteu_nesta_ativacao: boolean;
   token?: string | null;
 };
 
@@ -166,6 +167,7 @@ export type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
     | null;
   gamificacoes?: GamificacaoPublic[] | null;
   lead_reconhecido?: boolean | null;
+  lead_ja_converteu_nesta_ativacao?: boolean | null;
   token?: string | null;
 };
 
@@ -210,6 +212,7 @@ export function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPa
       : null,
     gamificacoes: Array.isArray(payload.gamificacoes) ? payload.gamificacoes : [],
     lead_reconhecido: Boolean(payload.lead_reconhecido),
+    lead_ja_converteu_nesta_ativacao: Boolean(payload.lead_ja_converteu_nesta_ativacao),
     token: typeof payload.token === "string" && payload.token.trim() ? payload.token.trim() : null,
   };
 }

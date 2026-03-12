@@ -161,6 +161,24 @@ def seed_lead(session: Session, *, evento: Evento) -> Lead:
     return lead
 
 
+def seed_conversao_ativacao(
+    session: Session,
+    *,
+    ativacao_id: int,
+    lead_id: int,
+    cpf: str = "52998224725",
+) -> ConversaoAtivacao:
+    conversao = ConversaoAtivacao(
+        ativacao_id=ativacao_id,
+        lead_id=lead_id,
+        cpf=cpf,
+    )
+    session.add(conversao)
+    session.commit()
+    session.refresh(conversao)
+    return conversao
+
+
 def login_and_get_token(client: TestClient, email: str, password: str) -> str:
     resp = client.post("/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200
@@ -386,7 +404,61 @@ def test_public_landing_por_ativacao_reconhece_via_token_query(client, engine):
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["lead_reconhecido"] is True
+    assert payload["lead_ja_converteu_nesta_ativacao"] is False
     assert payload["token"] == token
+
+
+def test_public_landing_por_ativacao_sinaliza_quando_lead_ja_converteu_nesta_ativacao(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Conversao Atual",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id)
+        lead = seed_lead(session, evento=evento)
+        seed_conversao_ativacao(session, ativacao_id=ativacao.id, lead_id=lead.id)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
+        session.commit()
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/ativacoes/{ativacao_id}/landing?token={token}")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["lead_reconhecido"] is True
+    assert payload["lead_ja_converteu_nesta_ativacao"] is True
+
+
+def test_public_landing_por_ativacao_distingue_lead_reconhecido_sem_conversao_nesta_ativacao(
+    client, engine
+):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Conversao Outra Ativacao",
+        )
+        ativacao_origem = seed_ativacao(session, evento_id=evento.id, nome="Origem")
+        ativacao_destino = seed_ativacao(session, evento_id=evento.id, nome="Destino")
+        lead = seed_lead(session, evento=evento)
+        seed_conversao_ativacao(session, ativacao_id=ativacao_origem.id, lead_id=lead.id)
+        token = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
+        session.commit()
+        ativacao_destino_id = ativacao_destino.id
+
+    resp = client.get(f"/ativacoes/{ativacao_destino_id}/landing?token={token}")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["lead_reconhecido"] is True
+    assert payload["lead_ja_converteu_nesta_ativacao"] is False
 
 
 def test_public_landing_submit_bloqueia_cpf_duplicado_em_ativacao_unica(client, engine):
@@ -501,6 +573,7 @@ def test_public_landing_por_evento_reconhece_via_cookie_emitido_no_submit(client
     assert landing_resp.status_code == 200
     payload = landing_resp.json()
     assert payload["lead_reconhecido"] is True
+    assert payload["lead_ja_converteu_nesta_ativacao"] is False
     assert payload["token"] is None
 
 
@@ -535,6 +608,7 @@ def test_public_landing_faz_fallback_para_cookie_quando_token_query_invalido(cli
     assert landing_resp.status_code == 200
     payload = landing_resp.json()
     assert payload["lead_reconhecido"] is True
+    assert payload["lead_ja_converteu_nesta_ativacao"] is False
     assert payload["token"] == "token-invalido"
 
 
@@ -563,6 +637,7 @@ def test_public_landing_por_ativacao_nao_reconhece_token_expirado(client, engine
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["lead_reconhecido"] is False
+    assert payload["lead_ja_converteu_nesta_ativacao"] is False
     assert payload["token"] == token
 
 
@@ -593,6 +668,7 @@ def test_public_landing_por_ativacao_nao_reconhece_token_de_outro_evento(client,
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["lead_reconhecido"] is False
+    assert payload["lead_ja_converteu_nesta_ativacao"] is False
     assert payload["token"] == token
 
 

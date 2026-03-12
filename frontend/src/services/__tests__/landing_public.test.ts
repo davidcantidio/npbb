@@ -4,6 +4,7 @@ import {
   getLandingByAtivacao,
   getLandingByEvento,
   getLandingByEventoAtivacao,
+  normalizeLandingPageData,
   previewEventoLanding,
   submitLandingForm,
 } from "../landing_public";
@@ -73,6 +74,7 @@ const landingBasePayload = {
     url_promotor: "https://npbb.example/landing/ativacoes/1",
   },
   lead_reconhecido: false,
+  lead_ja_converteu_nesta_ativacao: false,
   token: null,
 };
 
@@ -144,6 +146,28 @@ describe("landing_public service", () => {
     expect(payload.gamificacoes).toEqual([]);
     expect(payload.lead_reconhecido).toBe(true);
     expect(payload.token).toBe("abc123");
+  });
+
+  it("preserva a flag quando o backend informa conversao na ativacao atual", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce({
+      ...landingBasePayload,
+      lead_reconhecido: true,
+      lead_ja_converteu_nesta_ativacao: true,
+    });
+
+    const payload = await getLandingByEventoAtivacao(10, 1);
+
+    expect(payload.lead_reconhecido).toBe(true);
+    expect(payload.lead_ja_converteu_nesta_ativacao).toBe(true);
+  });
+
+  it("normaliza a nova flag ausente para false em payload antigo", () => {
+    const { lead_ja_converteu_nesta_ativacao: _ignored, ...payloadAntigo } = landingBasePayload;
+
+    const payload = normalizeLandingPageData(payloadAntigo);
+
+    expect(payload.lead_ja_converteu_nesta_ativacao).toBe(false);
   });
 
   it("envia payload autenticado para o preview transiente por evento", async () => {

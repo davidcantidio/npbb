@@ -25,4 +25,5 @@ class LandingPayload(BaseModel):
     marca: LandingBrandRead
     acesso: LandingAccessRead
     lead_reconhecido: bool = False
+    lead_ja_converteu_nesta_ativacao: bool = False
     token: str | None = None

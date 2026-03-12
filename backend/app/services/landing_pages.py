@@ -221,6 +221,7 @@ def build_landing_payload(
     backend_base_url: str | None = None,
     token: str | None = None,
     lead_reconhecido: bool = False,
+    lead_ja_converteu_nesta_ativacao: bool = False,
     template_override: str | None = None,
     template_name_override: str | None | object = _UNSET,
     fields_override: list[LandingFieldRead] | object = _UNSET,
@@ -291,6 +292,7 @@ def build_landing_payload(
             url_promotor=ativacao.url_promotor if ativacao else event_urls["url_landing"],
         ),
         lead_reconhecido=lead_reconhecido,
+        lead_ja_converteu_nesta_ativacao=lead_ja_converteu_nesta_ativacao,
         token=token,
     )
 

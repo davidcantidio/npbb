@@ -104,6 +104,8 @@ class LandingSubmitRequest(BaseModel):
     nome: str | None = Field(default=None, max_length=100)
     sobrenome: str | None = Field(default=None, max_length=100)
     email: EmailStr | None = None
+    event_id: int | None = Field(default=None, ge=1)
+    ativacao_id: int | None = Field(default=None, ge=1)
     cpf: str | None = Field(default=None, max_length=20)
     telefone: str | None = Field(default=None, max_length=30)
     data_nascimento: date | None = None
@@ -141,6 +143,8 @@ class LandingSubmitResponse(BaseModel):
     ativacao_id: int | None = None
     ativacao_lead_id: int | None = None
     mensagem_sucesso: str
+    conversao_registrada: bool = False
+    bloqueado_cpf_duplicado: bool = False
 
 
 class LandingAnalyticsTrackRequest(BaseModel):

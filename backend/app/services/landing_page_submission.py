@@ -6,68 +6,133 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
-from app.models.models import Ativacao, AtivacaoLead, Evento, LandingAnalyticsEvent, Lead
+from app.models.models import (
+    Ativacao,
+    AtivacaoLead,
+    ConversaoAtivacao,
+    Evento,
+    LandingAnalyticsEvent,
+    Lead,
+)
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
-from app.services.landing_page_templates import get_template_config
+from app.services.landing_page_templates import TEMPLATE_REGISTRY, get_template_config
 
 ANALYTICS_EVENT_SUBMIT_SUCCESS = "submit_success"
 
 
-def _find_existing_landing_lead(
+def get_public_lead_success_message(
     session: Session,
     *,
     evento: Evento,
-    ativacao: Ativacao | None,
-    email: str | None,
-) -> Lead | None:
-    if not email:
-        return None
+) -> str:
+    template_config = get_template_config(session, evento=evento)
+    return TEMPLATE_REGISTRY[template_config.categoria]["success_message"]
 
-    if ativacao and ativacao.id is not None:
+
+def _find_existing_public_lead(
+    session: Session,
+    *,
+    evento: Evento,
+    email: str | None,
+    cpf: str | None,
+) -> Lead | None:
+    if email and cpf:
+        exact_match = session.exec(
+            select(Lead)
+            .where(func.lower(Lead.email) == email)
+            .where(Lead.cpf == cpf)
+            .where(Lead.evento_nome == evento.nome)
+        ).first()
+        if exact_match is not None:
+            return exact_match
+
+    if cpf:
+        by_cpf = session.exec(
+            select(Lead)
+            .where(Lead.cpf == cpf)
+            .where(Lead.evento_nome == evento.nome)
+        ).first()
+        if by_cpf is not None:
+            return by_cpf
+
+    if email:
         return session.exec(
             select(Lead)
-            .join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
-            .where(AtivacaoLead.ativacao_id == ativacao.id)
             .where(func.lower(Lead.email) == email)
+            .where(Lead.evento_nome == evento.nome)
         ).first()
 
-    return session.exec(
-        select(Lead)
-        .where(func.lower(Lead.email) == email)
-        .where(Lead.evento_nome == evento.nome)
-    ).first()
+    return None
 
 
-def _create_landing_lead(
+def _build_public_lead_defaults(
+    *,
+    evento: Evento,
+    payload: LandingSubmitRequest,
+    email: str | None,
+) -> dict[str, object]:
+    return {
+        "nome": payload.nome,
+        "sobrenome": payload.sobrenome,
+        "email": email,
+        "telefone": payload.telefone,
+        "cpf": payload.cpf,
+        "data_nascimento": payload.data_nascimento,
+        "evento_nome": evento.nome,
+        "cidade": evento.cidade,
+        "estado": (payload.estado or evento.estado or "").strip() or None,
+        "endereco_rua": payload.endereco,
+        "genero": payload.genero,
+        "metodo_entrega": payload.area_de_atuacao,
+        "fonte_origem": "landing_publica",
+        "opt_in": "aceito",
+        "opt_in_flag": True,
+    }
+
+
+def _merge_public_lead(
+    *,
+    lead: Lead,
+    values: dict[str, object],
+) -> None:
+    for field, value in values.items():
+        if value is None:
+            continue
+        current = getattr(lead, field)
+        if field in {"email", "cpf", "fonte_origem"} and current:
+            continue
+        if isinstance(current, str) and current.strip():
+            continue
+        if current is not None and field == "opt_in_flag":
+            continue
+        setattr(lead, field, value)
+
+
+def resolve_or_create_public_lead(
     session: Session,
     *,
     evento: Evento,
     payload: LandingSubmitRequest,
     email: str | None,
 ) -> Lead:
-    lead = Lead(
-        nome=payload.nome,
-        sobrenome=payload.sobrenome,
+    values = _build_public_lead_defaults(evento=evento, payload=payload, email=email)
+    lead = _find_existing_public_lead(
+        session,
+        evento=evento,
         email=email,
-        telefone=payload.telefone,
         cpf=payload.cpf,
-        data_nascimento=payload.data_nascimento,
-        evento_nome=evento.nome,
-        cidade=evento.cidade,
-        estado=(payload.estado or evento.estado or "").strip() or None,
-        endereco_rua=payload.endereco,
-        genero=payload.genero,
-        metodo_entrega=payload.area_de_atuacao,
-        fonte_origem="landing_publica",
-        opt_in="aceito",
-        opt_in_flag=True,
     )
-    session.add(lead)
-    session.flush()
+    if lead is None:
+        lead = Lead(**values)
+        session.add(lead)
+        session.flush()
+        return lead
+
+    _merge_public_lead(lead=lead, values=values)
     return lead
 
 
-def _ensure_ativacao_lead_link(
+def ensure_ativacao_lead_link(
     session: Session,
     *,
     ativacao: Ativacao | None,
@@ -98,6 +163,27 @@ def _ensure_ativacao_lead_link(
     return ativacao_lead
 
 
+def register_conversao_ativacao(
+    session: Session,
+    *,
+    ativacao: Ativacao | None,
+    lead: Lead,
+    cpf: str | None,
+) -> bool:
+    if ativacao is None or ativacao.id is None or lead.id is None or not cpf:
+        return False
+
+    session.add(
+        ConversaoAtivacao(
+            ativacao_id=ativacao.id,
+            lead_id=lead.id,
+            cpf=cpf,
+        )
+    )
+    session.flush()
+    return True
+
+
 def _track_submit_success_analytics_if_needed(
     session: Session,
     *,
@@ -122,34 +208,32 @@ def _track_submit_success_analytics_if_needed(
     )
 
 
-def submit_landing_lead(
+def submit_public_lead(
     session: Session,
     *,
     evento: Evento,
     ativacao: Ativacao | None,
     payload: LandingSubmitRequest,
     success_message: str,
+    cpf_for_conversion: str | None = None,
 ) -> LandingSubmitResponse:
     email = str(payload.email).strip().lower() if payload.email else None
-    existing_lead = _find_existing_landing_lead(
+    lead = resolve_or_create_public_lead(
         session,
         evento=evento,
-        ativacao=ativacao,
+        payload=payload,
         email=email,
     )
-
-    if not existing_lead:
-        existing_lead = _create_landing_lead(
-            session,
-            evento=evento,
-            payload=payload,
-            email=email,
-        )
-
-    ativacao_lead = _ensure_ativacao_lead_link(
+    ativacao_lead = ensure_ativacao_lead_link(
         session,
         ativacao=ativacao,
-        lead=existing_lead,
+        lead=lead,
+    )
+    conversao_registrada = register_conversao_ativacao(
+        session,
+        ativacao=ativacao,
+        lead=lead,
+        cpf=cpf_for_conversion,
     )
     _track_submit_success_analytics_if_needed(
         session,
@@ -159,13 +243,34 @@ def submit_landing_lead(
     )
 
     session.commit()
-    session.refresh(existing_lead)
+    session.refresh(lead)
     if ativacao_lead:
         session.refresh(ativacao_lead)
     return LandingSubmitResponse(
-        lead_id=existing_lead.id or 0,
+        lead_id=lead.id or 0,
         event_id=evento.id or 0,
         ativacao_id=ativacao.id if ativacao else None,
         ativacao_lead_id=ativacao_lead.id if ativacao_lead else None,
         mensagem_sucesso=success_message,
+        conversao_registrada=conversao_registrada,
+        bloqueado_cpf_duplicado=False,
+    )
+
+
+def submit_landing_lead(
+    session: Session,
+    *,
+    evento: Evento,
+    ativacao: Ativacao | None,
+    payload: LandingSubmitRequest,
+    success_message: str,
+    cpf_for_conversion: str | None = None,
+) -> LandingSubmitResponse:
+    return submit_public_lead(
+        session,
+        evento=evento,
+        ativacao=ativacao,
+        payload=payload,
+        success_message=success_message,
+        cpf_for_conversion=cpf_for_conversion,
     )

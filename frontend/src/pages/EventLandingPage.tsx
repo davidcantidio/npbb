@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, CircularProgress, Container, Stack, Typography } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import {
   completeGamificacao,
   getLandingByAtivacao,
+  getLandingByEventoAtivacao,
   getLandingByEvento,
   trackLandingAnalytics,
   type LandingPageData,
@@ -12,15 +13,21 @@ import {
   submitLandingForm,
 } from "../services/landing_public";
 import { getLandingSessionId, selectLandingCtaVariant } from "../services/landing_experiments";
-import { toApiErrorMessage } from "../services/http";
+import { ApiError, toApiErrorMessage } from "../services/http";
 import LandingPageView from "../components/landing/LandingPageView";
 
 type FormState = Record<string, string>;
 
 export default function EventLandingPage() {
-  const { eventId, ativacaoId } = useParams();
-  const resolvedEventId = eventId ? Number(eventId) : null;
-  const resolvedAtivacaoId = ativacaoId ? Number(ativacaoId) : null;
+  const { eventId, ativacaoId, evento_id, ativacao_id } = useParams();
+  const location = useLocation();
+  const resolvedEventId = evento_id ? Number(evento_id) : eventId ? Number(eventId) : null;
+  const resolvedAtivacaoId = ativacao_id ? Number(ativacao_id) : ativacaoId ? Number(ativacaoId) : null;
+  const landingToken = useMemo(() => {
+    const token = new URLSearchParams(location.search).get("token");
+    const normalizedToken = token?.trim();
+    return normalizedToken ? normalizedToken : null;
+  }, [location.search]);
 
   const [data, setData] = useState<LandingPageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +84,19 @@ export default function EventLandingPage() {
 
     const load = async () => {
       try {
+        if (
+          resolvedEventId &&
+          Number.isFinite(resolvedEventId) &&
+          resolvedAtivacaoId &&
+          Number.isFinite(resolvedAtivacaoId)
+        ) {
+          const response = await getLandingByEventoAtivacao(resolvedEventId, resolvedAtivacaoId, {
+            token: landingToken,
+          });
+          if (!active) return;
+          setData(response);
+          return;
+        }
         if (resolvedAtivacaoId && Number.isFinite(resolvedAtivacaoId)) {
           const response = await getLandingByAtivacao(resolvedAtivacaoId);
           if (!active) return;
@@ -92,6 +112,10 @@ export default function EventLandingPage() {
         setError("Landing invalida.");
       } catch (err) {
         if (!active) return;
+        if (err instanceof ApiError && err.status === 404) {
+          setError("Evento ou ativacao nao encontrados.");
+          return;
+        }
         setError(toApiErrorMessage(err, "Nao foi possivel carregar esta landing."));
       } finally {
         if (active) setLoading(false);
@@ -102,7 +126,7 @@ export default function EventLandingPage() {
     return () => {
       active = false;
     };
-  }, [resolvedAtivacaoId, resolvedEventId]);
+  }, [landingToken, resolvedAtivacaoId, resolvedEventId]);
 
   useEffect(() => {
     if (!effectiveData) return;

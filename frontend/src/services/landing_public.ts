@@ -160,6 +160,10 @@ export type GetLandingByEventoOptions = {
   templateOverride?: string | null;
 };
 
+export type GetLandingByEventoAtivacaoOptions = {
+  token?: string | null;
+};
+
 export type LandingPreviewFieldInput = {
   nome_campo: string;
   obrigatorio: boolean;
@@ -195,11 +199,36 @@ function buildEventoLandingPath(eventoId: number, options?: GetLandingByEventoOp
   return `/eventos/${eventoId}/landing?${params.toString()}`;
 }
 
+function buildEventoAtivacaoLandingPath(
+  eventoId: number,
+  ativacaoId: number,
+  options?: GetLandingByEventoAtivacaoOptions,
+): string {
+  const token = String(options?.token || "").trim();
+  const basePath = `/eventos/${eventoId}/ativacoes/${ativacaoId}/landing`;
+  if (!token) {
+    return basePath;
+  }
+
+  const params = new URLSearchParams({ token });
+  return `${basePath}?${params.toString()}`;
+}
+
 export async function getLandingByEvento(
   eventoId: number,
   options?: GetLandingByEventoOptions,
 ): Promise<LandingPageData> {
   const res = await fetchWithAuth(buildEventoLandingPath(eventoId, options), { retries: 0 });
+  const payload = await handleApiResponse<LandingPageDataRaw>(res);
+  return normalizeLandingPageData(payload);
+}
+
+export async function getLandingByEventoAtivacao(
+  eventoId: number,
+  ativacaoId: number,
+  options?: GetLandingByEventoAtivacaoOptions,
+): Promise<LandingPageData> {
+  const res = await fetchWithAuth(buildEventoAtivacaoLandingPath(eventoId, ativacaoId, options), { retries: 0 });
   const payload = await handleApiResponse<LandingPageDataRaw>(res);
   return normalizeLandingPageData(payload);
 }

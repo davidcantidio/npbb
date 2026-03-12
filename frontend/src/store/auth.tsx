@@ -41,8 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    const isPublicEventoAtivacaoRoute = /^\/eventos\/[^/]+\/ativacoes\/[^/]+\/?$/.test(pathname);
     const isPublicLandingRoute =
-      pathname.startsWith("/landing/") || pathname.startsWith("/checkin-sem-qr/");
+      pathname.startsWith("/landing/") ||
+      pathname.startsWith("/checkin-sem-qr/") ||
+      isPublicEventoAtivacaoRoute;
     if (isPublicLandingRoute) {
       setLoading(false);
       setRefreshing(false);

@@ -43,6 +43,10 @@ export default function AppRoutes() {
 
   return (
     <Routes>
+      <Route
+        path="/eventos/:evento_id/ativacoes/:ativacao_id"
+        element={withSuspense(<EventLandingPage />)}
+      />
       <Route path="/landing/eventos/:eventId" element={withSuspense(<EventLandingPage />)} />
       <Route path="/landing/ativacoes/:ativacaoId" element={withSuspense(<EventLandingPage />)} />
       <Route path="/" element={<Login />} />

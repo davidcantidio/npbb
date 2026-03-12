@@ -7,6 +7,7 @@ import EventLandingPage from "../EventLandingPage";
 import {
   completeGamificacao,
   getLandingByAtivacao,
+  getLandingByEventoAtivacao,
   getLandingByEvento,
   trackLandingAnalytics,
   submitLandingForm,
@@ -16,6 +17,7 @@ import {
 vi.mock("../../services/landing_public", () => ({
   completeGamificacao: vi.fn(),
   getLandingByAtivacao: vi.fn(),
+  getLandingByEventoAtivacao: vi.fn(),
   getLandingByEvento: vi.fn(),
   trackLandingAnalytics: vi.fn(),
   submitLandingForm: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("../../services/landing_experiments", () => ({
 
 const mockedCompleteGamificacao = vi.mocked(completeGamificacao);
 const mockedGetLandingByAtivacao = vi.mocked(getLandingByAtivacao);
+const mockedGetLandingByEventoAtivacao = vi.mocked(getLandingByEventoAtivacao);
 const mockedGetLandingByEvento = vi.mocked(getLandingByEvento);
 const mockedTrackLandingAnalytics = vi.mocked(trackLandingAnalytics);
 const mockedSubmitLandingForm = vi.mocked(submitLandingForm);
@@ -212,6 +215,7 @@ describe("EventLandingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetLandingByAtivacao.mockResolvedValue(landingFixture);
+    mockedGetLandingByEventoAtivacao.mockResolvedValue(landingFixture);
     mockedGetLandingByEvento.mockResolvedValue(landingFixture);
     mockedTrackLandingAnalytics.mockResolvedValue();
     mockedCompleteGamificacao.mockResolvedValue({
@@ -227,6 +231,22 @@ describe("EventLandingPage", () => {
       ativacao_lead_id: 444,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
     });
+  });
+
+  it("renderiza a landing na rota canonica e repassa o token", async () => {
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.getByText("Escaneie o QR code no totem para se cadastrar.")).toBeInTheDocument();
+    expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: "abc123" });
+    expect(mockedGetLandingByAtivacao).not.toHaveBeenCalled();
+    expect(mockedGetLandingByEvento).not.toHaveBeenCalled();
   });
 
   it("renderiza a landing por ativacao e envia o formulario", async () => {

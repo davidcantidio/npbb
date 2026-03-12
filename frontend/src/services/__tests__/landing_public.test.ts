@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getLandingByAtivacao, getLandingByEvento, previewEventoLanding } from "../landing_public";
+import {
+  getLandingByAtivacao,
+  getLandingByEvento,
+  getLandingByEventoAtivacao,
+  previewEventoLanding,
+} from "../landing_public";
 import { fetchWithAuth, handleApiResponse } from "../http";
 
 vi.mock("../http", () => ({
@@ -101,6 +106,34 @@ describe("landing_public service", () => {
     await getLandingByEvento(10, { templateOverride: "   " });
 
     expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/landing", { retries: 0 });
+  });
+
+  it("carrega landing pelo endpoint canonico de evento e ativacao sem token", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce({
+      ...landingBasePayload,
+      gamificacoes: null,
+    });
+
+    const payload = await getLandingByEventoAtivacao(10, 1);
+
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/ativacoes/1/landing", { retries: 0 });
+    expect(payload.gamificacoes).toEqual([]);
+  });
+
+  it("serializa token no endpoint canonico de evento e ativacao", async () => {
+    mockedFetchWithAuth.mockResolvedValueOnce({} as Response);
+    mockedHandleApiResponse.mockResolvedValueOnce({
+      ...landingBasePayload,
+      gamificacoes: null,
+    });
+
+    const payload = await getLandingByEventoAtivacao(10, 1, { token: " abc123 " });
+
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/eventos/10/ativacoes/1/landing?token=abc123", {
+      retries: 0,
+    });
+    expect(payload.gamificacoes).toEqual([]);
   });
 
   it("envia payload autenticado para o preview transiente por evento", async () => {

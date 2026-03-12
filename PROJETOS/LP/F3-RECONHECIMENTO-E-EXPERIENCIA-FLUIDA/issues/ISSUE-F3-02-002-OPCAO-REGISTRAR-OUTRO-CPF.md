@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md"
-version: "1.0"
+version: "1.1"
 status: "todo"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 5.3 - Opção Registrar outro CPF"
@@ -19,7 +19,7 @@ Como lead que já converteu em ativação de conversão única, quero ver a opç
 
 ## Contexto Tecnico
 
-Quando ativação tem conversao_unica = true e lead já converteu nessa ativação: exibir mensagem "Você já se cadastrou nesta ativação" e link "Registrar outro CPF" (ou "Cadastrar outra pessoa"). Ao clicar, limpar estado e exibir campo CPF novamente. Conforme PRD seção 5.3.
+Esta issue passa a depender explicitamente de `ISSUE-F3-02-002.1`, que expõe no GET landing o campo `lead_ja_converteu_nesta_ativacao`. Quando ativação tem `conversao_unica = true`, `lead_reconhecido = true` e `lead_ja_converteu_nesta_ativacao = true`, o frontend deve exibir mensagem "Você já se cadastrou nesta ativação" e link "Registrar outro CPF" (ou "Cadastrar outra pessoa"). Ao clicar, limpar apenas esse estado local da sessão e exibir campo CPF novamente. Conforme PRD seção 5.3.
 
 ## Plano TDD
 
@@ -51,12 +51,12 @@ Quando ativação tem conversao_unica = true e lead já converteu nessa ativaç�
 
 ### T1
 - objetivo: detectar o estado de lead reconhecido que já converteu na ativação atual
-- precondicoes: reconhecimento já funcional e payload/submit expõem essa condição
+- precondicoes: reconhecimento já funcional e `ISSUE-F3-02-002.1` concluída, com o GET landing expondo `lead_ja_converteu_nesta_ativacao`
 - arquivos_a_ler_ou_tocar:
   - `frontend/src/`
-  - contrato de payload ou resposta do submit
+  - contrato do payload da landing
 - passos_atomicos:
-  1. Identificar a fonte do estado "já converteu nesta ativação"
+  1. Consumir `lead_ja_converteu_nesta_ativacao` no fluxo da landing
   2. Distinguir esse caso do lead apenas reconhecido em outra ativação
   3. Persistir estado suficiente para renderizar a mensagem correta
 - comandos_permitidos:
@@ -65,7 +65,7 @@ Quando ativação tem conversao_unica = true e lead já converteu nessa ativaç�
 - testes_ou_validacoes_obrigatorias:
   - teste de componente/integrado
 - stop_conditions:
-  - parar se o backend não expuser sinal inequívoco de "já converteu nesta ativação"
+  - parar se `ISSUE-F3-02-002.1` não estiver concluída ou o contrato consumido não expuser `lead_ja_converteu_nesta_ativacao`
 
 ### T2
 - objetivo: renderizar a mensagem de bloqueio suave e o link de novo CPF
@@ -131,6 +131,7 @@ Quando ativação tem conversao_unica = true e lead já converteu nessa ativaç�
 
 ## Dependencias
 
+- [ISSUE-F3-02-002.1](./ISSUE-F3-02-002.1-CONTRATO-GET-LANDING-JA-CONVERTEU.md)
 - [ISSUE-F3-02-001](./ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md)
 - [EPIC-F3-02](../EPIC-F3-02-EXPERIENCIA-FLUIDA.md)
 - [PRD](../../PRD-LP-QR-ATIVACOES.md)

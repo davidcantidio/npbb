@@ -232,9 +232,11 @@ export default function EventLandingPage() {
   };
 
   const handleSubmit = async () => {
-    if (!data) return;
+    if (!effectiveData) return;
 
-    const missing = data.formulario.campos.filter((field) => field.required && !(formState[field.key] || "").trim());
+    const missing = effectiveData.formulario.campos.filter(
+      (field) => field.required && !(formState[field.key] || "").trim(),
+    );
     if (missing.length > 0) {
       setSubmitError(`Preencha os campos obrigatorios: ${missing.map((field) => field.label).join(", ")}.`);
       return;
@@ -250,10 +252,10 @@ export default function EventLandingPage() {
     }
 
     trackLandingAnalytics({
-      event_id: data.evento.id,
-      ativacao_id: data.ativacao_id ?? undefined,
-      categoria: data.template.categoria,
-      tema: data.template.tema,
+      event_id: effectiveData.evento.id,
+      ativacao_id: effectiveData.ativacao_id ?? undefined,
+      categoria: effectiveData.template.categoria,
+      tema: effectiveData.template.tema,
       event_name: "submit_attempt",
       cta_variant_id: selectedVariant?.id ?? null,
       landing_session_id: sessionId,
@@ -261,7 +263,7 @@ export default function EventLandingPage() {
 
     setSaving(true);
     try {
-      const response = await submitLandingForm(data.formulario.submit_url, {
+      const response = await submitLandingForm(effectiveData.formulario.submit_url, {
         nome: formState.nome || "",
         sobrenome: formState.sobrenome,
         email: formState.email || "",
@@ -290,7 +292,7 @@ export default function EventLandingPage() {
       }
 
       const nextAtivacaoLeadId = response.ativacao_lead_id ?? null;
-      const hasGamificacao = data.gamificacoes.length > 0;
+      const hasGamificacao = effectiveData.gamificacoes.length > 0;
       setSubmitted(response);
       setLeadSubmitted(Boolean(nextAtivacaoLeadId));
       setAtivacaoLeadId(nextAtivacaoLeadId);
@@ -302,10 +304,10 @@ export default function EventLandingPage() {
       setLastSubmittedEmail(email);
       setSubmitError(null);
       trackLandingAnalytics({
-        event_id: data.evento.id,
-        ativacao_id: data.ativacao_id ?? undefined,
-        categoria: data.template.categoria,
-        tema: data.template.tema,
+        event_id: effectiveData.evento.id,
+        ativacao_id: effectiveData.ativacao_id ?? undefined,
+        categoria: effectiveData.template.categoria,
+        tema: effectiveData.template.tema,
         event_name: "submit_success",
         cta_variant_id: selectedVariant?.id ?? null,
         landing_session_id: sessionId,

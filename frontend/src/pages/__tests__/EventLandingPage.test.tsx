@@ -457,6 +457,61 @@ describe("EventLandingPage", () => {
     expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
   });
 
+  it("ignora cpf.required escondido no fluxo reconhecido de ativacao multipla", async () => {
+    const user = userEvent.setup();
+
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce({
+      ...landingFixture,
+      lead_reconhecido: true,
+      token: "abc123",
+      formulario: {
+        ...landingFixture.formulario,
+        campos: landingFixture.formulario.campos.map((field) =>
+          field.key === "cpf" ? { ...field, required: true } : field,
+        ),
+        campos_obrigatorios: ["nome", "email", "cpf"],
+        campos_opcionais: [],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.queryByTestId("cpf-first-input")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^cpf/i)).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/nome \*/i), "Maria");
+    await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+
+    await waitFor(() =>
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+        nome: "Maria",
+        sobrenome: undefined,
+        email: "maria@example.com",
+        cpf: undefined,
+        telefone: undefined,
+        data_nascimento: undefined,
+        estado: undefined,
+        endereco: undefined,
+        interesses: undefined,
+        genero: undefined,
+        area_de_atuacao: undefined,
+        cta_variant_id: undefined,
+        landing_session_id: expect.any(String),
+        consentimento_lgpd: true,
+      }),
+    );
+    expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
+  });
+
   it("exibe mensagem clara e volta ao passo do CPF quando o backend bloqueia duplicidade", async () => {
     const user = userEvent.setup();
 

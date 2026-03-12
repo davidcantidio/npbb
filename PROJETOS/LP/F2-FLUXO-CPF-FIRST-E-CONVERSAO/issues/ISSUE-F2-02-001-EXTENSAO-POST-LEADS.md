@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-02-001-EXTENSAO-POST-LEADS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 7.1 - Backend"
@@ -36,16 +36,16 @@ Estender request do POST /leads com ativacao_id (obrigatório quando acesso via 
 
 ## Definition of Done da Issue
 
-- [ ] Request aceita ativacao_id
-- [ ] Conversão registrada em conversao_ativacao (lead_id, ativacao_id, cpf)
-- [ ] Response inclui conversao_registrada
-- [ ] Testes backend cobrindo cenários
+- [x] Request aceita ativacao_id
+- [x] Conversão registrada em conversao_ativacao (lead_id, ativacao_id, cpf)
+- [x] Response inclui conversao_registrada
+- [x] Testes backend cobrindo cenários
 
 ## Tarefas Decupadas
 
-- [ ] T1: Estender schema de request e response
-- [ ] T2: Implementar lógica de registro de conversão
-- [ ] T3: Adicionar testes
+- [x] T1: Estender schema de request e response
+- [x] T2: Implementar lógica de registro de conversão
+- [x] T3: Adicionar testes
 
 ## Instructions por Task
 

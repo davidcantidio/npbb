@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 7.1 - Backend"
@@ -36,17 +36,17 @@ Endpoint público: `GET /eventos/:evento_id/ativacoes/:ativacao_id/landing`. Ret
 
 ## Definition of Done da Issue
 
-- [ ] Endpoint GET landing implementado
-- [ ] Payload inclui evento, ativação, formulário configurado, template
-- [ ] Flag lead_reconhecido = false (validação real na F3)
-- [ ] Endpoint público (sem autenticação obrigatória)
-- [ ] Testes backend cobrindo cenários
+- [x] Endpoint GET landing implementado
+- [x] Payload inclui evento, ativação, formulário configurado, template
+- [x] Flag lead_reconhecido = false (validação real na F3)
+- [x] Endpoint público (sem autenticação obrigatória)
+- [x] Testes backend cobrindo cenários
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar schema de resposta LandingPayload
-- [ ] T2: Implementar endpoint e serviço de montagem do payload
-- [ ] T3: Adicionar testes
+- [x] T1: Criar schema de resposta LandingPayload
+- [x] T2: Implementar endpoint e serviço de montagem do payload
+- [x] T3: Adicionar testes
 
 ## Instructions por Task
 

@@ -24,6 +24,8 @@ export type LandingFormCardProps = {
   isPreview: boolean;
   cpfFirstEnabled?: boolean;
   cpfFirstUnlocked?: boolean;
+  showRegistrarOutroCpfPrompt?: boolean;
+  registrarOutroCpfMessage?: string | null;
   formState: LandingFormState;
   consentimento: boolean;
   submitError: string | null;
@@ -31,6 +33,7 @@ export type LandingFormCardProps = {
   submitted: LandingSubmitResponse | null;
   onInputChange?: (key: string, value: string) => void;
   onCpfFirstContinue?: () => void;
+  onRegistrarOutroCpf?: () => void;
   onConsentimentoChange?: (checked: boolean) => void;
   onSubmit?: () => void;
   onReset?: () => void;

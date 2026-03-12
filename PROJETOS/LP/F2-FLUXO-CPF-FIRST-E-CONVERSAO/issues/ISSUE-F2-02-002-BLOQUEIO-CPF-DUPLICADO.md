@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-02-002-BLOQUEIO-CPF-DUPLICADO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 4 - Fluxo Principal"
@@ -35,16 +35,16 @@ Em ativação com conversao_unica = true, verificar se (ativacao_id, cpf) já ex
 
 ## Definition of Done da Issue
 
-- [ ] Backend verifica (ativacao_id, cpf) em ativação única antes de registrar
-- [ ] Response bloqueado_cpf_duplicado quando bloqueado
-- [ ] Frontend exibe mensagem clara
-- [ ] Testes backend e frontend
+- [x] Backend verifica (ativacao_id, cpf) em ativação única antes de registrar
+- [x] Response bloqueado_cpf_duplicado quando bloqueado
+- [x] Frontend exibe mensagem clara
+- [x] Testes backend e frontend
 
 ## Tarefas Decupadas
 
-- [ ] T1: Implementar verificação de bloqueio no backend
-- [ ] T2: Tratar resposta no frontend e exibir mensagem
-- [ ] T3: Adicionar testes
+- [x] T1: Implementar verificação de bloqueio no backend
+- [x] T2: Tratar resposta no frontend e exibir mensagem
+- [x] T3: Adicionar testes
 
 ## Instructions por Task
 

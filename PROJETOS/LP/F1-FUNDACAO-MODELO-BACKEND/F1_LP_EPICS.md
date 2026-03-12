@@ -3,8 +3,8 @@ doc_id: "F1_LP_EPICS.md"
 version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
-audit_gate: "not_ready"
+last_updated: "2026-03-12"
+audit_gate: "pending"
 ---
 
 # Epicos - LP / F1 - Fundação (Modelo e Backend)
@@ -19,7 +19,7 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -27,9 +27,9 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 > A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`
@@ -47,9 +47,9 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Modelo e Migrações | Tabelas ativacao, conversao_ativacao e lead_reconhecimento_token com migrations Alembic | nenhuma | active | [EPIC-F1-01-MODELO-E-MIGRACOES.md](./EPIC-F1-01-MODELO-E-MIGRACOES.md) |
-| EPIC-F1-02 | CRUD de Ativações | Endpoints para criar, editar e listar ativações (operador autenticado) | EPIC-F1-01 | todo | [EPIC-F1-02-CRUD-ATIVACOES.md](./EPIC-F1-02-CRUD-ATIVACOES.md) |
-| EPIC-F1-03 | Geração de QR e Endpoint de Landing | Serviço de geração de QR e endpoint GET landing com contexto de ativação | EPIC-F1-01 | active | [EPIC-F1-03-QR-E-ENDPOINT-LANDING.md](./EPIC-F1-03-QR-E-ENDPOINT-LANDING.md) |
+| EPIC-F1-01 | Modelo e Migrações | Tabelas ativacao, conversao_ativacao e lead_reconhecimento_token com migrations Alembic | nenhuma | done | [EPIC-F1-01-MODELO-E-MIGRACOES.md](./EPIC-F1-01-MODELO-E-MIGRACOES.md) |
+| EPIC-F1-02 | CRUD de Ativações | Endpoints para criar, editar e listar ativações (operador autenticado) | EPIC-F1-01 | done | [EPIC-F1-02-CRUD-ATIVACOES.md](./EPIC-F1-02-CRUD-ATIVACOES.md) |
+| EPIC-F1-03 | Geração de QR e Endpoint de Landing | Serviço de geração de QR e endpoint GET landing com contexto de ativação | EPIC-F1-01 | done | [EPIC-F1-03-QR-E-ENDPOINT-LANDING.md](./EPIC-F1-03-QR-E-ENDPOINT-LANDING.md) |
 
 ## Dependencias entre Epicos
 
@@ -75,13 +75,13 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 
 ## Definition of Done da Fase
 
-- [ ] Tabela `ativacao` criada com migration
-- [ ] Tabela `conversao_ativacao` criada com índice (ativacao_id, cpf)
-- [ ] Tabela `lead_reconhecimento_token` criada
-- [ ] Endpoints CRUD de ativações operacionais e protegidos
-- [ ] Cada ativação gera QR-code único
-- [ ] Endpoint de landing retorna payload com evento, ativação e formulário configurado
-- [ ] Testes backend cobrindo cenários críticos
+- [x] Tabela `ativacao` criada com migration
+- [x] Tabela `conversao_ativacao` criada com índice (ativacao_id, cpf)
+- [x] Tabela `lead_reconhecimento_token` criada
+- [x] Endpoints CRUD de ativações operacionais e protegidos
+- [x] Cada ativação gera QR-code único
+- [x] Endpoint de landing retorna payload com evento, ativação e formulário configurado
+- [x] Testes backend cobrindo cenários críticos
 
 ## Navegacao Rapida
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-02-001-SCHEMAS-E-ENDPOINTS-CRUD-ATIVACOES.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 7.1 - Backend"
@@ -38,16 +38,16 @@ Endpoints sob `/eventos/:evento_id/ativacoes/:ativacao_id`. Autenticação JWT e
 
 ## Definition of Done da Issue
 
-- [ ] Schemas AtivacaoCreate, AtivacaoUpdate, AtivacaoRead
-- [ ] POST, GET list, GET by id, PATCH implementados
-- [ ] Endpoints protegidos por autenticação de operador
-- [ ] Testes backend cobrindo CRUD e 401
+- [x] Schemas AtivacaoCreate, AtivacaoUpdate, AtivacaoRead
+- [x] POST, GET list, GET by id, PATCH implementados
+- [x] Endpoints protegidos por autenticação de operador
+- [x] Testes backend cobrindo CRUD e 401
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar schemas Pydantic para Ativacao
-- [ ] T2: Implementar router e endpoints CRUD
-- [ ] T3: Registrar router e adicionar testes
+- [x] T1: Criar schemas Pydantic para Ativacao
+- [x] T2: Implementar router e endpoints CRUD
+- [x] T3: Registrar router e adicionar testes
 
 ## Instructions por Task
 

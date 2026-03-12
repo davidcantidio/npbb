@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-001-ROTA-E-PAGINA-LANDING.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 5.2 - Estrutura de URL do QR"
@@ -36,16 +36,16 @@ Nova rota no frontend que chama GET /eventos/:evento_id/ativacoes/:ativacao_id/l
 
 ## Definition of Done da Issue
 
-- [ ] Rota `/eventos/:evento_id/ativacoes/:ativacao_id` criada
-- [ ] Página carrega payload do endpoint de landing
-- [ ] Contexto de evento e ativação disponível para formulário
-- [ ] Tratamento de 404
+- [x] Rota `/eventos/:evento_id/ativacoes/:ativacao_id` criada
+- [x] Página carrega payload do endpoint de landing
+- [x] Contexto de evento e ativação disponível para formulário
+- [x] Tratamento de 404
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar rota e componente de página
-- [ ] T2: Integrar chamada ao endpoint de landing
-- [ ] T3: Tratar erros (404, loading)
+- [x] T1: Criar rota e componente de página
+- [x] T2: Integrar chamada ao endpoint de landing
+- [x] T3: Tratar erros (404, loading)
 
 ## Instructions por Task
 

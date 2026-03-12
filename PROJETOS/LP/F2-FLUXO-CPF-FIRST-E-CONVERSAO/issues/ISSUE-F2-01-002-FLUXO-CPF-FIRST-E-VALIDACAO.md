@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-002-FLUXO-CPF-FIRST-E-VALIDACAO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 4 - Fluxo Principal"
@@ -36,17 +36,17 @@ Estado inicial da landing: apenas campo CPF. Validação de dígito verificador 
 
 ## Definition of Done da Issue
 
-- [ ] Estado inicial: apenas CPF
-- [ ] Validação de dígito verificador (frontend e/ou backend)
-- [ ] CPF inválido: mensagem de erro
-- [ ] CPF válido: transição para formulário completo
-- [ ] Submit final envia ativacao_id no POST /leads
+- [x] Estado inicial: apenas CPF
+- [x] Validação de dígito verificador (frontend e/ou backend)
+- [x] CPF inválido: mensagem de erro
+- [x] CPF válido: transição para formulário completo
+- [x] Submit final envia ativacao_id no POST /leads
 
 ## Tarefas Decupadas
 
-- [ ] T1: Implementar validação de dígito verificador (util ou lib)
-- [ ] T2: Implementar estado da landing (só CPF vs formulário completo)
-- [ ] T3: Integrar submit com ativacao_id
+- [x] T1: Implementar validação de dígito verificador (util ou lib)
+- [x] T2: Implementar estado da landing (só CPF vs formulário completo)
+- [x] T3: Integrar submit com ativacao_id
 
 ## Instructions por Task
 

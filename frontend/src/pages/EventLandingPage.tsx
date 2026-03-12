@@ -21,6 +21,7 @@ type FormState = Record<string, string>;
 
 const DUPLICATE_CPF_BLOCKED_MESSAGE =
   "Este CPF ja foi cadastrado nesta ativacao. Se estiver cadastrando outra pessoa, informe outro CPF.";
+const REGISTER_ANOTHER_CPF_MESSAGE = "Você já se cadastrou nesta ativação.";
 
 function omitCpfFieldFromLanding(data: LandingPageData): LandingPageData {
   const filteredFields = data.formulario.campos.filter((field) => field.key !== "cpf");
@@ -51,6 +52,7 @@ export default function EventLandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [formState, setFormState] = useState<FormState>({});
   const [cpfFirstUnlocked, setCpfFirstUnlocked] = useState(false);
+  const [registrarOutroCpfLiberado, setRegistrarOutroCpfLiberado] = useState(false);
   const [consentimento, setConsentimento] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -88,10 +90,21 @@ export default function EventLandingPage() {
     };
   }, [data, selectedVariant, shouldSkipCpfStep]);
 
+  const showRegistrarOutroCpfPrompt = useMemo(() => {
+    if (!effectiveData?.ativacao || submitted) return false;
+    return (
+      effectiveData.lead_reconhecido === true &&
+      effectiveData.ativacao.conversao_unica === true &&
+      effectiveData.lead_ja_converteu_nesta_ativacao === true &&
+      !registrarOutroCpfLiberado
+    );
+  }, [effectiveData, registrarOutroCpfLiberado, submitted]);
+
   useEffect(() => {
     let active = true;
     setFormState({});
     setCpfFirstUnlocked(false);
+    setRegistrarOutroCpfLiberado(false);
     setConsentimento(false);
     setSubmitError(null);
     setSaving(false);
@@ -229,6 +242,22 @@ export default function EventLandingPage() {
     setFormState((prev) => ({ ...prev, cpf }));
     setSubmitError(null);
     setCpfFirstUnlocked(true);
+  };
+
+  const handleRegistrarOutroCpf = () => {
+    setRegistrarOutroCpfLiberado(true);
+    setFormState({});
+    setCpfFirstUnlocked(false);
+    setConsentimento(false);
+    setSubmitError(null);
+    setSaving(false);
+    setSubmitted(null);
+    setLeadSubmitted(false);
+    setAtivacaoLeadId(null);
+    setGamificacaoBlockedReason(null);
+    setGamificacaoResetVersion((prev) => prev + 1);
+    setLastSubmittedEmail(null);
+    formStartTracked.current = false;
   };
 
   const handleSubmit = async () => {
@@ -372,6 +401,8 @@ export default function EventLandingPage() {
           mode="public"
           cpfFirstEnabled={cpfFirstEnabled}
           cpfFirstUnlocked={cpfFirstUnlocked}
+          showRegistrarOutroCpfPrompt={showRegistrarOutroCpfPrompt}
+          registrarOutroCpfMessage={REGISTER_ANOTHER_CPF_MESSAGE}
           formState={formState}
           consentimento={consentimento}
           submitError={submitError}
@@ -379,6 +410,7 @@ export default function EventLandingPage() {
           submitted={submitted}
           onInputChange={handleInputChange}
           onCpfFirstContinue={handleCpfFirstContinue}
+          onRegistrarOutroCpf={handleRegistrarOutroCpf}
           onConsentimentoChange={setConsentimento}
           onSubmit={handleSubmit}
           onReset={handleReset}

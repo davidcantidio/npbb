@@ -1,5 +1,7 @@
+import type { ComponentProps } from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import type { LandingPageData } from "../../../services/landing_public";
 import FormCard from "../FormCard";
@@ -86,7 +88,10 @@ function createLandingFixture(overrides: Partial<LandingPageData> = {}): Landing
   };
 }
 
-function renderFormCard(data: LandingPageData) {
+function renderFormCard(
+  data: LandingPageData,
+  overrides: Partial<ComponentProps<typeof FormCard>> = {},
+) {
   const content = resolveLandingContent(data);
   const layout = getLayoutVisualSpec(data);
 
@@ -101,6 +106,7 @@ function renderFormCard(data: LandingPageData) {
       submitError={null}
       saving={false}
       submitted={null}
+      {...overrides}
     />,
   );
 }
@@ -207,5 +213,49 @@ describe("FormCard", () => {
     expect(css).toMatch(/padding:32px/);
     expect(css).toMatch(/min-width:1280px/);
     expect(css).toMatch(/min\(520px,\s*90vw\)/);
+  });
+
+  it('renderiza estado "Registrar outro CPF" sem exibir campos do formulario', () => {
+    const data = createLandingFixture({
+      formulario: {
+        ...createLandingFixture().formulario,
+        campos: [
+          ...createLandingFixture().formulario.campos,
+          {
+            key: "cpf",
+            label: "CPF",
+            input_type: "text",
+            required: false,
+            autocomplete: "off",
+            placeholder: "00000000000",
+          },
+        ],
+      },
+    });
+
+    renderFormCard(data, {
+      showRegistrarOutroCpfPrompt: true,
+      registrarOutroCpfMessage: "Você já se cadastrou nesta ativação.",
+    });
+
+    expect(screen.getByText("Você já se cadastrou nesta ativação.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /registrar outro cpf/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^cpf/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
+  });
+
+  it('aciona callback ao clicar em "Registrar outro CPF"', async () => {
+    const user = userEvent.setup();
+    const data = createLandingFixture();
+    const onRegistrarOutroCpf = vi.fn();
+
+    renderFormCard(data, {
+      showRegistrarOutroCpfPrompt: true,
+      onRegistrarOutroCpf,
+    });
+
+    await user.click(screen.getByRole("button", { name: /registrar outro cpf/i }));
+    expect(onRegistrarOutroCpf).toHaveBeenCalledTimes(1);
   });
 });

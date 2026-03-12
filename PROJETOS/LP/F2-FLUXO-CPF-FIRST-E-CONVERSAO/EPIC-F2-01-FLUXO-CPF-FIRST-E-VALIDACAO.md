@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F2-01-FLUXO-CPF-FIRST-E-VALIDACAO.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 ---
 
 # EPIC-F2-01 - Fluxo CPF-first e Validação
@@ -24,19 +24,19 @@ O visitante no primeiro acesso vê apenas CPF, valida e só então acessa o rest
 
 ## Definition of Done do Epico
 
-- [ ] Primeiro acesso exibe apenas campo CPF
-- [ ] Validação de dígito verificador no frontend (e/ou backend)
-- [ ] CPF válido → exibe formulário completo
-- [ ] CPF inválido → mensagem de erro clara
-- [ ] Testes Playwright cobrindo fluxo CPF-first
+- [x] Primeiro acesso exibe apenas campo CPF
+- [x] Validação de dígito verificador no frontend (e/ou backend)
+- [x] CPF válido → exibe formulário completo
+- [x] CPF inválido → mensagem de erro clara
+- [x] Testes Playwright cobrindo fluxo CPF-first
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F2-01-001 | Rota e página landing com contexto de ativação | Nova rota e página que carrega contexto de evento/ativação | 3 | todo | [ISSUE-F2-01-001-ROTA-E-PAGINA-LANDING.md](./issues/ISSUE-F2-01-001-ROTA-E-PAGINA-LANDING.md) |
-| ISSUE-F2-01-002 | Fluxo CPF-first e validação de dígito | Estado inicial só CPF; validação; exibir formulário completo | 3 | todo | [ISSUE-F2-01-002-FLUXO-CPF-FIRST-E-VALIDACAO.md](./issues/ISSUE-F2-01-002-FLUXO-CPF-FIRST-E-VALIDACAO.md) |
-| ISSUE-F2-01-003 | Testes Playwright do fluxo CPF-first | Testes E2E cobrindo primeiro acesso e validação | 2 | todo | [ISSUE-F2-01-003-TESTES-PLAYWRIGHT-CPF-FIRST.md](./issues/ISSUE-F2-01-003-TESTES-PLAYWRIGHT-CPF-FIRST.md) |
+| ISSUE-F2-01-001 | Rota e página landing com contexto de ativação | Nova rota e página que carrega contexto de evento/ativação | 3 | done | [ISSUE-F2-01-001-ROTA-E-PAGINA-LANDING.md](./issues/ISSUE-F2-01-001-ROTA-E-PAGINA-LANDING.md) |
+| ISSUE-F2-01-002 | Fluxo CPF-first e validação de dígito | Estado inicial só CPF; validação; exibir formulário completo | 3 | done | [ISSUE-F2-01-002-FLUXO-CPF-FIRST-E-VALIDACAO.md](./issues/ISSUE-F2-01-002-FLUXO-CPF-FIRST-E-VALIDACAO.md) |
+| ISSUE-F2-01-003 | Testes Playwright do fluxo CPF-first | Testes E2E cobrindo primeiro acesso e validação | 2 | done | [ISSUE-F2-01-003-TESTES-PLAYWRIGHT-CPF-FIRST.md](./issues/ISSUE-F2-01-003-TESTES-PLAYWRIGHT-CPF-FIRST.md) |
 
 ## Artifact Minimo do Epico
 

@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-12"
-audit_gate: "not_ready"
+audit_gate: "pending"
 ---
 
 # Epicos - LP / F3 - Reconhecimento e Experiência Fluida
@@ -19,7 +19,7 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -27,9 +27,9 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 > A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F3-R<NN>.md`
@@ -48,7 +48,7 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F3-01 | Mecanismo de Reconhecimento | Cookie `lp_lead_token` emitido pelo backend + token na URL; validação e lead_reconhecido | F1, F2 | done | [EPIC-F3-01-MECANISMO-RECONHECIMENTO.md](./EPIC-F3-01-MECANISMO-RECONHECIMENTO.md) |
-| EPIC-F3-02 | Experiência Fluida e "Registrar outro CPF" | Lead reconhecido pula CPF; ativação múltipla formulário direto; opção registrar outro | F2, EPIC-F3-01 | active | [EPIC-F3-02-EXPERIENCIA-FLUIDA.md](./EPIC-F3-02-EXPERIENCIA-FLUIDA.md) |
+| EPIC-F3-02 | Experiência Fluida e "Registrar outro CPF" | Lead reconhecido pula CPF; ativação múltipla formulário direto; opção registrar outro | F2, EPIC-F3-01 | done | [EPIC-F3-02-EXPERIENCIA-FLUIDA.md](./EPIC-F3-02-EXPERIENCIA-FLUIDA.md) |
 
 ## Dependencias entre Epicos
 
@@ -73,12 +73,12 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 
 ## Definition of Done da Fase
 
-- [ ] Cookie `lp_lead_token` emitido via `Set-Cookie` no submit
-- [ ] Token na URL validado
-- [ ] Lead reconhecido não repete CPF
-- [ ] Ativação múltipla: formulário direto
-- [ ] Ativação única: opção "Registrar outro CPF" quando já converteu
-- [ ] Testes cobrindo cenários
+- [x] Cookie `lp_lead_token` emitido via `Set-Cookie` no submit
+- [x] Token na URL validado
+- [x] Lead reconhecido não repete CPF
+- [x] Ativação múltipla: formulário direto
+- [x] Ativação única: opção "Registrar outro CPF" quando já converteu
+- [x] Testes cobrindo cenários
 
 ## Navegacao Rapida
 

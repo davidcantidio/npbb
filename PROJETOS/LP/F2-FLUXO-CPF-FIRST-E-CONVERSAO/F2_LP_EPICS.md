@@ -1,10 +1,10 @@
 ---
 doc_id: "F2_LP_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
-audit_gate: "not_ready"
+last_updated: "2026-03-12"
+audit_gate: "pending"
 ---
 
 # Epicos - LP / F2 - Fluxo CPF-first e Conversão
@@ -19,7 +19,7 @@ O visitante acessa a landing via QR, vê apenas o campo CPF no primeiro acesso, 
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -27,9 +27,9 @@ O visitante acessa a landing via QR, vê apenas o campo CPF no primeiro acesso, 
 > A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F2-R<NN>.md`
@@ -47,8 +47,8 @@ O visitante acessa a landing via QR, vê apenas o campo CPF no primeiro acesso, 
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F2-01 | Fluxo CPF-first e Validação | Landing exibe apenas CPF no primeiro acesso; validação de dígito verificador | F1 | todo | [EPIC-F2-01-FLUXO-CPF-FIRST-E-VALIDACAO.md](./EPIC-F2-01-FLUXO-CPF-FIRST-E-VALIDACAO.md) |
-| EPIC-F2-02 | Registro de Conversão e Bloqueio | POST /leads com ativacao_id; registro de conversão; bloqueio CPF duplicado | F1, EPIC-F2-01 | todo | [EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md](./EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md) |
+| EPIC-F2-01 | Fluxo CPF-first e Validação | Landing exibe apenas CPF no primeiro acesso; validação de dígito verificador | F1 | done | [EPIC-F2-01-FLUXO-CPF-FIRST-E-VALIDACAO.md](./EPIC-F2-01-FLUXO-CPF-FIRST-E-VALIDACAO.md) |
+| EPIC-F2-02 | Registro de Conversão e Bloqueio | POST /leads com ativacao_id; registro de conversão; bloqueio CPF duplicado | F1, EPIC-F2-01 | done | [EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md](./EPIC-F2-02-REGISTRO-CONVERSAO-E-BLOQUEIO.md) |
 
 ## Dependencias entre Epicos
 
@@ -72,12 +72,12 @@ O visitante acessa a landing via QR, vê apenas o campo CPF no primeiro acesso, 
 
 ## Definition of Done da Fase
 
-- [ ] Primeiro acesso exibe apenas campo CPF
-- [ ] Validação de dígito verificador antes de exibir formulário completo
-- [ ] CPF inválido exibe mensagem de erro clara
-- [ ] POST /leads com ativacao_id registra conversão
-- [ ] Ativação única: bloqueio ao tentar cadastrar mesmo CPF novamente
-- [ ] Testes backend e Playwright cobrindo fluxo
+- [x] Primeiro acesso exibe apenas campo CPF
+- [x] Validação de dígito verificador antes de exibir formulário completo
+- [x] CPF inválido exibe mensagem de erro clara
+- [x] POST /leads com ativacao_id registra conversão
+- [x] Ativação única: bloqueio ao tentar cadastrar mesmo CPF novamente
+- [x] Testes backend e Playwright cobrindo fluxo
 
 ## Navegacao Rapida
 

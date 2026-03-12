@@ -224,6 +224,13 @@ const landingFixtureConversaoUnica: LandingPageData = {
   },
 };
 
+const landingFixtureConversaoUnicaJaConvertida: LandingPageData = {
+  ...landingFixtureConversaoUnica,
+  lead_reconhecido: true,
+  lead_ja_converteu_nesta_ativacao: true,
+  token: "abc123",
+};
+
 async function unlockCpfFirstStep(user: ReturnType<typeof userEvent.setup>, cpf = "529.982.247-25") {
   await user.type(screen.getByLabelText(/^cpf/i), cpf);
   await user.click(screen.getByRole("button", { name: /continuar/i }));
@@ -313,6 +320,86 @@ describe("EventLandingPage", () => {
     expect(screen.getByRole("button", { name: /continuar/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
+  });
+
+  it('mostra estado "Registrar outro CPF" quando lead reconhecido ja converteu em ativacao unica', async () => {
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce(landingFixtureConversaoUnicaJaConvertida);
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.getByText("Você já se cadastrou nesta ativação.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /registrar outro cpf/i })).toBeInTheDocument();
+    expect(screen.queryByTestId("cpf-first-input")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
+  });
+
+  it('reabre CPF-first ao clicar em "Registrar outro CPF"', async () => {
+    const user = userEvent.setup();
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce(landingFixtureConversaoUnicaJaConvertida);
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /registrar outro cpf/i }));
+
+    expect(await screen.findByTestId("cpf-first-input")).toBeInTheDocument();
+    expect(screen.queryByText("Você já se cadastrou nesta ativação.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeInTheDocument();
+  });
+
+  it("permite novo cadastro com outro CPF apos liberar o fluxo em ativacao unica", async () => {
+    const user = userEvent.setup();
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce(landingFixtureConversaoUnicaJaConvertida);
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /registrar outro cpf/i }));
+    await unlockCpfFirstStep(user, "111.444.777-35");
+    await user.type(screen.getByLabelText(/nome \*/i), "Maria");
+    await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+
+    await waitFor(() =>
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+        nome: "Maria",
+        sobrenome: undefined,
+        email: "maria@example.com",
+        cpf: "11144477735",
+        telefone: undefined,
+        data_nascimento: undefined,
+        estado: undefined,
+        endereco: undefined,
+        interesses: undefined,
+        genero: undefined,
+        area_de_atuacao: undefined,
+        cta_variant_id: undefined,
+        landing_session_id: expect.any(String),
+        consentimento_lgpd: true,
+      }),
+    );
+    expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
   });
 
   it("mostra apenas CPF no primeiro acesso da ativacao", async () => {

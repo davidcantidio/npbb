@@ -32,6 +32,8 @@ export default function FormCard({
   isPreview,
   cpfFirstEnabled = false,
   cpfFirstUnlocked = false,
+  showRegistrarOutroCpfPrompt = false,
+  registrarOutroCpfMessage = null,
   formState,
   consentimento,
   submitError,
@@ -39,6 +41,7 @@ export default function FormCard({
   submitted,
   onInputChange,
   onCpfFirstContinue,
+  onRegistrarOutroCpf,
   onConsentimentoChange,
   onSubmit,
   onReset,
@@ -47,6 +50,7 @@ export default function FormCard({
   const formCardTheme = buildFormCardTheme(data);
   const cpfField = data.formulario.campos.find((field) => field.key === "cpf") ?? null;
   const showCpfFirstStep = cpfFirstEnabled && !cpfFirstUnlocked && !submitted;
+  const showRegistrarOutroCpfState = showRegistrarOutroCpfPrompt && !submitted;
 
   return (
     <Box
@@ -81,7 +85,29 @@ export default function FormCard({
 
               {submitError ? <Alert severity="error">{submitError}</Alert> : null}
 
-              {showCpfFirstStep && cpfField ? (
+              {showRegistrarOutroCpfState ? (
+                <Stack spacing={2}>
+                  <Alert severity="info">
+                    {registrarOutroCpfMessage || "Voce ja se cadastrou nesta ativacao."}
+                  </Alert>
+                  <Typography variant="body2" color="text.secondary">
+                    Se estiver usando este celular para outra pessoa, registre um novo CPF para continuar.
+                  </Typography>
+                  <Button
+                    fullWidth
+                    size="large"
+                    variant="outlined"
+                    color={layout.buttonColor}
+                    onClick={isPreview ? undefined : onRegistrarOutroCpf}
+                    disabled={isPreview || saving}
+                    sx={{
+                      minHeight: 52,
+                    }}
+                  >
+                    Registrar outro CPF
+                  </Button>
+                </Stack>
+              ) : showCpfFirstStep && cpfField ? (
                 <>
                   <TextField
                     fullWidth

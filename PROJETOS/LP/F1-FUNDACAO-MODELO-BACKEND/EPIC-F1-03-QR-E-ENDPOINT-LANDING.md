@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F1-03-QR-E-ENDPOINT-LANDING.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 ---
 
 # EPIC-F1-03 - Geração de QR e Endpoint de Landing
@@ -25,18 +25,18 @@ Cada ativação possui QR-code único; a landing pode ser carregada com contexto
 
 ## Definition of Done do Epico
 
-- [ ] Serviço gera QR-code único por ativação (imagem ou URL)
-- [ ] Campo `qr_code_url` da ativação populado na criação/atualização
-- [ ] Endpoint `GET /eventos/:evento_id/ativacoes/:ativacao_id/landing` retorna payload esperado
-- [ ] Payload inclui flag `lead_reconhecido` (inicialmente false)
-- [ ] Testes backend cobrindo geração de QR e endpoint de landing
+- [x] Serviço gera QR-code único por ativação (imagem ou URL)
+- [x] Campo `qr_code_url` da ativação populado na criação/atualização
+- [x] Endpoint `GET /eventos/:evento_id/ativacoes/:ativacao_id/landing` retorna payload esperado
+- [x] Payload inclui flag `lead_reconhecido` (inicialmente false)
+- [x] Testes backend cobrindo geração de QR e endpoint de landing
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F1-03-001 | Serviço de geração de QR | Implementar geração de QR-code por ativação | 2 | done | [ISSUE-F1-03-001-SERVICO-GERACAO-QR.md](./issues/ISSUE-F1-03-001-SERVICO-GERACAO-QR.md) |
-| ISSUE-F1-03-002 | Endpoint GET landing | Endpoint que retorna payload da landing com contexto | 3 | todo | [ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md](./issues/ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md) |
+| ISSUE-F1-03-002 | Endpoint GET landing | Endpoint que retorna payload da landing com contexto | 3 | done | [ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md](./issues/ISSUE-F1-03-002-ENDPOINT-GET-LANDING.md) |
 
 ## Artifact Minimo do Epico
 

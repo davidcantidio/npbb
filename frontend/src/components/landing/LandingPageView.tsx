@@ -34,6 +34,8 @@ type LandingPageViewProps = {
   mode?: "public" | "preview";
   cpfFirstEnabled?: boolean;
   cpfFirstUnlocked?: boolean;
+  showRegistrarOutroCpfPrompt?: boolean;
+  registrarOutroCpfMessage?: string | null;
   formState?: LandingFormState;
   consentimento?: boolean;
   submitError?: string | null;
@@ -41,6 +43,7 @@ type LandingPageViewProps = {
   submitted?: LandingSubmitResponse | null;
   onInputChange?: (key: string, value: string) => void;
   onCpfFirstContinue?: () => void;
+  onRegistrarOutroCpf?: () => void;
   onConsentimentoChange?: (checked: boolean) => void;
   onSubmit?: () => void;
   onReset?: () => void;
@@ -52,6 +55,8 @@ export default function LandingPageView({
   mode = "public",
   cpfFirstEnabled = false,
   cpfFirstUnlocked = false,
+  showRegistrarOutroCpfPrompt = false,
+  registrarOutroCpfMessage = null,
   formState = {},
   consentimento = false,
   submitError = null,
@@ -59,6 +64,7 @@ export default function LandingPageView({
   submitted = null,
   onInputChange,
   onCpfFirstContinue,
+  onRegistrarOutroCpf,
   onConsentimentoChange,
   onSubmit,
   onReset,
@@ -110,6 +116,8 @@ export default function LandingPageView({
                 isPreview={isPreview}
                 cpfFirstEnabled={cpfFirstEnabled}
                 cpfFirstUnlocked={cpfFirstUnlocked}
+                showRegistrarOutroCpfPrompt={showRegistrarOutroCpfPrompt}
+                registrarOutroCpfMessage={registrarOutroCpfMessage}
                 formState={formState}
                 consentimento={consentimento}
                 submitError={submitError}
@@ -117,6 +125,7 @@ export default function LandingPageView({
                 submitted={submitted}
                 onInputChange={onInputChange}
                 onCpfFirstContinue={onCpfFirstContinue}
+                onRegistrarOutroCpf={onRegistrarOutroCpf}
                 onConsentimentoChange={onConsentimentoChange}
                 onSubmit={onSubmit}
                 onReset={onReset}

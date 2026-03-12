@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-01-002-MODELOS-CONVERSAO-E-TOKEN.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 6.2 - Tabela conversao_ativacao"
@@ -38,18 +38,18 @@ Conforme PRD seções 6.2 e 6.3:
 
 ## Definition of Done da Issue
 
-- [ ] Modelo `ConversaoAtivacao` com id, ativacao_id, lead_id, cpf, created_at
-- [ ] Modelo `LeadReconhecimentoToken` com lead_id, evento_id, token_hash, expires_at
-- [ ] Índice composto (ativacao_id, cpf) em conversao_ativacao
-- [ ] Índice em token_hash em lead_reconhecimento_token
-- [ ] Migrations aplicáveis e com downgrade válido
-- [ ] Testes de criação/leitura passam
+- [x] Modelo `ConversaoAtivacao` com id, ativacao_id, lead_id, cpf, created_at
+- [x] Modelo `LeadReconhecimentoToken` com lead_id, evento_id, token_hash, expires_at
+- [x] Índice composto (ativacao_id, cpf) em conversao_ativacao
+- [x] Índice em token_hash em lead_reconhecimento_token
+- [x] Migrations aplicáveis e com downgrade válido
+- [x] Testes de criação/leitura passam
 
 ## Tarefas Decupadas
 
-- [ ] T1: Criar modelo ConversaoAtivacao e migration
-- [ ] T2: Criar modelo LeadReconhecimentoToken e migration
-- [ ] T3: Validar upgrade/downgrade e testes
+- [x] T1: Criar modelo ConversaoAtivacao e migration
+- [x] T2: Criar modelo LeadReconhecimentoToken e migration
+- [x] T3: Validar upgrade/downgrade e testes
 
 ## Instructions por Task
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-01-003-TESTES-PLAYWRIGHT-CPF-FIRST.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 4 - Fluxo Principal"
@@ -36,16 +36,16 @@ Playwright para testes E2E. Cobrir: acesso à landing, exibição inicial só CP
 
 ## Definition of Done da Issue
 
-- [ ] Testes Playwright para fluxo CPF-first
-- [ ] Cenários: primeiro acesso, CPF inválido, CPF válido, submit
-- [ ] Testes executam em CI ou localmente
-- [ ] Documentação de como rodar os testes
+- [x] Testes Playwright para fluxo CPF-first
+- [x] Cenários: primeiro acesso, CPF inválido, CPF válido, submit
+- [x] Testes executam em CI ou localmente
+- [x] Documentação de como rodar os testes
 
 ## Tarefas Decupadas
 
-- [ ] T1: Configurar Playwright no projeto (se não existir)
-- [ ] T2: Implementar testes do fluxo CPF-first
-- [ ] T3: Integrar com script de teste ou CI
+- [x] T1: Configurar Playwright no projeto (se não existir)
+- [x] T2: Implementar testes do fluxo CPF-first
+- [x] T3: Integrar com script de teste ou CI
 
 ## Instructions por Task
 

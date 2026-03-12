@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F3-02-EXPERIENCIA-FLUIDA.md"
 version: "1.1"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-12"
 ---
@@ -29,17 +29,17 @@ Experiência fluida para leads recorrentes; ativação única permite registrar 
 
 - [x] Lead reconhecido: pular etapa CPF, ir direto ao formulário
 - [x] Ativação múltipla: formulário direto, submit registra nova conversão
-- [ ] Ativação única + já converteu: mensagem + opção "Registrar outro CPF"
-- [ ] Ao clicar "Registrar outro CPF": exibir CPF novamente para novo cadastro
-- [ ] Testes E2E cobrindo fluxos
+- [x] Ativação única + já converteu: mensagem + opção "Registrar outro CPF"
+- [x] Ao clicar "Registrar outro CPF": exibir CPF novamente para novo cadastro
+- [x] Testes E2E cobrindo fluxos
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F3-02-001 | Lead reconhecido pula CPF e ativação múltipla | Pular CPF quando reconhecido; formulário direto em múltipla | 3 | done | [ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md](./issues/ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md) |
-| ISSUE-F3-02-002.1 | Contrato do GET landing para "ja converteu nesta ativacao" | Expor no GET landing o sinal explicito que desbloqueia o fluxo de novo CPF | 2 | todo | [ISSUE-F3-02-002.1-CONTRATO-GET-LANDING-JA-CONVERTEU.md](./issues/ISSUE-F3-02-002.1-CONTRATO-GET-LANDING-JA-CONVERTEU.md) |
-| ISSUE-F3-02-002 | Opção "Registrar outro CPF" em ativação única | Exibir opção quando já converteu; fluxo para novo CPF | 2 | todo | [ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md](./issues/ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md) |
+| ISSUE-F3-02-002.1 | Contrato do GET landing para "ja converteu nesta ativacao" | Expor no GET landing o sinal explicito que desbloqueia o fluxo de novo CPF | 2 | done | [ISSUE-F3-02-002.1-CONTRATO-GET-LANDING-JA-CONVERTEU.md](./issues/ISSUE-F3-02-002.1-CONTRATO-GET-LANDING-JA-CONVERTEU.md) |
+| ISSUE-F3-02-002 | Opção "Registrar outro CPF" em ativação única | Exibir opção quando já converteu; fluxo para novo CPF | 2 | done | [ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md](./issues/ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md) |
 
 ## Artifact Minimo do Epico
 

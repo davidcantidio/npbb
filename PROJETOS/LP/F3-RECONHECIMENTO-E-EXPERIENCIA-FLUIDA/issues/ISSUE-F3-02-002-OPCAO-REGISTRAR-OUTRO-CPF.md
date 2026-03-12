@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md"
 version: "1.1"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-12"
 task_instruction_mode: "required"
@@ -35,17 +35,17 @@ Esta issue passa a depender explicitamente de `ISSUE-F3-02-002.1`, que expõe no
 
 ## Definition of Done da Issue
 
-- [ ] Mensagem "Você já se cadastrou" quando aplicável
-- [ ] Link "Registrar outro CPF" ou "Cadastrar outra pessoa"
-- [ ] Ao clicar: exibir CPF e permitir novo cadastro
-- [ ] Testes E2E
+- [x] Mensagem "Você já se cadastrou" quando aplicável
+- [x] Link "Registrar outro CPF" ou "Cadastrar outra pessoa"
+- [x] Ao clicar: exibir CPF e permitir novo cadastro
+- [x] Testes E2E
 
 ## Tarefas Decupadas
 
-- [ ] T1: Detectar estado "já converteu nesta ativação"
-- [ ] T2: Exibir mensagem e link
-- [ ] T3: Implementar fluxo ao clicar (limpar estado, exibir CPF)
-- [ ] T4: Testes Playwright
+- [x] T1: Detectar estado "já converteu nesta ativação"
+- [x] T2: Exibir mensagem e link
+- [x] T3: Implementar fluxo ao clicar (limpar estado, exibir CPF)
+- [x] T4: Testes Playwright
 
 ## Instructions por Task
 

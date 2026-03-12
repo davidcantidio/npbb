@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F3-02-EXPERIENCIA-FLUIDA.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 ---
 
 # EPIC-F3-02 - Experiência Fluida e "Registrar outro CPF"
@@ -26,8 +26,8 @@ Experiência fluida para leads recorrentes; ativação única permite registrar 
 
 ## Definition of Done do Epico
 
-- [ ] Lead reconhecido: pular etapa CPF, ir direto ao formulário
-- [ ] Ativação múltipla: formulário direto, submit registra nova conversão
+- [x] Lead reconhecido: pular etapa CPF, ir direto ao formulário
+- [x] Ativação múltipla: formulário direto, submit registra nova conversão
 - [ ] Ativação única + já converteu: mensagem + opção "Registrar outro CPF"
 - [ ] Ao clicar "Registrar outro CPF": exibir CPF novamente para novo cadastro
 - [ ] Testes E2E cobrindo fluxos
@@ -36,7 +36,7 @@ Experiência fluida para leads recorrentes; ativação única permite registrar 
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-02-001 | Lead reconhecido pula CPF e ativação múltipla | Pular CPF quando reconhecido; formulário direto em múltipla | 3 | todo | [ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md](./issues/ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md) |
+| ISSUE-F3-02-001 | Lead reconhecido pula CPF e ativação múltipla | Pular CPF quando reconhecido; formulário direto em múltipla | 3 | done | [ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md](./issues/ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md) |
 | ISSUE-F3-02-002 | Opção "Registrar outro CPF" em ativação única | Exibir opção quando já converteu; fluxo para novo CPF | 2 | todo | [ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md](./issues/ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md) |
 
 ## Artifact Minimo do Epico

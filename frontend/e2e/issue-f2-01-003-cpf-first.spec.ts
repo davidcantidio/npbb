@@ -10,6 +10,7 @@ const landingPayload = {
   ativacao: {
     id: 1,
     nome: "Stand Principal",
+    conversao_unica: false,
     descricao: "Venha conhecer as novidades do BB.",
     mensagem_qrcode: "Escaneie o QR code no totem para se cadastrar.",
   },

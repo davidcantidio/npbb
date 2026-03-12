@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 5.1 - Mecanismo de Reconhecimento"
@@ -36,16 +36,16 @@ Cookie `lp_lead_token` com valor do token. O backend emite `Set-Cookie` ao respo
 
 ## Definition of Done da Issue
 
-- [ ] Fluxo de submit depende do cookie emitido pelo backend, sem persistência manual no frontend
-- [ ] GET landing recebe cookie ou token na URL
-- [ ] Backend valida e retorna lead_reconhecido no payload
-- [ ] Testes E2E cobrindo fluxo
+- [x] Fluxo de submit depende do cookie emitido pelo backend, sem persistência manual no frontend
+- [x] GET landing recebe cookie ou token na URL
+- [x] Backend valida e retorna lead_reconhecido no payload
+- [x] Testes E2E cobrindo fluxo
 
 ## Tarefas Decupadas
 
-- [ ] T1: Integrar o submit ao cookie emitido pelo backend
-- [ ] T2: Incluir cookie ou token na requisição do GET landing
-- [ ] T3: Testes E2E
+- [x] T1: Integrar o submit ao cookie emitido pelo backend
+- [x] T2: Incluir cookie ou token na requisição do GET landing
+- [x] T3: Testes E2E
 
 ## Instructions por Task
 

@@ -53,6 +53,7 @@ const landingFixture: LandingPageData = {
   ativacao: {
     id: 1,
     nome: "Stand Principal",
+    conversao_unica: false,
     descricao: "Venha conhecer as novidades do BB.",
     mensagem_qrcode: "Escaneie o QR code no totem para se cadastrar.",
   },
@@ -171,6 +172,7 @@ const landingFixtureAtivacao2: LandingPageData = {
   ativacao: {
     id: 2,
     nome: "Stand Secundario",
+    conversao_unica: false,
     descricao: "Ponto alternativo de atendimento.",
     mensagem_qrcode: "Escaneie o QR code no balcão secundario.",
   },
@@ -210,6 +212,14 @@ const showLandingFixture: LandingPageData = {
       { id: "show_a", label: "Show A", text: "Cadastre-se na experiencia" },
       { id: "show_b", label: "Show B", text: "Quero receber novidades" },
     ],
+  },
+};
+
+const landingFixtureConversaoUnica: LandingPageData = {
+  ...landingFixture,
+  ativacao: {
+    ...landingFixture.ativacao!,
+    conversao_unica: true,
   },
 };
 
@@ -258,9 +268,33 @@ describe("EventLandingPage", () => {
     expect(mockedGetLandingByEvento).not.toHaveBeenCalled();
   });
 
-  it("mantem CPF-first mesmo quando a landing vem reconhecida", async () => {
+  it("pula CPF e abre formulario completo quando a landing vem reconhecida em ativacao multipla", async () => {
     mockedGetLandingByEventoAtivacao.mockResolvedValueOnce({
       ...landingFixture,
+      lead_reconhecido: true,
+      token: "abc123",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.queryByTestId("cpf-first-input")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /continuar/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/nome \*/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email \*/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^cpf/i)).not.toBeInTheDocument();
+    expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: "abc123" });
+  });
+
+  it("mantem CPF-first quando a landing vem reconhecida em ativacao unica", async () => {
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce({
+      ...landingFixtureConversaoUnica,
       lead_reconhecido: true,
       token: "abc123",
     });
@@ -278,7 +312,6 @@ describe("EventLandingPage", () => {
     expect(screen.getByRole("button", { name: /continuar/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/email \*/i)).not.toBeInTheDocument();
-    expect(mockedGetLandingByEventoAtivacao).toHaveBeenCalledWith(10, 1, { token: "abc123" });
   });
 
   it("mostra apenas CPF no primeiro acesso da ativacao", async () => {
@@ -375,6 +408,52 @@ describe("EventLandingPage", () => {
       }),
     );
     expect(mockedTrackLandingAnalytics).toHaveBeenCalled();
+    expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
+  });
+
+  it("submete direto em ativacao multipla reconhecida sem exigir CPF", async () => {
+    const user = userEvent.setup();
+
+    mockedGetLandingByEventoAtivacao.mockResolvedValueOnce({
+      ...landingFixture,
+      lead_reconhecido: true,
+      token: "abc123",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/10/ativacoes/1?token=abc123"]}>
+        <Routes>
+          <Route path="/eventos/:evento_id/ativacoes/:ativacao_id" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    expect(screen.queryByTestId("cpf-first-input")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/nome \*/i), "Maria");
+    await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+
+    await waitFor(() =>
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+        nome: "Maria",
+        sobrenome: undefined,
+        email: "maria@example.com",
+        cpf: undefined,
+        telefone: undefined,
+        data_nascimento: undefined,
+        estado: undefined,
+        endereco: undefined,
+        interesses: undefined,
+        genero: undefined,
+        area_de_atuacao: undefined,
+        cta_variant_id: undefined,
+        landing_session_id: expect.any(String),
+        consentimento_lgpd: true,
+      }),
+    );
     expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
   });
 

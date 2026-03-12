@@ -1,19 +1,16 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 const EVENTO_ID = 10;
-const ATIVACAO_INICIAL_ID = 1;
-const ATIVACAO_RETORNO_ID = 2;
-const COOKIE_TOKEN = "cookie-token-123";
-const URL_TOKEN = "url-token-456";
+const ATIVACAO_MULTIPLA_ID = 1;
+const ATIVACAO_UNICA_ID = 2;
 
 function buildLandingPayload(params: {
   ativacaoId: number;
   nome: string;
-  conversaoUnica?: boolean;
+  conversaoUnica: boolean;
   leadReconhecido?: boolean;
-  token?: string | null;
 }) {
-  const { ativacaoId, nome, conversaoUnica = true, leadReconhecido = false, token = null } = params;
+  const { ativacaoId, nome, conversaoUnica, leadReconhecido = false } = params;
   return {
     ativacao_id: ativacaoId,
     ativacao: {
@@ -94,21 +91,15 @@ function buildLandingPayload(params: {
       url_promotor: `https://npbb.example/landing/ativacoes/${ativacaoId}`,
     },
     lead_reconhecido: leadReconhecido,
-    token,
+    token: null,
     gamificacoes: [],
   } as const;
 }
 
-async function fulfillJson(
-  route: Route,
-  body: unknown,
-  status = 200,
-  headers: Record<string, string> = {},
-) {
+async function fulfillJson(route: Route, body: unknown, status = 200) {
   await route.fulfill({
     status,
     contentType: "application/json",
-    headers,
     body: JSON.stringify(body),
   });
 }
@@ -119,104 +110,76 @@ async function installAnalyticsMock(page: Page) {
   });
 }
 
-async function unlockCpfFirst(page: Page, cpf = "529.982.247-25") {
-  await page.getByTestId("cpf-first-input").fill(cpf);
-  await page.getByRole("button", { name: /continuar/i }).click();
-}
-
-test("reconhece a segunda landing via cookie emitido no submit", async ({ page }) => {
-  let secondLandingCookieHeader = "";
-  let secondLandingWasRecognized = false;
-
-  await installAnalyticsMock(page);
-
+async function installLandingRoute(page: Page) {
   await page.route(/\/eventos\/10\/ativacoes\/\d+\/landing(?:\?.*)?$/, async (route, request) => {
     const match = request.url().match(/ativacoes\/(\d+)\/landing/);
     const ativacaoId = Number(match?.[1] || 0);
-    const isReturnLanding = ativacaoId === ATIVACAO_RETORNO_ID;
-    const cookieHeader = request.headers()["cookie"] || "";
-
-    if (isReturnLanding) {
-      secondLandingCookieHeader = cookieHeader;
-    }
 
     await fulfillJson(
       route,
       buildLandingPayload({
         ativacaoId,
-        nome: ativacaoId === ATIVACAO_RETORNO_ID ? "Stand Secundario" : "Stand Principal",
-        leadReconhecido: isReturnLanding && cookieHeader.includes(`lp_lead_token=${COOKIE_TOKEN}`),
+        nome: ativacaoId === ATIVACAO_UNICA_ID ? "Stand Unico" : "Stand Multiplo",
+        conversaoUnica: ativacaoId === ATIVACAO_UNICA_ID,
+        leadReconhecido: true,
       }),
     );
-    if (isReturnLanding) {
-      secondLandingWasRecognized = cookieHeader.includes(`lp_lead_token=${COOKIE_TOKEN}`);
-    }
+  });
+}
+
+test("lead reconhecido em ativacao multipla abre formulario direto", async ({ page }) => {
+  await installAnalyticsMock(page);
+  await installLandingRoute(page);
+
+  await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_MULTIPLA_ID}`);
+
+  await expect(page.getByText("Stand Multiplo")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /nome/i })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /email/i })).toBeVisible();
+  await expect(page.getByTestId("cpf-first-input")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /^cpf/i })).toHaveCount(0);
+});
+
+test("ativacao multipla reconhecida registra conversao sem reenviar CPF", async ({ page }) => {
+  await installAnalyticsMock(page);
+  await installLandingRoute(page);
+
+  await page.route(`**/landing/ativacoes/${ATIVACAO_MULTIPLA_ID}/submit`, async (route, request) => {
+    expect(request.postDataJSON()).toMatchObject({
+      nome: "Maria",
+      email: "maria@example.com",
+      consentimento_lgpd: true,
+    });
+    expect(request.postDataJSON()).not.toHaveProperty("cpf", "52998224725");
+
+    await fulfillJson(route, {
+      lead_id: 99,
+      event_id: EVENTO_ID,
+      ativacao_id: ATIVACAO_MULTIPLA_ID,
+      ativacao_lead_id: 444,
+      mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
+    }, 201);
   });
 
-  await page.route(`**/landing/ativacoes/${ATIVACAO_INICIAL_ID}/submit`, async (route) => {
-    await fulfillJson(
-      route,
-      {
-        lead_id: 99,
-        event_id: EVENTO_ID,
-        ativacao_id: ATIVACAO_INICIAL_ID,
-        ativacao_lead_id: 444,
-        mensagem_sucesso: "Cadastro realizado com sucesso.",
-        conversao_registrada: true,
-        bloqueado_cpf_duplicado: false,
-        token_reconhecimento: COOKIE_TOKEN,
-      },
-      201,
-      {
-        "Set-Cookie": `lp_lead_token=${COOKIE_TOKEN}; Path=/; Max-Age=604800; SameSite=Lax`,
-      },
-    );
-  });
-
-  await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_INICIAL_ID}`);
-  await expect(page.getByText("Stand Principal")).toBeVisible();
-  await expect(page.getByTestId("cpf-first-input")).toBeVisible();
-
-  await unlockCpfFirst(page);
+  await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_MULTIPLA_ID}`);
   await page.getByRole("textbox", { name: /nome/i }).fill("Maria");
   await page.getByRole("textbox", { name: /email/i }).fill("maria@example.com");
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: /confirmar presenca/i }).click();
 
   await expect(page.getByText("Cadastro realizado com sucesso.")).toBeVisible();
-
-  await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_RETORNO_ID}`);
-  await expect(page.getByText("Stand Secundario")).toBeVisible();
-  expect(secondLandingCookieHeader).toContain(`lp_lead_token=${COOKIE_TOKEN}`);
-  expect(secondLandingWasRecognized).toBe(true);
-  await expect(page.getByTestId("cpf-first-input")).toBeVisible();
-  await expect(page.getByRole("button", { name: /continuar/i })).toBeVisible();
 });
 
-test("repassa token na URL para o GET canonico e entra reconhecido", async ({ page }) => {
-  let requestedToken = "";
-  let landingWasRecognized = false;
-
+test("lead reconhecido em ativacao unica nao usa o fluxo direto desta issue", async ({ page }) => {
   await installAnalyticsMock(page);
+  await installLandingRoute(page);
 
-  await page.route(/\/eventos\/10\/ativacoes\/1\/landing(?:\?.*)?$/, async (route, request) => {
-    requestedToken = new URL(request.url()).searchParams.get("token") || "";
-    await fulfillJson(
-      route,
-      buildLandingPayload({
-        ativacaoId: ATIVACAO_INICIAL_ID,
-        nome: "Stand Principal",
-        leadReconhecido: requestedToken === URL_TOKEN,
-        token: requestedToken,
-      }),
-    );
-    landingWasRecognized = requestedToken === URL_TOKEN;
-  });
+  await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_UNICA_ID}`);
 
-  await page.goto(`/eventos/${EVENTO_ID}/ativacoes/${ATIVACAO_INICIAL_ID}?token=${URL_TOKEN}`);
-  await expect(page.getByText("Stand Principal")).toBeVisible();
-  expect(requestedToken).toBe(URL_TOKEN);
-  expect(landingWasRecognized).toBe(true);
+  await expect(page.getByText("Stand Unico")).toBeVisible();
   await expect(page.getByTestId("cpf-first-input")).toBeVisible();
   await expect(page.getByRole("button", { name: /continuar/i })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /nome/i })).toHaveCount(0);
 });

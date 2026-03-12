@@ -205,6 +205,30 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido_form_only(client,
     assert payload["template"]["cta_experiment_enabled"] is False
     assert payload["template"]["cta_variants"] == []
     assert payload["ativacao"]["nome"] == "Captacao Principal"
+    assert payload["ativacao"]["conversao_unica"] is False
+
+
+def test_public_landing_por_evento_e_ativacao_expoe_regra_de_conversao(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session)
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="BB Summit Multipla",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id, checkin_unico=True)
+        evento_id = evento.id
+        ativacao_id = ativacao.id
+
+    resp = client.get(f"/eventos/{evento_id}/ativacoes/{ativacao_id}/landing")
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["ativacao_id"] == ativacao_id
+    assert payload["ativacao"]["id"] == ativacao_id
+    assert payload["ativacao"]["conversao_unica"] is True
 
 
 def test_public_landing_por_evento_retorna_marca_minima_e_ativacao_nula_quando_nao_customizado(

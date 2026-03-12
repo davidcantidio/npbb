@@ -22,6 +22,7 @@ const landingBasePayload = {
   ativacao: {
     id: 1,
     nome: "Stand Principal",
+    conversao_unica: false,
     descricao: "Descricao",
     mensagem_qrcode: "Mensagem",
   },

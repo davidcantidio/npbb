@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-12"
 task_instruction_mode: "required"
 decision_refs:
   - "PRD 5.4 - Ativação Múltipla — Lead Reconhecido"
@@ -19,7 +19,7 @@ Como lead que já converteu em uma ativação, quero acessar outra ativação do
 
 ## Contexto Tecnico
 
-Quando GET landing retorna lead_reconhecido = true, frontend pula etapa CPF e exibe formulário completo. Em ativação múltipla, submit registra nova conversão. Conforme PRD seções 5.4 e 5.5.
+Quando GET landing retorna `lead_reconhecido = true` e `ativacao.conversao_unica = false`, frontend pula etapa CPF e exibe formulário completo. Em ativação múltipla, submit registra nova conversão. Em ativação única, o fluxo diferenciado permanece para a issue F3-02-002. Conforme PRD seções 5.4 e 5.5.
 
 ## Plano TDD
 
@@ -35,15 +35,15 @@ Quando GET landing retorna lead_reconhecido = true, frontend pula etapa CPF e ex
 
 ## Definition of Done da Issue
 
-- [ ] lead_reconhecido = true → pular etapa CPF
-- [ ] Ativação múltipla: formulário direto, submit registra conversão
-- [ ] Testes E2E
+- [x] lead_reconhecido = true → pular etapa CPF
+- [x] Ativação múltipla: formulário direto, submit registra conversão
+- [x] Testes E2E
 
 ## Tarefas Decupadas
 
-- [ ] T1: Verificar lead_reconhecido no payload e ajustar estado inicial
-- [ ] T2: Em ativação múltipla, permitir submit e registrar conversão
-- [ ] T3: Testes Playwright
+- [x] T1: Verificar lead_reconhecido no payload e ajustar estado inicial
+- [x] T2: Em ativação múltipla, permitir submit e registrar conversão
+- [x] T3: Testes Playwright
 
 ## Instructions por Task
 
@@ -104,6 +104,7 @@ Quando GET landing retorna lead_reconhecido = true, frontend pula etapa CPF e ex
 
 - `frontend/src/`
 - `frontend/e2e/`
+- `backend/app/`
 
 ## Artifact Minimo
 

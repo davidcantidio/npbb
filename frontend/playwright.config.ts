@@ -12,7 +12,12 @@ import {
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: ["*.smoke.spec.ts", "issue-f2-01-003*.spec.ts", "issue-f3-01-002*.spec.ts"],
+  testMatch: [
+    "*.smoke.spec.ts",
+    "issue-f2-01-003*.spec.ts",
+    "issue-f3-01-002*.spec.ts",
+    "issue-f3-02-001*.spec.ts",
+  ],
   timeout: 30_000,
   expect: {
     timeout: 10_000,

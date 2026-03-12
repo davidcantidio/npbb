@@ -23,8 +23,8 @@ Implementar mecanismo de reconhecimento (token, cookie) e experiência fluida (p
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
 | ISSUE-F3-01-001 | Geração e validação de token de reconhecimento | 3 | done | [ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md](../issues/ISSUE-F3-01-001-GERACAO-E-VALIDACAO-TOKEN.md) |
-| ISSUE-F3-01-002 | Cookie e integração com GET landing | 3 | todo | [ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md](../issues/ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md) |
-| ISSUE-F3-02-001 | Lead reconhecido pula CPF e ativação múltipla | 3 | todo | [ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md](../issues/ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md) |
+| ISSUE-F3-01-002 | Cookie e integração com GET landing | 3 | done | [ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md](../issues/ISSUE-F3-01-002-COOKIE-E-INTEGRACAO-LANDING.md) |
+| ISSUE-F3-02-001 | Lead reconhecido pula CPF e ativação múltipla | 3 | done | [ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md](../issues/ISSUE-F3-02-001-LEAD-RECONHECIDO-PULA-CPF.md) |
 | ISSUE-F3-02-002 | Opção "Registrar outro CPF" em ativação única | 2 | todo | [ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md](../issues/ISSUE-F3-02-002-OPCAO-REGISTRAR-OUTRO-CPF.md) |
 
 ## Riscos e Bloqueios
@@ -35,4 +35,4 @@ Implementar mecanismo de reconhecimento (token, cookie) e experiência fluida (p
 ## Encerramento
 
 - decisao: em_andamento
-- observacoes: ISSUE-F3-01-001 concluida; sprint permanece ativa com 3 issues pendentes
+- observacoes: ISSUE-F3-01-001, ISSUE-F3-01-002 e ISSUE-F3-02-001 concluidas; sprint permanece ativa com ISSUE-F3-02-002 pendente

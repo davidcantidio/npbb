@@ -47,8 +47,8 @@ O lead que já converteu em uma ativação do evento, ao acessar outra ativaçã
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F3-01 | Mecanismo de Reconhecimento | Cookie `lp_lead_token` emitido pelo backend + token na URL; validação e lead_reconhecido | F1, F2 | active | [EPIC-F3-01-MECANISMO-RECONHECIMENTO.md](./EPIC-F3-01-MECANISMO-RECONHECIMENTO.md) |
-| EPIC-F3-02 | Experiência Fluida e "Registrar outro CPF" | Lead reconhecido pula CPF; ativação múltipla formulário direto; opção registrar outro | F2, EPIC-F3-01 | todo | [EPIC-F3-02-EXPERIENCIA-FLUIDA.md](./EPIC-F3-02-EXPERIENCIA-FLUIDA.md) |
+| EPIC-F3-01 | Mecanismo de Reconhecimento | Cookie `lp_lead_token` emitido pelo backend + token na URL; validação e lead_reconhecido | F1, F2 | done | [EPIC-F3-01-MECANISMO-RECONHECIMENTO.md](./EPIC-F3-01-MECANISMO-RECONHECIMENTO.md) |
+| EPIC-F3-02 | Experiência Fluida e "Registrar outro CPF" | Lead reconhecido pula CPF; ativação múltipla formulário direto; opção registrar outro | F2, EPIC-F3-01 | active | [EPIC-F3-02-EXPERIENCIA-FLUIDA.md](./EPIC-F3-02-EXPERIENCIA-FLUIDA.md) |
 
 ## Dependencias entre Epicos
 

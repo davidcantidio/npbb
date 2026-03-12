@@ -121,11 +121,18 @@ def seed_evento(
     return evento
 
 
-def seed_ativacao(session: Session, *, evento_id: int, nome: str = "Captacao Principal") -> Ativacao:
+def seed_ativacao(
+    session: Session,
+    *,
+    evento_id: int,
+    nome: str = "Captacao Principal",
+    checkin_unico: bool = False,
+) -> Ativacao:
     ativacao = Ativacao(
         evento_id=evento_id,
         nome=nome,
         descricao="Ponto de captacao no evento.",
+        checkin_unico=checkin_unico,
         valor=0,
     )
     session.add(ativacao)
@@ -309,6 +316,47 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
         ).first()
         assert conversao is not None
         assert conversao.cpf == "52998224725"
+
+
+def test_public_landing_submit_bloqueia_cpf_duplicado_em_ativacao_unica(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Unique Landing",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id, checkin_unico=True)
+        ativacao_id = ativacao.id
+
+    body = {
+        "nome": "Maria",
+        "email": "maria@example.com",
+        "cpf": "529.982.247-25",
+        "consentimento_lgpd": True,
+    }
+
+    resp1 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
+    resp2 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
+
+    assert resp1.status_code == 201
+    assert resp1.json()["conversao_registrada"] is True
+    assert resp1.json()["bloqueado_cpf_duplicado"] is False
+
+    assert resp2.status_code == 201
+    payload = resp2.json()
+    assert payload["conversao_registrada"] is False
+    assert payload["bloqueado_cpf_duplicado"] is True
+    assert payload["lead_id"] == resp1.json()["lead_id"]
+    assert payload["ativacao_lead_id"] == resp1.json()["ativacao_lead_id"]
+
+    with Session(engine) as session:
+        conversoes = session.exec(
+            select(ConversaoAtivacao).where(ConversaoAtivacao.ativacao_id == ativacao_id)
+        ).all()
+        assert len(conversoes) == 1
 
 
 def test_public_landing_submit_sem_cpf_permanece_compativel_sem_registrar_conversao(client, engine):

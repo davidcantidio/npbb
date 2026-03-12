@@ -235,6 +235,8 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 444,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
     });
   });
 
@@ -351,6 +353,44 @@ describe("EventLandingPage", () => {
     expect(await screen.findByText("Cadastro realizado com sucesso.")).toBeInTheDocument();
   });
 
+  it("exibe mensagem clara e volta ao passo do CPF quando o backend bloqueia duplicidade", async () => {
+    const user = userEvent.setup();
+
+    mockedSubmitLandingForm.mockResolvedValueOnce({
+      lead_id: 99,
+      event_id: 10,
+      ativacao_id: 1,
+      ativacao_lead_id: 444,
+      mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: false,
+      bloqueado_cpf_duplicado: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/landing/ativacoes/1"]}>
+        <Routes>
+          <Route path="/landing/ativacoes/:ativacaoId" element={<EventLandingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Stand Principal")).toBeInTheDocument();
+    await unlockCpfFirstStep(user);
+    await user.type(screen.getByLabelText(/nome \*/i), "Maria");
+    await user.type(screen.getByLabelText(/email \*/i), "maria@example.com");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
+
+    expect(
+      await screen.findByText(
+        "Este CPF ja foi cadastrado nesta ativacao. Se estiver cadastrando outra pessoa, informe outro CPF.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/^cpf/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/nome \*/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Cadastro realizado com sucesso.")).not.toBeInTheDocument();
+  });
+
   it("bloqueia submit sem aceite LGPD na rota por evento", async () => {
     const user = userEvent.setup();
     render(
@@ -418,6 +458,8 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 777,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
     });
 
     render(
@@ -459,6 +501,8 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: null,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
     });
 
     render(
@@ -502,6 +546,8 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 1001,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
     });
 
     render(
@@ -546,6 +592,8 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 666,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
     });
 
     render(
@@ -582,6 +630,8 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 987,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      conversao_registrada: true,
+      bloqueado_cpf_duplicado: false,
     });
 
     render(

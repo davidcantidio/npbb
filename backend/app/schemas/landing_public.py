@@ -76,6 +76,7 @@ class LandingAccessRead(BaseModel):
 class LandingAtivacaoRead(BaseModel):
     id: int
     nome: str
+    conversao_unica: bool
     descricao: str | None = None
     mensagem_qrcode: str | None = None
 

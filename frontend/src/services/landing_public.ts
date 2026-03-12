@@ -69,6 +69,7 @@ export type LandingAccess = {
 export type LandingAtivacaoInfo = {
   id: number;
   nome: string;
+  conversao_unica: boolean;
   descricao?: string | null;
   mensagem_qrcode?: string | null;
 };
@@ -158,6 +159,11 @@ export type LandingAnalyticsTrackPayload = {
 };
 
 export type LandingPageDataRaw = Omit<LandingPageData, "gamificacoes"> & {
+  ativacao?:
+    | (Omit<LandingAtivacaoInfo, "conversao_unica"> & {
+        conversao_unica?: boolean | null;
+      })
+    | null;
   gamificacoes?: GamificacaoPublic[] | null;
   lead_reconhecido?: boolean | null;
   token?: string | null;
@@ -192,6 +198,16 @@ export type PreviewEventoLandingOptions = {
 export function normalizeLandingPageData(payload: LandingPageDataRaw): LandingPageData {
   return {
     ...payload,
+    ativacao: payload.ativacao
+      ? {
+          ...payload.ativacao,
+          // Preserve CPF-first as the safe fallback if older payloads omit the conversion rule.
+          conversao_unica:
+            typeof payload.ativacao.conversao_unica === "boolean"
+              ? payload.ativacao.conversao_unica
+              : true,
+        }
+      : null,
     gamificacoes: Array.isArray(payload.gamificacoes) ? payload.gamificacoes : [],
     lead_reconhecido: Boolean(payload.lead_reconhecido),
     token: typeof payload.token === "string" && payload.token.trim() ? payload.token.trim() : null,

@@ -22,6 +22,19 @@ type FormState = Record<string, string>;
 const DUPLICATE_CPF_BLOCKED_MESSAGE =
   "Este CPF ja foi cadastrado nesta ativacao. Se estiver cadastrando outra pessoa, informe outro CPF.";
 
+function omitCpfFieldFromLanding(data: LandingPageData): LandingPageData {
+  const filteredFields = data.formulario.campos.filter((field) => field.key !== "cpf");
+  return {
+    ...data,
+    formulario: {
+      ...data.formulario,
+      campos: filteredFields,
+      campos_obrigatorios: data.formulario.campos_obrigatorios.filter((field) => field !== "cpf"),
+      campos_opcionais: data.formulario.campos_opcionais.filter((field) => field !== "cpf"),
+    },
+  };
+}
+
 export default function EventLandingPage() {
   const { eventId, ativacaoId, evento_id, ativacao_id } = useParams();
   const location = useLocation();
@@ -57,17 +70,23 @@ export default function EventLandingPage() {
     return selectLandingCtaVariant(data, sessionId);
   }, [data, sessionId]);
 
+  const shouldSkipCpfStep = useMemo(() => {
+    if (!data?.ativacao || !resolvedAtivacaoId || !data.ativacao_id) return false;
+    return data.lead_reconhecido === true && data.ativacao.conversao_unica === false;
+  }, [data, resolvedAtivacaoId]);
+
   const effectiveData = useMemo<LandingPageData | null>(() => {
     if (!data) return null;
-    if (!selectedVariant) return data;
+    const baseData = shouldSkipCpfStep ? omitCpfFieldFromLanding(data) : data;
+    if (!selectedVariant) return baseData;
     return {
-      ...data,
+      ...baseData,
       template: {
-        ...data.template,
+        ...baseData.template,
         cta_text: selectedVariant.text,
       },
     };
-  }, [data, selectedVariant]);
+  }, [data, selectedVariant, shouldSkipCpfStep]);
 
   useEffect(() => {
     let active = true;

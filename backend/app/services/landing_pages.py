@@ -185,6 +185,7 @@ def _build_ativacao_info(ativacao: Ativacao | None) -> LandingAtivacaoRead | Non
     return LandingAtivacaoRead(
         id=ativacao.id or 0,
         nome=ativacao.nome,
+        conversao_unica=bool(ativacao.checkin_unico),
         descricao=(ativacao.descricao or "").strip() or None,
         mensagem_qrcode=(ativacao.mensagem_qrcode or "").strip() or None,
     )

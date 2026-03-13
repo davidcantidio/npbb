@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "[guard] FAIL: ripgrep (rg) is required but was not found in PATH."
+  exit 1
+fi
+
 echo "[guard] checking forbidden sys.path.insert usage in backend/app..."
 if rg -n "sys\.path\.insert\(" backend/app >/dev/null; then
   echo "[guard] FAIL: sys.path.insert found in backend/app"

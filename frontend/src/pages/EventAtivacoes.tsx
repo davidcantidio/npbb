@@ -29,9 +29,11 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
+import AtivacaoQrPreview from "../components/eventos/AtivacaoQrPreview";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import {
   createEventoAtivacao,
@@ -39,6 +41,7 @@ import {
   getEvento,
   listEventoAtivacoes,
   listEventoGamificacoes,
+  updateAtivacao,
   type CreateEventoAtivacaoPayload,
   type Ativacao,
   type EventoRead,
@@ -116,7 +119,9 @@ export default function EventAtivacoes() {
   const [createAttempted, setCreateAttempted] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Ativacao | null>(null);
 
   const [viewing, setViewing] = useState<Ativacao | null>(null);
 
@@ -146,11 +151,46 @@ export default function EventAtivacoes() {
   }, [evento?.nome, eventoId, isValidEventoId]);
 
   const canAct = Boolean(token) && isValidEventoId && !outOfScope;
-  const isBusy = creating || deleting;
+  const isBusy = creating || saving || deleting;
   const formDisabled = !canAct || isBusy;
+  const isEditing = Boolean(editing);
 
   const nomeNormalized = normalizeText(createForm.nome);
   const nomeRequiredError = createAttempted && !nomeNormalized;
+
+  const resetForm = () => {
+    setCreateAttempted(false);
+    setCreateError(null);
+    setCreateForm(EMPTY_CREATE_FORM);
+    setEditing(null);
+  };
+
+  const startEdit = (item: Ativacao) => {
+    setEditing(item);
+    setCreateAttempted(false);
+    setCreateError(null);
+    setCreateForm({
+      nome: item.nome,
+      mensagem_qrcode: item.mensagem_qrcode ?? "",
+      descricao: item.descricao ?? "",
+      gamificacao_id: item.gamificacao_id ?? null,
+      redireciona_pesquisa: item.redireciona_pesquisa,
+      checkin_unico: item.checkin_unico,
+      termo_uso: item.termo_uso,
+      gera_cupom: item.gera_cupom,
+    });
+  };
+
+  const buildPayload = (): CreateEventoAtivacaoPayload => ({
+    nome: normalizeText(createForm.nome),
+    descricao: normalizeOptionalText(createForm.descricao),
+    mensagem_qrcode: normalizeOptionalText(createForm.mensagem_qrcode),
+    gamificacao_id: createForm.gamificacao_id,
+    redireciona_pesquisa: createForm.redireciona_pesquisa,
+    checkin_unico: createForm.checkin_unico,
+    termo_uso: createForm.termo_uso,
+    gera_cupom: createForm.gera_cupom,
+  });
 
   const copyToClipboard = async (text: string | null | undefined, label: string) => {
     const value = String(text || "").trim();
@@ -195,48 +235,55 @@ export default function EventAtivacoes() {
     }
   };
 
-  const handleCreate = async () => {
+  const handleSubmit = async () => {
     if (!token || !isValidEventoId) return;
 
     setCreateAttempted(true);
     setCreateError(null);
     if (!canAct) return;
 
-    const nome = normalizeText(createForm.nome);
-    if (!nome) {
+    const payload = buildPayload();
+    if (!payload.nome) {
       setCreateError("Informe o nome da ativacao.");
       return;
     }
 
+    if (editing) {
+      setSaving(true);
+      try {
+        const updated = await updateAtivacao(token, editing.id, payload);
+        setAtivacoes((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+        if (viewing?.id === updated.id) {
+          setViewing(updated);
+        }
+        resetForm();
+        setSnackbar({ open: true, message: "Ativacao atualizada com sucesso.", severity: "success" });
+      } catch (err: any) {
+        const message = getApiErrorMessage(err, "Erro ao atualizar ativacao.");
+        setCreateError(message);
+        setSnackbar({ open: true, message, severity: "error" });
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     setCreating(true);
-
     try {
-      const payload: CreateEventoAtivacaoPayload = {
-        nome,
-        descricao: normalizeOptionalText(createForm.descricao),
-        mensagem_qrcode: normalizeOptionalText(createForm.mensagem_qrcode),
-        gamificacao_id: createForm.gamificacao_id,
-        redireciona_pesquisa: createForm.redireciona_pesquisa,
-        checkin_unico: createForm.checkin_unico,
-        termo_uso: createForm.termo_uso,
-        gera_cupom: createForm.gera_cupom,
-      };
-
       const created = await createEventoAtivacao(token, eventoId, payload);
       setAtivacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
-      setCreateForm(EMPTY_CREATE_FORM);
-      setCreateAttempted(false);
+      resetForm();
       setSnackbar({ open: true, message: "Ativacao adicionada com sucesso.", severity: "success" });
     } catch (err: any) {
       const code = getApiErrorCode(err);
       if (code === "EVENTO_NOT_FOUND") setOutOfScope(true);
       const message = getApiErrorMessage(err, "Erro ao adicionar ativacao.");
-        setCreateError(message);
-        setSnackbar({ open: true, message, severity: "error" });
-      } finally {
-        setCreating(false);
-      }
-    };
+      setCreateError(message);
+      setSnackbar({ open: true, message, severity: "error" });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   useEffect(() => {
     if (!token || !isValidEventoId) return;
@@ -251,6 +298,7 @@ export default function EventAtivacoes() {
     setCreateAttempted(false);
     setCreateError(null);
     setCreateForm(EMPTY_CREATE_FORM);
+    setEditing(null);
 
     Promise.all([
       getEvento(token, eventoId),
@@ -342,10 +390,14 @@ export default function EventAtivacoes() {
           <Stack spacing={3}>
             <Box>
               <Typography variant="subtitle1" fontWeight={900} gutterBottom>
-                Nova ativacao
+                {isEditing ? "Editar ativacao" : "Nova ativacao"}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {evento?.nome ? `Evento: ${evento.nome}` : `Evento #${eventoId}`}
+                {isEditing
+                  ? `Atualize a ativacao "${editing?.nome || ""}" sem sair do evento.`
+                  : evento?.nome
+                    ? `Evento: ${evento.nome}`
+                    : `Evento #${eventoId}`}
               </Typography>
             </Box>
 
@@ -385,7 +437,7 @@ export default function EventAtivacoes() {
               />
 
               <TextField
-                label="Mensagem"
+                label="Descricao"
                 value={createForm.descricao}
                 onChange={(e) => {
                   setCreateForm((prev) => ({ ...prev, descricao: e.target.value }));
@@ -448,7 +500,7 @@ export default function EventAtivacoes() {
                       }}
                     />
                   }
-                  label="Check-in único por ativação"
+                  label="Conversao unica por CPF"
                 />
                 <FormControlLabel
                   control={
@@ -478,14 +530,30 @@ export default function EventAtivacoes() {
                 />
               </Stack>
 
-              <Stack direction="row" justifyContent="flex-end">
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" spacing={1}>
+                {isEditing ? (
+                  <Button
+                    variant="outlined"
+                    onClick={resetForm}
+                    disabled={formDisabled}
+                    sx={{ textTransform: "none" }}
+                  >
+                    Cancelar edicao
+                  </Button>
+                ) : null}
                 <Button
                   variant="contained"
-                  onClick={handleCreate}
+                  onClick={handleSubmit}
                   disabled={!canAct || isBusy}
                   sx={{ textTransform: "none", fontWeight: 800 }}
                 >
-                  {creating ? <CircularProgress size={22} color="inherit" /> : "Adicionar ativação"}
+                  {creating || saving ? (
+                    <CircularProgress size={22} color="inherit" />
+                  ) : isEditing ? (
+                    "Salvar ativacao"
+                  ) : (
+                    "Adicionar ativacao"
+                  )}
                 </Button>
               </Stack>
             </Stack>
@@ -500,9 +568,10 @@ export default function EventAtivacoes() {
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
-                  <TableCell width={120}>Único</TableCell>
+                  <TableCell>Descricao</TableCell>
+                  <TableCell width={160}>Tipo de conversao</TableCell>
                   <TableCell width={220}>Gamificação</TableCell>
-                  <TableCell width={140} align="right">
+                  <TableCell width={160} align="right">
                     Ações
                   </TableCell>
                 </TableRow>
@@ -515,10 +584,20 @@ export default function EventAtivacoes() {
                   return (
                     <TableRow key={item.id}>
                       <TableCell>{item.nome}</TableCell>
-                      <TableCell>{item.checkin_unico ? "Sim" : "Nao"}</TableCell>
+                      <TableCell>{item.descricao || "-"}</TableCell>
+                      <TableCell>{item.checkin_unico ? "Unica" : "Multipla"}</TableCell>
                       <TableCell>{gamificacaoLabel}</TableCell>
                       <TableCell align="right">
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                          <IconButton
+                            aria-label="Editar"
+                            size="small"
+                            color="primary"
+                            disabled={!canAct || isBusy}
+                            onClick={() => startEdit(item)}
+                          >
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconButton>
                           <IconButton
                             aria-label="Visualizar"
                             size="small"
@@ -549,7 +628,7 @@ export default function EventAtivacoes() {
 
                 {!ativacoes.length && (
                   <TableRow>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={5}>
                       <Typography variant="body2" color="text.secondary">
                         Nenhuma ativação adicionada.
                       </Typography>
@@ -571,7 +650,7 @@ export default function EventAtivacoes() {
                 <strong>Nome:</strong> {viewing.nome}
               </Typography>
               <Typography variant="body2">
-                <strong>Mensagem (descricao):</strong> {viewing.descricao || "-"}
+                <strong>Descricao:</strong> {viewing.descricao || "-"}
               </Typography>
               <Typography variant="body2">
                 <strong>Mensagem QR Code:</strong> {viewing.mensagem_qrcode || "-"}
@@ -583,7 +662,7 @@ export default function EventAtivacoes() {
                   : "Nenhuma"}
               </Typography>
               <Typography variant="body2">
-                <strong>Check-in unico:</strong> {viewing.checkin_unico ? "Sim" : "Nao"}
+                <strong>Tipo de conversao:</strong> {viewing.checkin_unico ? "Unica" : "Multipla"}
               </Typography>
               <Typography variant="body2">
                 <strong>Redireciona pesquisa:</strong> {viewing.redireciona_pesquisa ? "Sim" : "Nao"}
@@ -635,27 +714,7 @@ export default function EventAtivacoes() {
                   ),
                 }}
               />
-              {viewing.qr_code_url ? (
-                <Box>
-                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 700 }}>
-                    QR Code da ativacao
-                  </Typography>
-                  <Box
-                    component="img"
-                    src={viewing.qr_code_url}
-                    alt={`QR Code da ativacao ${viewing.nome}`}
-                    sx={{
-                      width: 180,
-                      height: 180,
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      bgcolor: "common.white",
-                      p: 1,
-                    }}
-                  />
-                </Box>
-              ) : null}
+              <AtivacaoQrPreview ativacaoId={viewing.id} nome={viewing.nome} qrCodeUrl={viewing.qr_code_url} />
             </Stack>
           ) : null}
         </DialogContent>

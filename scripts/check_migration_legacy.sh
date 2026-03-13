@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "[legacy] FAIL: ripgrep (rg) is required but was not found in PATH."
+  exit 1
+fi
+
 echo "[legacy] checking tracked Wrangler artifacts..."
 wrangler_files="$(
   git ls-files | while read -r path; do

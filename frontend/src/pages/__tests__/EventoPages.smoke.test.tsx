@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import EventsList from "../EventsList";
@@ -24,6 +24,7 @@ import {
   listEventos,
   listFormularioTemplates,
   listStatusEvento,
+  updateAtivacao,
   updateEvento,
   updateEventoFormConfig,
   updateEventoQuestionario,
@@ -53,6 +54,7 @@ vi.mock("../../services/eventos", () => ({
   listEventos: vi.fn(),
   listFormularioTemplates: vi.fn(),
   listStatusEvento: vi.fn(),
+  updateAtivacao: vi.fn(),
   updateEvento: vi.fn(),
   updateEventoFormConfig: vi.fn(),
   updateEventoQuestionario: vi.fn(),
@@ -83,6 +85,7 @@ const mockedListEventoGamificacoes = vi.mocked(listEventoGamificacoes);
 const mockedCreateEventoGamificacao = vi.mocked(createEventoGamificacao);
 const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
 const mockedCreateEventoAtivacao = vi.mocked(createEventoAtivacao);
+const mockedUpdateAtivacao = vi.mocked(updateAtivacao);
 const mockedGetEventoQuestionario = vi.mocked(getEventoQuestionario);
 const mockedUpdateEventoQuestionario = vi.mocked(updateEventoQuestionario);
 const mockedPreviewEventoLanding = vi.mocked(previewEventoLanding);
@@ -191,6 +194,11 @@ function createLandingPreviewPayload(overrides: LandingPreviewOverrides = {}): L
 }
 
 describe("Evento pages smoke", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseAuth.mockReturnValue({
@@ -284,6 +292,20 @@ describe("Evento pages smoke", () => {
       gera_cupom: false,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
+    } as never);
+    mockedUpdateAtivacao.mockResolvedValue({
+      id: 1,
+      evento_id: 1,
+      nome: "Ativ 1 atualizada",
+      descricao: "Descricao atualizada",
+      mensagem_qrcode: null,
+      gamificacao_id: null,
+      redireciona_pesquisa: false,
+      checkin_unico: true,
+      termo_uso: false,
+      gera_cupom: false,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
     } as never);
 
     mockedGetEventoFormConfig.mockResolvedValue({
@@ -679,6 +701,188 @@ describe("Evento pages smoke", () => {
     await userEvent.click(screen.getByRole("button", { name: /Adicionar ativa/i }));
 
     await waitFor(() => expect(mockedCreateEventoAtivacao).toHaveBeenCalledTimes(1));
+  });
+
+  it("edits an ativacao from EventAtivacoes page", async () => {
+    mockedListEventoAtivacoes.mockResolvedValueOnce([
+      {
+        id: 7,
+        evento_id: 1,
+        nome: "Ativacao existente",
+        descricao: "Descricao original",
+        mensagem_qrcode: null,
+        gamificacao_id: null,
+        redireciona_pesquisa: false,
+        checkin_unico: false,
+        termo_uso: false,
+        gera_cupom: false,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ] as never);
+    mockedUpdateAtivacao.mockResolvedValueOnce({
+      id: 7,
+      evento_id: 1,
+      nome: "Ativacao existente",
+      descricao: "Descricao revisada",
+      mensagem_qrcode: null,
+      gamificacao_id: null,
+      redireciona_pesquisa: false,
+      checkin_unico: true,
+      termo_uso: false,
+      gera_cupom: false,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+    } as never);
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/ativacoes"]}>
+        <Routes>
+          <Route path="/eventos/:id/ativacoes" element={<EventAtivacoes />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const row = (await screen.findByText("Ativacao existente")).closest("tr");
+    expect(row).not.toBeNull();
+    await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: /editar/i }));
+
+    const descricaoInput = await screen.findByLabelText(/descricao/i);
+    await user.clear(descricaoInput);
+    await user.type(descricaoInput, "Descricao revisada");
+    await user.click(screen.getByRole("checkbox", { name: /conversao unica por cpf/i }));
+    await user.click(screen.getByRole("button", { name: /salvar ativacao/i }));
+
+    await waitFor(() =>
+      expect(mockedUpdateAtivacao).toHaveBeenCalledWith("token", 7, expect.objectContaining({
+        nome: "Ativacao existente",
+        descricao: "Descricao revisada",
+        checkin_unico: true,
+      })),
+    );
+    expect(await screen.findByText("Unica")).toBeInTheDocument();
+  });
+
+  it("shows qr preview and triggers download from the ativacao modal", async () => {
+    mockedListEventoAtivacoes.mockResolvedValueOnce([
+      {
+        id: 11,
+        evento_id: 1,
+        nome: "Ativacao com QR",
+        descricao: "Descricao com QR",
+        mensagem_qrcode: "Escaneie para entrar.",
+        gamificacao_id: null,
+        landing_url: "https://npbb.example/landing/ativacoes/11",
+        qr_code_url: "https://cdn.example/qr-11.svg",
+        url_promotor: "https://npbb.example/promotor/11",
+        redireciona_pesquisa: false,
+        checkin_unico: false,
+        termo_uso: false,
+        gera_cupom: false,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ] as never);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: vi.fn().mockResolvedValue(new Blob(["<svg/>"], { type: "image/svg+xml" })),
+    } as unknown as Response);
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => "blob:ativacao-11"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+
+    const clickSpy = vi.fn();
+    let createdAnchor: unknown = null;
+    const realCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
+      const element = realCreateElement(tagName);
+      if (tagName.toLowerCase() === "a") {
+        createdAnchor = element;
+        Object.defineProperty(element, "click", {
+          configurable: true,
+          value: clickSpy,
+        });
+      }
+      return element;
+    });
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/ativacoes"]}>
+        <Routes>
+          <Route path="/eventos/:id/ativacoes" element={<EventAtivacoes />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const row = (await screen.findByText("Ativacao com QR")).closest("tr");
+    expect(row).not.toBeNull();
+    await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: /visualizar/i }));
+
+    expect(await screen.findByText("Visualizar ativacao")).toBeInTheDocument();
+    expect(screen.getByTestId("ativacao-qr-image")).toHaveAttribute("src", "https://cdn.example/qr-11.svg");
+
+    await user.click(screen.getByRole("button", { name: /baixar qr/i }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("https://cdn.example/qr-11.svg"));
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect(createdAnchor).not.toBeNull();
+    if (!createdAnchor) {
+      throw new Error("Anchor de download nao foi criado.");
+    }
+    const anchor = createdAnchor as HTMLAnchorElement;
+    expect(anchor.download).toBe("ativacao-11-qr.svg");
+  });
+
+  it("shows a qr placeholder when the ativacao does not have qr_code_url yet", async () => {
+    mockedListEventoAtivacoes.mockResolvedValueOnce([
+      {
+        id: 12,
+        evento_id: 1,
+        nome: "Ativacao sem QR",
+        descricao: "Descricao sem QR",
+        mensagem_qrcode: null,
+        gamificacao_id: null,
+        landing_url: "https://npbb.example/landing/ativacoes/12",
+        qr_code_url: null,
+        url_promotor: "https://npbb.example/promotor/12",
+        redireciona_pesquisa: false,
+        checkin_unico: true,
+        termo_uso: false,
+        gera_cupom: false,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+    ] as never);
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/ativacoes"]}>
+        <Routes>
+          <Route path="/eventos/:id/ativacoes" element={<EventAtivacoes />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const row = (await screen.findByText("Ativacao sem QR")).closest("tr");
+    expect(row).not.toBeNull();
+    await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: /visualizar/i }));
+
+    expect(await screen.findByTestId("ativacao-qr-placeholder")).toHaveTextContent(
+      "QR ainda nao disponivel para esta ativacao.",
+    );
+    expect(screen.getByRole("button", { name: /baixar qr/i })).toBeDisabled();
   });
 
   it("saves questionnaire from EventQuestionario page", async () => {

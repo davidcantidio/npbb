@@ -37,6 +37,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt ruff pip-audit
 
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
       - name: Eval integrations gate
         run: make eval-integrations
 

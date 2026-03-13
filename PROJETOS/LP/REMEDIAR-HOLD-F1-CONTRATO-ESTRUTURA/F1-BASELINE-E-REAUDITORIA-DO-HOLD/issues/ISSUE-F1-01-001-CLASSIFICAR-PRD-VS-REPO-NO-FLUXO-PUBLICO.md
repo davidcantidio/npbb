@@ -44,16 +44,16 @@ preparar as issues de evidencia do sibling.
 
 ## Definition of Done da Issue
 
-- [ ] intake, PRD, `AUDIT-LOG.md`, auditoria e F1 original foram lidos
-- [ ] achados originais do fluxo publico estao classificados contra o estado atual
-- [ ] existe matriz rastreavel `achado -> estado atual -> evidencia -> proximo destino`
-- [ ] qualquer drift material fora do PRD derivado foi tratado como `BLOQUEADO`
+- [x] intake, PRD, `AUDIT-LOG.md`, auditoria e F1 original foram lidos
+- [x] achados originais do fluxo publico estao classificados contra o estado atual
+- [x] existe matriz rastreavel `achado -> estado atual -> evidencia -> proximo destino`
+- [x] qualquer drift material fora do PRD derivado foi tratado como `BLOQUEADO`
 
 ## Tasks Decupadas
 
-- [ ] T1: ler as fontes normativas e as superficies reais do fluxo publico
-- [ ] T2: classificar os achados originais do hold contra o estado atual do repositorio
-- [ ] T3: registrar a matriz PRD vs repo para as issues seguintes
+- [x] T1: ler as fontes normativas e as superficies reais do fluxo publico
+- [x] T2: classificar os achados originais do hold contra o estado atual do repositorio
+- [x] T3: registrar a matriz PRD vs repo para as issues seguintes
 
 ## Instructions por Task
 
@@ -142,6 +142,29 @@ preparar as issues de evidencia do sibling.
   - parar se a matriz exigir criar artefato fora do backlog aprovado
   - parar se a evidencia final depender de alterar codigo funcional do fluxo publico
 
+## Baseline Executada
+
+- `T1`: intake derivado, PRD derivado, `AUDIT-LOG.md`, auditoria de origem, F1 original e as superficies reais do fluxo publico foram lidos em conjunto para fechar a baseline documental e tecnica do sibling.
+- `T1`: nenhum `BLOQUEADO` foi encontrado; o estado atual do repo nao exigiu ampliar escopo nem abrir novo intake.
+- `T2`: os testes focais obrigatorios passaram no estado atual do repositorio: backend `45 passed` e frontend `32 passed`.
+
+## Matriz PRD vs Repo
+
+| Achado | Fonte | Estado atual | Evidencia | Destino |
+|---|---|---|---|---|
+| F1-NAO01 | auditoria_fluxo_ativacao.md | implementado | `LandingSubmitResponse` expoe `lead_reconhecido`; o servico de submit popula o campo; cobertura backend/frontend focal passando | evidencia para `ISSUE-F1-02-001` |
+| F1-NAO02 | auditoria_fluxo_ativacao.md | implementado | landing retorna `submit_url="/leads"`; frontend submete para `/leads`; wrapper legado mantem paridade | evidencia para `ISSUE-F1-02-001` |
+| F1-NAO03 | auditoria_fluxo_ativacao.md | nao_aplicavel | eixo estrutural fora desta issue; baseline atual mostra `models.py` com `549` linhas | encaminhar para `ISSUE-F1-01-002` |
+| F1-NAO04 | auditoria_fluxo_ativacao.md | nao_aplicavel | eixo estrutural fora desta issue; baseline atual mostra `ativacao.py` com `394` linhas | encaminhar para `ISSUE-F1-01-002` |
+| F1-NAO05 | auditoria_fluxo_ativacao.md | implementado | existem testes para `CPF_REQUIRED` e `CPF_INVALID` no endpoint canonico e no wrapper | evidencia para `ISSUE-F1-02-001` |
+| F1-NAO06 | auditoria_fluxo_ativacao.md | implementado | existem testes de bloqueio por CPF duplicado em ativacao unica no endpoint canonico e no wrapper | evidencia para `ISSUE-F1-02-001` |
+| F1-NAO07 | auditoria_fluxo_ativacao.md | implementado | ha cobertura de submit backend e frontend no caminho principal e no wrapper | evidencia para `ISSUE-F1-02-001` |
+| F1-NAO08 | auditoria_fluxo_ativacao.md | implementado | `test_lp_ativacao_schema_contract.py` valida tabelas, campos, indice e revision da fundacao | evidencia para `ISSUE-F1-02-002` |
+
+- `F1-RISCO01` permanece como risco residual fora deste sibling, conforme `AUDIT-LOG`, e nao altera a classificacao do fluxo publico.
+- `ISSUE-F1-02-001` consome os itens de contrato/paridade (`F1-NAO01`, `F1-NAO02`, `F1-NAO05`, `F1-NAO06`, `F1-NAO07`).
+- `ISSUE-F1-02-002` consome a evidencia de metadata/threshold (`F1-NAO08` e o baseline estrutural ligado a `ISSUE-F1-01-002`).
+
 ## Arquivos Reais Envolvidos
 
 - `PROJETOS/LP/INTAKE-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md`
@@ -172,4 +195,3 @@ preparar as issues de evidencia do sibling.
 - [F1 Original](../../../F1-FUNDACAO-MODELO-BACKEND/F1_LP_EPICS.md)
 - [Epic](../EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md)
 - [Fase](../F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

@@ -1,10 +1,10 @@
 ---
 doc_id: "F1_LP-PREVIEW_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-13"
-audit_gate: "not_ready"
+audit_gate: "pending"
 ---
 
 # Epicos - LP-PREVIEW / F1 - Discovery Tecnico
@@ -21,7 +21,7 @@ Levantar informacoes tecnicas necessarias para implementacao segura do layout si
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -29,9 +29,9 @@ Levantar informacoes tecnicas necessarias para implementacao segura do layout si
 > A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`
@@ -49,7 +49,7 @@ Levantar informacoes tecnicas necessarias para implementacao segura do layout si
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Levantamento e Documentacao | Mapear componentes, layout, compartilhamento e validar 390px | nenhuma | todo | [EPIC-F1-01-Levantamento-Documentacao.md](./EPIC-F1-01-Levantamento-Documentacao.md) |
+| EPIC-F1-01 | Levantamento e Documentacao | Mapear componentes, layout, compartilhamento e validar 390px | nenhuma | done | [EPIC-F1-01-Levantamento-Documentacao.md](./EPIC-F1-01-Levantamento-Documentacao.md) |
 
 ## Dependencias entre Epicos
 
@@ -68,6 +68,6 @@ Levantar informacoes tecnicas necessarias para implementacao segura do layout si
 - Alteracoes em codigo
 
 ## Definition of Done da Fase
-- [ ] Lacunas do PRD resolvidas e documentadas
-- [ ] Decisao de arquitetura registrada
-- [ ] 390px validado com design
+- [x] Lacunas do PRD resolvidas e documentadas
+- [x] Decisao de arquitetura registrada
+- [x] 390px validado com design

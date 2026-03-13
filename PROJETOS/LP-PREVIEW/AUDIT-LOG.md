@@ -22,7 +22,7 @@ last_updated: "2026-03-13"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1 - Discovery Tecnico | not_ready | nao_aplicavel | - | - |
+| F1 - Discovery Tecnico | pending | nao_aplicavel | - | pronta para auditoria F1-R01 |
 | F2 - Implementacao | not_ready | nao_aplicavel | - | depende F1 |
 | F3 - Validacao | not_ready | nao_aplicavel | - | depende F2 |
 

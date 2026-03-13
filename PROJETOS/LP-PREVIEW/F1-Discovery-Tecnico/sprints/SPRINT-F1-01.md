@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F1-01.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -22,8 +22,8 @@ Concluir F1 — Discovery Tecnico: mapeamento de componentes, layout e validacao
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-01-001 | Mapear componentes de preview e estrutura de layout | 3 | todo | [ISSUE-F1-01-001-Mapear-Componentes-Layout.md](../issues/ISSUE-F1-01-001-Mapear-Componentes-Layout.md) |
-| ISSUE-F1-01-002 | Documentar decisao de arquitetura e validar 390px | 2 | todo | [ISSUE-F1-01-002-Documentar-Arquitetura-Validar-390px.md](../issues/ISSUE-F1-01-002-Documentar-Arquitetura-Validar-390px.md) |
+| ISSUE-F1-01-001 | Mapear componentes de preview e estrutura de layout | 3 | done | [ISSUE-F1-01-001-Mapear-Componentes-Layout.md](../issues/ISSUE-F1-01-001-Mapear-Componentes-Layout.md) |
+| ISSUE-F1-01-002 | Documentar decisao de arquitetura e validar 390px | 2 | done | [ISSUE-F1-01-002-Documentar-Arquitetura-Validar-390px.md](../issues/ISSUE-F1-01-002-Documentar-Arquitetura-Validar-390px.md) |
 
 ## Riscos e Bloqueios
 
@@ -31,5 +31,5 @@ Nenhum identificado.
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes:
+- decisao: concluida
+- observacoes: F1 encerrada documentalmente e pronta para auditoria; gate movido para `pending`.

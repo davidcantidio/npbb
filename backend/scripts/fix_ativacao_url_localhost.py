@@ -1,4 +1,20 @@
-"""Fix persisted ativacao URLs that still point to localhost."""
+"""Fix persisted ativacao URLs that still point to localhost.
+
+Pre-requisitos:
+- Executar a partir de `backend/`.
+- Configurar `PUBLIC_APP_BASE_URL` com a URL publica de producao.
+- Configurar `DIRECT_URL` ou `DATABASE_URL` para acesso ao banco.
+
+Uso:
+- Dry-run: `python -m scripts.fix_ativacao_url_localhost --dry-run`
+- Execucao real: `python -m scripts.fix_ativacao_url_localhost`
+
+Rollback operacional:
+- Antes da execucao real, exporte backup de `id`, `landing_url`, `url_promotor`
+  e `qr_code_url` dos registros afetados.
+- Se precisar reverter, restaure esses valores a partir do snapshot/backup do
+  banco e revalide com o dry-run.
+"""
 
 from __future__ import annotations
 

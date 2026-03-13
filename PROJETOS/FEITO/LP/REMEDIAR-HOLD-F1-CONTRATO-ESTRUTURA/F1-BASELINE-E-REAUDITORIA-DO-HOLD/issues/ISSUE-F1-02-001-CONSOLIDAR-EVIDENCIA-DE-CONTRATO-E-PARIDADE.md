@@ -51,7 +51,7 @@ para reauditoria.
 
 ## Tasks Decupadas
 
-- [ ] T1: consolidar a evidencia backend do contrato canônico e do wrapper legado
+- [x] T1: consolidar a evidencia backend do contrato canônico e do wrapper legado
 - [ ] T2: consolidar a evidencia frontend do submit via `/leads`
 - [ ] T3: fechar a matriz de paridade request/response para a reauditoria
 
@@ -145,10 +145,26 @@ para reauditoria.
 
 - evidencia consolidada na propria issue, com matriz `surface -> response -> prova backend -> prova frontend`
 
+## Evidencia Consolidada
+
+### Resultado dos Comandos Aprovados
+
+| Task | Comando | Resultado objetivo |
+|---|---|---|
+| T1 | `PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q backend/tests/test_leads_public_create_endpoint.py backend/tests/test_landing_public_endpoints.py` | `45 passed in 4.00s` |
+
+### Leitura Objetiva por Task
+
+#### T1 - Backend
+
+- `POST /leads` registra conversao com `lead_reconhecido=true`, `conversao_registrada=true`, `bloqueado_cpf_duplicado=false` e `token_reconhecimento` presente.
+- duplicidade em ativacao unica preserva reconhecimento e token, mas retorna `conversao_registrada=false` e `bloqueado_cpf_duplicado=true`.
+- `GET /ativacoes/{id}/landing` devolve `formulario.submit_url="/leads"`.
+- `POST /landing/ativacoes/{id}/submit` preserva a mesma superficie de resposta do endpoint canônico, incluindo `lead_reconhecido`, `conversao_registrada`, `bloqueado_cpf_duplicado` e `token_reconhecimento`.
+
 ## Dependencias
 
 - [Issue de Baseline](./ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md)
 - [Auditoria de Origem](../../../auditoria_fluxo_ativacao.md)
 - [Epic](../EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md)
 - [Fase](../F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

@@ -2,11 +2,11 @@ services:
   - type: web
     name: npbb-api
     runtime: python
-    plan: free
+    plan: starter
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: bash -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -16,17 +16,17 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHONPATH
-        value: /opt/render/project/src
+        value: /opt/render/project/src:/opt/render/project/src/backend
       - key: FRONTEND_ORIGIN
-        value: https://npbb.pages.dev
+        value: https://app.npbb.com.br
       - key: PUBLIC_APP_BASE_URL
-        value: https://npbb.pages.dev
+        value: https://app.npbb.com.br
       - key: EMAIL_BACKEND
         value: console
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: PASSWORD_RESET_URL
-        value: https://npbb.pages.dev/reset-password
+        value: https://app.npbb.com.br/reset-password
       - key: PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: PASSWORD_RESET_TOKEN_SECRET

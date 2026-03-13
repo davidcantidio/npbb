@@ -12,7 +12,7 @@ eval-integrations:
 	test "$$status" = PASS
 
 __eval-integrations:
-	./scripts/check_migration_legacy.sh
+	./scripts/check_deploy.sh
 	./scripts/check_architecture_guards.sh
 	./scripts/check_repo_hygiene.sh
 

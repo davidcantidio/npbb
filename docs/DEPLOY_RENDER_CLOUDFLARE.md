@@ -26,6 +26,7 @@ Crie um Web Service no Render com:
 - `DATABASE_URL` (Supabase)
 - `DIRECT_URL` (Supabase)
 - `SECRET_KEY`
+- `PYTHONPATH` (obrigatorio para imports de `core/`): `/opt/render/project/src:/opt/render/project/src/backend`
 - `FRONTEND_ORIGIN=https://app.npbb.com.br`
 - `PUBLIC_APP_BASE_URL=https://app.npbb.com.br`
 - `EMAIL_BACKEND=console`

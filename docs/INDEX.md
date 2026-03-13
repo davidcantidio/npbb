@@ -6,6 +6,7 @@ Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, sig
 - `../README.MD` - visao geral + comandos rapidos
 - `SETUP.md` - setup completo (backend + frontend)
 - `DEPLOY_RENDER_CLOUDFLARE.md` - deploy oficial (Render + Cloudflare Pages)
+- `render.yaml` - referencia de configuracao do Render (Blueprint)
 - `WORKFLOWS.md` - fluxos principais (importacao assistida por dominio, dashboard, relatorio)
 - `TROUBLESHOOTING.md` - problemas comuns e como resolver
 - `ARCHITECTURE.md` - visao rapida de modulos e fronteiras
@@ -56,4 +57,3 @@ TODO (nao encontrado no repo): adicionar PRD/ADR oficial ou apontar para o repos
 
 ## Arquivados
 - `docs/_archive/` - materiais legados (templates e notas antigas)
-- `docs/legacy/` - referencias legadas de deploy e infraestrutura descontinuada

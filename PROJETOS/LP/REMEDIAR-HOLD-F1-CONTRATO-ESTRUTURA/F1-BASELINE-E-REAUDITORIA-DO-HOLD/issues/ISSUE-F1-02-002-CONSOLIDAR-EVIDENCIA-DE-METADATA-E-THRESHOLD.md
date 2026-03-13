@@ -53,7 +53,7 @@ risco residual.
 ## Tasks Decupadas
 
 - [x] T1: consolidar a evidencia de metadata critica e da revision rastreavel
-- [ ] T2: registrar a evidencia de threshold dos alvos estruturais originais do hold
+- [x] T2: registrar a evidencia de threshold dos alvos estruturais originais do hold
 - [ ] T3: mapear cada prova aos achados estruturais da auditoria F1
 
 ## Instructions por Task
@@ -158,6 +158,29 @@ Leitura objetiva da prova:
 - o teste focal exige a presenca das tabelas e do indice criticos da fundacao no metadata carregado do backend
 - a revision `c5a8d2e1f4b6` preserva rastreabilidade explicita entre a prova automatizada e a migration que cria os objetos auditados
 - para esta issue, `F1-NAO08` fica coberto por duas camadas complementares de evidencia: teste executavel e leitura direta da migration
+
+### T2 - Threshold Estrutural dos Alvos Originais do Hold
+
+Leitura executada contra `SPEC-ANTI-MONOLITO.md`, usando o threshold de arquivo
+`warn > 400` e `block > 600`.
+
+| Arquivo | Linhas atuais | Threshold aplicavel | Leitura normativa | Escopo no sibling |
+|---|---:|---|---|---|
+| `backend/app/models/models.py` | `549` | `warn (> 400)` e abaixo de `block (> 600)` | `warn`; alvo estrutural remediado da F1 e fora do threshold bloqueante | dentro |
+| `backend/app/routers/ativacao.py` | `394` | abaixo de `warn (> 400)` | `ok`; alvo estrutural remediado da F1 e abaixo do threshold de atencao | dentro |
+| `backend/app/routers/leads.py` | `1649` | `block (> 600)` | `block`; risco estrutural residual explicito e fora do escopo deste sibling | fora |
+
+Resultado objetivo do comando aprovado em `2026-03-13`:
+
+- `backend/app/models/models.py`: `549`
+- `backend/app/routers/ativacao.py`: `394`
+- `backend/app/routers/leads.py`: `1649`
+
+Leitura objetiva da prova:
+
+- `models.py` e `ativacao.py` correspondem aos alvos estruturais originais do hold e ja nao reproduzem o retrato historico descrito na auditoria de origem.
+- `leads.py` continua muito acima do threshold `block`, mas este arquivo nao pertence aos alvos remediados desta trilha e deve permanecer como risco residual fora do sibling.
+- o sibling usa esse quadro apenas para prestar contas do estado estrutural atual, nao para absorver silenciosamente um novo refactor de `leads.py`.
 
 ## Dependencias
 

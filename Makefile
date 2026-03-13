@@ -31,11 +31,10 @@ __ci-quality:
 	./scripts/check_frontend_bundle_api_base.sh
 	cd backend && ruff check app tests
 	cd backend && SECRET_KEY=ci-secret-key python -m pytest -q
-	PYTHONPATH=. python -m pytest -q tests/test_vps_backup_policy.py tests/test_compare_restore_counts.py
+	PYTHONPATH=. python -m pytest -q tests/test_compare_restore_counts.py
 	python3 scripts/check_etl_cross_layer_coverage.py
 	./scripts/check_architecture_guards.sh
 	./scripts/check_repo_hygiene.sh
-	./scripts/check_production_stack_contracts.sh
 
 phase-f4-summary:
 	python3 scripts/render_phase_validation_summary.py --project LEAD-ETL-FUSION --output artifacts/phase-f4/validation-summary.md

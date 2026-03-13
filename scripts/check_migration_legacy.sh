@@ -21,34 +21,13 @@ if [[ -n "${wrangler_files}" ]]; then
   exit 1
 fi
 
-echo "[legacy] checking render.yaml is archived..."
-if [[ -e "${ROOT_DIR}/render.yaml" ]]; then
-  echo "[legacy] FAIL: render.yaml must not exist at repository root."
+echo "[legacy] checking deploy documentation..."
+if [[ ! -f "${ROOT_DIR}/docs/DEPLOY_RENDER_CLOUDFLARE.md" ]]; then
+  echo "[legacy] FAIL: docs/DEPLOY_RENDER_CLOUDFLARE.md is required."
   exit 1
 fi
 if [[ ! -f "${ROOT_DIR}/docs/legacy/render.yaml" ]]; then
-  echo "[legacy] FAIL: archived docs/legacy/render.yaml is required."
-  exit 1
-fi
-if [[ ! -f "${ROOT_DIR}/docs/legacy/DEPLOY_RENDER_CLOUDFLARE.md" ]]; then
-  echo "[legacy] FAIL: archived docs/legacy/DEPLOY_RENDER_CLOUDFLARE.md is required."
-  exit 1
-fi
-
-echo "[legacy] checking legacy deploy references outside docs/legacy..."
-reference_hits="$(
-  rg -n \
-    --glob '!docs/legacy/**' \
-    --glob '!docs/_archive/**' \
-    --glob '!PROJETOS/**' \
-    --glob '!deep-research-report.md' \
-    --glob '!scripts/check_migration_legacy.sh' \
-    'SUPABASE_|pages\.dev|onrender\.com' \
-    README.MD docs .github scripts Infra backend frontend || true
-)"
-if [[ -n "${reference_hits}" ]]; then
-  echo "[legacy] FAIL: forbidden legacy references found outside docs/legacy:"
-  echo "${reference_hits}"
+  echo "[legacy] FAIL: docs/legacy/render.yaml is required (referencia para Render)."
   exit 1
 fi
 

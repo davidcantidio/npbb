@@ -16,16 +16,6 @@ class ProjectProfile:
 
 
 PROJECT_PROFILES: dict[str, ProjectProfile] = {
-    "MIGRACAO-VPS-HOSTINGER": ProjectProfile(
-        project_dir="MIGRACAO-VPS-HOSTINGER",
-        phase_dirs=(
-            ("F1", "F1-PREPARACAO-INFRA"),
-            ("F2", "F2-MIGRACAO-BANCO"),
-            ("F3", "F3-DEPLOY-BACKEND-FRONTEND"),
-            ("F4", "F4-CICD-E-LIMPEZA"),
-        ),
-        include_ops_evidence=True,
-    ),
     "LEAD-ETL-FUSION": ProjectProfile(
         project_dir="LEAD-ETL-FUSION",
         phase_dirs=(
@@ -257,8 +247,8 @@ def build_summary(project_root: Path, env_file: Path, output: Path, *, project: 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render the phase F4 validation summary.")
-    parser.add_argument("--project", default="MIGRACAO-VPS-HOSTINGER", choices=sorted(PROJECT_PROFILES))
-    parser.add_argument("--env-file", default="Infra/production/.env.example")
+    parser.add_argument("--project", default="LEAD-ETL-FUSION", choices=sorted(PROJECT_PROFILES))
+    parser.add_argument("--env-file", default="backend/.env.example")
     parser.add_argument("--output", default="artifacts/phase-f4/validation-summary.md")
     args = parser.parse_args()
 

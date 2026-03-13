@@ -48,9 +48,6 @@ jobs:
       - name: CI quality gate
         run: make ci-quality
 
-      - name: Production stack contract guards
-        run: ./scripts/check_production_stack_contracts.sh
-
       - name: Python dependency audit
         working-directory: backend
         run: pip-audit -r requirements.txt

@@ -1,8 +1,6 @@
-# Legacy Deploy: Render (API) + Cloudflare Pages (Frontend)
+# Deploy: Render (API) + Cloudflare Pages (Frontend)
 
-> Status: legado. O caminho oficial do projeto agora e o deploy em VPS descrito em [DEPLOY_HOSTINGER_VPS.md](/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/docs/DEPLOY_HOSTINGER_VPS.md).
-
-Este guia publica o backend FastAPI primeiro (Render) e depois o frontend React/Vite (Cloudflare Pages), usando os dominios padrao (`onrender.com` e `pages.dev`).
+Guia oficial para publicar o NPBB: backend FastAPI no Render e frontend React/Vite no Cloudflare Pages. O banco de dados e o Postgres do Supabase (plano pago).
 
 ## 1) Backend no Render
 
@@ -19,8 +17,8 @@ Crie um Web Service no Render com:
 
 ### Variaveis obrigatorias (Render)
 
-- `DATABASE_URL`
-- `DIRECT_URL`
+- `DATABASE_URL` (Supabase)
+- `DIRECT_URL` (Supabase)
 - `SECRET_KEY`
 - `FRONTEND_ORIGIN=https://npbb.pages.dev`
 - `PUBLIC_APP_BASE_URL=https://npbb.pages.dev`

@@ -5,7 +5,7 @@ Plataforma para gestao de eventos, captura de leads, gamificacao e dashboards. O
 ## Arquitetura (6 bullets)
 - **Backend**: FastAPI + SQLModel + Alembic (API + regras de negocio).
 - **Frontend**: Vite + React + MUI (UI e fluxos).
-- **Banco**: Postgres via SQLAlchemy (fonte oficial da producao na VPS Hostinger).
+- **Banco**: Postgres via SQLAlchemy (Supabase).
 - **Auth**: JWT (login, /auth/me, recuperacao de senha).
 - **Leads**: importacao CSV/XLSX com mapeamento assistido + tabela paginada em `/leads`.
 - **Relatorios**: dashboard agregado + geracao de DOCX (Festival TMJ 2025).
@@ -24,7 +24,7 @@ source .venv/bin/activate  # Linux/macOS
 python -m pip install -r requirements.txt
 copy .env.example .env  # Windows
 # cp .env.example .env  # Linux/macOS
-# edite .env e configure DATABASE_URL/DIRECT_URL (Postgres local)
+# edite .env e configure DATABASE_URL/DIRECT_URL (Supabase)
 PYTHONPATH=.. python -m uvicorn app.main:app --reload
 # alternativa: ./scripts/dev_api.sh
 ```
@@ -100,9 +100,7 @@ npm run test:e2e
 - `docs/WORKFLOWS.md` - importacao, dashboards e relatorios
 - `docs/TROUBLESHOOTING.md` - problemas comuns
 - `docs/ARCHITECTURE.md` - visao tecnica
-- `docs/DEPLOY_HOSTINGER_VPS.md` - deploy oficial na VPS com Docker Compose
-- `docs/RUNBOOK_RESTORE_POSTGRES_VPS.md` - restore de dump e cutover de banco
-- `docs/legacy/DEPLOY_RENDER_CLOUDFLARE.md` - fluxo legado de deploy publico
+- `docs/DEPLOY_RENDER_CLOUDFLARE.md` - deploy oficial (Render + Cloudflare Pages)
 
 ## Primeira tarefa (vibe coding)
 1) Suba backend + frontend.

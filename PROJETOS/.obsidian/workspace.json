@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "COMUM/SESSION-REFATORAR-MONOLITO.md",
+                "file": "LP-PREVIEW/SESSION-CRIAR-PRD.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "SESSION-REFATORAR-MONOLITO"
+              "title": "SESSION-CRIAR-PRD"
             }
           }
         ]
@@ -185,6 +185,11 @@
   },
   "active": "58610ee488185605",
   "lastOpenFiles": [
+    "COMUM/SESSION-CRIAR-PRD.md",
+    "LP-PREVIEW/SESSION-CRIAR-PRD.md",
+    "COMUM/SESSION-CRIAR-INTAKE.md",
+    "COMUM/PROMPT-INTAKE-PARA-PRD.md",
+    "COMUM/SESSION-REFATORAR-MONOLITO.md",
     "FEITO/LP/QR-GEN/INTAKE.md",
     "FEITO/LP/QR-GEN",
     "LP-PREVIEW/INTAKE.md",
@@ -208,11 +213,6 @@
     "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/issues/ISSUE-F2-01-005-ALINHAR-SEMANTICA-DE-NAVEGACAO-E-TESTES-DO-DASHBOARDLAYOUT.md",
     "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/issues/ISSUE-F2-01-004-CONFIGURAR-ROTAS-DASHBOARD-E-PROTECAO-DE-AUTENTICACAO.md",
     "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/issues/ISSUE-F2-01-003-IMPLEMENTAR-DASHBOARDHOME-SELETOR-VISUAL-DE-ANALISES.md",
-    "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/issues/ISSUE-F2-01-002-IMPLEMENTAR-DASHBOARDLAYOUT-COM-SIDEBAR-DE-NAVEGACAO.md",
-    "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/issues/ISSUE-F2-01-001-CRIAR-MANIFESTO-DE-DASHBOARDS-NO-FRONTEND.md",
-    "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/auditorias/RELATORIO-AUDITORIA-F2-R02.md",
-    "FEITO/dashboard-leads-etaria/feito/F2-ARQUITETURA-DASHBOARD/auditorias/RELATORIO-AUDITORIA-F2-R01.md",
-    "FEITO/dashboard-leads-etaria/feito/F1-FUNDACAO-BACKEND/issues/ISSUE-F1-02-003-IMPLEMENTAR-ENDPOINT-GET-API-V1-DASHBOARD-LEADS-ANALISE-ETARIA.md",
     "FEITO/dashboard-leads-etaria/feito/F3-ANALISE-ETARIA-UI/sprints",
     "FEITO/dashboard-leads-etaria/feito/F3-ANALISE-ETARIA-UI/issues",
     "FEITO/dashboard-leads-etaria/feito/F3-ANALISE-ETARIA-UI/auditorias",

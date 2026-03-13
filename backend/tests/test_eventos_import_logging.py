@@ -10,7 +10,7 @@ from app.db.database import get_session
 from app.main import app
 from app.models.models import StatusEvento, Usuario, UsuarioTipo
 from app.utils.security import hash_password
-from app.routers import eventos as eventos_router
+from app.routers.eventos import csv as eventos_csv
 
 
 def make_engine():
@@ -65,7 +65,7 @@ def test_import_logs_sanitized_error(client, monkeypatch, caplog):
     def boom(*_args, **_kwargs):
         raise ValueError("email usuario@bb.com.br cpf 123.456.789-10 tel 11999998888")
 
-    monkeypatch.setattr(eventos_router, "_build_evento_payload_from_row", boom)
+    monkeypatch.setattr(eventos_csv, "build_evento_payload_from_row", boom)
 
     csv_content = "nome,cidade,estado,data_inicio_prevista\nEvento,Sao Paulo,SP,2025-01-01\n"
     caplog.set_level(logging.WARNING, logger="app.telemetry")

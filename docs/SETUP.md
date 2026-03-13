@@ -76,6 +76,26 @@ Observacoes:
 - Em testes, o backend permite SQLite se `TESTING=true` ou `PYTEST_CURRENT_TEST` estiver setado.
 - Para startup local, rode com `PYTHONPATH=..` (ou use `./scripts/dev_api.sh`) porque o backend importa o pacote compartilhado `core/`.
 
+### 2.1) URL publica do app no go-live
+O backend resolve a URL publica do app na mesma ordem implementada em
+`backend/app/utils/urls.py`:
+
+1. `PUBLIC_APP_BASE_URL`
+2. primeiro origin de `FRONTEND_ORIGIN`
+3. fallback de desenvolvimento: `http://localhost:5173`
+
+Regras de uso:
+- Em desenvolvimento local, o fallback `http://localhost:5173` e aceitavel.
+- Em producao, `PUBLIC_APP_BASE_URL` e obrigatoria.
+- Para o go-live deste projeto, o valor canonico esperado e `https://app.npbb.com.br`.
+- `FRONTEND_ORIGIN` pode continuar configurado, mas nao deve ser tratado como fonte
+  confiavel para o host publico final do go-live.
+
+Risco operacional:
+- Se `PUBLIC_APP_BASE_URL` nao estiver configurada em producao, o sistema pode
+  persistir links publicos e QR codes com host incorreto, incluindo `localhost`
+  ou um dominio provisorio, comprometendo o acesso da landing publica.
+
 ### 3) Rodar a API
 Opcao A (raiz do repo, oficial):
 ```bash

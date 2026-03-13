@@ -99,6 +99,66 @@ Documento na issue ou artefato anexo com: lista de componentes de preview, estru
 - Conteudo da coluna direita: `PreviewSection`, que por sua vez renderiza o frame mobile da landing
 - Classificacao do layout: CSS Grid no container macro + Stack/Flex interno nas secoes
 
+### T3 - Layout atual das outras etapas do wizard
+
+#### EventWizardPage
+
+- Shell: `EventWizardPageShell width="regular"` com header superior em `Box` usando `display="flex"`
+- Bloco principal: `Paper elevation={2}` com `maxWidth: 680` e `mx: "auto"`, centralizando o formulario
+- Estrutura interna: `Box component="form"` contendo `Stack spacing={3}`
+- Ordem das secoes principais:
+  1. `EventWizardStepper activeStep={0}`
+  2. `Stepper` interno dos substeps
+  3. bloco opcional de campos pendentes em `Paper variant="outlined"`
+  4. `EventWizardStepAgency`
+  5. `EventWizardStepEventInfo`
+  6. `EventWizardStepClassification`
+  7. `EventWizardActions`
+- Nao existe coluna lateral contextual nem layout side-by-side nesta etapa
+- Classificacao do layout: container centralizado com Stack/Flex vertical
+
+#### EventGamificacaoPage
+
+- Shell: `EventWizardPageShell width="wide"` com `EventWizardStepper activeStep={2}`
+- Header superior em `Stack direction={{ xs: "column", md: "row" }}`
+- Conteudo principal da etapa: `Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="flex-start"`
+- Coluna esquerda: `GamificacaoFormSection`, que internamente usa `Paper` proprio com `maxWidth: { xs: "100%", md: 420 }`
+- Coluna direita: `GamificacoesTable`, que internamente usa `Paper` proprio ocupando `flex: 1`
+- No mobile, formulario e tabela empilham; em `md+`, ficam lado a lado
+- Classificacao do layout: Flex/Stack responsivo em duas colunas
+
+#### EventAtivacoesPage
+
+- Shell: `EventWizardPageShell width="wide"` com `EventWizardStepper activeStep={3}`
+- Header superior em `Stack direction={{ xs: "column", md: "row" }}`
+- Bloco principal: `Paper elevation={2}` com `p: 3` e `borderRadius: 3`
+- Conteudo interno: `Stack spacing={3}` em fluxo vertical
+- Ordem das secoes principais:
+  1. `AtivacaoFormSection`
+  2. `Divider`
+  3. titulo `Ativações adicionadas`
+  4. `AtivacoesTable`
+- Visualizacao detalhada fica fora do fluxo principal em `AtivacaoViewDialog`
+- Nao existe coluna direita persistente nem preview side-by-side na pagina atual
+- Classificacao do layout: Paper unico com Stack/Flex vertical; preview apenas modal
+
+#### EventQuestionario
+
+- Shell: `EventWizardPageShell width="wide"` com `EventWizardStepper activeStep={4}`
+- Header superior em `Stack direction={{ xs: "column", md: "row" }}`
+- Bloco principal: `Paper elevation={2}` com `p: 3` e `borderRadius: 3`
+- Conteudo interno geral: `Stack spacing={2}`
+- Antes da area principal ha um header interno com titulo/subtitulo e botao salvar, seguido de `Divider`
+- Area principal do editor: `Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch"`
+- Coluna esquerda: `Paper variant="outlined"` com `flex: 1`, concentrando:
+  1. cabecalho da pagina selecionada
+  2. campos da pagina
+  3. lista de perguntas
+  4. editor da pergunta selecionada
+- Coluna direita: `Paper variant="outlined"` com largura fixa de `260` em `md+`, servindo como sidebar de estrutura/paginas
+- No mobile, editor e sidebar empilham; em `md+`, ficam lado a lado
+- Classificacao do layout: Stack/Flex responsivo em duas colunas com sidebar fixa
+
 ## Dependencias
 
 - [Intake](../../../INTAKE-UX.md)

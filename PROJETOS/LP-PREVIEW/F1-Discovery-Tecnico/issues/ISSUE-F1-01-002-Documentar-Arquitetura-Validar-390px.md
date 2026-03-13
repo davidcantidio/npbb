@@ -36,7 +36,7 @@ O PRD propoe viewport mobile ~390px (referencia iPhone 16). A validacao com desi
 ## Tasks Decupadas
 
 - [x] T1: Consolidar decisao de arquitetura com base no mapeamento da F1-01-001
-- [ ] T2: Validar largura 390px com design (PM ou design system)
+- [x] T2: Validar largura 390px com design (PM ou design system)
 - [ ] T3: Documentar resultado da validacao na issue ou no epic
 
 ## Resultado Consolidado
@@ -60,6 +60,19 @@ Justificativa:
   estado, acoes e posicionamento do preview
 - separar renderer compartilhado de shell especifico reduz risco de acoplamento
   indevido ao refatorar o layout side-by-side
+
+### T2 - Validacao da largura-alvo
+
+Em 2026-03-13, o PM aprovou explicitamente o uso de `390px` como largura-alvo
+do frame mobile para a F2.
+
+Registro da validacao:
+
+- a aprovacao do PM substitui, nesta fase de discovery, uma evidencia externa
+  de design
+- F2 fica autorizada a usar `390px` como alvo inicial do frame mobile
+- qualquer ajuste posterior de design deve ser tratado como refinamento da F2 ou
+  follow-up, sem reabrir a decisao base de F1
 
 ## Arquivos Reais Envolvidos
 

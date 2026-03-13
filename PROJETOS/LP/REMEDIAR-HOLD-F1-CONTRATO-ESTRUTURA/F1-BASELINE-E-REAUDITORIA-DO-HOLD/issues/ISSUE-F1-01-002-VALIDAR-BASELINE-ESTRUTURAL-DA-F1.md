@@ -52,7 +52,7 @@ explicito fora do sibling, sem abrir refactor novo neste backlog.
 ## Tasks Decupadas
 
 - [x] T1: medir os arquivos estruturais alvo da F1 contra o spec vigente
-- [ ] T2: confirmar a estabilidade da fachada `app.models.models`
+- [x] T2: confirmar a estabilidade da fachada `app.models.models`
 - [ ] T3: validar metadata critica da fundacao e registrar o risco residual fora do sibling
 
 ## Instructions por Task
@@ -153,6 +153,18 @@ Leitura executada contra `SPEC-ANTI-MONOLITO.md`, usando o threshold de arquivo
 | `backend/app/models/models.py` | `549` | `warn (> 400)` e abaixo de `block (> 600)` | `warn`; alvo estrutural remediado da F1, fora de `block` |
 | `backend/app/routers/ativacao.py` | `394` | abaixo de `warn (> 400)` | `ok`; alvo estrutural remediado da F1, abaixo de `warn` |
 | `backend/app/routers/leads.py` | `1649` | `block (> 600)` | `block`; risco residual explicito fora do sibling |
+
+## Estabilidade da Fachada `app.models.models`
+
+- o path estavel consumido pelo repositorio continua sendo `app.models.models`
+- `backend/app/models/__init__.py` hoje reexporta apenas simbolos de `lead_batch`
+  e nao substitui a superficie historica de `app.models.models`
+- a varredura em `backend/app` e `backend/tests` encontrou uso amplo da fachada
+  em routers, services, schemas, modules e testes, confirmando dependencia real
+  da superficie atual
+- qualquer refactor futuro dos modelos precisa preservar `app.models.models`
+  como superficie estavel de importacao para evitar regressao transversal fora
+  deste sibling
 
 ## Dependencias
 

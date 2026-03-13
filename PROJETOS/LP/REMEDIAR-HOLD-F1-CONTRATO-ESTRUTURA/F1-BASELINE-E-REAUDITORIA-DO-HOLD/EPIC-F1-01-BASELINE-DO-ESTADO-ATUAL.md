@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -31,16 +31,16 @@ Nao executa refactor estrutural; ele apenas mede, compara e classifica.
 
 ## Definition of Done do Epico
 
-- [ ] a matriz de achados originais vs estado atual existe e esta objetiva
-- [ ] os achados do hold foram classificados como `implementado`, `nao_aplicavel` ou `residual`
-- [ ] a baseline estrutural de `models.py` e `ativacao.py` esta documentada
-- [ ] `backend/app/routers/leads.py` aparece como risco residual explicito e fora deste sibling
+- [x] a matriz de achados originais vs estado atual existe e esta objetiva
+- [x] os achados do hold foram classificados como `implementado`, `nao_aplicavel` ou `residual`
+- [x] a baseline estrutural de `models.py` e `ativacao.py` esta documentada
+- [x] `backend/app/routers/leads.py` aparece como risco residual explicito e fora deste sibling
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Classificar PRD vs repo no fluxo publico | Produzir a matriz rastreavel entre PRD, auditoria e estado atual do fluxo publico. | 3 | todo | [ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md](./issues/ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md) |
+| ISSUE-F1-01-001 | Classificar PRD vs repo no fluxo publico | Produzir a matriz rastreavel entre PRD, auditoria e estado atual do fluxo publico. | 3 | done | [ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md](./issues/ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md) |
 | ISSUE-F1-01-002 | Validar baseline estrutural da F1 | Medir os alvos estruturais do hold e registrar o risco residual fora do sibling. | 2 | done | [ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md](./issues/ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md) |
 
 ## Artifact Minimo do Epico

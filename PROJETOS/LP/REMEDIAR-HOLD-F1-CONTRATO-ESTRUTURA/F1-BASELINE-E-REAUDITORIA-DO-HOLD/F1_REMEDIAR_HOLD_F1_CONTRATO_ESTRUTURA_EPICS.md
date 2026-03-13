@@ -1,10 +1,10 @@
 ---
 doc_id: "F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-13"
-audit_gate: "not_ready"
+audit_gate: "pending"
 ---
 
 # Epicos - REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA / F1 - BASELINE E REAUDITORIA DO HOLD
@@ -25,7 +25,7 @@ sem ampliar o escopo para refactors novos fora do sibling aprovado.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -33,9 +33,9 @@ sem ampliar o escopo para refactors novos fora do sibling aprovado.
 > A semantica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F1-R01.md`
@@ -53,9 +53,9 @@ sem ampliar o escopo para refactors novos fora do sibling aprovado.
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Baseline do Estado Atual | Classificar os achados originais do hold contra o estado real do repositorio. | intake, PRD, auditoria F1 | todo | [EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md](./EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md) |
-| EPIC-F1-02 | Evidencia Objetiva para Reauditoria | Transformar a aderencia atual em prova executavel e rastreavel. | EPIC-F1-01 | todo | [EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md](./EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md) |
-| EPIC-F1-03 | Handoff e Fechamento do Sibling | Preparar o pacote final de reauditoria sem tocar a F1 original. | EPIC-F1-02 | todo | [EPIC-F1-03-HANDOFF-E-FECHAMENTO-DO-SIBLING.md](./EPIC-F1-03-HANDOFF-E-FECHAMENTO-DO-SIBLING.md) |
+| EPIC-F1-01 | Baseline do Estado Atual | Classificar os achados originais do hold contra o estado real do repositorio. | intake, PRD, auditoria F1 | done | [EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md](./EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md) |
+| EPIC-F1-02 | Evidencia Objetiva para Reauditoria | Transformar a aderencia atual em prova executavel e rastreavel. | EPIC-F1-01 | done | [EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md](./EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md) |
+| EPIC-F1-03 | Handoff e Fechamento do Sibling | Preparar o pacote final de reauditoria sem tocar a F1 original. | EPIC-F1-02 | done | [EPIC-F1-03-HANDOFF-E-FECHAMENTO-DO-SIBLING.md](./EPIC-F1-03-HANDOFF-E-FECHAMENTO-DO-SIBLING.md) |
 
 ## Dependencias entre Epicos
 
@@ -80,9 +80,8 @@ sem ampliar o escopo para refactors novos fora do sibling aprovado.
 
 ## Definition of Done da Fase
 
-- [ ] existe baseline objetiva dos achados originais vs estado atual do repositorio
-- [ ] as evidencias backend, frontend e metadata estao consolidadas com comandos reproduziveis
-- [ ] `models.py` e `ativacao.py` estao classificados contra `SPEC-ANTI-MONOLITO.md`
-- [ ] `backend/app/routers/leads.py` foi explicitado como risco fora do sibling
-- [ ] existe handoff claro para reauditoria independente sem tocar o gate da F1 original
-
+- [x] existe baseline objetiva dos achados originais vs estado atual do repositorio
+- [x] as evidencias backend, frontend e metadata estao consolidadas com comandos reproduziveis
+- [x] `models.py` e `ativacao.py` estao classificados contra `SPEC-ANTI-MONOLITO.md`
+- [x] `backend/app/routers/leads.py` foi explicitado como risco fora do sibling
+- [x] existe handoff claro para reauditoria independente sem tocar o gate da F1 original

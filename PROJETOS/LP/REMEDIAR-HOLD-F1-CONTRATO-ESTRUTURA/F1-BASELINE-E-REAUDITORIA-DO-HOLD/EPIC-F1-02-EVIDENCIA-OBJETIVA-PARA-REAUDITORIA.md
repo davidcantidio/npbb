@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -35,17 +35,17 @@ gate da F1 original ou absorver o refactor de `backend/app/routers/leads.py`.
 
 ## Definition of Done do Epico
 
-- [ ] a evidencia backend do contrato canônico e do wrapper legado esta consolidada
-- [ ] a evidencia frontend do submit via `/leads` esta consolidada
-- [ ] a evidencia de metadata, migration e thresholds esta consolidada
-- [ ] cada prova foi vinculada aos achados relevantes da auditoria F1
+- [x] a evidencia backend do contrato canônico e do wrapper legado esta consolidada
+- [x] a evidencia frontend do submit via `/leads` esta consolidada
+- [x] a evidencia de metadata, migration e thresholds esta consolidada
+- [x] cada prova foi vinculada aos achados relevantes da auditoria F1
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-02-001 | Consolidar evidencia de contrato e paridade | Registrar prova executavel do contrato publico atual e da paridade do wrapper. | 3 | todo | [ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md](./issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md) |
-| ISSUE-F1-02-002 | Consolidar evidencia de metadata e threshold | Registrar prova executavel de metadata critica, migration e thresholds originais do hold. | 2 | todo | [ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md](./issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md) |
+| ISSUE-F1-02-001 | Consolidar evidencia de contrato e paridade | Registrar prova executavel do contrato publico atual e da paridade do wrapper. | 3 | done | [ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md](./issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md) |
+| ISSUE-F1-02-002 | Consolidar evidencia de metadata e threshold | Registrar prova executavel de metadata critica, migration e thresholds originais do hold. | 2 | done | [ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md](./issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md) |
 
 ## Artifact Minimo do Epico
 
@@ -59,4 +59,3 @@ e mapeamento para os achados do hold.
 - [PRD Derivado](../../PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md)
 - [Auditoria de Origem](../../auditoria_fluxo_ativacao.md)
 - [Fase](./F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-03-HANDOFF-E-FECHAMENTO-DO-SIBLING.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -30,16 +30,16 @@ original, nao cria `RELATORIO-AUDITORIA-*` e nao atualiza o log do projeto.
 
 ## Definition of Done do Epico
 
-- [ ] o resumo executivo da remediacao esta consolidado
-- [ ] os itens explicitamente fora do sibling estao declarados
-- [ ] o checklist de reauditoria independente esta claro
-- [ ] ficou explicito por que este sibling nao altera gate nem `AUDIT-LOG.md`
+- [x] o resumo executivo da remediacao esta consolidado
+- [x] os itens explicitamente fora do sibling estao declarados
+- [x] o checklist de reauditoria independente esta claro
+- [x] ficou explicito por que este sibling nao altera gate nem `AUDIT-LOG.md`
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-03-001 | Preparar handoff para reauditoria | Fechar o sibling com resumo executivo, riscos fora do escopo e checklist de reauditoria. | 2 | todo | [ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md](./issues/ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md) |
+| ISSUE-F1-03-001 | Preparar handoff para reauditoria | Fechar o sibling com resumo executivo, riscos fora do escopo e checklist de reauditoria. | 2 | done | [ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md](./issues/ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md) |
 
 ## Artifact Minimo do Epico
 
@@ -54,4 +54,3 @@ checklist objetivo para reauditoria.
 - [Audit Log Contextual](../../AUDIT-LOG.md)
 - [Auditoria de Origem](../../auditoria_fluxo_ativacao.md)
 - [Fase](./F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

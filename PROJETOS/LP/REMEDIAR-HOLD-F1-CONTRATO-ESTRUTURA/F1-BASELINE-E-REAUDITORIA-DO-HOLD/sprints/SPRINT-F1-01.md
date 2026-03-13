@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F1-01.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -25,11 +25,11 @@ funcional do fluxo publico e sem absorver o refactor de
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-01-001 | Classificar PRD vs repo no fluxo publico | 3 | todo | [ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md](../issues/ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md) |
-| ISSUE-F1-01-002 | Validar baseline estrutural da F1 | 2 | todo | [ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md](../issues/ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md) |
-| ISSUE-F1-02-001 | Consolidar evidencia de contrato e paridade | 3 | todo | [ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md](../issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md) |
-| ISSUE-F1-02-002 | Consolidar evidencia de metadata e threshold | 2 | todo | [ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md](../issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md) |
-| ISSUE-F1-03-001 | Preparar handoff para reauditoria | 2 | todo | [ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md](../issues/ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md) |
+| ISSUE-F1-01-001 | Classificar PRD vs repo no fluxo publico | 3 | done | [ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md](../issues/ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md) |
+| ISSUE-F1-01-002 | Validar baseline estrutural da F1 | 2 | done | [ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md](../issues/ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md) |
+| ISSUE-F1-02-001 | Consolidar evidencia de contrato e paridade | 3 | done | [ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md](../issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md) |
+| ISSUE-F1-02-002 | Consolidar evidencia de metadata e threshold | 2 | done | [ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md](../issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md) |
+| ISSUE-F1-03-001 | Preparar handoff para reauditoria | 2 | done | [ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md](../issues/ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md) |
 
 ## Riscos e Bloqueios
 
@@ -41,5 +41,5 @@ funcional do fluxo publico e sem absorver o refactor de
 
 ## Encerramento
 
-- decisao: pendente
-- observacoes: a sequencia operacional comeca por `ISSUE-F1-01-001`, fecha a baseline estrutural em `ISSUE-F1-01-002`, consolida a evidencia em `ISSUE-F1-02-001` e `ISSUE-F1-02-002`, e termina no handoff `ISSUE-F1-03-001`
+- decisao: encerrada
+- observacoes: todas as cinco issues planejadas foram encerradas; o sibling segue para `audit_gate: pending` na fase de remediacao, sem alterar o gate `hold` da F1 original

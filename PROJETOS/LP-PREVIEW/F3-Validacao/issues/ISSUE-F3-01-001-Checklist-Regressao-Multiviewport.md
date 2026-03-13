@@ -60,6 +60,104 @@ A F2 entregou layout side-by-side, frame mobile 390px e breakpoints. E necessari
 - Relatorio de validacao com viewports testados
 - Lista de bugs (se houver) e status
 
+## Checklist de Regressao
+
+### Matriz de Viewports
+
+| Viewport | Resolucao | Layout esperado | Preview esperado | Status | Evidencia |
+|---|---|---|---|---|---|
+| Desktop grande | 1920x1080 | Side-by-side | Coluna fixa a direita com frame mobile | Pendente | - |
+| Desktop menor | 1366x768 | Side-by-side ou colapso controlado conforme breakpoint real | Preview acessivel e reativo | Pendente | - |
+| Tablet | 768x1024 | Layout colapsado de forma controlada | Preview acessivel e reativo | Pendente | - |
+| Mobile | 390x844 | Layout colapsado para uma coluna | Preview acessivel e reativo | Pendente | - |
+
+### Criterios Operacionais
+
+- [ ] Layout side-by-side validado quando viewport estiver acima do breakpoint
+- [ ] Colapso controlado validado quando viewport estiver abaixo do breakpoint
+- [ ] Coluna de preview sticky validada em desktop aplicavel
+- [ ] Frame mobile validado como representativo
+- [ ] Reatividade em tempo real validada ao editar campos
+- [ ] Contexto de leads validado
+- [ ] Contexto de landing page validado
+- [ ] Zero bugs criticos reportados
+
+## Relatorio de Validacao
+
+### T2 - Desktop
+
+#### 1920x1080
+
+- Contexto testado:
+- Layout observado:
+- Preview sticky:
+- Frame mobile:
+- Reatividade:
+- Resultado:
+- Evidencias:
+
+#### 1366x768
+
+- Contexto testado:
+- Layout observado:
+- Preview sticky:
+- Frame mobile:
+- Reatividade:
+- Resultado:
+- Evidencias:
+
+### T3 - Tablet e Mobile
+
+#### 768x1024
+
+- Contexto testado:
+- Layout observado:
+- Preview acessivel:
+- Frame mobile:
+- Reatividade:
+- Resultado:
+- Evidencias:
+
+#### 390x844
+
+- Contexto testado:
+- Layout observado:
+- Preview acessivel:
+- Frame mobile:
+- Reatividade:
+- Resultado:
+- Evidencias:
+
+### T4 - Validacao por Contexto
+
+#### Leads
+
+- Rota ou fluxo usado:
+- Comportamento observado:
+- Consistencia entre viewports:
+- Resultado:
+
+#### Landing page
+
+- Rota ou fluxo usado:
+- Comportamento observado:
+- Consistencia entre viewports:
+- Resultado:
+
+### T5 - Achados
+
+- Bugs encontrados:
+- Severidade:
+- Status:
+- Observacoes:
+
+### T6 - Decisao Final
+
+- Metricas do PRD verificadas:
+- Zero regressao confirmada:
+- Zero bugs criticos reportados:
+- Recomendacao final:
+
 ## Dependencias
 
 - [Intake](../../INTAKE-LP-PREVIEW.md)

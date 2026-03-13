@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "88abb45dc30c996c",
+        "id": "a0b458bb4ee39acc",
         "type": "tabs",
         "children": [
           {
-            "id": "fb46b60276002a7b",
+            "id": "58610ee488185605",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "LP/SESSION-PLANEJAR-PROJETO-LP.md",
+                "file": "LP/TABELA-ARQUIVOS-FUNCOES-MONOLITICAS-LP.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "SESSION-PLANEJAR-PROJETO-LP"
+              "title": "TABELA-ARQUIVOS-FUNCOES-MONOLITICAS-LP"
             }
           }
         ]
@@ -183,8 +183,12 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "fb46b60276002a7b",
+  "active": "58610ee488185605",
   "lastOpenFiles": [
+    "COMUM/SESSION-REFATORAR-MONOLITO.md",
+    "LP/TABELA-ARQUIVOS-FUNCOES-MONOLITICAS-LP.md",
+    "COMUM/PROMPT-MONOLITO-PARA-INTAKE.md",
+    "LP/SESSION-PLANEJAR-PROJETO-LP.md",
     "LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/auditorias/README.md",
     "LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/auditorias",
     "LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/sprints/SPRINT-F1-01.md",
@@ -215,11 +219,7 @@
     "LP/F1-FUNDACAO-MODELO-BACKEND/issues",
     "LP/F1-FUNDACAO-MODELO-BACKEND/auditorias",
     "LP/F1-FUNDACAO-MODELO-BACKEND/F1_LP_EPICS.md",
-    "LP/F1-FUNDACAO-MODELO-BACKEND/EPIC-F1-03-QR-E-ENDPOINT-LANDING.md",
-    "LP/F1-FUNDACAO-MODELO-BACKEND/EPIC-F1-02-CRUD-ATIVACOES.md",
-    "LP/F1-FUNDACAO-MODELO-BACKEND/EPIC-F1-01-MODELO-E-MIGRACOES.md",
     "LP/F1-FUNDACAO-MODELO-BACKEND",
-    "LP/F2-FLUXO-CPF-FIRST-E-CONVERSAO/F1-FUNDACAO-MODELO-BACKEND/sprints/SPRINT-F1-01.md",
     "LP/F2-FLUXO-CPF-FIRST-E-CONVERSAO/F1-FUNDACAO-MODELO-BACKEND/sprints",
     "Sem título 1.canvas",
     "Sem título 2.canvas",

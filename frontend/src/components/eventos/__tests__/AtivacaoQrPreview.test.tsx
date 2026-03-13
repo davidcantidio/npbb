@@ -8,6 +8,7 @@ import AtivacaoQrPreview, {
   buildQrDownloadFilename,
   inferQrFileExtension,
 } from "../AtivacaoQrPreview";
+import { API_BASE_URL } from "../../../services/http";
 
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -107,6 +108,23 @@ describe("AtivacaoQrPreview", () => {
     expect(removeChildSpy).toHaveBeenCalledWith(anchor);
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:qr-download");
+  });
+
+  it("normalizes relative qr paths for preview and download", async () => {
+    mockBrowserDownloadApis();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: vi.fn().mockResolvedValue(new Blob(["<svg/>"], { type: "image/svg+xml" })),
+    } as unknown as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AtivacaoQrPreview ativacaoId={8} nome="Stand Relativo" qrCodeUrl="/ativacoes/8/qr-code" />);
+
+    expect(screen.getByTestId("ativacao-qr-image")).toHaveAttribute("src", `${API_BASE_URL}/ativacoes/8/qr-code`);
+    await userEvent.click(screen.getByRole("button", { name: /baixar qr/i }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/ativacoes/8/qr-code`));
   });
 
   it("surfaces an explicit error when qr download fails", async () => {

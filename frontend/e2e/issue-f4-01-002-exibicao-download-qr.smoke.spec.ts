@@ -70,7 +70,7 @@ test("operador visualiza o qr e baixa o arquivo com extensao coerente", async ({
       descricao: "QR pronto para impressao.",
       mensagem_qrcode: "Escaneie para participar.",
       landing_url: "https://npbb.example/landing/ativacoes/101",
-      qr_code_url: "/qr/ativacao-101.svg",
+      qr_code_url: "qr/ativacao-101.svg",
       url_promotor: "https://npbb.example/promotor/101",
       checkin_unico: false,
     },

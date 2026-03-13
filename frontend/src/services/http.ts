@@ -52,6 +52,16 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function resolveApiAssetUrl(pathOrUrl: string | null | undefined, baseUrl?: string): string | null {
+  const value = String(pathOrUrl || "").trim();
+  if (!value) return null;
+  if (/^data:/i.test(value) || /^https?:\/\//i.test(value)) return value;
+
+  const base = (baseUrl || API_BASE_URL).replace(/\/+$/, "");
+  const path = value.startsWith("/") ? value : `/${value}`;
+  return `${base}${path}`;
+}
+
 function normalizeUrl(pathOrUrl: string, baseUrl?: string) {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
   const base = (baseUrl || API_BASE_URL).replace(/\/+$/, "");

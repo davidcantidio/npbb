@@ -30,6 +30,7 @@ import {
   updateEventoQuestionario,
 } from "../../services/eventos";
 import { listAgencias } from "../../services/agencias";
+import { API_BASE_URL } from "../../services/http";
 import { previewEventoLanding, type LandingPageData } from "../../services/landing_public";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
@@ -774,7 +775,7 @@ describe("Evento pages smoke", () => {
         mensagem_qrcode: "Escaneie para entrar.",
         gamificacao_id: null,
         landing_url: "https://npbb.example/landing/ativacoes/11",
-        qr_code_url: "https://cdn.example/qr-11.svg",
+        qr_code_url: "/qr/ativacao-11.svg",
         url_promotor: "https://npbb.example/promotor/11",
         redireciona_pesquisa: false,
         checkin_unico: false,
@@ -831,11 +832,11 @@ describe("Evento pages smoke", () => {
     await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: /visualizar/i }));
 
     expect(await screen.findByText("Visualizar ativacao")).toBeInTheDocument();
-    expect(screen.getByTestId("ativacao-qr-image")).toHaveAttribute("src", "https://cdn.example/qr-11.svg");
+    expect(screen.getByTestId("ativacao-qr-image")).toHaveAttribute("src", `${API_BASE_URL}/qr/ativacao-11.svg`);
 
     await user.click(screen.getByRole("button", { name: /baixar qr/i }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("https://cdn.example/qr-11.svg"));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(`${API_BASE_URL}/qr/ativacao-11.svg`));
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
     expect(createdAnchor).not.toBeNull();
     if (!createdAnchor) {

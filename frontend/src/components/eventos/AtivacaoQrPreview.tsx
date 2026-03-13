@@ -3,6 +3,8 @@ import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import QrCode2OutlinedIcon from "@mui/icons-material/QrCode2Outlined";
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 
+import { resolveApiAssetUrl } from "../../services/http";
+
 export const QR_PLACEHOLDER_MESSAGE = "QR ainda nao disponivel para esta ativacao.";
 export const QR_DOWNLOAD_ERROR_MESSAGE = "Nao foi possivel baixar o QR agora. Tente novamente.";
 
@@ -30,21 +32,22 @@ export function buildQrDownloadFilename(ativacaoId: number, extension: "svg" | "
 export default function AtivacaoQrPreview({ ativacaoId, nome, qrCodeUrl }: AtivacaoQrPreviewProps) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const resolvedQrCodeUrl = resolveApiAssetUrl(qrCodeUrl);
 
   const handleDownload = async () => {
-    if (!qrCodeUrl || downloading) return;
+    if (!resolvedQrCodeUrl || downloading) return;
 
     setDownloading(true);
     setDownloadError(null);
 
     try {
-      const response = await fetch(qrCodeUrl);
+      const response = await fetch(resolvedQrCodeUrl);
       if (!response.ok) {
         throw new Error(`download_failed_${response.status}`);
       }
 
       const blob = await response.blob();
-      const extension = inferQrFileExtension(blob.type, qrCodeUrl);
+      const extension = inferQrFileExtension(blob.type, resolvedQrCodeUrl);
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
@@ -73,7 +76,7 @@ export default function AtivacaoQrPreview({ ativacaoId, nome, qrCodeUrl }: Ativa
             downloading ? <CircularProgress size={16} color="inherit" /> : <DownloadOutlinedIcon fontSize="small" />
           }
           onClick={handleDownload}
-          disabled={!qrCodeUrl || downloading}
+          disabled={!resolvedQrCodeUrl || downloading}
           sx={{ textTransform: "none", fontWeight: 700 }}
         >
           {downloading ? "Baixando..." : "Baixar QR"}
@@ -86,10 +89,10 @@ export default function AtivacaoQrPreview({ ativacaoId, nome, qrCodeUrl }: Ativa
         </Alert>
       ) : null}
 
-      {qrCodeUrl ? (
+      {resolvedQrCodeUrl ? (
         <Box
           component="img"
-          src={qrCodeUrl}
+          src={resolvedQrCodeUrl}
           alt={`QR Code da ativacao ${nome}`}
           data-testid="ativacao-qr-image"
           sx={{

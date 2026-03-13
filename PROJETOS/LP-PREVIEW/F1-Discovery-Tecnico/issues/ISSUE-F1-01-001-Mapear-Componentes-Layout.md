@@ -31,13 +31,13 @@ O PRD indica lacunas: nome do(s) componente(s) de preview, estrutura de layout (
 - Given os dois contextos (leads e landing page), When comparo, Then confirmo se o componente de preview e compartilhado ou sao instancias distintas
 
 ## Definition of Done da Issue
-- [ ] Nome(s) do(s) componente(s) de preview documentado(s)
+- [x] Nome(s) do(s) componente(s) de preview documentado(s)
 - [ ] Estrutura de layout atual documentada (Grid/Flex/outro)
 - [ ] Decisao sobre compartilhamento entre contextos registrada
 
 ## Tasks Decupadas
 
-- [ ] T1: Localizar e listar componentes de preview no codebase (PreviewSection, LandingPageView, etc.)
+- [x] T1: Localizar e listar componentes de preview no codebase (PreviewSection, LandingPageView, etc.)
 - [ ] T2: Documentar estrutura de layout da EventLeadFormConfigPage (Paper, Stack, ordem das secoes)
 - [ ] T3: Confirmar se existe segunda pagina de config de landing ou se ambos contextos sao o mesmo fluxo
 

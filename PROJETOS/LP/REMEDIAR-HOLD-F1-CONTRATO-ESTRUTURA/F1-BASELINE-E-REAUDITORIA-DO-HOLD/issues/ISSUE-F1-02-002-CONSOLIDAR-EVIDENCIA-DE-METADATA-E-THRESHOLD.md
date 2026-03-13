@@ -1,0 +1,151 @@
+---
+doc_id: "ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md"
+version: "1.0"
+status: "todo"
+owner: "PM"
+last_updated: "2026-03-13"
+task_instruction_mode: "required"
+decision_refs:
+  - "PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md / secoes 2, 5 e 8"
+  - "auditoria_fluxo_ativacao.md / F1-NAO03, F1-NAO04 e F1-NAO08"
+  - "SPEC-ANTI-MONOLITO.md / thresholds por arquivo"
+---
+
+# ISSUE-F1-02-002 - Consolidar evidencia de metadata e threshold
+
+## User Story
+
+Como mantenedor do sibling `REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA`, quero
+consolidar evidencia executavel de metadata critica, migration rastreavel e
+threshold estrutural para que a reauditoria da F1 consiga verificar a fundacao
+por fatos e relacionar cada prova aos achados estruturais do hold.
+
+## Contexto Tecnico
+
+O repositorio ja possui teste focal de schema contract
+(`test_lp_ativacao_schema_contract.py`), migration rastreavel
+`c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py` e baseline
+estrutural recente de `models.py` e `ativacao.py`. Esta issue consolida essas
+provas, liga cada uma aos achados `F1-NAO03`, `F1-NAO04` e `F1-NAO08` e torna
+explicito que `backend/app/routers/leads.py` permanece fora do sibling como
+risco residual.
+
+## Plano TDD
+
+- Red: validar se a metadata critica e os thresholds ainda podem ser provados pelo estado atual
+- Green: consolidar a evidencia executavel de schema contract, revision e medidas estruturais
+- Refactor: vincular cada prova aos achados estruturais da auditoria F1
+
+## Criterios de Aceitacao
+
+- Given o teste focal de metadata, When o comando exato aprovado for executado, Then existe evidencia objetiva das tabelas, campos e indice criticos da fundacao
+- Given a migration `c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py`, When ela for lida junto com o teste focal, Then a rastreabilidade de revision fica explicita
+- Given as metricas atuais de `models.py` e `ativacao.py`, When elas forem registradas, Then a leitura contra `SPEC-ANTI-MONOLITO.md` fica objetiva
+- Given qualquer ausencia de tabela, indice, revision ou threshold esperado, When ela surgir, Then a issue responde `BLOQUEADO`
+
+## Definition of Done da Issue
+
+- [ ] evidencia de metadata critica consolidada
+- [ ] evidencia de revision/migration rastreavel consolidada
+- [ ] evidencia de threshold dos alvos originais do hold consolidada
+- [ ] provas vinculadas aos achados `F1-NAO03`, `F1-NAO04` e `F1-NAO08`
+
+## Tasks Decupadas
+
+- [ ] T1: consolidar a evidencia de metadata critica e da revision rastreavel
+- [ ] T2: registrar a evidencia de threshold dos alvos estruturais originais do hold
+- [ ] T3: mapear cada prova aos achados estruturais da auditoria F1
+
+## Instructions por Task
+
+### T1
+- objetivo: produzir evidencia repetivel de metadata critica e de revision rastreavel da fundacao da F1
+- precondicoes:
+  - baseline estrutural de `ISSUE-F1-01-002` concluida
+  - nenhuma alteracao nova em models ou migrations sendo introduzida por este sibling
+- arquivos_a_ler_ou_tocar:
+  - `backend/tests/test_lp_ativacao_schema_contract.py`
+  - `backend/alembic/versions/c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py`
+  - `backend/app/models/models.py`
+- passos_atomicos:
+  1. executar o comando focal aprovado de metadata
+  2. ler a migration `c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py`
+  3. registrar quais tabelas, colunas e indices criticos ficam provados por teste e por leitura da revision
+- comandos_permitidos:
+  - `PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q backend/tests/test_lp_ativacao_schema_contract.py`
+  - `sed -n`
+- resultado_esperado: evidencia objetiva de metadata e revision rastreavel da fundacao consolidada
+- testes_ou_validacoes_obrigatorias:
+  - `PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q backend/tests/test_lp_ativacao_schema_contract.py`
+- stop_conditions:
+  - parar se o teste focal falhar
+  - parar se a migration rastreavel nao puder ser associada aos objetos criticos da fundacao
+
+### T2
+- objetivo: registrar a leitura de threshold dos alvos estruturais originais do hold
+- precondicoes:
+  - T1 concluida
+  - metadata critica consolidada
+- arquivos_a_ler_ou_tocar:
+  - `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`
+  - `backend/app/models/models.py`
+  - `backend/app/routers/ativacao.py`
+  - `backend/app/routers/leads.py`
+- passos_atomicos:
+  1. revisar os thresholds de `warn` e `block` do spec
+  2. registrar as linhas atuais de `models.py`, `ativacao.py` e `leads.py`
+  3. explicitar a leitura normativa: `models.py` e `ativacao.py` como alvos remediados do hold; `leads.py` como risco residual fora do sibling
+- comandos_permitidos:
+  - `sed -n`
+  - `wc -l`
+  - `apply_patch`
+- resultado_esperado: quadro objetivo de threshold registrado na issue
+- testes_ou_validacoes_obrigatorias:
+  - `wc -l backend/app/models/models.py backend/app/routers/ativacao.py backend/app/routers/leads.py`
+- stop_conditions:
+  - parar se `models.py` ou `ativacao.py` voltarem a cruzar threshold aplicavel
+  - parar se o quadro estrutural passar a exigir refactor de `leads.py` neste sibling
+
+### T3
+- objetivo: vincular cada prova consolidada aos achados estruturais e de metadata da auditoria F1
+- precondicoes:
+  - T1 e T2 concluidas
+  - evidencias de metadata e threshold registradas
+- arquivos_a_ler_ou_tocar:
+  - `PROJETOS/LP/auditoria_fluxo_ativacao.md`
+  - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md`
+- passos_atomicos:
+  1. mapear a evidencia de schema contract e revision para `F1-NAO08`
+  2. mapear a evidencia de `models.py` para `F1-NAO03` e de `ativacao.py` para `F1-NAO04`
+  3. registrar que `leads.py` permanece como risco fora deste sibling e nao como follow-up silencioso
+- comandos_permitidos:
+  - `apply_patch`
+  - `rg -n`
+- resultado_esperado: issue pronta para leitura de auditoria com mapeamento explicito `achado -> prova`
+- testes_ou_validacoes_obrigatorias:
+  - `rg -n "F1-NAO03|F1-NAO04|F1-NAO08|leads.py" PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md`
+- stop_conditions:
+  - parar se alguma prova nao puder ser vinculada a um achado material do hold
+  - parar se o mapeamento exigir atualizar `AUDIT-LOG.md`
+
+## Arquivos Reais Envolvidos
+
+- `backend/tests/test_lp_ativacao_schema_contract.py`
+- `backend/alembic/versions/c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py`
+- `backend/app/models/models.py`
+- `backend/app/routers/ativacao.py`
+- `backend/app/routers/leads.py`
+- `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`
+- `PROJETOS/LP/auditoria_fluxo_ativacao.md`
+
+## Artifact Minimo
+
+- quadro consolidado `prova -> comando ou leitura -> achado da auditoria`, registrado na propria issue
+
+## Dependencias
+
+- [Issue de Baseline Estrutural](./ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md)
+- [Auditoria de Origem](../../../auditoria_fluxo_ativacao.md)
+- [Epic](../EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md)
+- [Fase](../F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
+

@@ -41,6 +41,67 @@ O PRD indica lacunas: nome do(s) componente(s) de preview, estrutura de layout (
 - [ ] T2: Documentar estrutura de layout da EventLeadFormConfigPage (Paper, Stack, ordem das secoes)
 - [ ] T3: Confirmar se existe segunda pagina de config de landing ou se ambos contextos sao o mesmo fluxo
 
+## Resultado do Discovery
+
+### T1 - Componentes de preview identificados
+
+Componentes e hook confirmados nos arquivos citados pela issue:
+
+- `EventLeadFormConfigPage`: pagina de configuracao que monta o fluxo e insere o host de preview entre as secoes do formulario
+- `PreviewSection`: componente host do preview interno na tela de configuracao; renderiza titulo, acoes, estados de loading/erro e o container `data-testid="event-lead-preview-host"`
+- `LandingPageView`: renderer visual da landing; recebe `data` e e usado pelo `PreviewSection` com `mode="preview"`
+- `useLandingPreview`: hook responsavel por carregar e atualizar o `LandingPageData` consumido pelo `PreviewSection`
+
+Distincao funcional registrada:
+
+- host de preview na tela de configuracao: `PreviewSection`
+- renderer da landing em si: `LandingPageView`
+- abastecimento de dados do preview: `useLandingPreview`
+
+### T2 - Estrutura atual de layout
+
+Na `EventLeadFormConfigPage`, o conteudo principal da configuracao fica dentro de um `Paper elevation={2}` com `sx={{ p: 3, borderRadius: 3 }}`.
+
+Quando a configuracao esta carregada, a pagina usa `Stack spacing={2}` como estrutura principal de composicao. Nao ha `Grid` nem layout side-by-side neste nivel.
+
+Ordem atual das secoes no fluxo vertical:
+
+1. `TemaSection`
+2. `LandingContextSection`
+3. `PreviewSection`
+4. `GovernanceSection`
+5. `CamposSection`
+6. `Divider`
+7. `UrlsSection`
+
+Conclusao de layout:
+
+- a pagina atual usa composicao vertical baseada em `Stack`
+- o preview nao fica fixo em coluna lateral
+- o preview aparece intercalado no meio do fluxo do formulario
+
+Observacao local do proprio `PreviewSection`:
+
+- o cabecalho interno usa `Stack` responsivo com `direction={{ xs: "column", md: "row" }}`
+- esse ajuste e apenas interno ao cabecalho da secao de preview e nao caracteriza layout geral da pagina em duas colunas
+
+### T3 - Compartilhamento entre contextos
+
+Achados nos arquivos citados:
+
+- `AppRoutes` expone a rota protegida `/eventos/:id/formulario-lead`, que carrega `EventLeadFormConfig`
+- nos arquivos citados nao existe segunda pagina de configuracao dedicada para landing page
+- `useLandingPreview` busca `LandingPageData` para abastecer o preview interno do fluxo de configuracao
+- `PreviewSection` renderiza `LandingPageView data={previewData} mode="preview"`
+- `AppRoutes` tambem aponta as rotas de landing para `EventLandingPage`, que representa o contexto publico da landing
+
+Decisao registrada:
+
+- nao ha evidencia, nos arquivos citados, de uma segunda pagina de configuracao separada para landing page
+- o renderer visual da landing e compartilhado: `LandingPageView`
+- o contexto de configuracao e o host do preview interno sao especificos do fluxo de lead form: `EventLeadFormConfigPage` + `PreviewSection` + `useLandingPreview`
+- portanto, nao se trata de um unico componente compartilhado para tudo; o compartilhamento ocorre no renderer da landing, enquanto o shell de configuracao/preview interno e especifico da tela de configuracao
+
 ## Arquivos Reais Envolvidos
 
 - `frontend/src/features/event-lead-form-config/EventLeadFormConfigPage.tsx`

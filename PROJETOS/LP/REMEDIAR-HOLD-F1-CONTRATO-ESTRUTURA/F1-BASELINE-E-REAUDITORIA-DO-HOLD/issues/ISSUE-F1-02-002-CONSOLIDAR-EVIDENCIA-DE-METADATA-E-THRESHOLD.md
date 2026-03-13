@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "required"
@@ -45,16 +45,16 @@ risco residual.
 
 ## Definition of Done da Issue
 
-- [ ] evidencia de metadata critica consolidada
-- [ ] evidencia de revision/migration rastreavel consolidada
-- [ ] evidencia de threshold dos alvos originais do hold consolidada
-- [ ] provas vinculadas aos achados `F1-NAO03`, `F1-NAO04` e `F1-NAO08`
+- [x] evidencia de metadata critica consolidada
+- [x] evidencia de revision/migration rastreavel consolidada
+- [x] evidencia de threshold dos alvos originais do hold consolidada
+- [x] provas vinculadas aos achados `F1-NAO03`, `F1-NAO04` e `F1-NAO08`
 
 ## Tasks Decupadas
 
 - [x] T1: consolidar a evidencia de metadata critica e da revision rastreavel
 - [x] T2: registrar a evidencia de threshold dos alvos estruturais originais do hold
-- [ ] T3: mapear cada prova aos achados estruturais da auditoria F1
+- [x] T3: mapear cada prova aos achados estruturais da auditoria F1
 
 ## Instructions por Task
 
@@ -181,6 +181,19 @@ Leitura objetiva da prova:
 - `models.py` e `ativacao.py` correspondem aos alvos estruturais originais do hold e ja nao reproduzem o retrato historico descrito na auditoria de origem.
 - `leads.py` continua muito acima do threshold `block`, mas este arquivo nao pertence aos alvos remediados desta trilha e deve permanecer como risco residual fora do sibling.
 - o sibling usa esse quadro apenas para prestar contas do estado estrutural atual, nao para absorver silenciosamente um novo refactor de `leads.py`.
+
+### T3 - Mapeamento Explicito dos Achados da Auditoria F1
+
+| Achado | Prova consolidada | Leitura de fechamento |
+|---|---|---|
+| `F1-NAO03` | baseline estrutural de `backend/app/models/models.py` com `549` linhas, medida contra `SPEC-ANTI-MONOLITO.md` | o arquivo deixa de reproduzir o estado bloqueante historico (`1364` linhas) e fica registrado como alvo estrutural remediado da F1, ainda em `warn` mas fora de `block` |
+| `F1-NAO04` | baseline estrutural de `backend/app/routers/ativacao.py` com `394` linhas, medida contra `SPEC-ANTI-MONOLITO.md` | o arquivo deixa de reproduzir o estado historico de alerta (`421` linhas) e fica registrado abaixo de `warn` como alvo estrutural remediado da F1 |
+| `F1-NAO08` | teste focal `test_lp_ativacao_schema_contract.py` + leitura da revision `c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py` | a reauditoria recebe prova executavel e rastreabilidade direta para tabelas, colunas e indice criticos da fundacao |
+
+Registro explicito de risco residual:
+
+- `backend/app/routers/leads.py` permanece fora deste sibling como risco estrutural residual, mesmo cruzando `block`, e nao deve ser reinterpretado como follow-up silencioso desta issue.
+- o mapeamento acima fecha a prestacao de contas dos achados estruturais e de metadata sem exigir atualizacao de `AUDIT-LOG.md` nem reclassificacao do `hold` original.
 
 ## Dependencias
 

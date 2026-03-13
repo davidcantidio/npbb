@@ -35,9 +35,31 @@ O PRD propoe viewport mobile ~390px (referencia iPhone 16). A validacao com desi
 
 ## Tasks Decupadas
 
-- [ ] T1: Consolidar decisao de arquitetura com base no mapeamento da F1-01-001
+- [x] T1: Consolidar decisao de arquitetura com base no mapeamento da F1-01-001
 - [ ] T2: Validar largura 390px com design (PM ou design system)
 - [ ] T3: Documentar resultado da validacao na issue ou no epic
+
+## Resultado Consolidado
+
+### T1 - Decisao de arquitetura
+
+Com base no mapeamento registrado na `ISSUE-F1-01-001`, a decisao de arquitetura
+para a F2 fica consolidada da seguinte forma:
+
+- `LandingPageView` permanece como renderer visual compartilhado entre o contexto
+  publico da landing e o preview interno
+- `EventLeadFormConfigPage`, `PreviewSection` e `useLandingPreview` formam o
+  shell especifico do fluxo de configuracao
+- a implementacao da F2 deve alterar o layout do shell de configuracao, sem
+  transformar `LandingPageView` em componente de orquestracao de tela
+
+Justificativa:
+
+- o compartilhamento real identificado em F1 ocorre no renderer da landing
+- o fluxo de configuracao possui responsabilidades proprias de carregamento,
+  estado, acoes e posicionamento do preview
+- separar renderer compartilhado de shell especifico reduz risco de acoplamento
+  indevido ao refatorar o layout side-by-side
 
 ## Arquivos Reais Envolvidos
 

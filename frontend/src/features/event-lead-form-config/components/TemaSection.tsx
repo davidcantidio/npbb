@@ -22,17 +22,19 @@ export function TemaSection({
       <Typography variant="subtitle1" fontWeight={900} gutterBottom>
         Tema
       </Typography>
-      <Autocomplete
-        options={templates}
-        value={selectedTemplate}
-        onChange={(_, value) => onTemplateChange(value ? value.id : null)}
-        getOptionLabel={(option) => option.nome}
-        isOptionEqualToValue={(option, value) => option.id === value.id}
-        sx={{ width: "100%" }}
-        renderInput={(params) => (
-          <TextField {...params} label="Tema" placeholder="Selecione..." />
-        )}
-      />
+      <Box sx={{ width: "100%", maxWidth: { xs: "100%", md: 420 } }}>
+        <Autocomplete
+          options={templates}
+          value={selectedTemplate}
+          onChange={(_, value) => onTemplateChange(value ? value.id : null)}
+          getOptionLabel={(option) => option.nome}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          sx={{ width: "100%" }}
+          renderInput={(params) => (
+            <TextField {...params} label="Tema" placeholder="Selecione..." />
+          )}
+        />
+      </Box>
       <Typography variant="caption" color="text.secondary" display="block" sx={{ pt: 0.5 }}>
         O preview atualiza em tempo real; clique em &quot;Salvar&quot; apenas para persistir.
       </Typography>

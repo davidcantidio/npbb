@@ -13,6 +13,9 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
+import EventWizardPageShell, {
+  WIZARD_ACTION_BUTTON_SX,
+} from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
 import { useAuth } from "../../store/auth";
 import { useSnackbarFeedback } from "../../hooks/useSnackbarFeedback";
@@ -43,7 +46,7 @@ export default function EventAtivacoesPage() {
   }, [data.evento?.nome, eventoId, data.isValidEventoId]);
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <EventWizardPageShell width="wide" testId="event-ativacoes-shell">
       <EventWizardStepper activeStep={3} sx={{ mb: 2 }} />
 
       <Stack
@@ -63,13 +66,21 @@ export default function EventAtivacoesPage() {
         </Box>
 
         {data.isValidEventoId ? (
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            justifyContent="flex-end"
+          >
             <Button
               component={RouterLink}
               to={`/eventos/${eventoId}/gamificacao`}
               variant="outlined"
               startIcon={<ArrowBackIcon />}
-              sx={{ textTransform: "none" }}
+              size="small"
+              sx={WIZARD_ACTION_BUTTON_SX}
             >
               Voltar
             </Button>
@@ -77,7 +88,8 @@ export default function EventAtivacoesPage() {
               component={RouterLink}
               to={`/eventos/${eventoId}/questionario`}
               variant="contained"
-              sx={{ textTransform: "none", fontWeight: 800 }}
+              size="small"
+              sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
             >
               Próximo
             </Button>
@@ -173,6 +185,6 @@ export default function EventAtivacoesPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </EventWizardPageShell>
   );
 }

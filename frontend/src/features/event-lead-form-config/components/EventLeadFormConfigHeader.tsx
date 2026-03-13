@@ -2,6 +2,8 @@ import { Box, Button, CircularProgress, Stack, Typography } from "@mui/material"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink } from "react-router-dom";
 
+import { WIZARD_ACTION_BUTTON_SX } from "../../../components/eventos/EventWizardPageShell";
+
 type EventLeadFormConfigHeaderProps = {
   eventoId: number;
   config: unknown;
@@ -45,6 +47,7 @@ export function EventLeadFormConfigHeader({
           direction="row"
           spacing={1}
           alignItems="center"
+          useFlexGap
           flexWrap="wrap"
           justifyContent="flex-end"
         >
@@ -53,7 +56,8 @@ export function EventLeadFormConfigHeader({
             to={`/eventos/${eventoId}/editar`}
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            sx={{ textTransform: "none" }}
+            size="small"
+            sx={WIZARD_ACTION_BUTTON_SX}
           >
             Voltar (Evento)
           </Button>
@@ -62,7 +66,8 @@ export function EventLeadFormConfigHeader({
             to={`/eventos/${eventoId}/gamificacao`}
             variant="outlined"
             disabled={!config || loading || saving}
-            sx={{ textTransform: "none", fontWeight: 800 }}
+            size="small"
+            sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
           >
             Próximo
           </Button>
@@ -70,7 +75,8 @@ export function EventLeadFormConfigHeader({
             variant="contained"
             disabled={!config || loading || saving}
             onClick={onSave}
-            sx={{ textTransform: "none", fontWeight: 800 }}
+            size="small"
+            sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
           >
             {saving ? <CircularProgress size={22} color="inherit" /> : "Salvar"}
           </Button>

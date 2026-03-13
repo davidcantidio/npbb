@@ -22,6 +22,9 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
+import EventWizardPageShell, {
+  WIZARD_ACTION_BUTTON_SX,
+} from "../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
 import {
   getEvento,
@@ -577,7 +580,7 @@ export default function EventQuestionario() {
   };
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <EventWizardPageShell width="wide" testId="event-questionario-shell">
       <EventWizardStepper activeStep={4} sx={{ mb: 2 }} />
 
       <Stack
@@ -597,14 +600,22 @@ export default function EventQuestionario() {
         </Box>
 
         {isValidEventoId ? (
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            justifyContent="flex-end"
+          >
             <Button
               component={RouterLink}
               to={`/eventos/${eventoId}/ativacoes`}
               variant="outlined"
               startIcon={<ArrowBackIcon />}
               disabled={disableActions}
-              sx={{ textTransform: "none" }}
+              size="small"
+              sx={WIZARD_ACTION_BUTTON_SX}
             >
               Voltar
             </Button>
@@ -613,7 +624,8 @@ export default function EventQuestionario() {
               to={`/eventos/${eventoId}`}
               variant="contained"
               disabled={disableActions}
-              sx={{ textTransform: "none", fontWeight: 800 }}
+              size="small"
+              sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
             >
               Finalizar
             </Button>
@@ -657,7 +669,8 @@ export default function EventQuestionario() {
                 variant="contained"
                 onClick={handleSave}
                 disabled={disableSave}
-                sx={{ textTransform: "none", fontWeight: 800 }}
+                size="small"
+                sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
               >
                 {isSaving ? "Salvando..." : "Salvar"}
               </Button>
@@ -1059,6 +1072,6 @@ export default function EventQuestionario() {
           </Stack>
         )}
       </Paper>
-    </Box>
+    </EventWizardPageShell>
   );
 }

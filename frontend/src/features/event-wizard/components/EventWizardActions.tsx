@@ -10,9 +10,9 @@ type EventWizardActionsProps = {
  */
 export function EventWizardActions({ leftActions, rightActions }: EventWizardActionsProps) {
   return (
-    <Box display="flex" justifyContent="space-between" gap={2} pt={1}>
+    <Box display="flex" justifyContent="space-between" gap={1.5} pt={1} flexWrap="wrap">
       <Box>{leftActions}</Box>
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="flex-end">
         {rightActions}
       </Stack>
     </Box>

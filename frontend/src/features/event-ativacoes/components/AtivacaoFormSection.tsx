@@ -178,7 +178,8 @@ export function AtivacaoFormSection({
               variant="outlined"
               onClick={onReset}
               disabled={disabled}
-              sx={{ textTransform: "none" }}
+              size="small"
+              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
             >
               Cancelar edicao
             </Button>
@@ -187,7 +188,8 @@ export function AtivacaoFormSection({
             variant="contained"
             onClick={onSubmit}
             disabled={disabled}
-            sx={{ textTransform: "none", fontWeight: 800 }}
+            size="small"
+            sx={{ textTransform: "none", whiteSpace: "nowrap", fontWeight: 800 }}
           >
             {creating || saving ? (
               <CircularProgress size={22} color="inherit" />

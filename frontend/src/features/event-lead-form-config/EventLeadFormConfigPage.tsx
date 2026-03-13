@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 
+import EventWizardPageShell from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
 import { useAuth } from "../../store/auth";
 import {
@@ -79,7 +80,7 @@ export default function EventLeadFormConfigPage() {
   };
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <EventWizardPageShell width="wide" testId="event-lead-form-config-shell">
       <EventWizardStepper activeStep={1} sx={{ mb: 2 }} />
 
       <EventLeadFormConfigHeader
@@ -110,14 +111,22 @@ export default function EventLeadFormConfigPage() {
             data-layout-mode={isDesktopLayout ? "side-by-side" : "stacked"}
             sx={{
               display: "grid",
-              gap: 3,
+              gap: { xs: 3, xl: 4 },
               alignItems: "start",
+              justifyContent: isDesktopLayout ? "space-between" : "stretch",
               gridTemplateColumns: isDesktopLayout
                 ? "minmax(0, 1fr) minmax(390px, 430px)"
                 : "minmax(0, 1fr)",
             }}
           >
-            <Stack spacing={2} data-testid="event-lead-form-config-panel">
+            <Stack
+              spacing={2}
+              data-testid="event-lead-form-config-panel"
+              sx={{
+                minWidth: 0,
+                maxWidth: isDesktopLayout ? 760 : "100%",
+              }}
+            >
               <TemaSection
                 templates={configData.templates}
                 templateId={configData.templateId}
@@ -156,9 +165,12 @@ export default function EventLeadFormConfigPage() {
               data-testid="event-lead-form-config-preview-column"
               sx={{
                 minWidth: 0,
+                width: "100%",
+                maxWidth: isDesktopLayout ? 430 : "100%",
                 position: isDesktopLayout ? "sticky" : "static",
                 top: isDesktopLayout ? theme.spacing(3) : "auto",
                 alignSelf: "start",
+                justifySelf: isDesktopLayout ? "end" : "stretch",
               }}
             >
               <PreviewSection
@@ -191,6 +203,6 @@ export default function EventLeadFormConfigPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </EventWizardPageShell>
   );
 }

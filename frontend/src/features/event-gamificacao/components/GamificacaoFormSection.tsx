@@ -161,7 +161,8 @@ export function GamificacaoFormSection({
               variant="outlined"
               disabled={disabled || isBusy}
               onClick={onCancelEdit}
-              sx={{ textTransform: "none" }}
+              size="small"
+              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
             >
               Cancelar
             </Button>
@@ -170,7 +171,8 @@ export function GamificacaoFormSection({
             variant="contained"
             disabled={disabled || isBusy}
             onClick={onSubmit}
-            sx={{ fontWeight: 800, textTransform: "none" }}
+            size="small"
+            sx={{ fontWeight: 800, textTransform: "none", whiteSpace: "nowrap" }}
           >
             {saving || creating ? (
               <CircularProgress size={22} color="inherit" />

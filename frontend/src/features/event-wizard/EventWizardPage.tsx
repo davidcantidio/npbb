@@ -13,6 +13,9 @@ import {
 } from "@mui/material";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 
+import EventWizardPageShell, {
+  WIZARD_ACTION_BUTTON_SX,
+} from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
 import { getEvento, Tag, Territorio } from "../../services/eventos";
 import { useAuth } from "../../store/auth";
@@ -358,8 +361,15 @@ export default function EventWizardPage() {
   );
 
   return (
-    <Box sx={{ width: "100%", maxWidth: 1080, mx: "auto" }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+    <EventWizardPageShell width="regular" testId="event-wizard-page-shell">
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", md: "center" }}
+        flexDirection={{ xs: "column", md: "row" }}
+        mb={2}
+        gap={1.5}
+      >
         <Box>
           <Typography variant="h4" fontWeight={800}>
             {isEdit ? "Editar Evento" : "Novo Evento"}
@@ -372,7 +382,8 @@ export default function EventWizardPage() {
           component={RouterLink}
           to={isEdit ? `/eventos/${eventoId}` : "/eventos"}
           variant="outlined"
-          sx={{ textTransform: "none" }}
+          size="small"
+          sx={WIZARD_ACTION_BUTTON_SX}
         >
           Voltar
         </Button>
@@ -529,7 +540,8 @@ export default function EventWizardPage() {
                     variant="outlined"
                     onClick={handleBackStep}
                     disabled={eventSubStep === 0 || submitting}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
+                    size="small"
+                    sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
                   >
                     Voltar
                   </Button>
@@ -542,7 +554,8 @@ export default function EventWizardPage() {
                         setEventSubStep(1);
                       }}
                       disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
-                      sx={{ textTransform: "none", fontWeight: 700 }}
+                      size="small"
+                      sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
                     >
                       Pular
                     </Button>
@@ -553,7 +566,8 @@ export default function EventWizardPage() {
                       variant="contained"
                       onClick={handleNextStep}
                       disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
-                      sx={{ textTransform: "none", fontWeight: 800 }}
+                      size="small"
+                      sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
                     >
                       Proximo
                     </Button>
@@ -563,7 +577,8 @@ export default function EventWizardPage() {
                         type="submit"
                         variant="outlined"
                         disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
-                        sx={{ textTransform: "none", fontWeight: 800 }}
+                        size="small"
+                        sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
                       >
                         {submitting ? "Salvando..." : isEdit ? "Salvar alteracoes" : "Salvar"}
                       </Button>
@@ -575,7 +590,8 @@ export default function EventWizardPage() {
                           setSubmitAndContinueRequested(true);
                           formRef.current?.requestSubmit();
                         }}
-                        sx={{ textTransform: "none", fontWeight: 800 }}
+                        size="small"
+                        sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
                       >
                         {isEdit ? "Salvar e continuar" : "Criar e continuar"}
                       </Button>
@@ -587,6 +603,6 @@ export default function EventWizardPage() {
           </Stack>
         </Box>
       </Paper>
-    </Box>
+    </EventWizardPageShell>
   );
 }

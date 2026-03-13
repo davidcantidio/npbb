@@ -10,6 +10,9 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
+import EventWizardPageShell, {
+  WIZARD_ACTION_BUTTON_SX,
+} from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
 import { useAuth } from "../../store/auth";
 import { useSnackbarFeedback } from "../../hooks/useSnackbarFeedback";
@@ -41,7 +44,7 @@ export default function EventGamificacaoPage() {
   const formDisabled = !data.canAct || data.loading;
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <EventWizardPageShell width="wide" testId="event-gamificacao-shell">
       <EventWizardStepper activeStep={2} sx={{ mb: 2 }} />
 
       <Stack
@@ -61,13 +64,21 @@ export default function EventGamificacaoPage() {
         </Box>
 
         {data.isValidEventoId ? (
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            justifyContent="flex-end"
+          >
             <Button
               component={RouterLink}
               to={`/eventos/${eventoId}/formulario-lead`}
               variant="outlined"
               startIcon={<ArrowBackIcon />}
-              sx={{ textTransform: "none" }}
+              size="small"
+              sx={WIZARD_ACTION_BUTTON_SX}
             >
               Voltar
             </Button>
@@ -76,7 +87,8 @@ export default function EventGamificacaoPage() {
               to={`/eventos/${eventoId}/ativacoes`}
               variant="contained"
               disabled={data.loading}
-              sx={{ textTransform: "none", fontWeight: 800 }}
+              size="small"
+              sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
             >
               Próximo
             </Button>
@@ -141,6 +153,6 @@ export default function EventGamificacaoPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </EventWizardPageShell>
   );
 }

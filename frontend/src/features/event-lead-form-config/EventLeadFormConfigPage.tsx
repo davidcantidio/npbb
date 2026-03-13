@@ -8,6 +8,8 @@ import {
   Snackbar,
   Stack,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 
@@ -33,6 +35,8 @@ export default function EventLeadFormConfigPage() {
   const { id } = useParams();
   const eventoId = Number(id);
   const { token } = useAuth();
+  const theme = useTheme();
+  const isDesktopLayout = useMediaQuery(theme.breakpoints.up("md"));
 
   const { snackbar, setSnackbar, copyToClipboard, handleSnackbarClose } = useSnackbarFeedback();
 
@@ -101,47 +105,70 @@ export default function EventLeadFormConfigPage() {
             </Typography>
           </Stack>
         ) : configData.config ? (
-          <Stack spacing={2}>
-            <TemaSection
-              templates={configData.templates}
-              templateId={configData.templateId}
-              onTemplateChange={configData.setTemplateId}
-            />
+          <Box
+            data-testid="event-lead-form-config-layout"
+            data-layout-mode={isDesktopLayout ? "side-by-side" : "stacked"}
+            sx={{
+              display: "grid",
+              gap: 3,
+              alignItems: "start",
+              gridTemplateColumns: isDesktopLayout
+                ? "minmax(0, 1fr) minmax(390px, 430px)"
+                : "minmax(0, 1fr)",
+            }}
+          >
+            <Stack spacing={2} data-testid="event-lead-form-config-panel">
+              <TemaSection
+                templates={configData.templates}
+                templateId={configData.templateId}
+                onTemplateChange={configData.setTemplateId}
+              />
 
-            <LandingContextSection
-              landingMeta={configData.landingMeta}
-              onLandingMetaChange={handleLandingMetaChange}
-            />
+              <LandingContextSection
+                landingMeta={configData.landingMeta}
+                onLandingMetaChange={handleLandingMetaChange}
+              />
 
-            <PreviewSection
-              previewData={preview.previewData}
-              previewLoading={preview.previewLoading}
-              previewError={preview.previewError}
-              onRefresh={preview.refreshPreview}
-            />
+              <GovernanceSection
+                analyticsData={governanceData.analyticsData}
+                auditItems={governanceData.auditItems}
+                analyticsLoading={governanceData.analyticsLoading}
+                auditLoading={governanceData.auditLoading}
+              />
 
-            <GovernanceSection
-              analyticsData={governanceData.analyticsData}
-              auditItems={governanceData.auditItems}
-              analyticsLoading={governanceData.analyticsLoading}
-              auditLoading={governanceData.auditLoading}
-            />
+              <CamposSection
+                camposPossiveisUniq={configData.camposState.camposPossiveisUniq}
+                camposAtivos={configData.camposState.camposAtivos}
+                camposObrigatorios={configData.camposState.camposObrigatorios}
+                onToggleCampo={configData.camposState.toggleCampo}
+                onSetObrigatorio={configData.camposState.setCampoObrigatorio}
+              />
 
-            <CamposSection
-              camposPossiveisUniq={configData.camposState.camposPossiveisUniq}
-              camposAtivos={configData.camposState.camposAtivos}
-              camposObrigatorios={configData.camposState.camposObrigatorios}
-              onToggleCampo={configData.camposState.toggleCampo}
-              onSetObrigatorio={configData.camposState.setCampoObrigatorio}
-            />
+              <Divider />
 
-            <Divider />
+              <UrlsSection
+                urls={configData.config.urls}
+                onCopy={copyToClipboard}
+              />
+            </Stack>
 
-            <UrlsSection
-              urls={configData.config.urls}
-              onCopy={copyToClipboard}
-            />
-          </Stack>
+            <Box
+              data-testid="event-lead-form-config-preview-column"
+              sx={{
+                minWidth: 0,
+                position: isDesktopLayout ? "sticky" : "static",
+                top: isDesktopLayout ? theme.spacing(3) : "auto",
+                alignSelf: "start",
+              }}
+            >
+              <PreviewSection
+                previewData={preview.previewData}
+                previewLoading={preview.previewLoading}
+                previewError={preview.previewError}
+                onRefresh={preview.refreshPreview}
+              />
+            </Box>
+          </Box>
         ) : (
           <Typography variant="body2" color="text.secondary">
             Nenhum dado para exibir.

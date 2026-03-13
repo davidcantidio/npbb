@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-002-Documentar-Arquitetura-Validar-390px.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "optional"
@@ -30,14 +30,14 @@ O PRD propoe viewport mobile ~390px (referencia iPhone 16). A validacao com desi
 - Given a proposta de 390px do PRD, When valido com design, Then documento aprovacao ou ajuste
 
 ## Definition of Done da Issue
-- [ ] Decisao de arquitetura documentada
-- [ ] 390px validado com design (ou ajuste acordado registrado)
+- [x] Decisao de arquitetura documentada
+- [x] 390px validado com design (ou ajuste acordado registrado)
 
 ## Tasks Decupadas
 
 - [x] T1: Consolidar decisao de arquitetura com base no mapeamento da F1-01-001
 - [x] T2: Validar largura 390px com design (PM ou design system)
-- [ ] T3: Documentar resultado da validacao na issue ou no epic
+- [x] T3: Documentar resultado da validacao na issue ou no epic
 
 ## Resultado Consolidado
 
@@ -73,6 +73,13 @@ Registro da validacao:
 - F2 fica autorizada a usar `390px` como alvo inicial do frame mobile
 - qualquer ajuste posterior de design deve ser tratado como refinamento da F2 ou
   follow-up, sem reabrir a decisao base de F1
+
+### T3 - Fechamento documental
+
+A issue fica encerrada com os dois criterios de aceitacao atendidos:
+
+- decisao de arquitetura registrada com justificativa e escopo de reaproveitamento
+- validacao explicita de `390px` documentada como aprovacao do PM em 2026-03-13
 
 ## Arquivos Reais Envolvidos
 

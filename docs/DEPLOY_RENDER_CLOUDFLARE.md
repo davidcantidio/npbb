@@ -2,6 +2,12 @@
 
 Guia oficial para publicar o NPBB: backend FastAPI no Render e frontend React/Vite no Cloudflare Pages. O banco de dados e o Postgres do Supabase (plano pago).
 
+## Dominio publico de producao
+
+- Hostname canonico de go-live do frontend publico: `https://app.npbb.com.br`
+- `PUBLIC_APP_BASE_URL` e `FRONTEND_ORIGIN` devem apontar para esse dominio em producao.
+- O hostname `*.pages.dev` pode existir como endereco tecnico do Cloudflare Pages, mas nao deve ser tratado como URL publica canonica dos QR codes e links de landing.
+
 ## 1) Backend no Render
 
 Crie um Web Service no Render com:
@@ -20,14 +26,14 @@ Crie um Web Service no Render com:
 - `DATABASE_URL` (Supabase)
 - `DIRECT_URL` (Supabase)
 - `SECRET_KEY`
-- `FRONTEND_ORIGIN=https://npbb.pages.dev`
-- `PUBLIC_APP_BASE_URL=https://npbb.pages.dev`
+- `FRONTEND_ORIGIN=https://app.npbb.com.br`
+- `PUBLIC_APP_BASE_URL=https://app.npbb.com.br`
 - `EMAIL_BACKEND=console`
 
 ### Variaveis recomendadas (Render)
 
 - `ACCESS_TOKEN_EXPIRE_MINUTES=60`
-- `PASSWORD_RESET_URL=https://npbb.pages.dev/reset-password`
+- `PASSWORD_RESET_URL=https://app.npbb.com.br/reset-password`
 - `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES=60`
 - `PASSWORD_RESET_TOKEN_SECRET`
 - `SQL_ECHO=false`
@@ -64,13 +70,13 @@ O arquivo abaixo deve existir para evitar 404 em rotas de SPA:
 
 ### Validacao frontend
 
-- `https://npbb.pages.dev` abre a tela de login
-- abrir `https://npbb.pages.dev/eventos` nao retorna 404
+- `https://app.npbb.com.br` abre a tela de login
+- abrir `https://app.npbb.com.br/eventos` nao retorna 404
 - requests do frontend apontam para `https://npbb-api.onrender.com`
 
 ## 3) Pos-deploy
 
-Se o nome final da API ou do Pages mudar:
+Se o nome final da API, do dominio customizado ou do projeto Pages mudar:
 
 1. Atualize no Render:
    - `FRONTEND_ORIGIN`
@@ -78,4 +84,5 @@ Se o nome final da API ou do Pages mudar:
    - `PASSWORD_RESET_URL`
 2. Atualize no Pages:
    - `VITE_API_BASE_URL`
-3. Redeploy backend e frontend.
+3. Confirme que o dominio customizado continua sendo `app.npbb.com.br`.
+4. Redeploy backend e frontend.

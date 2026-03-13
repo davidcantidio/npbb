@@ -53,7 +53,7 @@ para reauditoria.
 
 - [x] T1: consolidar a evidencia backend do contrato canônico e do wrapper legado
 - [x] T2: consolidar a evidencia frontend do submit via `/leads`
-- [ ] T3: fechar a matriz de paridade request/response para a reauditoria
+- [x] T3: fechar a matriz de paridade request/response para a reauditoria
 
 ## Instructions por Task
 
@@ -110,7 +110,7 @@ para reauditoria.
   - T1 e T2 concluidas
   - evidencia backend e frontend registradas
 - arquivos_a_ler_ou_tocar:
-  - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
+  - `PROJETOS/FEITO/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
   - `backend/tests/test_leads_public_create_endpoint.py`
   - `backend/tests/test_landing_public_endpoints.py`
   - `frontend/src/services/__tests__/landing_public.test.ts`
@@ -153,6 +153,7 @@ para reauditoria.
 |---|---|---|
 | T1 | `PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q backend/tests/test_leads_public_create_endpoint.py backend/tests/test_landing_public_endpoints.py` | `45 passed in 4.00s` |
 | T2 | `npm --prefix frontend test -- --run src/services/__tests__/landing_public.test.ts src/pages/__tests__/EventLandingPage.test.tsx` | `32 passed in 12.27s` |
+| T3 | `rg -n "lead_reconhecido|conversao_registrada|bloqueado_cpf_duplicado|token_reconhecimento|submit_url" backend/tests/test_leads_public_create_endpoint.py backend/tests/test_landing_public_endpoints.py frontend/src/services/__tests__/landing_public.test.ts frontend/src/pages/__tests__/EventLandingPage.test.tsx` | referencias objetivas localizadas para `submit_url`, `lead_reconhecido`, `conversao_registrada`, `bloqueado_cpf_duplicado` e `token_reconhecimento` |
 
 ### Leitura Objetiva por Task
 
@@ -168,6 +169,33 @@ para reauditoria.
 - fixtures e asserts do frontend usam `submit_url="/leads"` como caminho principal.
 - o servico consome `lead_reconhecido` e `token_reconhecimento` no contrato atual.
 - a pagina cobre submit normal, fluxo reconhecido e bloqueio por duplicidade sem depender do endpoint legado como caminho principal.
+
+### Matriz de Paridade Request/Response
+
+| Request surface | Response keys | Evidencia backend | Evidencia frontend |
+|---|---|---|---|
+| `POST /leads` | `lead_reconhecido`, `conversao_registrada`, `bloqueado_cpf_duplicado`, `token_reconhecimento` | `backend/tests/test_leads_public_create_endpoint.py:147-152`, `:206-212` | `frontend/src/services/__tests__/landing_public.test.ts:224-260`, `frontend/src/pages/__tests__/EventLandingPage.test.tsx:258-260`, `:621-623` |
+| `GET landing` por evento/ativacao | `submit_url="/leads"` | `backend/tests/test_landing_public_endpoints.py:219` | `frontend/src/services/__tests__/landing_public.test.ts:60`, `frontend/src/pages/__tests__/EventLandingPage.test.tsx:89`, `:183` |
+| `POST /landing/ativacoes/{id}/submit` | mesma superficie do canônico | `backend/tests/test_landing_public_endpoints.py:433-448`, `:553-566` | o frontend consome o contrato unificado e valida o mesmo conjunto de chaves no caminho principal via `submitLandingForm` |
+| duplicidade em ativacao unica | `lead_reconhecido=true`, `conversao_registrada=false`, `bloqueado_cpf_duplicado=true`, `token_reconhecimento` presente | `backend/tests/test_leads_public_create_endpoint.py:206-212`, `backend/tests/test_landing_public_endpoints.py:560-566` | `frontend/src/pages/__tests__/EventLandingPage.test.tsx:621-623` |
+
+### Equivalencia entre Endpoint Canonico e Wrapper Legado
+
+`POST /leads` e `POST /landing/ativacoes/{id}/submit` estao cobertos por testes backend focais que exigem a mesma superficie de resposta para submit bem-sucedido e para bloqueio por duplicidade. Para a reauditoria, a leitura objetiva e: o caminho principal do produto usa `/leads`, enquanto o wrapper legado permanece apenas como adaptador compativel, sem drift de request/response demonstrado pela suite focal atual.
+
+### Achados da Auditoria Original Cobertos
+
+| Achado | Cobertura objetiva nesta issue |
+|---|---|
+| `F1-NAO01` | contrato de submit com `lead_reconhecido` demonstrado no backend e consumido no frontend |
+| `F1-NAO02` | `submit_url="/leads"` demonstrado no payload de landing e no fluxo principal do frontend |
+| `F1-NAO05` | contrato canônico e wrapper cobertos por testes focais com request/response consistente |
+| `F1-NAO06` | bloqueio por duplicidade em ativacao unica demonstrado com `conversao_registrada=false` e `bloqueado_cpf_duplicado=true` |
+| `F1-NAO07` | paridade entre caminho principal e wrapper legado demonstrada por evidencia backend e consumo frontend do contrato atual |
+
+### Condicao de Bloqueio
+
+Nenhum bloqueio foi observado nesta execucao. Se qualquer regressao futura surgir em `/leads`, no wrapper legado, em `submit_url` ou em `lead_reconhecido`, a issue deve ser tratada como `BLOQUEADO` e nao como ajuste silencioso desta trilha documental.
 
 ## Dependencias
 

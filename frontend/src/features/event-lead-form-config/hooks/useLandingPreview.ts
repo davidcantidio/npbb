@@ -71,8 +71,5 @@ export function useLandingPreview(
     previewError,
     loadPreview,
     refreshPreview,
-    setHasLoadedInitialPreview: (v: boolean) => {
-      hasLoadedInitialPreviewRef.current = v;
-    },
   };
 }

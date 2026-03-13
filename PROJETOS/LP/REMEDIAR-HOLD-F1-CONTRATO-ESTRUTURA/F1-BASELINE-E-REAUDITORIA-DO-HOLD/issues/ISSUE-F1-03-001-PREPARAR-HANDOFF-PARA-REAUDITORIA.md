@@ -51,7 +51,7 @@ Esta issue toca apenas artefatos do sibling.
 
 ## Tasks Decupadas
 
-- [ ] T1: consolidar o resumo executivo da remediacao e a prestacao de contas dos achados originais
+- [x] T1: consolidar o resumo executivo da remediacao e a prestacao de contas dos achados originais
 - [ ] T2: explicitar o escopo fora do sibling e os riscos residuais
 - [ ] T3: montar o checklist de reauditoria independente e o pacote de entradas esperadas
 
@@ -65,7 +65,7 @@ Esta issue toca apenas artefatos do sibling.
 - arquivos_a_ler_ou_tocar:
   - `PROJETOS/LP/auditoria_fluxo_ativacao.md`
   - `PROJETOS/LP/PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md`
-  - `PROJETOS/FEITO/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
+  - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
   - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md`
   - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md`
 - passos_atomicos:
@@ -140,12 +140,38 @@ Esta issue toca apenas artefatos do sibling.
 - `PROJETOS/LP/F1-FUNDACAO-MODELO-BACKEND/F1_LP_EPICS.md`
 - `backend/app/routers/leads.py`
 - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md`
-- `PROJETOS/FEITO/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
+- `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
 - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md`
 
 ## Artifact Minimo
 
 - handoff consolidado na propria issue, com resumo executivo, lista fora do sibling e checklist de reauditoria
+
+## Handoff Consolidado
+
+### Resumo Executivo da Remediacao
+
+- este sibling fecha a prestacao de contas da remediacao aberta a partir do `hold` da F1 original sem reabrir backlog funcional e sem simular uma nova auditoria formal
+- o pacote de baseline e evidencia mostra que os desvios de contrato/paridade do submit publico, os alvos estruturais originais (`models.py` e `ativacao.py`) e a metadata critica da fundacao agora possuem trilha rastreavel no estado atual do repositorio
+- o resultado desta issue e apenas um handoff curto para a futura reauditoria: o veredito `hold` original continua valendo ate nova rodada formal independente
+
+### Prestacao de Contas dos Achados Originais
+
+| Achado | Prestacao de contas no sibling | Evidencia consolidada para reauditoria |
+|---|---|---|
+| `F1-NAO01` | o contrato de submit com `lead_reconhecido` deixou de depender do retrato historico do hold e passa a ter prova executavel no estado atual | `ISSUE-F1-02-001` registra paridade backend/frontend do payload canônico e do wrapper |
+| `F1-NAO02` | o caminho principal do submit publico foi prestado contas como `/leads`, com o wrapper legado mantido apenas como compatibilidade | `ISSUE-F1-02-001` consolida `submit_url=/leads` e a equivalencia com `/landing/ativacoes/{id}/submit` |
+| `F1-NAO03` | `backend/app/models/models.py` nao reproduz mais o estado bloqueante historico da auditoria de origem e fica registrado no threshold atual do repo | `ISSUE-F1-01-002` e `ISSUE-F1-02-002` medem `models.py` com `549` linhas e leitura normativa contra `SPEC-ANTI-MONOLITO.md` |
+| `F1-NAO04` | `backend/app/routers/ativacao.py` tambem deixa de reproduzir o retrato historico do hold e fica registrado abaixo de `warn` | `ISSUE-F1-01-002` e `ISSUE-F1-02-002` medem `ativacao.py` com `394` linhas e leitura normativa contra `SPEC-ANTI-MONOLITO.md` |
+| `F1-NAO05` | a validacao de CPF passa a ter evidencia objetiva no endpoint canônico e no wrapper | `ISSUE-F1-02-001` consolida os cenarios focais de `CPF_REQUIRED` e `CPF_INVALID` |
+| `F1-NAO06` | o bloqueio de CPF duplicado em ativacao unica fica coberto por evidencia executavel em vez de depender de leitura indireta | `ISSUE-F1-02-001` registra a resposta coerente de duplicidade no canônico e no wrapper |
+| `F1-NAO07` | a cobertura de submit publico passa a ter prova backend/frontend suficiente para reauditoria do contrato atual | `ISSUE-F1-02-001` fecha a matriz de paridade request/response do caminho principal e do wrapper |
+| `F1-NAO08` | a metadata critica da fundacao deixa de ser apenas afirmacao documental e passa a ter prova automatizada e rastreabilidade de revision | `ISSUE-F1-02-002` consolida o teste focal de schema contract e a leitura da revision `c5a8d2e1f4b6` |
+
+Leitura de fechamento de `T1`:
+
+- esta prestacao de contas nao reinterpreta o veredito `hold`; ela apenas mostra quais achados agora possuem baseline e evidencia objetiva no sibling
+- nenhuma parte deste resumo exige reescrever `AUDIT-LOG.md` ou alterar o gate da F1 original
 
 ## Dependencias
 

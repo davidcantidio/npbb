@@ -7,6 +7,7 @@ import {
   Typography,
 } from "@mui/material";
 import LandingPageView from "../../../components/landing/LandingPageView";
+import MobilePreviewFrame from "../../../components/landing/MobilePreviewFrame";
 import type { LandingPageData } from "../../../services/landing_public";
 
 type PreviewSectionProps = {
@@ -79,20 +80,9 @@ export function PreviewSection({
           </Typography>
         </Stack>
       ) : previewData ? (
-        <Box
-          data-testid="event-lead-preview-host"
-          sx={{
-            mt: 1,
-            position: "relative",
-            isolation: "isolate",
-            borderRadius: 4,
-            overflow: "hidden",
-            border: 1,
-            borderColor: "divider",
-          }}
-        >
+        <MobilePreviewFrame>
           <LandingPageView data={previewData} mode="preview" />
-        </Box>
+        </MobilePreviewFrame>
       ) : (
         <Typography variant="body2" color="text.secondary">
           Nenhum preview disponível no momento.

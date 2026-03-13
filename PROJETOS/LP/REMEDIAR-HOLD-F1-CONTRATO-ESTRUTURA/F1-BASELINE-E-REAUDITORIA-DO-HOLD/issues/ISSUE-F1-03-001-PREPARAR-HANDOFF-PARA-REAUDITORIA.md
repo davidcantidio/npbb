@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "required"
@@ -43,17 +43,17 @@ Esta issue toca apenas artefatos do sibling.
 
 ## Definition of Done da Issue
 
-- [ ] resumo executivo da remediacao consolidado
-- [ ] prestacao de contas dos achados originais consolidada
-- [ ] riscos fora do sibling explicitados
-- [ ] checklist de reauditoria independente preparado
-- [ ] ficou explicito que este sibling nao muda gate nem `AUDIT-LOG.md`
+- [x] resumo executivo da remediacao consolidado
+- [x] prestacao de contas dos achados originais consolidada
+- [x] riscos fora do sibling explicitados
+- [x] checklist de reauditoria independente preparado
+- [x] ficou explicito que este sibling nao muda gate nem `AUDIT-LOG.md`
 
 ## Tasks Decupadas
 
 - [x] T1: consolidar o resumo executivo da remediacao e a prestacao de contas dos achados originais
 - [x] T2: explicitar o escopo fora do sibling e os riscos residuais
-- [ ] T3: montar o checklist de reauditoria independente e o pacote de entradas esperadas
+- [x] T3: montar o checklist de reauditoria independente e o pacote de entradas esperadas
 
 ## Instructions por Task
 
@@ -179,6 +179,33 @@ Leitura de fechamento de `T1`:
 - LGPD de CPF em repouso permanece como follow-up separado e fora deste sibling. O risco continua registrado como contexto de reauditoria, sem ser absorvido como implementacao funcional aqui.
 - nenhuma pressao para incluir refactor de `leads.py`, remediacao LGPD, reabertura do fluxo publico ou backlog funcional adicional pode ser absorvida silenciosamente por esta issue.
 - se qualquer um desses itens passar de registro residual para execucao material, a resposta correta desta trilha e `BLOQUEADO`, nao expansao implicita de escopo.
+
+### Checklist de Reauditoria Independente
+
+Pacote minimo de entrada para a nova rodada:
+
+- `PROJETOS/LP/auditoria_fluxo_ativacao.md`
+- `PROJETOS/LP/INTAKE-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md`
+- `PROJETOS/LP/PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md`
+- `PROJETOS/LP/F1-FUNDACAO-MODELO-BACKEND/F1_LP_EPICS.md`
+- `ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md`
+- `ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md`
+- `ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
+- `ISSUE-F1-02-002-CONSOLIDAR-EVIDENCIA-DE-METADATA-E-THRESHOLD.md`
+- esta propria `ISSUE-F1-03-001-PREPARAR-HANDOFF-PARA-REAUDITORIA.md`
+
+Checklist curto de leitura e validacao:
+
+- reler a auditoria original e confirmar que o objeto da nova rodada continua sendo a F1 original, nao este sibling como auditoria formal separada
+- conferir intake derivado, PRD derivado e baseline do sibling para entender o que foi remediado, o que virou no-op controlado e o que permaneceu residual
+- validar as evidencias de contrato/paridade (`ISSUE-F1-02-001`) e de metadata/threshold (`ISSUE-F1-02-002`) contra os achados originais do hold
+- confirmar explicitamente que `backend/app/routers/leads.py` e LGPD de CPF em repouso continuam fora do escopo deste sibling
+- emitir o novo julgamento apenas na rodada formal independente, com atualizacao propria de gate e `AUDIT-LOG.md` se e somente se a auditoria for realmente executada
+
+Fechamento operacional deste handoff:
+
+- a F1 original permanece em `hold` ate nova rodada formal de auditoria
+- este sibling nao altera `AUDIT-LOG.md` e nao promove o gate da F1 original
 
 ## Dependencias
 

@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-02-Documentacao.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -22,14 +22,14 @@ PM e DevOps cientes da dependencia de configuracao; checklist de deploy disponiv
 - Producao: `app.npbb.com.br`
 
 ## Definition of Done do Epico
-- [ ] Documentacao em `docs/SETUP.md` e/ou `docs/DEPLOY_*.md`
-- [ ] Checklist de deploy criado
+- [x] Documentacao em `docs/SETUP.md` e/ou `docs/DEPLOY_*.md`
+- [x] Checklist de deploy criado
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-02-001 | Documentar Public App Base Url | Documentacao e checklist de deploy | 3 | todo | [ISSUE-F1-02-001-Documentar-Public-App-Base-Url.md](./issues/ISSUE-F1-02-001-Documentar-Public-App-Base-Url.md) |
+| ISSUE-F1-02-001 | Documentar Public App Base Url | Documentacao e checklist de deploy | 3 | done | [ISSUE-F1-02-001-Documentar-Public-App-Base-Url.md](./issues/ISSUE-F1-02-001-Documentar-Public-App-Base-Url.md) |
 
 ## Artifact Minimo do Epico
 

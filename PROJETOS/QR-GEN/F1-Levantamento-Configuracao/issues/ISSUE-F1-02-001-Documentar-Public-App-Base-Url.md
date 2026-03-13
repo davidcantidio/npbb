@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-02-001-Documentar-Public-App-Base-Url.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "optional"
@@ -31,15 +31,15 @@ O modulo `backend/app/utils/urls.py` usa `get_public_app_base_url()` com ordem: 
 - Given ambiente de producao, When a variavel nao estiver configurada, Then a documentacao indica o risco (QR codes com URL incorreta)
 
 ## Definition of Done da Issue
-- [ ] Documentacao em `docs/SETUP.md` e/ou `docs/DEPLOY_*.md`
-- [ ] Checklist de deploy criado ou atualizado
-- [ ] PM e DevOps cientes
+- [x] Documentacao em `docs/SETUP.md` e/ou `docs/DEPLOY_*.md`
+- [x] Checklist de deploy criado ou atualizado
+- [x] PM e DevOps cientes
 
 ## Tasks Decupadas
 
-- [ ] T1: Adicionar secao em `docs/SETUP.md` ou criar `docs/DEPLOY_*.md` sobre `PUBLIC_APP_BASE_URL`
-- [ ] T2: Criar ou atualizar checklist de deploy para `app.npbb.com.br`
-- [ ] T3: Incluir verificacao da variavel no checklist
+- [x] T1: Adicionar secao em `docs/SETUP.md` ou criar `docs/DEPLOY_*.md` sobre `PUBLIC_APP_BASE_URL`
+- [x] T2: Criar ou atualizar checklist de deploy para `app.npbb.com.br`
+- [x] T3: Incluir verificacao da variavel no checklist
 
 ## Arquivos Reais Envolvidos
 

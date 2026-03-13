@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-13"
-audit_gate: "not_ready"
+audit_gate: "pending"
 ---
 
 # Epicos - QR-GEN / F1 - Levantamento e Configuracao
@@ -20,7 +20,7 @@ Confirmar estado atual e garantir configuracao de producao. Levantar volume de r
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -28,9 +28,9 @@ Confirmar estado atual e garantir configuracao de producao. Levantar volume de r
 > A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`
@@ -49,7 +49,7 @@ Confirmar estado atual e garantir configuracao de producao. Levantar volume de r
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F1-01 | Levantamento | Script/query para contar ativacao com localhost | nenhuma | done | [EPIC-F1-01-Levantamento.md](./EPIC-F1-01-Levantamento.md) |
-| EPIC-F1-02 | Documentacao | Documentar PUBLIC_APP_BASE_URL e checklist deploy | EPIC-F1-01 | todo | [EPIC-F1-02-Documentacao.md](./EPIC-F1-02-Documentacao.md) |
+| EPIC-F1-02 | Documentacao | Documentar PUBLIC_APP_BASE_URL e checklist deploy | EPIC-F1-01 | done | [EPIC-F1-02-Documentacao.md](./EPIC-F1-02-Documentacao.md) |
 
 ## Dependencias entre Epicos
 
@@ -69,6 +69,6 @@ Confirmar estado atual e garantir configuracao de producao. Levantar volume de r
 - Suporte a staging/homologacao
 
 ## Definition of Done da Fase
-- [ ] Volume de registros incorretos documentado
-- [ ] Documentacao de configuracao em producao publicada
-- [ ] Checklist de deploy criado e revisado
+- [x] Volume de registros incorretos documentado
+- [x] Documentacao de configuracao em producao publicada
+- [x] Checklist de deploy criado e revisado

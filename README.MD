@@ -87,6 +87,21 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+## Deploy (producao)
+
+Stack oficial: **Supabase** (plano pago), **Render** (plano pago) e **Cloudflare Pages** (gratuito).
+
+| Servico | Funcao |
+|---------|--------|
+| Supabase | Postgres (DATABASE_URL, DIRECT_URL) |
+| Render | API FastAPI (`npbb-api`) |
+| Cloudflare Pages | Frontend React/Vite |
+
+- **Dominio gratuito:** `https://npbb.pages.dev` (subdominio padrao do Cloudflare Pages).
+- **Dominio customizado:** `https://app.npbb.com.br` (requer configuracao DNS).
+
+Guia completo: `docs/DEPLOY_RENDER_CLOUDFLARE.md`. Referencia de configuracao do Render: `docs/render.yaml`.
+
 ## Comandos principais
 - Backend (raiz): `./scripts/dev_backend.sh`
 - Backend (pasta backend): `PYTHONPATH=.. python -m uvicorn app.main:app --reload` (ou `./scripts/dev_api.sh`)

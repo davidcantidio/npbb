@@ -8,6 +8,7 @@ Objetivo:
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 
 def _first_origin(value: str | None, *, fallback: str) -> str:
@@ -20,6 +21,29 @@ def _first_origin(value: str | None, *, fallback: str) -> str:
 
 def _normalize_base_url(raw: str) -> str:
     return (raw or "").strip().rstrip("/")
+
+
+def _normalize_environment(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def is_local_hostname(hostname: str | None) -> bool:
+    normalized = (hostname or "").strip().lower()
+    return normalized in {"localhost", "127.0.0.1"}
+
+
+def is_local_url(url: str | None) -> bool:
+    parsed = urlparse((url or "").strip())
+    return is_local_hostname(parsed.hostname)
+
+
+def is_production_environment() -> bool:
+    environment = _normalize_environment(os.getenv("ENVIRONMENT"))
+    if environment == "production":
+        return True
+
+    public_app_base_url = os.getenv("PUBLIC_APP_BASE_URL")
+    return bool(public_app_base_url) and not is_local_url(public_app_base_url)
 
 
 def get_public_app_base_url() -> str:

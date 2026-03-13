@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "required"
@@ -44,16 +44,16 @@ explicito fora do sibling, sem abrir refactor novo neste backlog.
 
 ## Definition of Done da Issue
 
-- [ ] `models.py` e `ativacao.py` foram medidos contra `SPEC-ANTI-MONOLITO.md`
-- [ ] a estabilidade da fachada `app.models.models` foi validada por amostragem do repo
-- [ ] `backend/app/routers/leads.py` esta registrado como risco residual fora do sibling
-- [ ] existe baseline estrutural suficiente para a issue de evidencia de threshold
+- [x] `models.py` e `ativacao.py` foram medidos contra `SPEC-ANTI-MONOLITO.md`
+- [x] a estabilidade da fachada `app.models.models` foi validada por amostragem do repo
+- [x] `backend/app/routers/leads.py` esta registrado como risco residual fora do sibling
+- [x] existe baseline estrutural suficiente para a issue de evidencia de threshold
 
 ## Tasks Decupadas
 
 - [x] T1: medir os arquivos estruturais alvo da F1 contra o spec vigente
 - [x] T2: confirmar a estabilidade da fachada `app.models.models`
-- [ ] T3: validar metadata critica da fundacao e registrar o risco residual fora do sibling
+- [x] T3: validar metadata critica da fundacao e registrar o risco residual fora do sibling
 
 ## Instructions por Task
 
@@ -165,6 +165,23 @@ Leitura executada contra `SPEC-ANTI-MONOLITO.md`, usando o threshold de arquivo
 - qualquer refactor futuro dos modelos precisa preservar `app.models.models`
   como superficie estavel de importacao para evitar regressao transversal fora
   deste sibling
+
+## Evidencia Minima de Metadata e Risco Residual
+
+- validacao focal executada com `PYTHONPATH`, `SECRET_KEY=ci-secret-key` e
+  `TESTING=true`: `2 passed in 0.12s` em
+  `backend/tests/test_lp_ativacao_schema_contract.py`
+- a revision
+  `backend/alembic/versions/c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py`
+  continua rastreando `conversao_ativacao`, `lead_reconhecimento_token` e
+  `ix_conversao_ativacao_ativacao_id_cpf`
+- `backend/app/models/models.py` e `backend/app/routers/ativacao.py` ficam
+  registrados nesta baseline como alvos estruturais remediados da F1
+- `backend/app/routers/leads.py` permanece fora deste sibling como risco
+  residual explicito e nao deve ser absorvido silenciosamente nesta issue
+- esta baseline fecha o pacote estrutural de `ISSUE-F1-01-002` e prepara a
+  transicao para `ISSUE-F1-02-002`, onde a evidencia de threshold segue como
+  proxima unidade do sibling
 
 ## Dependencias
 

@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -41,7 +41,7 @@ Nao executa refactor estrutural; ele apenas mede, compara e classifica.
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F1-01-001 | Classificar PRD vs repo no fluxo publico | Produzir a matriz rastreavel entre PRD, auditoria e estado atual do fluxo publico. | 3 | todo | [ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md](./issues/ISSUE-F1-01-001-CLASSIFICAR-PRD-VS-REPO-NO-FLUXO-PUBLICO.md) |
-| ISSUE-F1-01-002 | Validar baseline estrutural da F1 | Medir os alvos estruturais do hold e registrar o risco residual fora do sibling. | 2 | todo | [ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md](./issues/ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md) |
+| ISSUE-F1-01-002 | Validar baseline estrutural da F1 | Medir os alvos estruturais do hold e registrar o risco residual fora do sibling. | 2 | done | [ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md](./issues/ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md) |
 
 ## Artifact Minimo do Epico
 
@@ -57,4 +57,3 @@ dos arquivos alvo da F1.
 - [Auditoria de Origem](../../auditoria_fluxo_ativacao.md)
 - [F1 Original](../../F1-FUNDACAO-MODELO-BACKEND/F1_LP_EPICS.md)
 - [Fase](./F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

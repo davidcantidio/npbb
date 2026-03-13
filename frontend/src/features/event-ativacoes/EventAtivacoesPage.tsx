@@ -44,6 +44,9 @@ export default function EventAtivacoesPage() {
     if (data.evento?.nome) return `Configure as ativacoes do evento "${data.evento.nome}".`;
     return `Configure as ativacoes do evento #${eventoId}.`;
   }, [data.evento?.nome, eventoId, data.isValidEventoId]);
+  const handleCopy = (text: string | null | undefined, label: string) => {
+    void copyToClipboard(text ?? "", label);
+  };
 
   return (
     <EventWizardPageShell width="wide" testId="event-ativacoes-shell">
@@ -157,7 +160,7 @@ export default function EventAtivacoesPage() {
         ativacao={data.viewing}
         gamificacaoNameById={data.gamificacaoNameById}
         onClose={() => data.setViewing(null)}
-        onCopy={copyToClipboard}
+        onCopy={handleCopy}
       />
 
       <DeleteAtivacaoDialog

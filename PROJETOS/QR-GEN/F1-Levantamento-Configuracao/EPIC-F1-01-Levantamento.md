@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-01-Levantamento.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 ---
@@ -22,14 +22,14 @@ Volume de registros com URL local conhecido e documentado, permitindo planejamen
 - Codigo relevante: `backend/app/utils/urls.py`, `backend/app/services/landing_pages.py`
 
 ## Definition of Done do Epico
-- [ ] Script ou query executavel e documentado
-- [ ] Volume de registros incorretos registrado
+- [x] Script ou query executavel e documentado
+- [x] Volume de registros incorretos registrado
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Contar Ativacao Localhost | Script/query para contar registros com URL local | 2 | todo | [ISSUE-F1-01-001-Contar-Ativacao-Localhost.md](./issues/ISSUE-F1-01-001-Contar-Ativacao-Localhost.md) |
+| ISSUE-F1-01-001 | Contar Ativacao Localhost | Script/query para contar registros com URL local | 2 | done | [ISSUE-F1-01-001-Contar-Ativacao-Localhost.md](./issues/ISSUE-F1-01-001-Contar-Ativacao-Localhost.md) |
 
 ## Artifact Minimo do Epico
 

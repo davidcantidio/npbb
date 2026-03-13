@@ -1,7 +1,7 @@
 ---
 doc_id: "F1_QR-GEN_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-13"
 audit_gate: "not_ready"
@@ -48,7 +48,7 @@ Confirmar estado atual e garantir configuracao de producao. Levantar volume de r
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Levantamento | Script/query para contar ativacao com localhost | nenhuma | todo | [EPIC-F1-01-Levantamento.md](./EPIC-F1-01-Levantamento.md) |
+| EPIC-F1-01 | Levantamento | Script/query para contar ativacao com localhost | nenhuma | done | [EPIC-F1-01-Levantamento.md](./EPIC-F1-01-Levantamento.md) |
 | EPIC-F1-02 | Documentacao | Documentar PUBLIC_APP_BASE_URL e checklist deploy | EPIC-F1-01 | todo | [EPIC-F1-02-Documentacao.md](./EPIC-F1-02-Documentacao.md) |
 
 ## Dependencias entre Epicos

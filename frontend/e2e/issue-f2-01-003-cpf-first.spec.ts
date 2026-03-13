@@ -2,7 +2,7 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 const CANONICAL_URL = "/eventos/10/ativacoes/1";
 const LANDING_API_PATTERN = "**/eventos/10/ativacoes/1/landing*";
-const SUBMIT_API_PATTERN = "**/landing/ativacoes/1/submit";
+const SUBMIT_API_PATTERN = "**/leads";
 const ANALYTICS_API_PATTERN = "**/landing/analytics";
 
 const landingPayload = {
@@ -43,7 +43,7 @@ const landingPayload = {
   formulario: {
     event_id: 10,
     ativacao_id: 1,
-    submit_url: "/landing/ativacoes/1/submit",
+    submit_url: "/leads",
     campos: [
       {
         key: "nome",
@@ -111,6 +111,7 @@ async function installCpfFirstMocks(page: Page) {
       ativacao_id: 1,
       ativacao_lead_id: null,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
     });
   });
 }
@@ -160,7 +161,7 @@ test("submete o formulario com sucesso apos validar CPF", async ({ page }) => {
   await unlockCpfFirst(page);
 
   const submitRequestPromise = page.waitForRequest((request) => {
-    return request.method() === "POST" && /\/landing\/ativacoes\/1\/submit$/.test(request.url());
+    return request.method() === "POST" && /\/leads$/.test(request.url());
   });
 
   await page.getByRole("textbox", { name: /nome/i }).fill("Maria");
@@ -172,6 +173,8 @@ test("submete o formulario com sucesso apos validar CPF", async ({ page }) => {
   expect(submitRequest.postDataJSON()).toMatchObject({
     nome: "Maria",
     email: "maria@example.com",
+    event_id: 10,
+    ativacao_id: 1,
     cpf: "52998224725",
     consentimento_lgpd: true,
   });

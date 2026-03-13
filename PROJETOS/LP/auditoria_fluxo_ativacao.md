@@ -1,3 +1,16 @@
+---
+doc_id: "auditoria_fluxo_ativacao.md"
+version: "1.0"
+status: "provisional"
+owner: "PM"
+last_updated: "2026-03-13"
+project: "LP"
+phase: "F1"
+round: 1
+verdict: "hold"
+followup_destination: "new-intake"
+---
+
 # Relatório de Auditoria – Fase 1 (Fundação)  
 **Projeto:** LP – QR por Ativação  
 **Versão do PRD:** v1.0 – março/2026  

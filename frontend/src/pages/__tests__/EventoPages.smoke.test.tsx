@@ -151,7 +151,7 @@ function createLandingPreviewPayload(overrides: LandingPreviewOverrides = {}): L
     formulario: {
       event_id: 1,
       ativacao_id: null,
-      submit_url: "/landing/eventos/1/submit",
+      submit_url: "/leads",
       campos: [
         {
           key: "nome",

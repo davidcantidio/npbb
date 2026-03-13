@@ -75,7 +75,7 @@ function createLandingFixture(overrides: Partial<LandingPageData> = {}): Landing
     formulario: {
       event_id: 10,
       ativacao_id: 1,
-      submit_url: "/landing/ativacoes/1/submit",
+      submit_url: "/leads",
       campos: [
         {
           key: "nome",

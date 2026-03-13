@@ -23,7 +23,7 @@ const BASE_ATIVACAO = {
 const BASE_FORMULARIO = {
   event_id: 10,
   ativacao_id: 1,
-  submit_url: "/landing/ativacoes/1/submit",
+  submit_url: "/leads",
   campos: [
     { key: "nome", label: "Nome", input_type: "text", required: true, autocomplete: "name", placeholder: "Seu nome" },
     { key: "email", label: "Email", input_type: "email", required: true, autocomplete: "email", placeholder: "voce@exemplo.com" },

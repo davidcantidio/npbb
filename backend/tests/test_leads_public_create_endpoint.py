@@ -144,6 +144,7 @@ def test_post_leads_com_ativacao_registra_conversao(client, engine):
     payload = resp.json()
     assert payload["ativacao_id"] == ativacao_id
     assert payload["event_id"] == event_id
+    assert payload["lead_reconhecido"] is True
     assert payload["conversao_registrada"] is True
     assert payload["bloqueado_cpf_duplicado"] is False
     assert isinstance(payload["ativacao_lead_id"], int)
@@ -194,6 +195,7 @@ def test_post_leads_com_ativacao_unica_bloqueia_cpf_duplicado(client, engine):
     resp2 = client.post("/leads", json=body)
 
     assert resp1.status_code == 201
+    assert resp1.json()["lead_reconhecido"] is True
     assert resp1.json()["conversao_registrada"] is True
     assert resp1.json()["bloqueado_cpf_duplicado"] is False
     assert resp1.json()["token_reconhecimento"]
@@ -201,13 +203,14 @@ def test_post_leads_com_ativacao_unica_bloqueia_cpf_duplicado(client, engine):
 
     assert resp2.status_code == 201
     payload = resp2.json()
+    assert payload["lead_reconhecido"] is True
     assert payload["conversao_registrada"] is False
     assert payload["bloqueado_cpf_duplicado"] is True
     assert payload["lead_id"] == resp1.json()["lead_id"]
     assert payload["ativacao_lead_id"] == resp1.json()["ativacao_lead_id"]
-    assert payload["token_reconhecimento"] is None
-    assert resp2.cookies.get("lp_lead_token") is None
-    assert resp2.headers.get("set-cookie") is None
+    assert payload["token_reconhecimento"]
+    assert resp2.cookies.get("lp_lead_token") == payload["token_reconhecimento"]
+    assert "lp_lead_token=" in (resp2.headers.get("set-cookie") or "")
 
     with Session(engine) as session:
         conversoes = session.exec(
@@ -395,6 +398,7 @@ def test_post_leads_sem_ativacao_exige_event_id_e_nao_registra_conversao(client,
     payload = resp.json()
     assert payload["event_id"] == event_id
     assert payload["ativacao_id"] is None
+    assert payload["lead_reconhecido"] is False
     assert payload["conversao_registrada"] is False
     assert payload["token_reconhecimento"] is None
     assert resp.cookies.get("lp_lead_token") is None

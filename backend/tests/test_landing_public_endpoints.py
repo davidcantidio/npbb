@@ -216,6 +216,7 @@ def test_public_landing_por_ativacao_retorna_payload_resolvido_form_only(client,
     assert "versao_logo" not in payload["marca"]
     assert payload["formulario"]["event_id"] == payload["evento"]["id"]
     assert payload["formulario"]["ativacao_id"] == ativacao_id
+    assert payload["formulario"]["submit_url"] == "/leads"
     assert payload["formulario"]["campos_obrigatorios"] == ["nome", "email"]
     assert payload["acesso"]["landing_url"] == f"http://testserver/landing/ativacoes/{ativacao_id}"
     assert payload["acesso"]["url_promotor"] == f"http://testserver/landing/ativacoes/{ativacao_id}"
@@ -357,6 +358,7 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
     assert payload["event_id"] == evento_id
     assert payload["ativacao_id"] == ativacao_id
     assert payload["lead_id"] > 0
+    assert payload["lead_reconhecido"] is True
     assert payload["conversao_registrada"] is True
     assert payload["bloqueado_cpf_duplicado"] is False
     assert payload["token_reconhecimento"]
@@ -381,6 +383,69 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
         ).first()
         assert conversao is not None
         assert conversao.cpf == "52998224725"
+
+
+def test_public_submit_wrapper_mantem_contrato_do_endpoint_canonico(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Paridade",
+        )
+        ativacao_canonica = seed_ativacao(session, evento_id=evento.id, nome="Canonica")
+        ativacao_wrapper = seed_ativacao(session, evento_id=evento.id, nome="Wrapper")
+        evento_id = evento.id
+        ativacao_canonica_id = ativacao_canonica.id
+        ativacao_wrapper_id = ativacao_wrapper.id
+
+    canonical_resp = client.post(
+        "/leads",
+        json={
+            "nome": "Maria",
+            "email": "maria@example.com",
+            "cpf": "529.982.247-25",
+            "ativacao_id": ativacao_canonica_id,
+            "consentimento_lgpd": True,
+        },
+    )
+    wrapper_resp = client.post(
+        f"/landing/ativacoes/{ativacao_wrapper_id}/submit",
+        json={
+            "nome": "Joao",
+            "email": "joao@example.com",
+            "cpf": "111.444.777-35",
+            "consentimento_lgpd": True,
+        },
+    )
+
+    assert canonical_resp.status_code == 201
+    assert wrapper_resp.status_code == 201
+
+    expected_keys = {
+        "lead_id",
+        "event_id",
+        "ativacao_id",
+        "ativacao_lead_id",
+        "mensagem_sucesso",
+        "lead_reconhecido",
+        "conversao_registrada",
+        "bloqueado_cpf_duplicado",
+        "token_reconhecimento",
+    }
+    for payload, expected_ativacao_id in (
+        (canonical_resp.json(), ativacao_canonica_id),
+        (wrapper_resp.json(), ativacao_wrapper_id),
+    ):
+        assert set(payload.keys()) == expected_keys
+        assert payload["event_id"] == evento_id
+        assert payload["ativacao_id"] == expected_ativacao_id
+        assert payload["lead_reconhecido"] is True
+        assert payload["conversao_registrada"] is True
+        assert payload["bloqueado_cpf_duplicado"] is False
+        assert payload["token_reconhecimento"]
 
 
 def test_public_landing_por_ativacao_reconhece_via_token_query(client, engine):
@@ -485,19 +550,21 @@ def test_public_landing_submit_bloqueia_cpf_duplicado_em_ativacao_unica(client, 
     resp2 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
 
     assert resp1.status_code == 201
+    assert resp1.json()["lead_reconhecido"] is True
     assert resp1.json()["conversao_registrada"] is True
     assert resp1.json()["bloqueado_cpf_duplicado"] is False
     assert resp1.json()["token_reconhecimento"]
 
     assert resp2.status_code == 201
     payload = resp2.json()
+    assert payload["lead_reconhecido"] is True
     assert payload["conversao_registrada"] is False
     assert payload["bloqueado_cpf_duplicado"] is True
     assert payload["lead_id"] == resp1.json()["lead_id"]
     assert payload["ativacao_lead_id"] == resp1.json()["ativacao_lead_id"]
-    assert payload["token_reconhecimento"] is None
-    assert resp2.cookies.get("lp_lead_token") is None
-    assert resp2.headers.get("set-cookie") is None
+    assert payload["token_reconhecimento"]
+    assert resp2.cookies.get("lp_lead_token") == payload["token_reconhecimento"]
+    assert "lp_lead_token=" in (resp2.headers.get("set-cookie") or "")
 
     with Session(engine) as session:
         conversoes = session.exec(
@@ -530,6 +597,7 @@ def test_public_landing_submit_sem_cpf_permanece_compativel_sem_registrar_conver
 
     assert resp.status_code == 201
     payload = resp.json()
+    assert payload["lead_reconhecido"] is False
     assert payload["conversao_registrada"] is False
     assert payload["token_reconhecimento"] is None
     assert resp.cookies.get("lp_lead_token") is None

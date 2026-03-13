@@ -296,6 +296,8 @@ export default function EventLandingPage() {
         nome: formState.nome || "",
         sobrenome: formState.sobrenome,
         email: formState.email || "",
+        event_id: effectiveData.formulario.event_id,
+        ativacao_id: effectiveData.formulario.ativacao_id ?? undefined,
         cpf: formState.cpf,
         telefone: formState.telefone,
         data_nascimento: formState.data_nascimento,

@@ -49,7 +49,7 @@ function buildLandingPayload(params: {
     formulario: {
       event_id: EVENTO_ID,
       ativacao_id: ativacaoId,
-      submit_url: `/landing/ativacoes/${ativacaoId}/submit`,
+      submit_url: "/leads",
       campos: [
         {
           key: "nome",
@@ -144,10 +144,12 @@ test("ativacao multipla reconhecida registra conversao sem reenviar CPF", async 
   await installAnalyticsMock(page);
   await installLandingRoute(page);
 
-  await page.route(`**/landing/ativacoes/${ATIVACAO_MULTIPLA_ID}/submit`, async (route, request) => {
+  await page.route("**/leads", async (route, request) => {
     expect(request.postDataJSON()).toMatchObject({
       nome: "Maria",
       email: "maria@example.com",
+      event_id: EVENTO_ID,
+      ativacao_id: ATIVACAO_MULTIPLA_ID,
       consentimento_lgpd: true,
     });
     expect(request.postDataJSON()).not.toHaveProperty("cpf", "52998224725");
@@ -158,6 +160,7 @@ test("ativacao multipla reconhecida registra conversao sem reenviar CPF", async 
       ativacao_id: ATIVACAO_MULTIPLA_ID,
       ativacao_lead_id: 444,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     }, 201);

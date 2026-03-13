@@ -158,9 +158,9 @@ def get_landing_fields(
 
 
 def _build_submit_url(*, evento_id: int, ativacao: Ativacao | None) -> str:
-    if ativacao and ativacao.id is not None:
-        return f"/landing/ativacoes/{ativacao.id}/submit"
-    return f"/landing/eventos/{evento_id}/submit"
+    _ = evento_id
+    _ = ativacao
+    return "/leads"
 
 
 def _persist_ativacao_public_urls_if_changed(

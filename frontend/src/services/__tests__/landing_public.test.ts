@@ -57,7 +57,7 @@ const landingBasePayload = {
   formulario: {
     event_id: 10,
     ativacao_id: 1,
-    submit_url: "/landing/ativacoes/1/submit",
+    submit_url: "/leads",
     campos: [],
     campos_obrigatorios: [],
     campos_opcionais: [],
@@ -229,24 +229,29 @@ describe("landing_public service", () => {
       ativacao_id: 1,
       ativacao_lead_id: 55,
       mensagem_sucesso: "Sucesso",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
       token_reconhecimento: "opaque-token",
     });
 
-    const payload = await submitLandingForm("/landing/ativacoes/1/submit", {
+    const payload = await submitLandingForm("/leads", {
       nome: "Maria",
       email: "maria@example.com",
+      event_id: 10,
+      ativacao_id: 1,
       cpf: "52998224725",
       consentimento_lgpd: true,
     });
 
-    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+    expect(mockedFetchWithAuth).toHaveBeenCalledWith("/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nome: "Maria",
         email: "maria@example.com",
+        event_id: 10,
+        ativacao_id: 1,
         cpf: "52998224725",
         consentimento_lgpd: true,
       }),

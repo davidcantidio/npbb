@@ -144,6 +144,7 @@ class LandingSubmitResponse(BaseModel):
     ativacao_id: int | None = None
     ativacao_lead_id: int | None = None
     mensagem_sucesso: str
+    lead_reconhecido: bool = False
     conversao_registrada: bool = False
     bloqueado_cpf_duplicado: bool = False
     token_reconhecimento: str | None = None

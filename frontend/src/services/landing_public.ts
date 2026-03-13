@@ -101,6 +101,8 @@ export type LandingSubmitPayload = {
   nome: string;
   sobrenome?: string;
   email: string;
+  event_id?: number;
+  ativacao_id?: number | null;
   cpf?: string;
   telefone?: string;
   data_nascimento?: string;
@@ -120,6 +122,7 @@ export type LandingSubmitResponse = {
   ativacao_id?: number | null;
   ativacao_lead_id?: number | null;
   mensagem_sucesso: string;
+  lead_reconhecido: boolean;
   conversao_registrada: boolean;
   bloqueado_cpf_duplicado: boolean;
   token_reconhecimento?: string | null;

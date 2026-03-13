@@ -146,7 +146,48 @@ def _refresh_ativacao_urls(session: Session, ativacao: Ativacao) -> Ativacao:
 def _build_ativacao_update_data(payload: AtivacaoUpdate) -> dict[str, object]:
     data = payload.model_dump(exclude_unset=True)
     data.pop("conversao_unica", None)
-    return data
+    if data:
+        return data
+    raise_http_error(
+        status.HTTP_400_BAD_REQUEST,
+        code="VALIDATION_ERROR_NO_FIELDS",
+        message="Nenhum campo para atualizar",
+    )
+
+
+def _apply_ativacao_update(
+    *,
+    session: Session,
+    ativacao: Ativacao,
+    data: dict[str, object],
+) -> Ativacao:
+    _validate_gamificacao_scope(
+        session=session,
+        evento_id=ativacao.evento_id,
+        gamificacao_id=data.get("gamificacao_id"),
+    )
+    for key, value in data.items():
+        setattr(ativacao, key, value)
+    ativacao.updated_at = now_utc()
+    session.add(ativacao)
+    session.commit()
+    return _refresh_ativacao_urls(session, ativacao)
+
+
+def _count_ativacao_dependencies(session: Session, ativacao_id: int) -> dict[str, int]:
+    return {
+        name: int(
+            session.exec(
+                select(func.count()).select_from(model).where(model.ativacao_id == ativacao_id)
+            ).one()
+        )
+        for name, model in (
+            ("ativacao_leads", AtivacaoLead),
+            ("cupons", Cupom),
+            ("respostas_questionario", QuestionarioResposta),
+            ("investimentos", Investimento),
+        )
+    }
 
 
 @eventos_router.get("/{evento_id}/ativacoes", response_model=list[AtivacaoRead])
@@ -281,29 +322,11 @@ def atualizar_ativacao_por_evento(
         ativacao_id=ativacao_id,
         current_user=current_user,
     )
-
-    data = _build_ativacao_update_data(payload)
-    if not data:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="VALIDATION_ERROR_NO_FIELDS",
-            message="Nenhum campo para atualizar",
-        )
-
-    _validate_gamificacao_scope(
+    ativacao = _apply_ativacao_update(
         session=session,
-        evento_id=evento_id,
-        gamificacao_id=data.get("gamificacao_id"),
+        ativacao=ativacao,
+        data=_build_ativacao_update_data(payload),
     )
-
-    for key, value in data.items():
-        setattr(ativacao, key, value)
-
-    ativacao.updated_at = now_utc()
-    session.add(ativacao)
-    session.commit()
-
-    ativacao = _refresh_ativacao_urls(session, ativacao)
     return AtivacaoRead.model_validate(ativacao, from_attributes=True)
 
 
@@ -320,33 +343,11 @@ def atualizar_ativacao(
         ativacao_id=ativacao_id,
         current_user=current_user,
     )
-
-    data = _build_ativacao_update_data(payload)
-    if not data:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="VALIDATION_ERROR_NO_FIELDS",
-            message="Nenhum campo para atualizar",
-        )
-
-    if "gamificacao_id" in data and data["gamificacao_id"] is not None:
-        gamificacao = session.get(Gamificacao, data["gamificacao_id"])
-        if not gamificacao or gamificacao.evento_id != ativacao.evento_id:
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="GAMIFICACAO_OUT_OF_SCOPE",
-                message="Gamificacao invalida para este evento",
-                field="gamificacao_id",
-            )
-
-    for key, value in data.items():
-        setattr(ativacao, key, value)
-
-    ativacao.updated_at = now_utc()
-    session.add(ativacao)
-    session.commit()
-
-    ativacao = _refresh_ativacao_urls(session, ativacao)
+    ativacao = _apply_ativacao_update(
+        session=session,
+        ativacao=ativacao,
+        data=_build_ativacao_update_data(payload),
+    )
     return AtivacaoRead.model_validate(ativacao, from_attributes=True)
 
 
@@ -362,35 +363,7 @@ def deletar_ativacao(
         ativacao_id=ativacao_id,
         current_user=current_user,
     )
-
-    dependencies = {
-        "ativacao_leads": int(
-            session.exec(
-                select(func.count())
-                .select_from(AtivacaoLead)
-                .where(AtivacaoLead.ativacao_id == ativacao_id)
-            ).one()
-        ),
-        "cupons": int(
-            session.exec(
-                select(func.count()).select_from(Cupom).where(Cupom.ativacao_id == ativacao_id)
-            ).one()
-        ),
-        "respostas_questionario": int(
-            session.exec(
-                select(func.count())
-                .select_from(QuestionarioResposta)
-                .where(QuestionarioResposta.ativacao_id == ativacao_id)
-            ).one()
-        ),
-        "investimentos": int(
-            session.exec(
-                select(func.count())
-                .select_from(Investimento)
-                .where(Investimento.ativacao_id == ativacao_id)
-            ).one()
-        ),
-    }
+    dependencies = _count_ativacao_dependencies(session, ativacao_id)
 
     if any(v > 0 for v in dependencies.values()):
         raise_http_error(

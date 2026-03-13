@@ -86,7 +86,7 @@ const landingFixture: LandingPageData = {
   formulario: {
     event_id: 10,
     ativacao_id: 1,
-    submit_url: "/landing/ativacoes/1/submit",
+    submit_url: "/leads",
     campos: [
       {
         key: "nome",
@@ -180,7 +180,7 @@ const landingFixtureAtivacao2: LandingPageData = {
   formulario: {
     ...landingFixture.formulario,
     ativacao_id: 2,
-    submit_url: "/landing/ativacoes/2/submit",
+    submit_url: "/leads",
   },
   acesso: {
     ...landingFixture.acesso,
@@ -255,6 +255,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 444,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     });
@@ -382,10 +383,12 @@ describe("EventLandingPage", () => {
     await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
 
     await waitFor(() =>
-      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/leads", {
         nome: "Maria",
         sobrenome: undefined,
         email: "maria@example.com",
+        event_id: 10,
+        ativacao_id: 1,
         cpf: "11144477735",
         telefone: undefined,
         data_nascimento: undefined,
@@ -478,10 +481,12 @@ describe("EventLandingPage", () => {
     await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
 
     await waitFor(() =>
-      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/leads", {
         nome: "Maria",
         sobrenome: undefined,
         email: "maria@example.com",
+        event_id: 10,
+        ativacao_id: 1,
         cpf: "52998224725",
         telefone: undefined,
         data_nascimento: undefined,
@@ -525,10 +530,12 @@ describe("EventLandingPage", () => {
     await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
 
     await waitFor(() =>
-      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/leads", {
         nome: "Maria",
         sobrenome: undefined,
         email: "maria@example.com",
+        event_id: 10,
+        ativacao_id: 1,
         cpf: undefined,
         telefone: undefined,
         data_nascimento: undefined,
@@ -580,10 +587,12 @@ describe("EventLandingPage", () => {
     await user.click(screen.getByRole("button", { name: /confirmar presenca/i }));
 
     await waitFor(() =>
-      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/landing/ativacoes/1/submit", {
+      expect(mockedSubmitLandingForm).toHaveBeenCalledWith("/leads", {
         nome: "Maria",
         sobrenome: undefined,
         email: "maria@example.com",
+        event_id: 10,
+        ativacao_id: 1,
         cpf: undefined,
         telefone: undefined,
         data_nascimento: undefined,
@@ -609,6 +618,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 444,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: false,
       bloqueado_cpf_duplicado: true,
     });
@@ -705,6 +715,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 777,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     });
@@ -748,6 +759,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: null,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     });
@@ -793,6 +805,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 1001,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     });
@@ -839,6 +852,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 666,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     });
@@ -877,6 +891,7 @@ describe("EventLandingPage", () => {
       ativacao_id: 1,
       ativacao_lead_id: 987,
       mensagem_sucesso: "Cadastro realizado com sucesso.",
+      lead_reconhecido: true,
       conversao_registrada: true,
       bloqueado_cpf_duplicado: false,
     });

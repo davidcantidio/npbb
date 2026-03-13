@@ -3,8 +3,8 @@ doc_id: "F1_LP_EPICS.md"
 version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-12"
-audit_gate: "pending"
+last_updated: "2026-03-13"
+audit_gate: "hold"
 ---
 
 # Epicos - LP / F1 - Fundação (Modelo e Backend)
@@ -19,8 +19,8 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `pending`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `hold`
+- ultima_auditoria: `auditoria_fluxo_ativacao.md` (status `provisional`)
 
 ## Checklist de Transicao de Gate
 
@@ -32,10 +32,10 @@ O backend possui modelos e migrações aplicáveis, endpoints CRUD de ativaçõe
 - [x] DoD da fase foi revisado
 
 ### `pending -> hold`
-- [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`
-- [ ] `AUDIT-LOG.md` foi atualizado
-- [ ] o veredito da auditoria e `hold`
-- [ ] o estado do gate foi atualizado para `hold`
+- [x] existe `auditoria_fluxo_ativacao.md`
+- [x] `AUDIT-LOG.md` foi atualizado
+- [x] o veredito da auditoria e `hold`
+- [x] o estado do gate foi atualizado para `hold`
 
 ### `pending -> approved`
 - [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`

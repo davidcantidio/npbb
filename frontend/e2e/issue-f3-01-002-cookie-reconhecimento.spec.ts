@@ -52,7 +52,7 @@ function buildLandingPayload(params: {
     formulario: {
       event_id: EVENTO_ID,
       ativacao_id: ativacaoId,
-      submit_url: `/landing/ativacoes/${ativacaoId}/submit`,
+      submit_url: "/leads",
       campos: [
         {
           key: "nome",
@@ -153,7 +153,7 @@ test("reconhece a segunda landing via cookie emitido no submit", async ({ page }
     }
   });
 
-  await page.route(`**/landing/ativacoes/${ATIVACAO_INICIAL_ID}/submit`, async (route) => {
+  await page.route("**/leads", async (route) => {
     await fulfillJson(
       route,
       {
@@ -162,6 +162,7 @@ test("reconhece a segunda landing via cookie emitido no submit", async ({ page }
         ativacao_id: ATIVACAO_INICIAL_ID,
         ativacao_lead_id: 444,
         mensagem_sucesso: "Cadastro realizado com sucesso.",
+        lead_reconhecido: true,
         conversao_registrada: true,
         bloqueado_cpf_duplicado: false,
         token_reconhecimento: COOKIE_TOKEN,

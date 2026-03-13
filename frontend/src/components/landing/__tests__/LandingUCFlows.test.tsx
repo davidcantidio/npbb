@@ -82,6 +82,7 @@ describe("AFLPD-F4-01-002 — Fluxos UC-01 a UC-04", () => {
             ativacao_id: 1,
             ativacao_lead_id: 1,
             mensagem_sucesso: "Cadastro realizado com sucesso.",
+            lead_reconhecido: true,
             conversao_registrada: true,
             bloqueado_cpf_duplicado: false,
           }}

@@ -89,6 +89,7 @@ describe("AFLPD-F4-01-002 — Acessibilidade WCAG AA", () => {
             ativacao_id: 1,
             ativacao_lead_id: 1,
             mensagem_sucesso: "OK",
+            lead_reconhecido: true,
             conversao_registrada: true,
             bloqueado_cpf_duplicado: false,
           }}

@@ -258,6 +258,12 @@ Atribuição de conversões por ativação e experiência fluida para leads reco
 | **CPF sensível (LGPD)** | Criptografia em repouso; mínimo de retenção; política de dados documentada |
 | **Fricção no primeiro acesso** | UX clara; mensagem explicando que CPF é só na primeira vez |
 
+## PRDs Derivados
+
+| PRD | Intake de Origem | Auditoria de Origem | Escopo |
+|---|---|---|---|
+| [PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md](./PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md) | [INTAKE-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md](./INTAKE-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md) | [auditoria_fluxo_ativacao.md](./auditoria_fluxo_ativacao.md) | Remediacao controlada para tirar F1 de hold via contrato publico canônico, paridade de submit e refatoracao estrutural minima |
+
 ---
 
 ## 12. Fatiamento por Fases

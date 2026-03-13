@@ -42,7 +42,7 @@ function buildLandingPayload() {
     formulario: {
       event_id: EVENTO_ID,
       ativacao_id: ATIVACAO_UNICA_ID,
-      submit_url: `/landing/ativacoes/${ATIVACAO_UNICA_ID}/submit`,
+      submit_url: "/leads",
       campos: [
         {
           key: "nome",
@@ -114,10 +114,12 @@ test('ativacao unica reconhecida mostra CTA "Registrar outro CPF" e conclui novo
     },
   );
 
-  await page.route(`**/landing/ativacoes/${ATIVACAO_UNICA_ID}/submit`, async (route, request) => {
+  await page.route("**/leads", async (route, request) => {
     expect(request.postDataJSON()).toMatchObject({
       nome: "Maria",
       email: "maria@example.com",
+      event_id: EVENTO_ID,
+      ativacao_id: ATIVACAO_UNICA_ID,
       cpf: "11144477735",
       consentimento_lgpd: true,
     });
@@ -130,6 +132,7 @@ test('ativacao unica reconhecida mostra CTA "Registrar outro CPF" e conclui novo
         ativacao_id: ATIVACAO_UNICA_ID,
         ativacao_lead_id: 444,
         mensagem_sucesso: "Cadastro realizado com sucesso.",
+        lead_reconhecido: true,
         conversao_registrada: true,
         bloqueado_cpf_duplicado: false,
       },

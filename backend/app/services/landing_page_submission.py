@@ -226,6 +226,30 @@ def _track_submit_success_analytics_if_needed(
     )
 
 
+def _build_submit_response(
+    *,
+    lead_id: int,
+    event_id: int,
+    ativacao_id: int | None,
+    ativacao_lead_id: int | None,
+    success_message: str,
+    conversao_registrada: bool,
+    bloqueado_cpf_duplicado: bool,
+    token_reconhecimento: str | None,
+) -> LandingSubmitResponse:
+    return LandingSubmitResponse(
+        lead_id=lead_id,
+        event_id=event_id,
+        ativacao_id=ativacao_id,
+        ativacao_lead_id=ativacao_lead_id,
+        mensagem_sucesso=success_message,
+        lead_reconhecido=bool(token_reconhecimento),
+        conversao_registrada=conversao_registrada,
+        bloqueado_cpf_duplicado=bloqueado_cpf_duplicado,
+        token_reconhecimento=token_reconhecimento,
+    )
+
+
 def submit_public_lead(
     session: Session,
     *,
@@ -246,14 +270,23 @@ def submit_public_lead(
             .where(AtivacaoLead.ativacao_id == duplicate_conversao.ativacao_id)
             .where(AtivacaoLead.lead_id == duplicate_conversao.lead_id)
         ).first()
-        return LandingSubmitResponse(
+        token_reconhecimento: str | None = None
+        if ativacao is not None and evento.id is not None:
+            token_reconhecimento = gerar_token(
+                session,
+                lead_id=duplicate_conversao.lead_id,
+                evento_id=evento.id,
+            )
+            session.commit()
+        return _build_submit_response(
             lead_id=duplicate_conversao.lead_id,
             event_id=evento.id or 0,
             ativacao_id=ativacao.id if ativacao else None,
             ativacao_lead_id=ativacao_lead.id if ativacao_lead else None,
-            mensagem_sucesso=success_message,
+            success_message=success_message,
             conversao_registrada=False,
             bloqueado_cpf_duplicado=True,
+            token_reconhecimento=token_reconhecimento,
         )
 
     email = str(payload.email).strip().lower() if payload.email else None
@@ -288,12 +321,12 @@ def submit_public_lead(
     session.refresh(lead)
     if ativacao_lead:
         session.refresh(ativacao_lead)
-    return LandingSubmitResponse(
+    return _build_submit_response(
         lead_id=lead.id or 0,
         event_id=evento.id or 0,
         ativacao_id=ativacao.id if ativacao else None,
         ativacao_lead_id=ativacao_lead.id if ativacao_lead else None,
-        mensagem_sucesso=success_message,
+        success_message=success_message,
         conversao_registrada=conversao_registrada,
         bloqueado_cpf_duplicado=False,
         token_reconhecimento=token_reconhecimento,

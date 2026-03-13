@@ -9,6 +9,7 @@ type FormOnlySurfaceLayout = Pick<
 
 type FormOnlySurfaceOptions = {
   preferTranslucentSolidBackground?: boolean;
+  previewMobileMode?: boolean;
 };
 
 export const FORM_ONLY_CONTENT_WIDTH_SX = {
@@ -21,6 +22,11 @@ export const FORM_ONLY_CONTENT_WIDTH_SX = {
   },
 } as const;
 
+export const PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX = {
+  width: "100%",
+  maxWidth: "100%",
+} as const;
+
 export const FORM_ONLY_SURFACE_BORDER_RADIUS = "24px";
 
 export const FORM_ONLY_SURFACE_PADDING_SX = {
@@ -28,6 +34,10 @@ export const FORM_ONLY_SURFACE_PADDING_SX = {
   "@media (min-width:768px)": {
     padding: "32px",
   },
+} as const;
+
+export const PREVIEW_FORM_ONLY_SURFACE_PADDING_SX = {
+  padding: "20px",
 } as const;
 
 export function resolveFormOnlySurfaceBackground(
@@ -59,7 +69,9 @@ export function getFormOnlySurfaceSx(
   options: FormOnlySurfaceOptions = {},
 ) {
   return {
-    ...FORM_ONLY_SURFACE_PADDING_SX,
+    ...(options.previewMobileMode
+      ? PREVIEW_FORM_ONLY_SURFACE_PADDING_SX
+      : FORM_ONLY_SURFACE_PADDING_SX),
     borderRadius: FORM_ONLY_SURFACE_BORDER_RADIUS,
     bgcolor: resolveFormOnlySurfaceBackground(layout.formCardBackground, options),
     border: layout.formCardBorder,

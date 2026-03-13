@@ -18,6 +18,7 @@ import { alpha } from "@mui/material/styles";
 import { getFieldLabel } from "./landingHelpers";
 import {
   FORM_ONLY_CONTENT_WIDTH_SX,
+  PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX,
   getFormOnlySurfaceSx,
 } from "./formOnlySurface";
 import { buildFormCardTheme } from "./landingStyle";
@@ -65,7 +66,10 @@ export default function FormCard({
       <Paper
         data-testid="form-card-paper"
         elevation={0}
-        sx={[FORM_ONLY_CONTENT_WIDTH_SX, getFormOnlySurfaceSx(layout)]}
+        sx={[
+          isPreview ? PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX : FORM_ONLY_CONTENT_WIDTH_SX,
+          getFormOnlySurfaceSx(layout, { previewMobileMode: isPreview }),
+        ]}
       >
         <ThemeProvider theme={formCardTheme}>
           {!submitted ? (
@@ -142,7 +146,7 @@ export default function FormCard({
                     sx={{
                       display: "grid",
                       gap: 2,
-                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                      gridTemplateColumns: isPreview ? "1fr" : { xs: "1fr", sm: "1fr 1fr" },
                     }}
                   >
                     {data.formulario.campos.map((field) => (

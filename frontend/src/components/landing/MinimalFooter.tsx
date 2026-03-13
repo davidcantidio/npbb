@@ -4,21 +4,23 @@ type MinimalFooterProps = {
   tagline: string;
   textColor: string;
   privacyPolicyUrl: string;
+  isPreview?: boolean;
 };
 
 export default function MinimalFooter({
   tagline,
   textColor,
   privacyPolicyUrl,
+  isPreview = false,
 }: MinimalFooterProps) {
   return (
     <Stack
       component="footer"
       data-testid="minimal-footer"
-      direction={{ xs: "column", md: "row" }}
+      direction={isPreview ? "column" : { xs: "column", md: "row" }}
       spacing={2}
       justifyContent="space-between"
-      alignItems={{ xs: "flex-start", md: "center" }}
+      alignItems={isPreview ? "flex-start" : { xs: "flex-start", md: "center" }}
       sx={{ color: textColor }}
     >
       <Typography data-testid="minimal-footer-tagline" variant="caption" color="inherit">

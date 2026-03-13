@@ -3,6 +3,7 @@ import { Box, Paper } from "@mui/material";
 import GamificacaoBlock from "./GamificacaoBlock";
 import {
   FORM_ONLY_CONTENT_WIDTH_SX,
+  PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX,
   getFormOnlySurfaceSx,
 } from "./formOnlySurface";
 import type { LandingGamificacaoSectionProps } from "./landingSections.types";
@@ -27,7 +28,7 @@ export function LandingGamificacaoSection({
     <Box
       data-testid="landing-gamificacao-section"
       sx={{
-        ...FORM_ONLY_CONTENT_WIDTH_SX,
+        ...(isPreview ? PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX : FORM_ONLY_CONTENT_WIDTH_SX),
       }}
     >
       <Paper
@@ -37,6 +38,7 @@ export function LandingGamificacaoSection({
           { width: "100%" },
           getFormOnlySurfaceSx(layout, {
             preferTranslucentSolidBackground: true,
+            previewMobileMode: isPreview,
           }),
         ]}
       >

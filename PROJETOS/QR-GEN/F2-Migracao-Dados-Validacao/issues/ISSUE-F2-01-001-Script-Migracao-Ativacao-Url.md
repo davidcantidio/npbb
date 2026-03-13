@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-001-Script-Migracao-Ativacao-Url.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "required"
@@ -31,18 +31,18 @@ A tabela `ativacao` possui `landing_url`, `qr_code_url` e `url_promotor`. Regist
 - Given o script executado com sucesso, When consulto o banco, Then zero registros com localhost em `landing_url` ou `url_promotor`
 
 ## Definition of Done da Issue
-- [ ] Script de migracao executavel
-- [ ] Dry-run funcional
-- [ ] Rollback documentado
-- [ ] Teste de validacao passando
+- [x] Script de migracao executavel
+- [x] Dry-run funcional
+- [x] Rollback documentado
+- [x] Teste de validacao passando
 
 ## Tasks Decupadas
 
-- [ ] T1: Criar arquivo de data migration Alembic ou script standalone com esqueleto
-- [ ] T2: Implementar query para identificar ativacao com landing_url ou url_promotor contendo localhost/127.0.0.1
-- [ ] T3: Implementar recalculo de landing_url, url_promotor e qr_code_url usando build_ativacao_public_urls e build_qr_code_data_url
-- [ ] T4: Implementar persistencia das alteracoes em transacao
-- [ ] T5: Adicionar parametro dry-run (env var ou CLI) e documentar uso
+- [x] T1: Criar arquivo de data migration Alembic ou script standalone com esqueleto
+- [x] T2: Implementar query para identificar ativacao com landing_url ou url_promotor contendo localhost/127.0.0.1
+- [x] T3: Implementar recalculo de landing_url, url_promotor e qr_code_url usando build_ativacao_public_urls e build_qr_code_data_url
+- [x] T4: Implementar persistencia das alteracoes em transacao
+- [x] T5: Adicionar parametro dry-run (env var ou CLI) e documentar uso
 
 ## Instructions por Task
 

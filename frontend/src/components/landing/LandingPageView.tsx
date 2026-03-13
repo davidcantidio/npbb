@@ -14,7 +14,10 @@ import FormCard from "./FormCard";
 import FullPageBackground from "./FullPageBackground";
 import LandingPreviewBadge from "./LandingPreviewBadge";
 import MinimalFooter from "./MinimalFooter";
-import { FORM_ONLY_CONTENT_WIDTH_SX } from "./formOnlySurface";
+import {
+  FORM_ONLY_CONTENT_WIDTH_SX,
+  PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX,
+} from "./formOnlySurface";
 import { resolveLandingContent } from "./landingContent";
 import { LandingGamificacaoSection } from "./landingSections.gamificacao";
 import type {
@@ -74,8 +77,8 @@ export default function LandingPageView({
   const layout = getLayoutVisualSpec(data);
   const isPreview = mode === "preview";
   const backgroundLayerMode = isPreview ? "embedded" : "fixed";
-  const sectionMinHeight = isPreview ? "auto" : "100vh";
-  const contentMinHeight = isPreview ? "auto" : "calc(100vh - 48px)";
+  const sectionMinHeight = isPreview ? "100%" : "100vh";
+  const contentMinHeight = isPreview ? "100%" : "calc(100vh - 48px)";
   const content = resolveLandingContent(data);
 
   return (
@@ -86,8 +89,8 @@ export default function LandingPageView({
           sx={{
             position: "relative",
             minHeight: sectionMinHeight,
-            px: { xs: 2, md: 3 },
-            py: isPreview ? { xs: 2, md: 3 } : { xs: 3, md: 5 },
+            px: isPreview ? 2 : { xs: 2, md: 3 },
+            py: isPreview ? 2 : { xs: 3, md: 5 },
             color: "text.primary",
           }}
         >
@@ -106,7 +109,7 @@ export default function LandingPageView({
               alignItems="center"
               sx={{
                 width: "100%",
-                py: isPreview ? { xs: 2, md: 3 } : { xs: 4, md: 6 },
+                py: isPreview ? 2 : { xs: 4, md: 6 },
               }}
             >
               <FormCard
@@ -141,7 +144,9 @@ export default function LandingPageView({
 
               <Box
                 sx={{
-                  ...FORM_ONLY_CONTENT_WIDTH_SX,
+                  ...(isPreview
+                    ? PREVIEW_FORM_ONLY_CONTENT_WIDTH_SX
+                    : FORM_ONLY_CONTENT_WIDTH_SX),
                   borderTop: `1px solid ${alpha(data.template.color_primary, 0.12)}`,
                   pt: 3,
                 }}
@@ -150,6 +155,7 @@ export default function LandingPageView({
                   tagline={data.marca.tagline}
                   textColor={layout.footerTextColor}
                   privacyPolicyUrl={data.formulario.privacy_policy_url}
+                  isPreview={isPreview}
                 />
               </Box>
             </Stack>

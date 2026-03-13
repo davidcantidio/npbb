@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-001-Contar-Ativacao-Localhost.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "optional"
@@ -30,15 +30,15 @@ A tabela `ativacao` possui colunas `landing_url`, `qr_code_url` e `url_promotor`
 - Given o resultado, When documento na issue ou em artefato, Then o volume fica registrado para planejamento da F2
 
 ## Definition of Done da Issue
-- [ ] Script ou query executavel
-- [ ] Contagem documentada
-- [ ] Uso documentado (como executar)
+- [x] Script ou query executavel
+- [x] Contagem documentada
+- [x] Uso documentado (como executar)
 
 ## Tasks Decupadas
 
-- [ ] T1: Criar script ou query SQL que conta `ativacao` com `landing_url` ou `url_promotor` contendo localhost/127.0.0.1
-- [ ] T2: Documentar saida esperada e como executar
-- [ ] T3: Executar em ambiente de dev/staging e registrar volume
+- [x] T1: Criar script ou query SQL que conta `ativacao` com `landing_url` ou `url_promotor` contendo localhost/127.0.0.1
+- [x] T2: Documentar saida esperada e como executar
+- [x] T3: Executar em ambiente de dev/staging e registrar volume
 
 ## Arquivos Reais Envolvidos
 
@@ -77,6 +77,13 @@ Filtro: landing_url ou url_promotor contendo localhost ou 127.0.0.1.
 - A contagem considera registros da tabela `ativacao` cujo `landing_url` ou `url_promotor` contenham `localhost` ou `127.0.0.1`
 - A consulta conta `Ativacao.id` distintos para garantir uma linha por registro afetado
 - `qr_code_url` nao entra nesta issue porque nao faz parte dos criterios de aceite definidos para F1
+
+## Evidencia de Execucao
+
+- Data: `2026-03-13`
+- Ambiente: `dev`
+- Comando executado: `cd backend && python3 -m scripts.count_ativacao_localhost`
+- Volume registrado: `12` registros `ativacao` com `landing_url` ou `url_promotor` contendo `localhost` ou `127.0.0.1`
 
 ## Dependencias
 

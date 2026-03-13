@@ -74,7 +74,24 @@ O arquivo abaixo deve existir para evitar 404 em rotas de SPA:
 - abrir `https://app.npbb.com.br/eventos` nao retorna 404
 - requests do frontend apontam para `https://npbb-api.onrender.com`
 
-## 3) Pos-deploy
+## 3) Checklist pre-go-live
+
+Execute este checklist antes de liberar QR codes, links publicos ou campanhas em producao:
+
+- [ ] O dominio customizado do frontend esta ativo e respondendo em `https://app.npbb.com.br`
+- [ ] `PUBLIC_APP_BASE_URL=https://app.npbb.com.br`
+- [ ] `FRONTEND_ORIGIN=https://app.npbb.com.br`
+- [ ] `PASSWORD_RESET_URL=https://app.npbb.com.br/reset-password`
+- [ ] `VITE_API_BASE_URL` aponta para a API de producao
+- [ ] O hostname `*.pages.dev` nao esta sendo usado como URL publica canonica do app
+- [ ] Smoke test manual: abrir uma landing publica ou QR gerado e confirmar que o hostname final e `app.npbb.com.br`
+
+Regra de bloqueio:
+- Nao seguir com o go-live se `PUBLIC_APP_BASE_URL` estiver ausente, apontando para
+  `localhost`, `127.0.0.1`, `*.pages.dev` ou qualquer hostname provisorio. Nesse
+  cenario, QR codes e links publicos podem ser gerados com URL incorreta.
+
+## 4) Pos-deploy
 
 Se o nome final da API, do dominio customizado ou do projeto Pages mudar:
 

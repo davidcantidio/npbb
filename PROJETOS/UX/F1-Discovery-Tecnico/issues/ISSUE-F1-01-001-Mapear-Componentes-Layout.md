@@ -56,6 +56,49 @@ O PRD indica lacunas: nome do(s) componente(s) de preview de landing e de ativac
 
 Documento na issue ou artefato anexo com: lista de componentes de preview, estrutura de layout de cada pagina.
 
+## Registro de Discovery
+
+### T1 - Componentes de preview mapeados
+
+#### Landing
+
+- Cadeia de preview atual: `EventLeadFormConfigPage -> useLandingPreview -> PreviewSection -> MobilePreviewFrame -> LandingPageView`
+- `EventLeadFormConfigPage` monta `previewPayload`, chama `useLandingPreview(...)` e injeta `preview.previewData`, `preview.previewLoading`, `preview.previewError` e `preview.refreshPreview` em `PreviewSection`
+- `useLandingPreview` busca os dados via `previewEventoLanding(...)` e controla `previewData`, `previewLoading` e `previewError`
+- `PreviewSection` renderiza o host visual do preview e, quando ha dados, encapsula `LandingPageView` dentro de `MobilePreviewFrame`
+- `MobilePreviewFrame` define o frame mobile fixo do preview com largura base de `390px` e altura base de `844px`
+- `LandingPageView` e o componente que renderiza a landing em `mode="preview"`
+
+#### Ativacao
+
+- Nao existe hoje um preview mobile side-by-side embutido em `EventAtivacoesPage`
+- A pagina atual renderiza `AtivacaoFormSection` e `AtivacoesTable`
+- A visualizacao detalhada existente fica em `AtivacaoViewDialog`
+- O componente visual real usado no dialog e `AtivacaoQrPreview`
+- O estado atual da etapa de ativacoes e: visualizacao modal com metadados, URLs e QR code; nao ha componente equivalente a `MobilePreviewFrame + LandingPageView` para pagina publica de ativacao dentro do layout principal
+
+### T2 - Layout atual de EventLeadFormConfigPage
+
+- Shell: `EventWizardPageShell width="wide"` com `EventWizardStepper activeStep={1}`
+- Container principal do conteudo: `Paper elevation={2}` com `p: 3` e `borderRadius: 3`
+- Layout interno principal: `Box` com `display: "grid"`
+- Modo desktop (`md` para cima): `gridTemplateColumns: "minmax(0, 1fr) minmax(390px, 430px)"`
+- Modo mobile/tablet menor que `md`: `gridTemplateColumns: "minmax(0, 1fr)"`, empilhando painel e preview
+- Gap entre colunas/blocos: `{ xs: 3, xl: 4 }`
+- Coluna esquerda: `Stack spacing={2}` com `maxWidth: 760` no desktop
+- Ordem das secoes da coluna esquerda:
+  1. `TemaSection`
+  2. `LandingContextSection`
+  3. `GovernanceSection`
+  4. `CamposSection`
+  5. `Divider`
+  6. `UrlsSection`
+- Coluna direita: `Box` com `maxWidth: 430`
+- Comportamento da coluna direita no desktop: `position: "sticky"` com `top: theme.spacing(3)` e `justifySelf: "end"`
+- Comportamento da coluna direita fora do desktop: `position: "static"` e largura total
+- Conteudo da coluna direita: `PreviewSection`, que por sua vez renderiza o frame mobile da landing
+- Classificacao do layout: CSS Grid no container macro + Stack/Flex interno nas secoes
+
 ## Dependencias
 
 - [Intake](../../../INTAKE-UX.md)

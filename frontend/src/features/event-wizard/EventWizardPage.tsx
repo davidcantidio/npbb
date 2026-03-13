@@ -529,7 +529,8 @@ export default function EventWizardPage() {
                   component={RouterLink}
                   to={isEdit ? `/eventos/${eventoId}` : "/eventos"}
                   variant="outlined"
-                  sx={{ textTransform: "none", fontWeight: 700 }}
+                  size="small"
+                  sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
                 >
                   Cancelar
                 </Button>

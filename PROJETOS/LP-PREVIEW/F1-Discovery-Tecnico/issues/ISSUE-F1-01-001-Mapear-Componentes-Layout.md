@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-001-Mapear-Componentes-Layout.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "optional"

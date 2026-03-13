@@ -51,7 +51,7 @@ explicito fora do sibling, sem abrir refactor novo neste backlog.
 
 ## Tasks Decupadas
 
-- [ ] T1: medir os arquivos estruturais alvo da F1 contra o spec vigente
+- [x] T1: medir os arquivos estruturais alvo da F1 contra o spec vigente
 - [ ] T2: confirmar a estabilidade da fachada `app.models.models`
 - [ ] T3: validar metadata critica da fundacao e registrar o risco residual fora do sibling
 
@@ -143,10 +143,20 @@ explicito fora do sibling, sem abrir refactor novo neste backlog.
 
 - baseline estrutural registrada na propria issue, com quadro `arquivo -> linhas -> threshold -> leitura`
 
+## Baseline Estrutural Registrada
+
+Leitura executada contra `SPEC-ANTI-MONOLITO.md`, usando o threshold de arquivo
+`warn > 400` e `block > 600`.
+
+| Arquivo | Linhas | Threshold Aplicavel | Leitura |
+|---|---:|---|---|
+| `backend/app/models/models.py` | `549` | `warn (> 400)` e abaixo de `block (> 600)` | `warn`; alvo estrutural remediado da F1, fora de `block` |
+| `backend/app/routers/ativacao.py` | `394` | abaixo de `warn (> 400)` | `ok`; alvo estrutural remediado da F1, abaixo de `warn` |
+| `backend/app/routers/leads.py` | `1649` | `block (> 600)` | `block`; risco residual explicito fora do sibling |
+
 ## Dependencias
 
 - [PRD Derivado](../../../PRD-LP-REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA.md)
 - [Auditoria de Origem](../../../auditoria_fluxo_ativacao.md)
 - [Epic](../EPIC-F1-01-BASELINE-DO-ESTADO-ATUAL.md)
 - [Fase](../F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

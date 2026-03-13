@@ -16,7 +16,7 @@ export function useSnackbarFeedback() {
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     const value = (text || "").trim();
     if (!value) {
-      setSnackbar({ open: true, message: `Sem URL para copiar (${label}).`, severity: "info" });
+      setSnackbar({ open: true, message: `Sem ${label.toLowerCase()} para copiar.`, severity: "info" });
       return;
     }
 
@@ -45,11 +45,11 @@ export function useSnackbarFeedback() {
 
       setSnackbar({
         open: true,
-        message: ok ? `Copiado: ${label}` : `Não foi possível copiar (${label}).`,
+        message: ok ? `Copiado: ${label}` : `Nao foi possivel copiar ${label.toLowerCase()}.`,
         severity: ok ? "success" : "error",
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : `Não foi possível copiar (${label}).`;
+      const message = err instanceof Error ? err.message : `Nao foi possivel copiar ${label.toLowerCase()}.`;
       setSnackbar({ open: true, message, severity: "error" });
     }
   }, []);

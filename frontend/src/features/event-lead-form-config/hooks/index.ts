@@ -4,5 +4,5 @@ export { useEventLeadFormConfigData } from "./useEventLeadFormConfigData";
 export type { LandingMeta } from "./useEventLeadFormConfigData";
 export { useGovernanceData } from "./useGovernanceData";
 export { useLandingPreview } from "./useLandingPreview";
-export { useSnackbarFeedback } from "./useSnackbarFeedback";
-export type { SnackbarState } from "./useSnackbarFeedback";
+export { useSnackbarFeedback } from "../../../hooks/useSnackbarFeedback";
+export type { SnackbarState } from "../../../hooks/useSnackbarFeedback";

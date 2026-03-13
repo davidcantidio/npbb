@@ -52,7 +52,7 @@ risco residual.
 
 ## Tasks Decupadas
 
-- [ ] T1: consolidar a evidencia de metadata critica e da revision rastreavel
+- [x] T1: consolidar a evidencia de metadata critica e da revision rastreavel
 - [ ] T2: registrar a evidencia de threshold dos alvos estruturais originais do hold
 - [ ] T3: mapear cada prova aos achados estruturais da auditoria F1
 
@@ -142,10 +142,26 @@ risco residual.
 
 - quadro consolidado `prova -> comando ou leitura -> achado da auditoria`, registrado na propria issue
 
+## Evidencia Consolidada
+
+### T1 - Metadata Critica e Revision Rastreavel
+
+| Prova | Comando ou leitura | Objetos provados | Achado vinculado |
+|---|---|---|---|
+| teste focal de metadata | `PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q backend/tests/test_lp_ativacao_schema_contract.py` | `conversao_ativacao` com colunas `id`, `ativacao_id`, `lead_id`, `cpf`, `created_at`; indice `ix_conversao_ativacao_ativacao_id_cpf`; `lead_reconhecimento_token` com colunas `token_hash`, `lead_id`, `evento_id`, `expires_at` | `F1-NAO08` |
+| leitura da revision | `backend/alembic/versions/c5a8d2e1f4b6_add_conversao_ativacao_and_reconhecimento_token.py` | `revision = c5a8d2e1f4b6`; criacao de `conversao_ativacao`; criacao de `lead_reconhecimento_token`; criacao de `ix_conversao_ativacao_ativacao_id_cpf` | `F1-NAO08` |
+
+Resultado objetivo do comando aprovado em `2026-03-13`: `2 passed in 0.12s`.
+
+Leitura objetiva da prova:
+
+- o teste focal exige a presenca das tabelas e do indice criticos da fundacao no metadata carregado do backend
+- a revision `c5a8d2e1f4b6` preserva rastreabilidade explicita entre a prova automatizada e a migration que cria os objetos auditados
+- para esta issue, `F1-NAO08` fica coberto por duas camadas complementares de evidencia: teste executavel e leitura direta da migration
+
 ## Dependencias
 
 - [Issue de Baseline Estrutural](./ISSUE-F1-01-002-VALIDAR-BASELINE-ESTRUTURAL-DA-F1.md)
 - [Auditoria de Origem](../../../auditoria_fluxo_ativacao.md)
 - [Epic](../EPIC-F1-02-EVIDENCIA-OBJETIVA-PARA-REAUDITORIA.md)
 - [Fase](../F1_REMEDIAR_HOLD_F1_CONTRATO_ESTRUTURA_EPICS.md)
-

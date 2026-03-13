@@ -1,4 +1,4 @@
-import { toApiErrorCode, toApiErrorMessage } from "./http";
+import { ApiError, toApiErrorCode, toApiErrorMessage } from "./http";
 
 const EVENT_API_ERROR_MESSAGES: Record<string, string> = {
   EVENTO_NOT_FOUND: "Evento nao encontrado ou voce nao tem permissao para acessa-lo.",
@@ -31,4 +31,16 @@ export function getEventApiErrorMessage(err: unknown, fallback: string): string 
     return EVENT_API_ERROR_MESSAGES[code];
   }
   return toApiErrorMessage(err, fallback);
+}
+
+/**
+ * Extracts extra payload from API error body (e.g. dependencies for ATIVACAO_DELETE_BLOCKED).
+ * @param err Unknown error instance thrown by services.
+ * @returns extra object when available, null otherwise.
+ */
+export function getEventApiErrorExtra(err: unknown): Record<string, unknown> | null {
+  if (!(err instanceof ApiError)) return null;
+  if (!err.body || typeof err.body !== "object") return null;
+  const extra = (err.body as { extra?: unknown })?.extra;
+  return extra && typeof extra === "object" && !Array.isArray(extra) ? (extra as Record<string, unknown>) : null;
 }

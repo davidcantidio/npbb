@@ -394,10 +394,23 @@ describe("Evento pages smoke", () => {
     expect(screen.getByTestId("landing-preview-badge")).toBeInTheDocument();
     expect(await screen.findByText(/Analytics da landing/i)).toBeInTheDocument();
     expect(screen.getByText(/Auditoria de customizacao/i)).toBeInTheDocument();
+    expect(screen.getByTestId("event-lead-form-config-shell")).toHaveStyle({
+      maxWidth: "1280px",
+      marginLeft: "auto",
+      marginRight: "auto",
+    });
+    const previewActions = screen.getByTestId("event-lead-preview-actions");
+    expect(within(previewActions).getByRole("button", { name: /atualizar preview/i })).toHaveClass(
+      "MuiButton-sizeSmall",
+    );
+    expect(within(previewActions).getByRole("link", { name: /abrir landing publica/i })).toHaveClass(
+      "MuiButton-sizeSmall",
+    );
     const previewHost = screen.getByTestId("event-lead-preview-host");
     expect(previewHost).toHaveStyle({
       position: "relative",
-      overflow: "hidden",
+      overflowX: "hidden",
+      overflowY: "auto",
     });
     expect(within(previewHost).getByTestId("full-page-background-root")).toHaveAttribute(
       "data-layer-mode",
@@ -676,6 +689,9 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
+    expect(await screen.findByTestId("event-gamificacao-shell")).toHaveStyle({
+      maxWidth: "1280px",
+    });
     await screen.findByLabelText(/Nome da gamifica/i);
     const textboxes = screen.getAllByRole("textbox");
     for (const [index, input] of textboxes.entries()) {
@@ -697,6 +713,9 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
+    expect(await screen.findByTestId("event-ativacoes-shell")).toHaveStyle({
+      maxWidth: "1280px",
+    });
     const nomeInput = await screen.findByLabelText(/Nome da ativ/i);
     await userEvent.type(nomeInput, "Nova ativacao");
     await userEvent.click(screen.getByRole("button", { name: /Adicionar ativa/i }));
@@ -895,6 +914,9 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
+    expect(await screen.findByTestId("event-questionario-shell")).toHaveStyle({
+      maxWidth: "1280px",
+    });
     expect(await screen.findByText(/Estrutura do questionario/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
 

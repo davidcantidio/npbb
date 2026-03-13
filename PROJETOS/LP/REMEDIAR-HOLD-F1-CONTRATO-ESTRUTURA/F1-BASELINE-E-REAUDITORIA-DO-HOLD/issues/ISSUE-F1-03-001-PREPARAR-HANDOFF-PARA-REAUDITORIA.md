@@ -52,7 +52,7 @@ Esta issue toca apenas artefatos do sibling.
 ## Tasks Decupadas
 
 - [x] T1: consolidar o resumo executivo da remediacao e a prestacao de contas dos achados originais
-- [ ] T2: explicitar o escopo fora do sibling e os riscos residuais
+- [x] T2: explicitar o escopo fora do sibling e os riscos residuais
 - [ ] T3: montar o checklist de reauditoria independente e o pacote de entradas esperadas
 
 ## Instructions por Task
@@ -172,6 +172,13 @@ Leitura de fechamento de `T1`:
 
 - esta prestacao de contas nao reinterpreta o veredito `hold`; ela apenas mostra quais achados agora possuem baseline e evidencia objetiva no sibling
 - nenhuma parte deste resumo exige reescrever `AUDIT-LOG.md` ou alterar o gate da F1 original
+
+### Fora do Sibling e Riscos Residuais
+
+- `backend/app/routers/leads.py` permanece como risco estrutural residual fora do sibling. O arquivo segue com `1649` linhas, acima do threshold `block (> 600)`, mas nao faz parte dos alvos remediados por esta trilha.
+- LGPD de CPF em repouso permanece como follow-up separado e fora deste sibling. O risco continua registrado como contexto de reauditoria, sem ser absorvido como implementacao funcional aqui.
+- nenhuma pressao para incluir refactor de `leads.py`, remediacao LGPD, reabertura do fluxo publico ou backlog funcional adicional pode ser absorvida silenciosamente por esta issue.
+- se qualquer um desses itens passar de registro residual para execucao material, a resposta correta desta trilha e `BLOQUEADO`, nao expansao implicita de escopo.
 
 ## Dependencias
 

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-13"
 task_instruction_mode: "required"
@@ -44,10 +44,10 @@ para reauditoria.
 
 ## Definition of Done da Issue
 
-- [ ] evidencia backend do contrato canônico e do wrapper legado consolidada
-- [ ] evidencia frontend do submit via `/leads` consolidada
-- [ ] matriz de paridade request/response registrada
-- [ ] regressao em contrato ou paridade tratada como `BLOQUEADO`
+- [x] evidencia backend do contrato canônico e do wrapper legado consolidada
+- [x] evidencia frontend do submit via `/leads` consolidada
+- [x] matriz de paridade request/response registrada
+- [x] regressao em contrato ou paridade tratada como `BLOQUEADO`
 
 ## Tasks Decupadas
 
@@ -110,7 +110,7 @@ para reauditoria.
   - T1 e T2 concluidas
   - evidencia backend e frontend registradas
 - arquivos_a_ler_ou_tocar:
-  - `PROJETOS/FEITO/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
+  - `PROJETOS/LP/REMEDIAR-HOLD-F1-CONTRATO-ESTRUTURA/F1-BASELINE-E-REAUDITORIA-DO-HOLD/issues/ISSUE-F1-02-001-CONSOLIDAR-EVIDENCIA-DE-CONTRATO-E-PARIDADE.md`
   - `backend/tests/test_leads_public_create_endpoint.py`
   - `backend/tests/test_landing_public_endpoints.py`
   - `frontend/src/services/__tests__/landing_public.test.ts`

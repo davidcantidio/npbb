@@ -52,7 +52,7 @@ para reauditoria.
 ## Tasks Decupadas
 
 - [x] T1: consolidar a evidencia backend do contrato canônico e do wrapper legado
-- [ ] T2: consolidar a evidencia frontend do submit via `/leads`
+- [x] T2: consolidar a evidencia frontend do submit via `/leads`
 - [ ] T3: fechar a matriz de paridade request/response para a reauditoria
 
 ## Instructions por Task
@@ -152,6 +152,7 @@ para reauditoria.
 | Task | Comando | Resultado objetivo |
 |---|---|---|
 | T1 | `PYTHONPATH=/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb:/Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/backend SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q backend/tests/test_leads_public_create_endpoint.py backend/tests/test_landing_public_endpoints.py` | `45 passed in 4.00s` |
+| T2 | `npm --prefix frontend test -- --run src/services/__tests__/landing_public.test.ts src/pages/__tests__/EventLandingPage.test.tsx` | `32 passed in 12.27s` |
 
 ### Leitura Objetiva por Task
 
@@ -161,6 +162,12 @@ para reauditoria.
 - duplicidade em ativacao unica preserva reconhecimento e token, mas retorna `conversao_registrada=false` e `bloqueado_cpf_duplicado=true`.
 - `GET /ativacoes/{id}/landing` devolve `formulario.submit_url="/leads"`.
 - `POST /landing/ativacoes/{id}/submit` preserva a mesma superficie de resposta do endpoint canônico, incluindo `lead_reconhecido`, `conversao_registrada`, `bloqueado_cpf_duplicado` e `token_reconhecimento`.
+
+#### T2 - Frontend
+
+- fixtures e asserts do frontend usam `submit_url="/leads"` como caminho principal.
+- o servico consome `lead_reconhecido` e `token_reconhecimento` no contrato atual.
+- a pagina cobre submit normal, fluxo reconhecido e bloqueio por duplicidade sem depender do endpoint legado como caminho principal.
 
 ## Dependencias
 

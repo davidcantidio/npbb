@@ -6,7 +6,7 @@ owner: "PM"
 last_updated: "2026-03-13"
 ---
 
-# AUDIT-LOG - QR-GEN
+# AUDIT-LOG - UX
 
 ## Politica
 
@@ -22,9 +22,9 @@ last_updated: "2026-03-13"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1 - Levantamento e Configuracao | not_ready | nao_aplicavel | - | - |
-| F2 - Migracao de Dados e Validacao | not_ready | nao_aplicavel | - | - |
-| F3 - Safeguards e Auditoria | not_ready | nao_aplicavel | - | - |
+| F1 - Discovery Tecnico | not_ready | nao_aplicavel | - | - |
+| F2 - Implementacao | not_ready | nao_aplicavel | - | - |
+| F3 - Validacao | not_ready | nao_aplicavel | - | - |
 
 ## Resolucoes de Follow-ups
 

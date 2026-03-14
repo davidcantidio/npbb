@@ -1,9 +1,9 @@
 ---
 doc_id: "F2_UX_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 audit_gate: "not_ready"
 ---
 
@@ -23,8 +23,8 @@ Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundan
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `hold`
+- ultima_auditoria: `F2-R01`
 
 ## Checklist de Transicao de Gate
 
@@ -51,8 +51,8 @@ Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundan
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F2-01 | Layout Side-by-Side | Converter layout para duas colunas em todas as 5 etapas e tratar breakpoint | F1 | todo | [EPIC-F2-01-Layout-Side-by-Side.md](./EPIC-F2-01-Layout-Side-by-Side.md) |
-| EPIC-F2-02 | Formulario de Lead - Drag-and-drop e Limpeza | Remover redundancias, preview mobile, campos 1 coluna com dnd | EPIC-F2-01 | todo | [EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md](./EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md) |
+| EPIC-F2-01 | Layout Side-by-Side | Converter layout para duas colunas em todas as 5 etapas e tratar breakpoint | F1 | done | [EPIC-F2-01-Layout-Side-by-Side.md](./EPIC-F2-01-Layout-Side-by-Side.md) |
+| EPIC-F2-02 | Formulario de Lead - Drag-and-drop e Limpeza | Remover redundancias, preview mobile, campos 1 coluna com dnd | EPIC-F2-01 | active | [EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md](./EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md) |
 
 ## Dependencias entre Epicos
 

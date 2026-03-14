@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 task_instruction_mode: "required"
 decision_refs: []
 ---

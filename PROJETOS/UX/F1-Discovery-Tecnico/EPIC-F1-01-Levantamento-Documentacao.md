@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F1-01-Levantamento-Documentacao.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 ---
 
 # EPIC-F1-01 - Levantamento e Documentacao
@@ -21,19 +21,19 @@ Documento consolidado com componentes mapeados, estrutura de layout, decisao sob
 O wizard de configuracao de evento possui 5 paginas: Evento (EventWizardPage), Formulario de Lead (EventLeadFormConfig), Gamificacao (EventGamificacao), Ativacoes (EventAtivacoes), Questionario (EventQuestionario). Cada pagina tem estrutura propria. O PRD exige layout de duas colunas em todas; a etapa Formulario de Lead ja possui PreviewSection e LandingPageView; as demais etapas precisam de mapeamento.
 
 ## Definition of Done do Epico
-- [ ] Componentes de preview (landing e ativacao) identificados
-- [ ] Estrutura de layout do wizard documentada
-- [ ] Biblioteca de drag-and-drop verificada e decisao registrada
-- [ ] Breakpoint definido
-- [ ] Conteudo da coluna direita Evento e Questionario definido
-- [ ] Cobertura Tema/Contexto confirmada
+- [x] Componentes de preview (landing e ativacao) identificados
+- [x] Estrutura de layout do wizard documentada
+- [x] Biblioteca de drag-and-drop verificada e decisao registrada
+- [x] Breakpoint definido
+- [x] Conteudo da coluna direita Evento e Questionario definido
+- [x] Cobertura Tema/Contexto confirmada
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Mapear Componentes e Layout | Identificar componentes de preview e estrutura de layout | 3 | todo | [ISSUE-F1-01-001-Mapear-Componentes-Layout.md](./issues/ISSUE-F1-01-001-Mapear-Componentes-Layout.md) |
-| ISSUE-F1-01-002 | Documentar Arquitetura e Validar Decisoes | Definir breakpoint, coluna direita, dnd e cobertura Tema | 2 | todo | [ISSUE-F1-01-002-Documentar-Arquitetura-Validar-Decisoes.md](./issues/ISSUE-F1-01-002-Documentar-Arquitetura-Validar-Decisoes.md) |
+| ISSUE-F1-01-001 | Mapear Componentes e Layout | Identificar componentes de preview e estrutura de layout | 3 | done | [ISSUE-F1-01-001-Mapear-Componentes-Layout.md](./issues/ISSUE-F1-01-001-Mapear-Componentes-Layout.md) |
+| ISSUE-F1-01-002 | Documentar Arquitetura e Validar Decisoes | Definir breakpoint, coluna direita, dnd e cobertura Tema | 2 | done | [ISSUE-F1-01-002-Documentar-Arquitetura-Validar-Decisoes.md](./issues/ISSUE-F1-01-002-Documentar-Arquitetura-Validar-Decisoes.md) |
 
 ## Artifact Minimo do Epico
 

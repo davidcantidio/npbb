@@ -1,10 +1,10 @@
 ---
 doc_id: "F1_UX_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-13"
-audit_gate: "not_ready"
+last_updated: "2026-03-14"
+audit_gate: "pending"
 ---
 
 # Epicos - UX / F1 - Discovery Tecnico
@@ -21,8 +21,8 @@ Resolver lacunas conhecidas do intake e validar premissas antes da implementacao
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `pending`
+- ultima_auditoria: `F1-R01` (provisional, verdict go — worktree suja; reauditar apos commit para aprovar)
 
 ## Checklist de Transicao de Gate
 
@@ -49,7 +49,7 @@ Resolver lacunas conhecidas do intake e validar premissas antes da implementacao
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Levantamento e Documentacao | Mapear componentes, layout, dnd, breakpoint, coluna direita e cobertura Tema | nenhuma | todo | [EPIC-F1-01-Levantamento-Documentacao.md](./EPIC-F1-01-Levantamento-Documentacao.md) |
+| EPIC-F1-01 | Levantamento e Documentacao | Mapear componentes, layout, dnd, breakpoint, coluna direita e cobertura Tema | nenhuma | done | [EPIC-F1-01-Levantamento-Documentacao.md](./EPIC-F1-01-Levantamento-Documentacao.md) |
 
 ## Dependencias entre Epicos
 
@@ -70,6 +70,6 @@ Resolver lacunas conhecidas do intake e validar premissas antes da implementacao
 - Alteracoes em codigo
 
 ## Definition of Done da Fase
-- [ ] Lacunas do PRD resolvidas e documentadas
-- [ ] Decisoes de arquitetura registradas
-- [ ] Cobertura Tema/Contexto confirmada
+- [x] Lacunas do PRD resolvidas e documentadas
+- [x] Decisoes de arquitetura registradas
+- [x] Cobertura Tema/Contexto confirmada

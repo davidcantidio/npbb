@@ -1,9 +1,9 @@
 ---
-doc_id: "INTAKE-WIZARD-REFACTOR.md"
+doc_id: "INTAKE-UX.md"
 version: "1.0"
 status: "draft"
 owner: "PM"
-projeto: "WIZARD-REFACTOR"
+projeto: "UX"
 intake_kind: "refactor"
 source_mode: "original"
 origin_audit: "nao_aplicavel"
@@ -19,7 +19,7 @@ last_updated: "2026-03-13"
 supersedes: "INTAKE-LP-PREVIEW.md"
 ---
 
-# INTAKE-WIZARD-REFACTOR
+# INTAKE-UX
 
 ## 1. Problema ou Oportunidade
 

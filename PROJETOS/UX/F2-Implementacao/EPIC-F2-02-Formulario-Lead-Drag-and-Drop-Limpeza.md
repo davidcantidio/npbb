@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 ---
 
 # EPIC-F2-02 - Formulario de Lead - Drag-and-drop e Limpeza
@@ -22,17 +22,18 @@ EventLeadFormConfigPage possui TemaSection, LandingContextSection, PreviewSectio
 
 ## Definition of Done do Epico
 - [ ] Redundancias removidas
-- [ ] Preview em frame mobile ~390px
-- [ ] Campos em 1 coluna com visibilidade progressiva
-- [ ] Drag-and-drop funcional para reordenacao
-- [ ] CPF nao desmarcavel; Nome, Sobrenome, Data nascimento pre-selecionados
+- [x] Preview em frame mobile ~390px
+- [x] Campos em 1 coluna com visibilidade progressiva
+- [x] Drag-and-drop funcional para reordenacao
+- [x] CPF nao desmarcavel; Nome, Sobrenome, Data nascimento pre-selecionados
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F2-02-001 | Remover Redundancias e Aplicar Preview Mobile | Remover Tema, box azul, Governanca, texto; preview ~390px | 3 | todo | [ISSUE-F2-02-001-Remover-Redundancias-Aplicar-Preview-Mobile.md](./issues/ISSUE-F2-02-001-Remover-Redundancias-Aplicar-Preview-Mobile.md) |
-| ISSUE-F2-02-002 | Implementar Campos em 1 Coluna com Drag-and-drop | Campos 1 coluna, visibilidade progressiva, dnd | 3 | todo | [ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md](./issues/ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md) |
+| ISSUE-F2-02-002 | Implementar Campos em 1 Coluna com Drag-and-drop | Campos 1 coluna, visibilidade progressiva, dnd | 3 | done | [ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md](./issues/ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md) |
+| ISSUE-F2-02-003 | Remover Redundancias Restantes | Box azul, GovernanceSection, texto descritivo (follow-up F3) | 2 | todo | [ISSUE-F2-02-003-Remover-Redundancias-Restantes.md](./issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) |
 
 ## Artifact Minimo do Epico
 

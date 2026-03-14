@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-01-002-Documentar-Arquitetura-Validar-Decisoes.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -33,16 +33,16 @@ O PRD exige: breakpoint para viewports menores (colapso para coluna unica), cont
 
 ## Definition of Done da Issue
 - [x] Breakpoint definido e documentado
-- [ ] Conteudo da coluna direita Evento e Questionario definido
-- [ ] Decisao sobre biblioteca dnd registrada (existente ou recomendacao com aprovacao)
-- [ ] Cobertura Tema/Contexto confirmada
+- [x] Conteudo da coluna direita Evento e Questionario definido
+- [x] Decisao sobre biblioteca dnd registrada (existente ou recomendacao com aprovacao)
+- [x] Cobertura Tema/Contexto confirmada
 
 ## Tasks Decupadas
 
 - [x] T1: Definir breakpoint de colapso para coluna unica (pesquisar padroes, testar em viewports)
-- [ ] T2: Definir conteudo da coluna direita nas etapas Evento e Questionario
-- [ ] T3: Verificar existencia de biblioteca dnd no codebase; se nao, recomendar e documentar para aprovacao
-- [ ] T4: Comparar TemaSection e LandingContextSection e confirmar cobertura 100%
+- [x] T2: Definir conteudo da coluna direita nas etapas Evento e Questionario
+- [x] T3: Verificar existencia de biblioteca dnd no codebase; se nao, recomendar e documentar para aprovacao
+- [x] T4: Comparar TemaSection e LandingContextSection e confirmar cobertura 100%
 
 ## Arquivos Reais Envolvidos
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-01-001-Mapear-Componentes-Layout.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 task_instruction_mode: "optional"
 decision_refs: []
 ---
@@ -31,15 +31,15 @@ O PRD indica lacunas: nome do(s) componente(s) de preview de landing e de ativac
 - Given a estrutura atual, When comparo as 5 paginas, Then identifico padroes comuns e diferencas para planejar layout compartilhado
 
 ## Definition of Done da Issue
-- [ ] Nome(s) do(s) componente(s) de preview de landing documentado(s)
-- [ ] Nome(s) do(s) componente(s) de preview de ativacao documentado(s)
-- [ ] Estrutura de layout de cada uma das 5 paginas documentada (Grid/Flex/outro)
+- [x] Nome(s) do(s) componente(s) de preview de landing documentado(s)
+- [x] Nome(s) do(s) componente(s) de preview de ativacao documentado(s)
+- [x] Estrutura de layout de cada uma das 5 paginas documentada (Grid/Flex/outro)
 
 ## Tasks Decupadas
 
-- [ ] T1: Localizar e listar componentes de preview de landing (EventLeadFormConfig) e de ativacao (EventAtivacoes)
-- [ ] T2: Documentar estrutura de layout de EventLeadFormConfigPage (Paper, Stack, ordem das secoes)
-- [ ] T3: Documentar estrutura de layout de EventGamificacao, EventAtivacoes, EventQuestionario e EventWizardPage
+- [x] T1: Localizar e listar componentes de preview de landing (EventLeadFormConfig) e de ativacao (EventAtivacoes)
+- [x] T2: Documentar estrutura de layout de EventLeadFormConfigPage (Paper, Stack, ordem das secoes)
+- [x] T3: Documentar estrutura de layout de EventGamificacao, EventAtivacoes, EventQuestionario e EventWizardPage
 
 ## Arquivos Reais Envolvidos
 

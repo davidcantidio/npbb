@@ -20,8 +20,8 @@ Garantir ausencia de regressao funcional nas 5 etapas do wizard e aderencia aos 
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `hold`
+- ultima_auditoria: `F3-R01`
 
 ## Checklist de Transicao de Gate
 

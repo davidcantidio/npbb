@@ -123,8 +123,6 @@ export default function AppLayout() {
           ml: { md: `${DRAWER_WIDTH}px` },
           borderBottom: 1,
           borderColor: "divider",
-          backgroundColor: "rgba(246, 247, 251, 0.9)",
-          backdropFilter: "blur(8px)",
           zIndex: (t) => t.zIndex.drawer + 1,
         }}
       >

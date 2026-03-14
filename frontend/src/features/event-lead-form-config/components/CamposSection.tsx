@@ -1,6 +1,23 @@
 import { useState } from "react";
+import type { DragEndEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import { Box, Button, Checkbox, Collapse, FormControlLabel, Stack, Typography } from "@mui/material";
+import DragIndicatorRoundedIcon from "@mui/icons-material/DragIndicatorRounded";
+import { Box, Button, Checkbox, Collapse, FormControlLabel, IconButton, Stack, Typography } from "@mui/material";
 
 type CamposSectionProps = {
   camposAtivosOrdenados: string[];
@@ -10,7 +27,110 @@ type CamposSectionProps = {
   isCampoSempreObrigatorio: (nome: string) => boolean;
   onToggleCampo: (nome: string) => void;
   onSetObrigatorio: (nome: string, obrigatorio: boolean) => void;
+  onReorderCampo: (activeNome: string, overNome: string) => void;
 };
+
+function slugifyCampoNome(nome: string) {
+  return nome.toLowerCase().replace(/\s+/g, "-");
+}
+
+type SortableCampoCardProps = {
+  nome: string;
+  ativo: boolean;
+  obrigatorio: boolean;
+  campoTravado: boolean;
+  onToggleCampo: (nome: string) => void;
+  onSetObrigatorio: (nome: string, obrigatorio: boolean) => void;
+};
+
+function SortableCampoCard({
+  nome,
+  ativo,
+  obrigatorio,
+  campoTravado,
+  onToggleCampo,
+  onSetObrigatorio,
+}: SortableCampoCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: nome,
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      data-testid={`lead-field-card-${slugifyCampoNome(nome)}`}
+      sx={{
+        px: 1.5,
+        py: 1,
+        borderRadius: 2,
+        border: 1,
+        borderColor: "divider",
+        backgroundColor: ativo ? "rgba(103, 80, 164, 0.05)" : "transparent",
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.72 : 1,
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        gap={1.5}
+      >
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          <IconButton
+            size="small"
+            aria-label={`Reordenar campo ${nome}`}
+            data-testid={`lead-field-drag-${slugifyCampoNome(nome)}`}
+            sx={{ cursor: "grab", touchAction: "none" }}
+            {...attributes}
+            {...listeners}
+          >
+            <DragIndicatorRoundedIcon fontSize="small" />
+          </IconButton>
+
+          <Box>
+            <Typography variant="body2" fontWeight={800} lineHeight={1.2}>
+              {nome}
+            </Typography>
+            {campoTravado ? (
+              <Typography variant="caption" color="text.secondary">
+                Campo obrigatório por padrão.
+              </Typography>
+            ) : null}
+          </Box>
+        </Stack>
+
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={ativo}
+                disabled={campoTravado}
+                onChange={() => onToggleCampo(nome)}
+              />
+            }
+            label="Ativo"
+          />
+          <FormControlLabel
+            sx={{ m: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={obrigatorio}
+                disabled={!ativo || campoTravado}
+                onChange={(_, checked) => onSetObrigatorio(nome, checked)}
+              />
+            }
+            label="Obrigatório"
+          />
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}
 
 export function CamposSection({
   camposAtivosOrdenados,
@@ -20,8 +140,22 @@ export function CamposSection({
   isCampoSempreObrigatorio,
   onToggleCampo,
   onSetObrigatorio,
+  onReorderCampo,
 }: CamposSectionProps) {
   const [showCamposDisponiveis, setShowCamposDisponiveis] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    onReorderCampo(String(active.id), String(over.id));
+  };
 
   return (
     <>
@@ -38,71 +172,31 @@ export function CamposSection({
 
       {camposAtivosOrdenados.length || camposDisponiveis.length ? (
         <Stack spacing={1.25}>
-          {camposAtivosOrdenados.map((nome) => {
-            const ativo = camposAtivos.has(nome);
-            const obrigatorio = ativo ? (camposObrigatorios[nome] ?? true) : false;
-            const campoTravado = isCampoSempreObrigatorio(nome);
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={camposAtivosOrdenados}
+              strategy={verticalListSortingStrategy}
+            >
+              <Stack spacing={1.25}>
+                {camposAtivosOrdenados.map((nome) => {
+                  const ativo = camposAtivos.has(nome);
+                  const obrigatorio = ativo ? (camposObrigatorios[nome] ?? true) : false;
 
-            return (
-              <Box
-                key={nome}
-                data-testid={`lead-field-card-${nome.toLowerCase().replace(/\s+/g, "-")}`}
-                sx={{
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: 2,
-                  border: 1,
-                  borderColor: "divider",
-                  backgroundColor: ativo ? "rgba(103, 80, 164, 0.05)" : "transparent",
-                }}
-              >
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  alignItems={{ xs: "flex-start", sm: "center" }}
-                  justifyContent="space-between"
-                  gap={1.5}
-                >
-                  <Box>
-                    <Typography variant="body2" fontWeight={800} lineHeight={1.2}>
-                      {nome}
-                    </Typography>
-                    {campoTravado ? (
-                      <Typography variant="caption" color="text.secondary">
-                        Campo obrigatório por padrão.
-                      </Typography>
-                    ) : null}
-                  </Box>
-
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <FormControlLabel
-                      sx={{ m: 0 }}
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={ativo}
-                          disabled={campoTravado}
-                          onChange={() => onToggleCampo(nome)}
-                        />
-                      }
-                      label="Ativo"
+                  return (
+                    <SortableCampoCard
+                      key={nome}
+                      nome={nome}
+                      ativo={ativo}
+                      obrigatorio={obrigatorio}
+                      campoTravado={isCampoSempreObrigatorio(nome)}
+                      onToggleCampo={onToggleCampo}
+                      onSetObrigatorio={onSetObrigatorio}
                     />
-                    <FormControlLabel
-                      sx={{ m: 0 }}
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={obrigatorio}
-                          disabled={!ativo || campoTravado}
-                          onChange={(_, checked) => onSetObrigatorio(nome, checked)}
-                        />
-                      }
-                      label="Obrigatório"
-                    />
-                  </Stack>
-                </Stack>
-              </Box>
-            );
-          })}
+                  );
+                })}
+              </Stack>
+            </SortableContext>
+          </DndContext>
 
           {camposDisponiveis.length ? (
             <>
@@ -121,7 +215,7 @@ export function CamposSection({
                   {camposDisponiveis.map((nome) => (
                     <Box
                       key={nome}
-                      data-testid={`lead-field-option-${nome.toLowerCase().replace(/\s+/g, "-")}`}
+                      data-testid={`lead-field-option-${slugifyCampoNome(nome)}`}
                       sx={{
                         px: 1.5,
                         py: 1,

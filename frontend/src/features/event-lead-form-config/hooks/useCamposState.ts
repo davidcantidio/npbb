@@ -64,6 +64,17 @@ function sortCamposConfigurados(campos: FormularioCampoInput[]) {
   });
 }
 
+function moveCampoNaLista(campos: string[], activeNome: string, overNome: string) {
+  const activeIndex = campos.findIndex((item) => item === activeNome);
+  const overIndex = campos.findIndex((item) => item === overNome);
+  if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) return campos;
+
+  const next = [...campos];
+  const [moved] = next.splice(activeIndex, 1);
+  next.splice(overIndex, 0, moved);
+  return next;
+}
+
 export function useCamposState(camposPossiveis: string[]) {
   const [camposAtivos, setCamposAtivos] = useState<Set<string>>(() => new Set());
   const [camposObrigatorios, setCamposObrigatorios] = useState<Record<string, boolean>>(
@@ -155,6 +166,10 @@ export function useCamposState(camposPossiveis: string[]) {
     setCamposObrigatorios((prev) => ({ ...prev, [nome]: obrigatorio }));
   }, []);
 
+  const reorderCampoAtivo = useCallback((activeNome: string, overNome: string) => {
+    setCamposOrdemAtivos((prev) => moveCampoNaLista(prev, activeNome, overNome));
+  }, []);
+
   const syncFromConfig = useCallback(
     (campos: FormularioCampoInput[] | null | undefined, catalog?: string[]) => {
       const catalogSource = buildUniqueCampos(catalog ?? camposPossiveis);
@@ -207,6 +222,7 @@ export function useCamposState(camposPossiveis: string[]) {
     isCampoSempreObrigatorio: isCampoSempreObrigatorioNome,
     toggleCampo,
     setCampoObrigatorio,
+    reorderCampoAtivo,
     setCamposAtivos,
     setCamposObrigatorios,
     setCamposOrdemAtivos,

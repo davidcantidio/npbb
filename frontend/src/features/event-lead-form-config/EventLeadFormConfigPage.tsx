@@ -131,6 +131,7 @@ export default function EventLeadFormConfigPage() {
                 isCampoSempreObrigatorio={configData.camposState.isCampoSempreObrigatorio}
                 onToggleCampo={configData.camposState.toggleCampo}
                 onSetObrigatorio={configData.camposState.setCampoObrigatorio}
+                onReorderCampo={configData.camposState.reorderCampoAtivo}
               />
 
               <Divider />

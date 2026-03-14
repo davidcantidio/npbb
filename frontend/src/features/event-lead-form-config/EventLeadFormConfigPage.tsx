@@ -124,9 +124,11 @@ export default function EventLeadFormConfigPage() {
               />
 
               <CamposSection
-                camposPossiveisUniq={configData.camposState.camposPossiveisUniq}
+                camposAtivosOrdenados={configData.camposState.camposAtivosOrdenados}
+                camposDisponiveis={configData.camposState.camposDisponiveis}
                 camposAtivos={configData.camposState.camposAtivos}
                 camposObrigatorios={configData.camposState.camposObrigatorios}
+                isCampoSempreObrigatorio={configData.camposState.isCampoSempreObrigatorio}
                 onToggleCampo={configData.camposState.toggleCampo}
                 onSetObrigatorio={configData.camposState.setCampoObrigatorio}
               />

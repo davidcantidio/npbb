@@ -1,5 +1,6 @@
 export { AtivacaoFormSection } from "./AtivacaoFormSection";
 export type { AtivacaoFormSectionProps } from "./AtivacaoFormSection";
+export { AtivacaoLandingPreviewSection } from "./AtivacaoLandingPreviewSection";
 export { AtivacoesTable } from "./AtivacoesTable";
 export type { AtivacoesTableProps } from "./AtivacoesTable";
 export { AtivacaoViewDialog } from "./AtivacaoViewDialog";

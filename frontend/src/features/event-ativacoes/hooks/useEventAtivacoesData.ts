@@ -81,6 +81,7 @@ export function useEventAtivacoesData(
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Ativacao | null>(null);
+  const [previewing, setPreviewing] = useState<Ativacao | null>(null);
 
   const [viewing, setViewing] = useState<Ativacao | null>(null);
 
@@ -114,6 +115,7 @@ export function useEventAtivacoesData(
 
   const startEdit = useCallback((item: Ativacao) => {
     setEditing(item);
+    setPreviewing(item);
     setCreateAttempted(false);
     setCreateError(null);
     setCreateForm({
@@ -162,6 +164,7 @@ export function useEventAtivacoesData(
       try {
         const updated = await updateAtivacao(token, editing.id, payload);
         setAtivacoes((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+        setPreviewing(updated);
         setViewing((v) => (v?.id === updated.id ? updated : v));
         resetForm();
         showSuccess("Ativacao atualizada com sucesso.");
@@ -179,6 +182,7 @@ export function useEventAtivacoesData(
     try {
       const created = await createEventoAtivacao(token, eventoId, payload);
       setAtivacoes((prev) => [...prev, created].sort((a, b) => a.id - b.id));
+      setPreviewing(created);
       resetForm();
       showSuccess("Ativacao adicionada com sucesso.");
     } catch (err: unknown) {
@@ -209,6 +213,7 @@ export function useEventAtivacoesData(
     try {
       await deleteAtivacao(token, deletingTarget.id);
       setAtivacoes((prev) => prev.filter((a) => a.id !== deletingTarget.id));
+      setPreviewing((p) => (p?.id === deletingTarget.id ? null : p));
       setViewing((v) => (v?.id === deletingTarget.id ? null : v));
       setDeleteOpen(false);
       setDeletingTarget(null);
@@ -254,6 +259,7 @@ export function useEventAtivacoesData(
     setCreateError(null);
     setCreateForm(EMPTY_CREATE_FORM);
     setEditing(null);
+    setPreviewing(null);
 
     Promise.all([
       getEvento(token, eventoId),
@@ -286,6 +292,8 @@ export function useEventAtivacoesData(
     evento,
     ativacoes,
     gamificacoes,
+    previewing,
+    setPreviewing,
     loading,
     error,
     outOfScope,

@@ -17,10 +17,12 @@ import EventWizardPageShell, {
   WIZARD_ACTION_BUTTON_SX,
 } from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
+import WizardTwoColumnLayout from "../../components/eventos/WizardTwoColumnLayout";
 import { useAuth } from "../../store/auth";
 import { useSnackbarFeedback } from "../../hooks/useSnackbarFeedback";
 import {
   AtivacaoFormSection,
+  AtivacaoLandingPreviewSection,
   AtivacoesTable,
   AtivacaoViewDialog,
   DeleteAtivacaoDialog,
@@ -117,41 +119,53 @@ export default function EventAtivacoesPage() {
             </Typography>
           </Box>
         ) : (
-          <Stack spacing={3}>
-            <AtivacaoFormSection
-              form={data.createForm}
-              onFormChange={data.setCreateFormField}
-              gamificacoes={data.gamificacoes}
-              disabled={data.formDisabled}
-              isEditing={data.isEditing}
-              editing={data.editing}
-              evento={data.evento}
-              eventoId={eventoId}
-              createError={data.createError}
-              nomeRequiredError={data.nomeRequiredError}
-              onSubmit={data.handleSubmit}
-              onReset={data.resetForm}
-              isBusy={data.isBusy}
-              creating={data.creating}
-              saving={data.saving}
-            />
+          <WizardTwoColumnLayout
+            testId="event-ativacoes-layout"
+            leftTestId="event-ativacoes-form-column"
+            rightTestId="event-ativacoes-preview-column"
+            desktopColumns="minmax(0, 1fr) minmax(390px, 430px)"
+            leftContent={(
+              <Stack spacing={3}>
+                <AtivacaoFormSection
+                  form={data.createForm}
+                  onFormChange={data.setCreateFormField}
+                  gamificacoes={data.gamificacoes}
+                  disabled={data.formDisabled}
+                  isEditing={data.isEditing}
+                  editing={data.editing}
+                  evento={data.evento}
+                  eventoId={eventoId}
+                  createError={data.createError}
+                  nomeRequiredError={data.nomeRequiredError}
+                  onSubmit={data.handleSubmit}
+                  onReset={data.resetForm}
+                  isBusy={data.isBusy}
+                  creating={data.creating}
+                  saving={data.saving}
+                />
 
-            <Divider />
+                <Divider />
 
-            <Typography variant="subtitle1" fontWeight={900}>
-              Ativações adicionadas
-            </Typography>
+                <Typography variant="subtitle1" fontWeight={900}>
+                  Ativações adicionadas
+                </Typography>
 
-            <AtivacoesTable
-              ativacoes={data.ativacoes}
-              gamificacaoNameById={data.gamificacaoNameById}
-              canAct={data.canAct}
-              isBusy={data.isBusy}
-              onEdit={data.startEdit}
-              onView={data.setViewing}
-              onDelete={data.openDelete}
-            />
-          </Stack>
+                <AtivacoesTable
+                  ativacoes={data.ativacoes}
+                  gamificacaoNameById={data.gamificacaoNameById}
+                  canAct={data.canAct}
+                  isBusy={data.isBusy}
+                  onEdit={data.startEdit}
+                  onView={(item) => {
+                    data.setPreviewing(item);
+                    data.setViewing(item);
+                  }}
+                  onDelete={data.openDelete}
+                />
+              </Stack>
+            )}
+            rightContent={<AtivacaoLandingPreviewSection ativacao={data.previewing} />}
+          />
         )}
       </Paper>
 

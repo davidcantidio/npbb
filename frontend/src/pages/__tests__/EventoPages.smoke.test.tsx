@@ -39,11 +39,18 @@ import {
 } from "../../services/eventos";
 import { listAgencias } from "../../services/agencias";
 import { API_BASE_URL } from "../../services/http";
-import { previewEventoLanding, type LandingPageData } from "../../services/landing_public";
+import {
+  getLandingByAtivacao,
+  previewEventoLanding,
+  type LandingPageData,
+} from "../../services/landing_public";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
-vi.mock("../../services/landing_public", () => ({ previewEventoLanding: vi.fn() }));
+vi.mock("../../services/landing_public", () => ({
+  getLandingByAtivacao: vi.fn(),
+  previewEventoLanding: vi.fn(),
+}));
 vi.mock("../../services/eventos", () => ({
   createEventoAtivacao: vi.fn(),
   createEvento: vi.fn(),
@@ -111,6 +118,7 @@ const mockedListSubtiposEvento = vi.mocked(listSubtiposEvento);
 const mockedListTags = vi.mocked(listTags);
 const mockedListTerritorios = vi.mocked(listTerritorios);
 const mockedListTiposEvento = vi.mocked(listTiposEvento);
+const mockedGetLandingByAtivacao = vi.mocked(getLandingByAtivacao);
 const mockedPreviewEventoLanding = vi.mocked(previewEventoLanding);
 
 function createDeferred<T>() {
@@ -274,6 +282,23 @@ describe("Evento pages smoke", () => {
 
     mockedGetEvento.mockResolvedValue({ id: 1, nome: "Evento QA" } as never);
     mockedPreviewEventoLanding.mockResolvedValue(createLandingPreviewPayload() as never);
+    mockedGetLandingByAtivacao.mockResolvedValue(
+      createLandingPreviewPayload({
+        ativacao_id: 1,
+        ativacao: {
+          id: 1,
+          nome: "Ativ 1",
+          descricao: "Descricao da ativacao.",
+          mensagem_qrcode: "Escaneie para entrar.",
+          conversao_unica: false,
+        },
+        acesso: {
+          landing_url: "http://localhost:5173/landing/ativacoes/1",
+          qr_code_url: null,
+          url_promotor: "http://localhost:5173/landing/ativacoes/1",
+        },
+      }) as never,
+    );
     mockedGetLandingAnalytics.mockResolvedValue([
       {
         event_id: 1,
@@ -781,11 +806,19 @@ describe("Evento pages smoke", () => {
     expect(await screen.findByTestId("event-ativacoes-shell")).toHaveStyle({
       maxWidth: "1280px",
     });
+    expect(screen.getByTestId("event-ativacoes-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("event-ativacoes-preview-column")).toBeInTheDocument();
+    expect(screen.getByTestId("event-ativacoes-preview-empty-state")).toHaveTextContent(
+      "Nenhuma ativação em foco no momento.",
+    );
     const nomeInput = await screen.findByLabelText(/Nome da ativ/i);
     await userEvent.type(nomeInput, "Nova ativacao");
     await userEvent.click(screen.getByRole("button", { name: /Adicionar ativa/i }));
 
     await waitFor(() => expect(mockedCreateEventoAtivacao).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockedGetLandingByAtivacao).toHaveBeenCalledWith(1));
+    const previewHost = await screen.findByTestId("event-ativacoes-preview-host");
+    expect(within(previewHost).getByTestId("landing-preview-badge")).toHaveTextContent("Preview");
   });
 
   it("edits an ativacao from EventAtivacoes page", async () => {
@@ -805,6 +838,23 @@ describe("Evento pages smoke", () => {
         updated_at: "2026-01-01T00:00:00Z",
       },
     ] as never);
+    mockedGetLandingByAtivacao.mockResolvedValueOnce(
+      createLandingPreviewPayload({
+        ativacao_id: 7,
+        ativacao: {
+          id: 7,
+          nome: "Ativacao existente",
+          descricao: "Descricao original",
+          mensagem_qrcode: null,
+          conversao_unica: false,
+        },
+        acesso: {
+          landing_url: "http://localhost:5173/landing/ativacoes/7",
+          qr_code_url: null,
+          url_promotor: "http://localhost:5173/landing/ativacoes/7",
+        },
+      }) as never,
+    );
     mockedUpdateAtivacao.mockResolvedValueOnce({
       id: 7,
       evento_id: 1,
@@ -832,6 +882,9 @@ describe("Evento pages smoke", () => {
     const row = (await screen.findByText("Ativacao existente")).closest("tr");
     expect(row).not.toBeNull();
     await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: /editar/i }));
+    expect(await screen.findByText(/landing publicada da ativação "Ativacao existente"/i)).toBeInTheDocument();
+    await waitFor(() => expect(mockedGetLandingByAtivacao).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId("event-ativacoes-preview-host")).toBeInTheDocument();
 
     const descricaoInput = await screen.findByLabelText(/descricao/i);
     await user.clear(descricaoInput);

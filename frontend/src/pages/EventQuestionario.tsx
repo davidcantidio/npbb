@@ -26,6 +26,7 @@ import EventWizardPageShell, {
   WIZARD_ACTION_BUTTON_SX,
 } from "../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../components/eventos/EventWizardStepper";
+import WizardTwoColumnLayout from "../components/eventos/WizardTwoColumnLayout";
 import {
   getEvento,
   getEventoQuestionario,
@@ -688,8 +689,13 @@ export default function EventQuestionario() {
 
             <Divider />
 
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
-              <Paper variant="outlined" sx={{ p: 2, flex: 1 }}>
+            <WizardTwoColumnLayout
+              testId="event-questionario-layout"
+              leftTestId="event-questionario-editor-column"
+              rightTestId="event-questionario-structure-column"
+              desktopColumns="minmax(0, 1fr) 260px"
+              leftContent={(
+                <Paper variant="outlined" sx={{ p: 2, width: "100%" }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
                   <Typography variant="subtitle2" fontWeight={800}>
                     {selectedPagina ? `Pagina ${selectedPagina.ordem}` : "Pagina"}
@@ -999,76 +1005,75 @@ export default function EventQuestionario() {
                     Selecione uma pagina para editar.
                   </Typography>
                 )}
-              </Paper>
-
-              <Paper
-                variant="outlined"
-                sx={{ p: 2, width: { xs: "100%", md: 260 }, flexShrink: 0 }}
-              >
-                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-                  <Typography variant="subtitle2" fontWeight={800}>
-                    Estrutura
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={handleAddPagina}
-                    disabled={disableActions}
-                    aria-label="Adicionar pagina"
-                  >
-                    <AddIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
-
-                {paginas.length ? (
-                  <Stack spacing={1}>
-                    {paginas.map((pagina, index) => {
-                      const isSelected = pagina.id === selectedPaginaId;
-                      return (
-                        <Stack key={pagina.id ?? `ordem-${pagina.ordem}`} direction="row" alignItems="center" spacing={1}>
-                          <Button
-                            variant="text"
-                            color="inherit"
-                            onClick={() => setSelectedPaginaId(pagina.id)}
-                            disabled={disableActions}
-                            sx={{
-                              textTransform: "none",
-                              justifyContent: "flex-start",
-                              fontWeight: isSelected ? 800 : 500,
-                              flex: 1,
-                              backgroundColor: isSelected ? "action.selected" : "transparent",
-                            }}
-                          >
-                            {pagina.ordem} - {pagina.titulo}
-                          </Button>
-                          <Stack direction="row" spacing={0.5}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleMovePagina(pagina.id, "up")}
-                              disabled={disableActions || index === 0}
-                              aria-label="Mover pagina para cima"
-                            >
-                              <ArrowUpwardIcon fontSize="inherit" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleMovePagina(pagina.id, "down")}
-                              disabled={disableActions || index === paginas.length - 1}
-                              aria-label="Mover pagina para baixo"
-                            >
-                              <ArrowDownwardIcon fontSize="inherit" />
-                            </IconButton>
-                          </Stack>
-                        </Stack>
-                      );
-                    })}
+                </Paper>
+              )}
+              rightContent={(
+                <Paper variant="outlined" sx={{ p: 2, width: "100%" }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Estrutura
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleAddPagina}
+                      disabled={disableActions}
+                      aria-label="Adicionar pagina"
+                    >
+                      <AddIcon fontSize="small" />
+                    </IconButton>
                   </Stack>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    Nenhuma pagina cadastrada.
-                  </Typography>
-                )}
-              </Paper>
-            </Stack>
+
+                  {paginas.length ? (
+                    <Stack spacing={1}>
+                      {paginas.map((pagina, index) => {
+                        const isSelected = pagina.id === selectedPaginaId;
+                        return (
+                          <Stack key={pagina.id ?? `ordem-${pagina.ordem}`} direction="row" alignItems="center" spacing={1}>
+                            <Button
+                              variant="text"
+                              color="inherit"
+                              onClick={() => setSelectedPaginaId(pagina.id)}
+                              disabled={disableActions}
+                              sx={{
+                                textTransform: "none",
+                                justifyContent: "flex-start",
+                                fontWeight: isSelected ? 800 : 500,
+                                flex: 1,
+                                backgroundColor: isSelected ? "action.selected" : "transparent",
+                              }}
+                            >
+                              {pagina.ordem} - {pagina.titulo}
+                            </Button>
+                            <Stack direction="row" spacing={0.5}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleMovePagina(pagina.id, "up")}
+                                disabled={disableActions || index === 0}
+                                aria-label="Mover pagina para cima"
+                              >
+                                <ArrowUpwardIcon fontSize="inherit" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleMovePagina(pagina.id, "down")}
+                                disabled={disableActions || index === paginas.length - 1}
+                                aria-label="Mover pagina para baixo"
+                              >
+                                <ArrowDownwardIcon fontSize="inherit" />
+                              </IconButton>
+                            </Stack>
+                          </Stack>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Nenhuma pagina cadastrada.
+                    </Typography>
+                  )}
+                </Paper>
+              )}
+            />
           </Stack>
         )}
       </Paper>

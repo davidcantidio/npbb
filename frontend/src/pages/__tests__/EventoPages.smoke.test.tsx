@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import EventsList from "../EventsList";
+import NewEvent from "../NewEvent";
 import EventLeadFormConfig from "../EventLeadFormConfig";
 import EventGamificacao from "../EventGamificacao";
 import EventAtivacoes from "../EventAtivacoes";
@@ -11,19 +12,26 @@ import EventQuestionario from "../EventQuestionario";
 import { useAuth } from "../../store/auth";
 import {
   createEventoAtivacao,
+  createEvento,
   createEventoGamificacao,
+  createTag,
   getEvento,
   getEventoFormConfig,
   getLandingAnalytics,
   getLandingCustomizationAudit,
   getEventoQuestionario,
   getFormularioCamposPossiveis,
+  listDivisoesDemandantes,
   listDiretorias,
   listEventoAtivacoes,
   listEventoGamificacoes,
   listEventos,
   listFormularioTemplates,
   listStatusEvento,
+  listSubtiposEvento,
+  listTags,
+  listTerritorios,
+  listTiposEvento,
   updateAtivacao,
   updateEvento,
   updateEventoFormConfig,
@@ -38,7 +46,9 @@ vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
 vi.mock("../../services/landing_public", () => ({ previewEventoLanding: vi.fn() }));
 vi.mock("../../services/eventos", () => ({
   createEventoAtivacao: vi.fn(),
+  createEvento: vi.fn(),
   createEventoGamificacao: vi.fn(),
+  createTag: vi.fn(),
   deleteAtivacao: vi.fn(),
   deleteGamificacao: vi.fn(),
   exportEventosCsv: vi.fn(),
@@ -49,12 +59,17 @@ vi.mock("../../services/eventos", () => ({
   getEventoQuestionario: vi.fn(),
   getFormularioCamposPossiveis: vi.fn(),
   importEventosCsv: vi.fn(),
+  listDivisoesDemandantes: vi.fn(),
   listDiretorias: vi.fn(),
   listEventoAtivacoes: vi.fn(),
   listEventoGamificacoes: vi.fn(),
   listEventos: vi.fn(),
   listFormularioTemplates: vi.fn(),
   listStatusEvento: vi.fn(),
+  listSubtiposEvento: vi.fn(),
+  listTags: vi.fn(),
+  listTerritorios: vi.fn(),
+  listTiposEvento: vi.fn(),
   updateAtivacao: vi.fn(),
   updateEvento: vi.fn(),
   updateEventoFormConfig: vi.fn(),
@@ -71,9 +86,12 @@ vi.mock("../../components/eventos/EventoRow", () => ({
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedListAgencias = vi.mocked(listAgencias);
+const mockedCreateEvento = vi.mocked(createEvento);
 const mockedListDiretorias = vi.mocked(listDiretorias);
+const mockedListDivisoesDemandantes = vi.mocked(listDivisoesDemandantes);
 const mockedListStatusEvento = vi.mocked(listStatusEvento);
 const mockedListEventos = vi.mocked(listEventos);
+const mockedCreateTag = vi.mocked(createTag);
 const mockedUpdateEvento = vi.mocked(updateEvento);
 const mockedGetEventoFormConfig = vi.mocked(getEventoFormConfig);
 const mockedGetFormularioCamposPossiveis = vi.mocked(getFormularioCamposPossiveis);
@@ -89,6 +107,10 @@ const mockedCreateEventoAtivacao = vi.mocked(createEventoAtivacao);
 const mockedUpdateAtivacao = vi.mocked(updateAtivacao);
 const mockedGetEventoQuestionario = vi.mocked(getEventoQuestionario);
 const mockedUpdateEventoQuestionario = vi.mocked(updateEventoQuestionario);
+const mockedListSubtiposEvento = vi.mocked(listSubtiposEvento);
+const mockedListTags = vi.mocked(listTags);
+const mockedListTerritorios = vi.mocked(listTerritorios);
+const mockedListTiposEvento = vi.mocked(listTiposEvento);
 const mockedPreviewEventoLanding = vi.mocked(previewEventoLanding);
 
 function createDeferred<T>() {
@@ -214,8 +236,15 @@ describe("Evento pages smoke", () => {
     });
 
     mockedListAgencias.mockResolvedValue([] as never);
+    mockedCreateEvento.mockResolvedValue({ id: 123 } as never);
+    mockedCreateTag.mockResolvedValue({ id: 1, nome: "Tag 1" } as never);
     mockedListDiretorias.mockResolvedValue([{ id: 1, nome: "Dir 1" }] as never);
+    mockedListDivisoesDemandantes.mockResolvedValue([{ id: 1, nome: "Div 1" }] as never);
     mockedListStatusEvento.mockResolvedValue([{ id: 1, nome: "Previsto" }] as never);
+    mockedListTiposEvento.mockResolvedValue([{ id: 1, nome: "Tipo 1" }] as never);
+    mockedListSubtiposEvento.mockResolvedValue([{ id: 1, tipo_id: 1, nome: "Subtipo 1" }] as never);
+    mockedListTags.mockResolvedValue([{ id: 1, nome: "Tag 1" }] as never);
+    mockedListTerritorios.mockResolvedValue([{ id: 1, nome: "Territorio 1" }] as never);
     mockedListEventos.mockResolvedValue({
       total: 1,
       items: [
@@ -399,6 +428,9 @@ describe("Evento pages smoke", () => {
       marginLeft: "auto",
       marginRight: "auto",
     });
+    expect(screen.getByTestId("event-lead-form-config-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("event-lead-form-config-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("event-lead-form-config-preview-column")).toBeInTheDocument();
     const previewActions = screen.getByTestId("event-lead-preview-actions");
     expect(within(previewActions).getByRole("button", { name: /atualizar preview/i })).toHaveClass(
       "MuiButton-sizeSmall",
@@ -692,6 +724,9 @@ describe("Evento pages smoke", () => {
     expect(await screen.findByTestId("event-gamificacao-shell")).toHaveStyle({
       maxWidth: "1280px",
     });
+    expect(screen.getByTestId("event-gamificacao-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("event-gamificacao-form-column")).toBeInTheDocument();
+    expect(screen.getByTestId("event-gamificacao-list-column")).toBeInTheDocument();
     await screen.findByLabelText(/Nome da gamifica/i);
     const textboxes = screen.getAllByRole("textbox");
     for (const [index, input] of textboxes.entries()) {
@@ -917,9 +952,32 @@ describe("Evento pages smoke", () => {
     expect(await screen.findByTestId("event-questionario-shell")).toHaveStyle({
       maxWidth: "1280px",
     });
+    expect(screen.getByTestId("event-questionario-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("event-questionario-editor-column")).toBeInTheDocument();
+    expect(screen.getByTestId("event-questionario-structure-column")).toBeInTheDocument();
     expect(await screen.findByText(/Estrutura do questionario/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(mockedUpdateEventoQuestionario).toHaveBeenCalledTimes(1));
+  });
+
+  it("renders the pending fields column on the new event wizard page", async () => {
+    render(
+      <MemoryRouter initialEntries={["/eventos/novo?missing=nome,cidade"]}>
+        <Routes>
+          <Route path="/eventos/novo" element={<NewEvent />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("event-wizard-page-shell")).toHaveStyle({
+      maxWidth: "1080px",
+    });
+    expect(screen.getByTestId("event-wizard-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("event-wizard-form-column")).toBeInTheDocument();
+    expect(screen.getByTestId("event-wizard-pending-column")).toBeInTheDocument();
+    expect(screen.getByTestId("event-wizard-pending-card")).toHaveTextContent("Campos pendentes (2)");
+    expect(screen.getByRole("button", { name: "Nome" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cidade" })).toBeInTheDocument();
   });
 });

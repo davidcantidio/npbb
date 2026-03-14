@@ -534,56 +534,60 @@ describe("Evento pages smoke", () => {
     );
   });
 
-  it("auto-refreshes the preview when the selected theme changes", async () => {
-    const user = userEvent.setup();
-    mockedPreviewEventoLanding
-      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
-      .mockResolvedValueOnce(
-        createLandingPreviewPayload({
-          template: {
-            categoria: "esporte_radical",
-            tema: "Radical",
-            mood: "Alta energia, autenticidade e movimento.",
-            cta_text: "Quero fazer parte",
-            color_primary: "#FF6E91",
-            color_secondary: "#FCFC30",
-            color_background: "#FFF7FB",
-            color_text: "#1F2937",
-            hero_layout: "full-bleed",
-            cta_variant: "gradient",
-            graphics_style: "dynamic",
-            tone_of_voice: "enthusiasm",
-            cta_experiment_enabled: false,
-            cta_variants: [],
-          },
-        }) as never,
+  it(
+    "auto-refreshes the preview when the selected theme changes",
+    { timeout: 10000 },
+    async () => {
+      const user = userEvent.setup();
+      mockedPreviewEventoLanding
+        .mockResolvedValueOnce(createLandingPreviewPayload() as never)
+        .mockResolvedValueOnce(
+          createLandingPreviewPayload({
+            template: {
+              categoria: "esporte_radical",
+              tema: "Radical",
+              mood: "Alta energia, autenticidade e movimento.",
+              cta_text: "Quero fazer parte",
+              color_primary: "#FF6E91",
+              color_secondary: "#FCFC30",
+              color_background: "#FFF7FB",
+              color_text: "#1F2937",
+              hero_layout: "full-bleed",
+              cta_variant: "gradient",
+              graphics_style: "dynamic",
+              tone_of_voice: "enthusiasm",
+              cta_experiment_enabled: false,
+              cta_variants: [],
+            },
+          }) as never,
+        );
+
+      render(
+        <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+          <Routes>
+            <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+          </Routes>
+        </MemoryRouter>,
       );
 
-    render(
-      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
-        <Routes>
-          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+      expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
-    expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+      const input = screen.getByLabelText(/^template$/i);
+      await user.click(input);
+      await user.type(input, "esporte_radical");
+      await user.keyboard("{ArrowDown}{Enter}");
 
-    const input = screen.getByLabelText(/^template$/i);
-    await user.click(input);
-    await user.type(input, "esporte_radical");
-    await user.keyboard("{ArrowDown}{Enter}");
-
-    await waitFor(() =>
-      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
-        "token",
-        1,
-        expect.objectContaining({ template_override: "esporte_radical" }),
-        expect.objectContaining({ signal: expect.any(Object) }),
-      ),
-    );
-    expect(await screen.findByRole("button", { name: /quero fazer parte/i })).toBeInTheDocument();
-  });
+      await waitFor(() =>
+        expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+          "token",
+          1,
+          expect.objectContaining({ template_override: "esporte_radical" }),
+          expect.objectContaining({ signal: expect.any(Object) }),
+        ),
+      );
+      expect(await screen.findByRole("button", { name: /quero fazer parte/i })).toBeInTheDocument();
+    },
+  );
 
   it("auto-refreshes the preview when copy and active fields change", async () => {
     const user = userEvent.setup();

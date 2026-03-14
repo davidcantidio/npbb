@@ -509,6 +509,64 @@ describe("Evento pages smoke", () => {
     expect(mockedPreviewEventoLanding).toHaveBeenCalled();
   });
 
+  it("preselects CPF, Nome, Sobrenome e Data de nascimento for new configs", async () => {
+    mockedGetEventoFormConfig.mockResolvedValueOnce({
+      evento_id: 1,
+      template_id: null,
+      campos: [],
+      urls: {
+        url_landing: "http://localhost:5173/landing",
+        url_checkin_sem_qr: "http://localhost:5173/checkin",
+        url_questionario: "http://localhost:5173/questionario",
+        url_api: "http://localhost:8000/docs",
+      },
+    } as never);
+    mockedGetFormularioCamposPossiveis.mockResolvedValueOnce(
+      ["CPF", "Nome", "Sobrenome", "Data de nascimento", "Email"] as never,
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+        <Routes>
+          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const cpfCard = await screen.findByTestId("lead-field-card-cpf");
+    expect(screen.getByTestId("lead-field-card-nome")).toBeInTheDocument();
+    expect(screen.getByTestId("lead-field-card-sobrenome")).toBeInTheDocument();
+    expect(screen.getByTestId("lead-field-card-data-de-nascimento")).toBeInTheDocument();
+    expect(screen.queryByTestId("lead-field-card-email")).not.toBeInTheDocument();
+
+    const cpfAtivo = within(cpfCard).getByRole("checkbox", { name: /Ativo/i });
+    const cpfObrigatorio = within(cpfCard).getByRole("checkbox", { name: /Obrigatório/i });
+    expect(cpfAtivo).toBeChecked();
+    expect(cpfAtivo).toBeDisabled();
+    expect(cpfObrigatorio).toBeChecked();
+    expect(cpfObrigatorio).toBeDisabled();
+
+    expect(screen.getByRole("button", { name: /Adicionar campo/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Adicionar campo/i }));
+    expect(await screen.findByTestId("lead-field-option-email")).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+        "token",
+        1,
+        expect.objectContaining({
+          campos: [
+            { nome_campo: "CPF", obrigatorio: true, ordem: 0 },
+            { nome_campo: "Nome", obrigatorio: true, ordem: 1 },
+            { nome_campo: "Sobrenome", obrigatorio: true, ordem: 2 },
+            { nome_campo: "Data de nascimento", obrigatorio: true, ordem: 3 },
+          ],
+        }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
+  });
+
   it("auto-refreshes the preview when the selected theme changes", async () => {
     const user = userEvent.setup();
     mockedListFormularioTemplates.mockResolvedValue([{ id: 7, nome: "Surf" }] as never);
@@ -623,8 +681,9 @@ describe("Evento pages smoke", () => {
     fireEvent.change(screen.getByLabelText(/Descricao curta/i), {
       target: { value: "Preview com Nome e Email." },
     });
+    await user.click(screen.getByRole("button", { name: /Adicionar campo/i }));
     await user.click(
-      within(screen.getByTestId("lead-field-card-nome")).getByRole("checkbox", { name: /Ativo/i }),
+      within(screen.getByTestId("lead-field-option-nome")).getByRole("checkbox", { name: /Ativo/i }),
     );
 
     await waitFor(() =>
@@ -643,6 +702,82 @@ describe("Evento pages smoke", () => {
       ),
     );
     expect(await screen.findByRole("button", { name: /receber novidades/i })).toBeInTheDocument();
+  });
+
+  it("reorders active fields and persists the new order on save", async () => {
+    const user = userEvent.setup();
+    mockedGetEventoFormConfig.mockResolvedValueOnce({
+      evento_id: 1,
+      template_id: null,
+      campos: [
+        { nome_campo: "CPF", obrigatorio: true, ordem: 0 },
+        { nome_campo: "Nome", obrigatorio: true, ordem: 1 },
+        { nome_campo: "Email", obrigatorio: true, ordem: 2 },
+      ],
+      urls: {
+        url_landing: "http://localhost:5173/landing",
+        url_checkin_sem_qr: "http://localhost:5173/checkin",
+        url_questionario: "http://localhost:5173/questionario",
+        url_api: "http://localhost:8000/docs",
+      },
+    } as never);
+    mockedGetFormularioCamposPossiveis.mockResolvedValueOnce(
+      ["CPF", "Nome", "Email", "Sobrenome", "Data de nascimento"] as never,
+    );
+    mockedUpdateEventoFormConfig.mockResolvedValueOnce({
+      evento_id: 1,
+      template_id: null,
+      campos: [
+        { nome_campo: "CPF", obrigatorio: true, ordem: 0 },
+        { nome_campo: "Email", obrigatorio: true, ordem: 1 },
+        { nome_campo: "Nome", obrigatorio: true, ordem: 2 },
+      ],
+      urls: {
+        url_landing: "http://localhost:5173/landing",
+        url_checkin_sem_qr: "http://localhost:5173/checkin",
+        url_questionario: "http://localhost:5173/questionario",
+        url_api: "http://localhost:8000/docs",
+      },
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
+        <Routes>
+          <Route path="/eventos/:id/formulario-lead" element={<EventLeadFormConfig />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const emailDragHandle = await screen.findByRole("button", { name: /Reordenar campo Email/i });
+    emailDragHandle.focus();
+    await user.keyboard("{Space}{ArrowUp}{Space}");
+
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+        "token",
+        1,
+        expect.objectContaining({
+          campos: [
+            { nome_campo: "CPF", obrigatorio: true, ordem: 0 },
+            { nome_campo: "Email", obrigatorio: true, ordem: 1 },
+            { nome_campo: "Nome", obrigatorio: true, ordem: 2 },
+          ],
+        }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(mockedUpdateEventoFormConfig).toHaveBeenCalledWith("token", 1, {
+        template_id: null,
+        campos: [
+          { nome_campo: "CPF", obrigatorio: true, ordem: 0 },
+          { nome_campo: "Email", obrigatorio: true, ordem: 1 },
+          { nome_campo: "Nome", obrigatorio: true, ordem: 2 },
+        ],
+      }),
+    );
   });
 
   it("keeps the latest preview when an older request resolves later", async () => {

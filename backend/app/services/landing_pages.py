@@ -109,6 +109,20 @@ def hydrate_ativacao_public_urls(
     return changed
 
 
+def hydrate_evento_public_urls(
+    evento: Evento, *, backend_base_url: str | None = None
+) -> bool:
+    """Preenche qr_code_url do evento com base na URL da landing do evento."""
+    urls = build_evento_public_urls(evento.id or 0, backend_base_url=backend_base_url)
+    url_landing = urls["url_landing"]
+    qr_code_url = build_qr_code_data_url(url_landing)
+
+    if evento.qr_code_url != qr_code_url:
+        evento.qr_code_url = qr_code_url
+        return True
+    return False
+
+
 def build_landing_fields_from_config(campos: list[Any]) -> list[LandingFieldRead]:
     ordered_campos = sorted(
         list(campos),

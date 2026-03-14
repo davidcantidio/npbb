@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlmodel import Session, select
 
 from app.core.auth import get_current_user
+from app.models.models import now_utc
 from app.db.database import get_session
 from app.models.models import EventoTag, EventoTerritorio, Usuario
 from app.modules.eventos.application.evento_list_usecase import listar_eventos_usecase
@@ -17,6 +18,7 @@ from app.modules.eventos.application.evento_write_usecases import (
     excluir_evento_usecase,
 )
 from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate
+from app.services.landing_pages import hydrate_evento_public_urls
 
 from . import _shared
 
@@ -95,10 +97,17 @@ def excluir_evento(
 @router.get("/{evento_id}/", response_model=EventoRead)
 def obter_evento(
     evento_id: int,
+    request: Request,
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
     evento = _shared._check_evento_visible_or_404(session, evento_id, current_user)
+
+    if hydrate_evento_public_urls(evento, backend_base_url=str(request.base_url)):
+        evento.updated_at = now_utc()
+        session.add(evento)
+        session.commit()
+        session.refresh(evento)
 
     tag_ids = session.exec(
         select(EventoTag.tag_id).where(EventoTag.evento_id == evento_id).order_by(EventoTag.tag_id)

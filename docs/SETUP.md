@@ -52,6 +52,8 @@ source .venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 ```
 
+Observacao: O pacote `qrcode` (em requirements.txt) e necessario para gerar QR codes reais nas landing pages. Se aparecer um placeholder amarelo em vez de QR escaneavel, execute `pip install -r requirements.txt` para garantir que todas as dependencias estejam instaladas.
+
 ### 2) Variaveis de ambiente
 Crie o arquivo `.env`:
 ```bash

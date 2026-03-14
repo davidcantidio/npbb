@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import base64
+import logging
 from html import escape
 from io import BytesIO
+
+logger = logging.getLogger(__name__)
 
 
 def build_qr_code_svg(content: str) -> str:
@@ -28,7 +31,12 @@ def build_qr_code_svg(content: str) -> str:
         buffer = BytesIO()
         image.save(buffer)
         return buffer.getvalue().decode("utf-8")
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "QR code real falhou, usando placeholder: %s",
+            exc,
+            exc_info=True,
+        )
         escaped = escape(value)
         return (
             '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" '

@@ -14,9 +14,11 @@ from app.models.models import (
     EventoTerritorio,
     StatusEvento,
     Usuario,
+    now_utc,
 )
 from app.schemas.evento import DataHealthRead, EventoListItem
 from app.services.data_health import compute_event_data_health
+from app.services.landing_pages import hydrate_evento_public_urls
 
 
 def listar_eventos_usecase(
@@ -95,6 +97,17 @@ def listar_eventos_usecase(
 
     if not eventos:
         return [], total
+
+    changed = False
+    for evento in eventos:
+        changed = hydrate_evento_public_urls(evento) or changed
+    if changed:
+        for evento in eventos:
+            evento.updated_at = now_utc()
+            session.add(evento)
+        session.commit()
+        for evento in eventos:
+            session.refresh(evento)
 
     evento_ids = [e.id for e in eventos if e.id is not None]
     status_ids = {e.status_id for e in eventos if e.status_id is not None}

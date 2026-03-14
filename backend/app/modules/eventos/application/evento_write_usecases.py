@@ -34,7 +34,7 @@ from app.models.models import (
 )
 from app.schemas.evento import EventoCreate, EventoRead, EventoUpdate
 from app.services.data_health import compute_event_data_health
-from app.services.landing_pages import normalize_template_override_input
+from app.services.landing_pages import hydrate_evento_public_urls, normalize_template_override_input
 from app.utils.http_errors import raise_http_error
 
 
@@ -231,6 +231,8 @@ def criar_evento_usecase(payload: EventoCreate, session: Session, current_user: 
             message="Falha ao criar evento",
         )
 
+    hydrate_evento_public_urls(evento)
+
     for territorio_id in territorio_ids:
         session.add(EventoTerritorio(evento_id=evento.id, territorio_id=territorio_id))
     for tag_id in tag_ids:
@@ -410,6 +412,8 @@ def atualizar_evento_usecase(
 
     for key, value in data.items():
         setattr(evento, key, value)
+
+    hydrate_evento_public_urls(evento)
 
     session.add(evento)
 

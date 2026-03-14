@@ -14,6 +14,7 @@ import EventWizardPageShell, {
   WIZARD_ACTION_BUTTON_SX,
 } from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
+import WizardTwoColumnLayout from "../../components/eventos/WizardTwoColumnLayout";
 import { useAuth } from "../../store/auth";
 import { useSnackbarFeedback } from "../../hooks/useSnackbarFeedback";
 import {
@@ -102,31 +103,38 @@ export default function EventGamificacaoPage() {
         </Alert>
       )}
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="flex-start">
-        <GamificacaoFormSection
-          form={data.createForm}
-          onFormChange={data.setCreateFormField}
-          disabled={formDisabled}
-          isEditing={data.isEditing}
-          editing={data.editing}
-          createError={data.createError}
-          createAttempted={data.createAttempted}
-          onSubmit={data.handleSubmit}
-          onCancelEdit={data.cancelEdit}
-          isBusy={data.isBusy}
-          creating={data.creating}
-          saving={data.saving}
-        />
-
-        <GamificacoesTable
-          gamificacoes={data.gamificacoes}
-          loading={data.loading}
-          canAct={data.canAct}
-          isBusy={data.isBusy}
-          onEdit={data.startEdit}
-          onDelete={data.openDelete}
-        />
-      </Stack>
+      <WizardTwoColumnLayout
+        testId="event-gamificacao-layout"
+        leftTestId="event-gamificacao-form-column"
+        rightTestId="event-gamificacao-list-column"
+        desktopColumns="minmax(0, 420px) minmax(0, 1fr)"
+        leftContent={(
+          <GamificacaoFormSection
+            form={data.createForm}
+            onFormChange={data.setCreateFormField}
+            disabled={formDisabled}
+            isEditing={data.isEditing}
+            editing={data.editing}
+            createError={data.createError}
+            createAttempted={data.createAttempted}
+            onSubmit={data.handleSubmit}
+            onCancelEdit={data.cancelEdit}
+            isBusy={data.isBusy}
+            creating={data.creating}
+            saving={data.saving}
+          />
+        )}
+        rightContent={(
+          <GamificacoesTable
+            gamificacoes={data.gamificacoes}
+            loading={data.loading}
+            canAct={data.canAct}
+            isBusy={data.isBusy}
+            onEdit={data.startEdit}
+            onDelete={data.openDelete}
+          />
+        )}
+      />
 
       <DeleteGamificacaoDialog
         open={data.deleteOpen}

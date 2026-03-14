@@ -1,20 +1,18 @@
 import { useMemo } from "react";
 import {
   Alert,
-  Box,
   CircularProgress,
   Divider,
   Paper,
   Snackbar,
   Stack,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 
 import EventWizardPageShell from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
+import WizardTwoColumnLayout from "../../components/eventos/WizardTwoColumnLayout";
 import { useAuth } from "../../store/auth";
 import {
   CamposSection,
@@ -36,8 +34,6 @@ export default function EventLeadFormConfigPage() {
   const { id } = useParams();
   const eventoId = Number(id);
   const { token } = useAuth();
-  const theme = useTheme();
-  const isDesktopLayout = useMediaQuery(theme.breakpoints.up("md"));
 
   const { snackbar, setSnackbar, copyToClipboard, handleSnackbarClose } = useSnackbarFeedback();
 
@@ -105,28 +101,14 @@ export default function EventLeadFormConfigPage() {
               Carregando...
             </Typography>
           </Stack>
-        ) : configData.config ? (
-          <Box
-            data-testid="event-lead-form-config-layout"
-            data-layout-mode={isDesktopLayout ? "side-by-side" : "stacked"}
-            sx={{
-              display: "grid",
-              gap: { xs: 3, xl: 4 },
-              alignItems: "start",
-              justifyContent: isDesktopLayout ? "space-between" : "stretch",
-              gridTemplateColumns: isDesktopLayout
-                ? "minmax(0, 1fr) minmax(390px, 430px)"
-                : "minmax(0, 1fr)",
-            }}
-          >
-            <Stack
-              spacing={2}
-              data-testid="event-lead-form-config-panel"
-              sx={{
-                minWidth: 0,
-                maxWidth: isDesktopLayout ? 760 : "100%",
-              }}
-            >
+      ) : configData.config ? (
+        <WizardTwoColumnLayout
+          testId="event-lead-form-config-layout"
+          leftTestId="event-lead-form-config-panel"
+          rightTestId="event-lead-form-config-preview-column"
+          desktopColumns="minmax(0, 1fr) minmax(390px, 430px)"
+          leftContent={(
+            <Stack spacing={2} sx={{ maxWidth: { md: 760 } }}>
               <TemaSection
                 templates={configData.templates}
                 templateId={configData.templateId}
@@ -160,27 +142,16 @@ export default function EventLeadFormConfigPage() {
                 onCopy={copyToClipboard}
               />
             </Stack>
-
-            <Box
-              data-testid="event-lead-form-config-preview-column"
-              sx={{
-                minWidth: 0,
-                width: "100%",
-                maxWidth: isDesktopLayout ? 430 : "100%",
-                position: isDesktopLayout ? "sticky" : "static",
-                top: isDesktopLayout ? theme.spacing(3) : "auto",
-                alignSelf: "start",
-                justifySelf: isDesktopLayout ? "end" : "stretch",
-              }}
-            >
-              <PreviewSection
-                previewData={preview.previewData}
-                previewLoading={preview.previewLoading}
-                previewError={preview.previewError}
-                onRefresh={preview.refreshPreview}
-              />
-            </Box>
-          </Box>
+          )}
+          rightContent={(
+            <PreviewSection
+              previewData={preview.previewData}
+              previewLoading={preview.previewLoading}
+              previewError={preview.previewError}
+              onRefresh={preview.refreshPreview}
+            />
+          )}
+        />
         ) : (
           <Typography variant="body2" color="text.secondary">
             Nenhum dado para exibir.

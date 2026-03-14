@@ -17,6 +17,7 @@ import EventWizardPageShell, {
   WIZARD_ACTION_BUTTON_SX,
 } from "../../components/eventos/EventWizardPageShell";
 import EventWizardStepper from "../../components/eventos/EventWizardStepper";
+import WizardTwoColumnLayout from "../../components/eventos/WizardTwoColumnLayout";
 import { getEvento, Tag, Territorio } from "../../services/eventos";
 import { useAuth } from "../../store/auth";
 import { EventWizardActions } from "./components/EventWizardActions";
@@ -217,6 +218,49 @@ export default function EventWizardPage() {
     return keys.some((key) => Boolean(errors[key]));
   }, [errors, eventStepFields, eventSubStep]);
 
+  const pendingFieldsCard = useMemo(
+    () => (
+      <Paper
+        variant="outlined"
+        data-testid="event-wizard-pending-card"
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          borderColor: missingFieldsForList.length ? "rgba(255, 167, 38, 0.6)" : "divider",
+          bgcolor: missingFieldsForList.length ? "rgba(255, 243, 224, 0.6)" : "background.paper",
+        }}
+      >
+        <Stack spacing={1}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {missingFieldsForList.length
+              ? `Campos pendentes (${missingFieldsForList.length})`
+              : "Nenhum campo pendente"}
+          </Typography>
+          {missingFieldsForList.length ? (
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {missingFieldsForList.map((fieldId) => (
+                <Button
+                  key={fieldId}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handlePendingFieldClick(fieldId)}
+                  sx={{ textTransform: "none", borderRadius: 999, fontWeight: 600 }}
+                >
+                  {getFieldLabel(fieldId)}
+                </Button>
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Todos os campos assistidos por query ja foram resolvidos nesta etapa.
+            </Typography>
+          )}
+        </Stack>
+      </Paper>
+    ),
+    [getFieldLabel, handlePendingFieldClick, missingFieldsForList],
+  );
+
   const goToFirstErrorStep = useCallback(() => {
     for (let index = 0; index < eventStepFields.length; index += 1) {
       const keys = eventStepFields[index] ?? [];
@@ -407,7 +451,7 @@ export default function EventWizardPage() {
         </Alert>
       ) : null}
 
-      <Paper elevation={2} sx={{ p: 3, borderRadius: 2, width: "100%", maxWidth: 680, mx: "auto" }}>
+      <Paper elevation={2} sx={{ p: 3, borderRadius: 2, width: "100%" }}>
         {isEdit && loadingEvento ? (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
             <CircularProgress size={22} />
@@ -420,186 +464,165 @@ export default function EventWizardPage() {
         <Box component="form" ref={formRef} onSubmit={handleSubmit} noValidate>
           <Stack spacing={3}>
             <EventWizardStepper activeStep={0} />
-
-            <Stepper activeStep={eventSubStep}>
-              {EVENT_SUBSTEPS.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-
-            {missingFieldsForList.length ? (
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  borderColor: "rgba(255, 167, 38, 0.6)",
-                  bgcolor: "rgba(255, 243, 224, 0.6)",
-                }}
-              >
-                <Stack spacing={1}>
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    Campos pendentes ({missingFieldsForList.length})
-                  </Typography>
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
-                    {missingFieldsForList.map((fieldId) => (
-                      <Button
-                        key={fieldId}
-                        size="small"
-                        variant="outlined"
-                        onClick={() => handlePendingFieldClick(fieldId)}
-                        sx={{ textTransform: "none", borderRadius: 999, fontWeight: 600 }}
-                      >
-                        {getFieldLabel(fieldId)}
-                      </Button>
+            <WizardTwoColumnLayout
+              testId="event-wizard-layout"
+              leftTestId="event-wizard-form-column"
+              rightTestId="event-wizard-pending-column"
+              desktopColumns="minmax(0, 1fr) minmax(280px, 320px)"
+              leftContent={(
+                <Stack spacing={3}>
+                  <Stepper activeStep={eventSubStep}>
+                    {EVENT_SUBSTEPS.map((label) => (
+                      <Step key={label}>
+                        <StepLabel>{label}</StepLabel>
+                      </Step>
                     ))}
-                  </Stack>
-                </Stack>
-              </Paper>
-            ) : null}
+                  </Stepper>
 
-            <EventWizardStepAgency
-              visible={eventSubStep === 0}
-              canPickAgencia={canPickAgencia}
-              agencias={agencias}
-              agenciaId={form.agencia_id}
-              concorrencia={Boolean(form.concorrencia)}
-              loadingDomains={loadingDomains}
-              setFieldRef={setFieldRef}
-              getFieldSx={getFieldSx}
-              onAgenciaChange={(agenciaId) => setForm((prev) => ({ ...prev, agencia_id: agenciaId }))}
-              onConcorrenciaChange={(checked) => setForm((prev) => ({ ...prev, concorrencia: checked }))}
-              getFieldHelperText={getFieldHelperText}
-            />
+                  <EventWizardStepAgency
+                    visible={eventSubStep === 0}
+                    canPickAgencia={canPickAgencia}
+                    agencias={agencias}
+                    agenciaId={form.agencia_id}
+                    concorrencia={Boolean(form.concorrencia)}
+                    loadingDomains={loadingDomains}
+                    setFieldRef={setFieldRef}
+                    getFieldSx={getFieldSx}
+                    onAgenciaChange={(agenciaId) => setForm((prev) => ({ ...prev, agencia_id: agenciaId }))}
+                    onConcorrenciaChange={(checked) => setForm((prev) => ({ ...prev, concorrencia: checked }))}
+                    getFieldHelperText={getFieldHelperText}
+                  />
 
-            <EventWizardStepEventInfo
-              visible={eventSubStep === 1}
-              form={form}
-              errors={errors}
-              cidades={cidades}
-              loadingDomains={loadingDomains}
-              loadingCidades={loadingCidades}
-              setFieldRef={setFieldRef}
-              getFieldSx={getFieldSx}
-              getFieldHelperText={getFieldHelperText}
-              onChange={handleChange}
-              onEstadoChange={handleEstadoChange}
-            />
+                  <EventWizardStepEventInfo
+                    visible={eventSubStep === 1}
+                    form={form}
+                    errors={errors}
+                    cidades={cidades}
+                    loadingDomains={loadingDomains}
+                    loadingCidades={loadingCidades}
+                    setFieldRef={setFieldRef}
+                    getFieldSx={getFieldSx}
+                    getFieldHelperText={getFieldHelperText}
+                    onChange={handleChange}
+                    onEstadoChange={handleEstadoChange}
+                  />
 
-            <EventWizardStepClassification
-              visible={eventSubStep === 2}
-              form={form}
-              errors={errors}
-              diretorias={diretorias}
-              divisoesDemandantes={divisoesDemandantes}
-              tipos={tipos}
-              subtipos={subtipos}
-              tags={tags}
-              territorios={territorios}
-              selectedDiretoria={selectedDiretoria}
-              selectedDivisaoDemandante={selectedDivisaoDemandante}
-              selectedTipo={selectedTipo}
-              selectedSubtipo={selectedSubtipo}
-              selectedTerritorios={selectedTerritorios}
-              selectedTagValues={selectedTagValues}
-              selectedTipoId={selectedTipoId}
-              loadingDomains={loadingDomains}
-              loadingSubtipos={loadingSubtipos}
-              setFieldRef={setFieldRef}
-              getFieldSx={getFieldSx}
-              getFieldHelperText={getFieldHelperText}
-              preventEnterSubmitOnClassification={preventEnterSubmitOnClassification}
-              onDiretoriaChange={(diretoriaId) => setForm((prev) => ({ ...prev, diretoria_id: diretoriaId }))}
-              onDivisaoDemandanteChange={(divisaoId) =>
-                setForm((prev) => ({ ...prev, divisao_demandante_id: divisaoId }))
-              }
-              onTipoChange={handleTipoChange}
-              onSubtipoChange={(subtipoId) => setForm((prev) => ({ ...prev, subtipo_id: subtipoId }))}
-              onTerritoriosChange={(territorioIds) =>
-                setForm((prev) => ({ ...prev, territorio_ids: territorioIds }))
-              }
-              onTagsChange={onTagsChange}
-            />
+                  <EventWizardStepClassification
+                    visible={eventSubStep === 2}
+                    form={form}
+                    errors={errors}
+                    diretorias={diretorias}
+                    divisoesDemandantes={divisoesDemandantes}
+                    tipos={tipos}
+                    subtipos={subtipos}
+                    tags={tags}
+                    territorios={territorios}
+                    selectedDiretoria={selectedDiretoria}
+                    selectedDivisaoDemandante={selectedDivisaoDemandante}
+                    selectedTipo={selectedTipo}
+                    selectedSubtipo={selectedSubtipo}
+                    selectedTerritorios={selectedTerritorios}
+                    selectedTagValues={selectedTagValues}
+                    selectedTipoId={selectedTipoId}
+                    loadingDomains={loadingDomains}
+                    loadingSubtipos={loadingSubtipos}
+                    setFieldRef={setFieldRef}
+                    getFieldSx={getFieldSx}
+                    getFieldHelperText={getFieldHelperText}
+                    preventEnterSubmitOnClassification={preventEnterSubmitOnClassification}
+                    onDiretoriaChange={(diretoriaId) => setForm((prev) => ({ ...prev, diretoria_id: diretoriaId }))}
+                    onDivisaoDemandanteChange={(divisaoId) =>
+                      setForm((prev) => ({ ...prev, divisao_demandante_id: divisaoId }))
+                    }
+                    onTipoChange={handleTipoChange}
+                    onSubtipoChange={(subtipoId) => setForm((prev) => ({ ...prev, subtipo_id: subtipoId }))}
+                    onTerritoriosChange={(territorioIds) =>
+                      setForm((prev) => ({ ...prev, territorio_ids: territorioIds }))
+                    }
+                    onTagsChange={onTagsChange}
+                  />
 
-            <EventWizardActions
-              leftActions={
-                <Button
-                  component={RouterLink}
-                  to={isEdit ? `/eventos/${eventoId}` : "/eventos"}
-                  variant="outlined"
-                  size="small"
-                  sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
-                >
-                  Cancelar
-                </Button>
-              }
-              rightActions={
-                <>
-                  <Button
-                    variant="outlined"
-                    onClick={handleBackStep}
-                    disabled={eventSubStep === 0 || submitting}
-                    size="small"
-                    sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
-                  >
-                    Voltar
-                  </Button>
-
-                  {eventSubStep === 0 && canPickAgencia ? (
-                    <Button
-                      variant="text"
-                      onClick={() => {
-                        setSubmitAttempted(false);
-                        setEventSubStep(1);
-                      }}
-                      disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
-                      size="small"
-                      sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
-                    >
-                      Pular
-                    </Button>
-                  ) : null}
-
-                  {eventSubStep < EVENT_SUBSTEPS.length - 1 ? (
-                    <Button
-                      variant="contained"
-                      onClick={handleNextStep}
-                      disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
-                      size="small"
-                      sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
-                    >
-                      Proximo
-                    </Button>
-                  ) : (
-                    <>
+                  <EventWizardActions
+                    leftActions={
                       <Button
-                        type="submit"
+                        component={RouterLink}
+                        to={isEdit ? `/eventos/${eventoId}` : "/eventos"}
                         variant="outlined"
-                        disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
                         size="small"
-                        sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
+                        sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
                       >
-                        {submitting ? "Salvando..." : isEdit ? "Salvar alteracoes" : "Salvar"}
+                        Cancelar
                       </Button>
-                      <Button
-                        variant="contained"
-                        disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
-                        onClick={() => {
-                          submitAndContinueRef.current = true;
-                          setSubmitAndContinueRequested(true);
-                          formRef.current?.requestSubmit();
-                        }}
-                        size="small"
-                        sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
-                      >
-                        {isEdit ? "Salvar e continuar" : "Criar e continuar"}
-                      </Button>
-                    </>
-                  )}
-                </>
-              }
+                    }
+                    rightActions={
+                      <>
+                        <Button
+                          variant="outlined"
+                          onClick={handleBackStep}
+                          disabled={eventSubStep === 0 || submitting}
+                          size="small"
+                          sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
+                        >
+                          Voltar
+                        </Button>
+
+                        {eventSubStep === 0 && canPickAgencia ? (
+                          <Button
+                            variant="text"
+                            onClick={() => {
+                              setSubmitAttempted(false);
+                              setEventSubStep(1);
+                            }}
+                            disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
+                            size="small"
+                            sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 700 }}
+                          >
+                            Pular
+                          </Button>
+                        ) : null}
+
+                        {eventSubStep < EVENT_SUBSTEPS.length - 1 ? (
+                          <Button
+                            variant="contained"
+                            onClick={handleNextStep}
+                            disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
+                            size="small"
+                            sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
+                          >
+                            Proximo
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              type="submit"
+                              variant="outlined"
+                              disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
+                              size="small"
+                              sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
+                            >
+                              {submitting ? "Salvando..." : isEdit ? "Salvar alteracoes" : "Salvar"}
+                            </Button>
+                            <Button
+                              variant="contained"
+                              disabled={submitting || loadingDomains || (isEdit && loadingEvento)}
+                              onClick={() => {
+                                submitAndContinueRef.current = true;
+                                setSubmitAndContinueRequested(true);
+                                formRef.current?.requestSubmit();
+                              }}
+                              size="small"
+                              sx={{ ...WIZARD_ACTION_BUTTON_SX, fontWeight: 800 }}
+                            >
+                              {isEdit ? "Salvar e continuar" : "Criar e continuar"}
+                            </Button>
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                </Stack>
+              )}
+              rightContent={pendingFieldsCard}
             />
           </Stack>
         </Box>

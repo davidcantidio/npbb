@@ -1,9 +1,9 @@
 ---
 doc_id: "SPRINT-F3-01.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-13"
+last_updated: "2026-03-14"
 ---
 
 # SPRINT-F3-01
@@ -21,12 +21,14 @@ Executar validacao de regressao em todas as etapas e viewports; obter aprovacao 
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F3-01-001 | Checklist de Regressao Multiviewport | 3 | todo | [ISSUE-F3-01-001-Checklist-Regressao-Multiviewport.md](../issues/ISSUE-F3-01-001-Checklist-Regressao-Multiviewport.md) |
+| ISSUE-F3-01-001 | Checklist de Regressao Multiviewport | 3 | done | [ISSUE-F3-01-001-Checklist-Regressao-Multiviewport.md](../issues/ISSUE-F3-01-001-Checklist-Regressao-Multiviewport.md) |
 
 ## Riscos e Bloqueios
 
-Nenhum identificado.
+- Formulario de Lead ainda exibe o box azul de `Customizacao controlada`
+- Formulario de Lead ainda exibe a secao `Governanca e performance`
+- Formulario de Lead ainda exibe texto descritivo acima do preview
 
 ## Encerramento
-- decisao: pendente
-- observacoes: -
+- decisao: concluida com bloqueios
+- observacoes: checklist concluido; interface nao aprovada para deploy nesta rodada; follow-ups documentados na issue

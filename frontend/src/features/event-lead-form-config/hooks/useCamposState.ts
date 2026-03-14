@@ -1,6 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import type { PreviewEventoLandingPayload } from "../../../services/landing_public";
-
 export type FormularioCampoInput = {
   nome_campo: string;
   obrigatorio: boolean;

@@ -1,6 +1,6 @@
 {
   "issue_id": "ISSUE-F3-01-001",
-  "generated_at": "2026-03-08T16:42:44.276Z",
+  "generated_at": "2026-03-14T18:44:15.546Z",
   "source_mode": "backend-real",
   "api_url": "http://127.0.0.1:8000",
   "base_url": "http://127.0.0.1:5173",
@@ -26,7 +26,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 443
+      "duration_ms": 431
     },
     {
       "template": "corporativo",
@@ -45,7 +45,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 404
+      "duration_ms": 422
     },
     {
       "template": "corporativo",
@@ -64,7 +64,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 491
+      "duration_ms": 508
     },
     {
       "template": "esporte_convencional",
@@ -83,7 +83,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 372
+      "duration_ms": 347
     },
     {
       "template": "esporte_convencional",
@@ -102,7 +102,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 428
+      "duration_ms": 403
     },
     {
       "template": "esporte_convencional",
@@ -121,7 +121,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 474
+      "duration_ms": 477
     },
     {
       "template": "esporte_radical",
@@ -140,7 +140,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 359
+      "duration_ms": 340
     },
     {
       "template": "esporte_radical",
@@ -159,7 +159,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 431
+      "duration_ms": 421
     },
     {
       "template": "esporte_radical",
@@ -178,7 +178,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 508
+      "duration_ms": 494
     },
     {
       "template": "evento_cultural",
@@ -197,7 +197,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 348
+      "duration_ms": 321
     },
     {
       "template": "evento_cultural",
@@ -216,7 +216,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 373
+      "duration_ms": 394
     },
     {
       "template": "evento_cultural",
@@ -235,7 +235,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 449
+      "duration_ms": 458
     },
     {
       "template": "show_musical",
@@ -254,7 +254,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 355
+      "duration_ms": 323
     },
     {
       "template": "show_musical",
@@ -273,7 +273,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 380
+      "duration_ms": 384
     },
     {
       "template": "show_musical",
@@ -292,7 +292,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 465
+      "duration_ms": 469
     },
     {
       "template": "tecnologia",
@@ -311,7 +311,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 343
+      "duration_ms": 316
     },
     {
       "template": "tecnologia",
@@ -330,7 +330,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 371
+      "duration_ms": 369
     },
     {
       "template": "tecnologia",
@@ -349,7 +349,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 402
+      "duration_ms": 432
     },
     {
       "template": "generico",
@@ -368,7 +368,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 334
+      "duration_ms": 315
     },
     {
       "template": "generico",
@@ -387,7 +387,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 367
+      "duration_ms": 384
     },
     {
       "template": "generico",
@@ -406,7 +406,7 @@
       "viewport_gap_free": true,
       "external_image_requests": [],
       "errors": [],
-      "duration_ms": 479
+      "duration_ms": 464
     }
   ]
 }

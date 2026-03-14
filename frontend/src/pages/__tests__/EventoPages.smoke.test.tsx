@@ -591,7 +591,8 @@ describe("Evento pages smoke", () => {
       const hasUpdatedCopy =
         payload.cta_personalizado === "Receber novidades"
         && payload.descricao_curta === "Preview com Nome e Email.";
-      const hasNomeField = payload.campos.some((campo) => campo.nome_campo === "Nome");
+      const campos = payload.campos ?? [];
+      const hasNomeField = campos.some((campo) => campo.nome_campo === "Nome");
 
       if (hasUpdatedCopy && hasNomeField) {
         return Promise.resolve(

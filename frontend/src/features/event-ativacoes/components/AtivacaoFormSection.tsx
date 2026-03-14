@@ -49,7 +49,7 @@ export function AtivacaoFormSection({
   nomeRequiredError,
   onSubmit,
   onReset,
-  isBusy,
+  isBusy: _isBusy,
   creating,
   saving,
 }: AtivacaoFormSectionProps) {

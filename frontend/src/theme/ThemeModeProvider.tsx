@@ -7,9 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { PaletteMode } from "@mui/material/styles";
-
-import { APP_THEME_MODE_STORAGE_KEY } from "./index";
+import { APP_THEME_MODE_STORAGE_KEY, type PaletteMode } from "./shared";
 
 export type ThemeModeSetting = PaletteMode | "system";
 
@@ -76,7 +74,7 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const resolvedMode = mode === "system" ? systemMode : mode;
 
   const toggleMode = useCallback(() => {
-    setMode((currentMode) => {
+    setMode((currentMode: ThemeModeSetting) => {
       const effectiveMode = currentMode === "system" ? systemMode : currentMode;
       return effectiveMode === "dark" ? "light" : "dark";
     });

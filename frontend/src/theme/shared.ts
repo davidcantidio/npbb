@@ -1,10 +1,12 @@
 import { alpha } from "@mui/material/styles";
 import type {
-  PaletteMode,
   Shadows,
   Theme,
   ThemeOptions,
 } from "@mui/material/styles";
+
+/** Equivalente a MUI PaletteMode - evita dependência de export do pacote. */
+export type PaletteMode = "light" | "dark";
 
 export const APP_THEME_MODE_STORAGE_KEY = "npbb-theme-mode";
 

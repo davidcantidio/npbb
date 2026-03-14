@@ -1,4 +1,4 @@
-﻿import { Autocomplete, Box, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Chip, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import {
   DivisaoDemandante,
   Diretoria,
@@ -45,7 +45,7 @@ type EventWizardStepClassificationProps = {
  */
 export function EventWizardStepClassification({
   visible,
-  form,
+  form: _form,
   errors,
   diretorias,
   divisoesDemandantes,

@@ -16,9 +16,7 @@ const axe = configureAxe({
     "button-name": { enabled: true },
     "link-name": { enabled: true },
     "image-alt": { enabled: true },
-    // Pre-existing: MUI LandingPageView uses h1 → h5 → h6 skipping h2-h4.
-    // Logged as non-blocking accessibility issue for future fix.
-    "heading-order": { enabled: false },
+    "heading-order": { enabled: true },
   },
 });
 

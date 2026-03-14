@@ -340,7 +340,7 @@ export default function AppLayout() {
           </Menu>
           <Menu
             anchorEl={submenuAnchor}
-            open={Boolean(submenuAnchor)}
+            open={!isDesktop ? Boolean(submenuAnchor) : false}
             onClose={() => {
               setSubmenuAnchor(null);
               setSubmenuKey(null);

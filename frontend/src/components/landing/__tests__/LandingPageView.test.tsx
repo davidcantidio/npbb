@@ -224,6 +224,29 @@ describe("LandingPageView", () => {
     expect(screen.queryByRole("button", { name: /quero participar/i })).not.toBeInTheDocument();
   });
 
+  it("usa hierarquia semantica de headings sem alterar o visual principal", () => {
+    render(
+      <LandingPageView
+        data={createLandingFixture({
+          gamificacoes: [
+            {
+              id: 12,
+              nome: "Quiz BB",
+              descricao: "Responda ao quiz interativo.",
+              premio: "Kit promocional",
+              titulo_feedback: "Boa!",
+              texto_feedback: "Participacao registrada.",
+            },
+          ],
+        })}
+        mode="public"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { level: 1, name: /stand principal/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /quiz bb/i })).toBeInTheDocument();
+  });
+
   it("renderiza gamificacao abaixo do FormCard com largura e surface compartilhadas", () => {
     render(
       <LandingPageView

@@ -17,20 +17,27 @@ const FORM_LAYOUT_FIXTURE = {
 
 describe("formOnlySurface", () => {
   it("define o contrato responsivo de largura compartilhado", () => {
+    const responsiveWidth = FORM_ONLY_CONTENT_WIDTH_SX as unknown as Record<string, { width: string }>;
+
     expect(FORM_ONLY_CONTENT_WIDTH_SX.width).toBe("min(92vw, 440px)");
-    expect(FORM_ONLY_CONTENT_WIDTH_SX["@media (min-width:768px)"].width).toBe("min(480px, 90vw)");
-    expect(FORM_ONLY_CONTENT_WIDTH_SX["@media (min-width:1280px)"].width).toBe("min(520px, 90vw)");
+    expect(responsiveWidth["@media (min-width:768px)"].width).toBe("min(480px, 90vw)");
+    expect(responsiveWidth["@media (min-width:1280px)"].width).toBe("min(520px, 90vw)");
   });
 
   it("define raio de 24px e padding responsivo para a surface", () => {
     const surfaceSx = getFormOnlySurfaceSx(FORM_LAYOUT_FIXTURE);
+    const responsivePadding =
+      FORM_ONLY_SURFACE_PADDING_SX as unknown as Record<string, { padding: string }>;
+    const surfaceSxWithMedia: Record<string, unknown> = surfaceSx;
 
     expect(FORM_ONLY_SURFACE_BORDER_RADIUS).toBe("24px");
     expect(FORM_ONLY_SURFACE_PADDING_SX.padding).toBe("20px");
-    expect(FORM_ONLY_SURFACE_PADDING_SX["@media (min-width:768px)"].padding).toBe("32px");
+    expect(responsivePadding["@media (min-width:768px)"].padding).toBe("32px");
     expect(surfaceSx.borderRadius).toBe("24px");
     expect(surfaceSx.padding).toBe("20px");
-    expect(surfaceSx["@media (min-width:768px)"]).toMatchObject({ padding: "32px" });
+    expect(surfaceSxWithMedia["@media (min-width:768px)"] as Record<string, unknown>).toMatchObject({
+      padding: "32px",
+    });
   });
 
   it("normaliza fundo sólido da gamificação para branco semitransparente", () => {

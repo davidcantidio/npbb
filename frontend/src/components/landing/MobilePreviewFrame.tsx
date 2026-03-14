@@ -7,7 +7,7 @@ type MobilePreviewFrameProps = {
 };
 
 const PREVIEW_MOBILE_WIDTH = "390px";
-const PREVIEW_MOBILE_BASE_HEIGHT = "844px";
+const PREVIEW_MOBILE_BASE_HEIGHT = "700px";
 
 export default function MobilePreviewFrame({
   children,
@@ -24,8 +24,8 @@ export default function MobilePreviewFrame({
         isolation: "isolate",
         width: "var(--preview-mobile-width)",
         maxWidth: "100%",
-        height: "min(var(--preview-mobile-base-height), calc(100vh - 100px))",
-        minHeight: "620px",
+        height: "min(var(--preview-mobile-base-height), calc(100vh - 200px))",
+        minHeight: "540px",
         overflowX: "hidden",
         overflowY: "auto",
         overscrollBehavior: "contain",

@@ -23,15 +23,15 @@ last_updated: "2026-03-14"
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
 | F1 - Discovery Tecnico | pending | F1-R01 | [RELATORIO-AUDITORIA-F1-R01.md](F1-Discovery-Tecnico/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | R01 provisional (go); reauditar apos commit |
-| F2 - Implementacao | hold | F2-R01 | [RELATORIO-AUDITORIA-F2-R01.md](F2-Implementacao/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | Redundancias nao removidas; ISSUE-F2-02-003 |
+| F2 - Implementacao | pending | F2-R01 | [RELATORIO-AUDITORIA-F2-R01.md](F2-Implementacao/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | ISSUE-F2-02-003 concluida; reauditar para aprovar gate |
 | F3 - Validacao | hold | F3-R01 | [RELATORIO-AUDITORIA-F3-R01.md](F3-Validacao/auditorias/RELATORIO-AUDITORIA-F3-R01.md) | Follow-ups F2; PM nao aprovou deploy |
 
 ## Resolucoes de Follow-ups
 
 | Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
 |---|---|---|---|---|---|---|---|
-| 2026-03-14 | F2-R01 | F2 - Implementacao | B1 | issue-local | Remover box azul, GovernanceSection, texto descritivo | [ISSUE-F2-02-003](F2-Implementacao/issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) | bloqueante; criada na remediacao |
-| 2026-03-14 | F3-R01 | F3 - Validacao | B1 | issue-local | Mesmo escopo de F2-R01 B1; consolidado em ISSUE-F2-02-003 | [ISSUE-F2-02-003](F2-Implementacao/issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) | bloqueante |
+| 2026-03-14 | F2-R01 | F2 - Implementacao | B1 | issue-local | Remover box azul, GovernanceSection, texto descritivo | [ISSUE-F2-02-003](F2-Implementacao/issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) | bloqueante; criada na remediacao; **done** |
+| 2026-03-14 | F3-R01 | F3 - Validacao | B1 | issue-local | Mesmo escopo de F2-R01 B1; consolidado em ISSUE-F2-02-003 | [ISSUE-F2-02-003](F2-Implementacao/issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) | bloqueante; **done** |
 
 ## Rodadas
 

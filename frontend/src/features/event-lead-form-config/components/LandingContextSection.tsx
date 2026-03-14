@@ -1,5 +1,5 @@
-import { Alert, Autocomplete, Box, Stack, TextField, Typography } from "@mui/material";
-import { LANDING_CUSTOMIZATION_MESSAGE, TEMPLATE_OVERRIDE_OPTIONS } from "../constants";
+import { Autocomplete, Box, Stack, TextField, Typography } from "@mui/material";
+import { TEMPLATE_OVERRIDE_OPTIONS } from "../constants";
 import type { FormularioTemplate } from "../../../services/eventos";
 import type { LandingMeta } from "../hooks/useEventLeadFormConfigData";
 
@@ -70,9 +70,6 @@ export function LandingContextSection({
             )}
           />
         </Box>
-        <Alert severity="info" variant="outlined">
-          {LANDING_CUSTOMIZATION_MESSAGE}
-        </Alert>
         <Box sx={{ width: "100%", maxWidth: { xs: "100%", md: 460 } }}>
           <TextField
             label="CTA personalizado"

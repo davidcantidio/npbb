@@ -80,7 +80,7 @@ export function useEventLeadFormConfigData(
   }, [load]);
 
   const handleSave = useCallback(
-    async (loadGovernanceData: () => void) => {
+    async (afterSave?: () => void | Promise<void>) => {
       if (!token || !Number.isFinite(eventoId)) return;
 
       setSaving(true);
@@ -106,14 +106,14 @@ export function useEventLeadFormConfigData(
 
         showSuccess("Configuração salva com sucesso.");
         onSaveSuccess?.();
-        void loadGovernanceData();
+        void afterSave?.();
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Erro ao salvar configuração.";
         showError(message);
       } finally {
         setSaving(false);
-    }
-  },
+      }
+    },
     [
       camposPossiveis,
       camposState.camposPayload,

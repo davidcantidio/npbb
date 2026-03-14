@@ -170,10 +170,16 @@ function IngressosPortalBB({ token }: PortalProps) {
     const params = new URLSearchParams(location.search);
     const cotaIdParam = params.get("cota_id");
     const cotaId = cotaIdParam ? Number(cotaIdParam) : null;
-    if (!cotaId || !Number.isFinite(cotaId)) {
-      return items;
+    const eventoIdParam = params.get("evento_id");
+    const eventoId = eventoIdParam ? Number(eventoIdParam) : null;
+
+    if (cotaId != null && Number.isFinite(cotaId)) {
+      return items.filter((item) => item.cota_id === cotaId);
     }
-    return items.filter((item) => item.cota_id === cotaId);
+    if (eventoId != null && Number.isFinite(eventoId)) {
+      return items.filter((item) => item.evento_id === eventoId);
+    }
+    return items;
   }, [items, location.search]);
   const cards = useMemo(
     () =>
@@ -551,18 +557,39 @@ function IngressosPortalBB({ token }: PortalProps) {
   );
 }
 
+function parseAdminFiltersFromSearch(search: string): { eventoId: string; diretoriaId: string } {
+  const params = new URLSearchParams(search);
+  const eventoIdParam = params.get("evento_id");
+  const diretoriaIdParam = params.get("diretoria_id");
+  const eventoId =
+    eventoIdParam && Number.isFinite(Number(eventoIdParam)) ? eventoIdParam : "";
+  const diretoriaId =
+    diretoriaIdParam && Number.isFinite(Number(diretoriaIdParam)) ? diretoriaIdParam : "";
+  return { eventoId, diretoriaId };
+}
+
 function IngressosPortalAdmin({ token }: PortalProps) {
+  const location = useLocation();
+  const urlFilters = useMemo(
+    () => parseAdminFiltersFromSearch(location.search),
+    [location.search],
+  );
   const [items, setItems] = useState<SolicitacaoIngressoAdminListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventos, setEventos] = useState<EventoListItem[]>([]);
   const [eventosLoading, setEventosLoading] = useState(false);
   const [eventosError, setEventosError] = useState<string | null>(null);
-  const [eventoId, setEventoId] = useState<string>("");
+  const [eventoId, setEventoId] = useState<string>(() => urlFilters.eventoId);
   const [diretorias, setDiretorias] = useState<DiretoriaAdmin[]>([]);
   const [diretoriasLoading, setDiretoriasLoading] = useState(false);
   const [diretoriasError, setDiretoriasError] = useState<string | null>(null);
-  const [diretoriaId, setDiretoriaId] = useState<string>("");
+  const [diretoriaId, setDiretoriaId] = useState<string>(() => urlFilters.diretoriaId);
+
+  useEffect(() => {
+    setEventoId(urlFilters.eventoId);
+    setDiretoriaId(urlFilters.diretoriaId);
+  }, [urlFilters.eventoId, urlFilters.diretoriaId]);
 
   const fetchSolicitacoes = useCallback(
     async (eventoIdValue: string, diretoriaIdValue: string) => {
@@ -587,7 +614,7 @@ function IngressosPortalAdmin({ token }: PortalProps) {
   useEffect(() => {
     if (!token) return;
     fetchSolicitacoes(eventoId, diretoriaId);
-  }, [token, fetchSolicitacoes]);
+  }, [token, fetchSolicitacoes, eventoId, diretoriaId]);
 
   useEffect(() => {
     if (!token) return;

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-02-003-Remover-Redundancias-Restantes.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-14"
 task_instruction_mode: "required"
@@ -39,18 +39,18 @@ Estes itens faziam parte do escopo da ISSUE-F2-02-001 e do PRD. Esta issue conso
 - Given alteracoes em campos, When edito, Then o preview atualiza em tempo real (reatividade preservada)
 
 ## Definition of Done da Issue
-- [ ] Box azul removido
-- [ ] GovernanceSection removida
-- [ ] Texto descritivo acima do preview removido
-- [ ] Reatividade preservada
-- [ ] Testes passando
+- [x] Box azul removido
+- [x] GovernanceSection removida
+- [x] Texto descritivo acima do preview removido
+- [x] Reatividade preservada
+- [x] Testes passando
 
 ## Tasks Decupadas
 
-- [ ] T1: Remover box informativo azul (Customizacao controlada)
-- [ ] T2: Remover GovernanceSection e seus imports
-- [ ] T3: Remover texto descritivo acima do PreviewSection
-- [ ] T4: Validar reatividade e testes
+- [x] T1: Remover box informativo azul (Customizacao controlada)
+- [x] T2: Remover GovernanceSection e seus imports
+- [x] T3: Remover texto descritivo acima do PreviewSection
+- [x] T4: Validar reatividade e testes
 
 ## Instructions por Task
 

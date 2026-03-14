@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-14"
 ---
@@ -21,7 +21,7 @@ Interface limpa sem elementos redundantes; preview mobile visivel; campos reorde
 EventLeadFormConfigPage possui TemaSection, LandingContextSection, PreviewSection, GovernanceSection, CamposSection. Remover TemaSection (redundante com LandingContextSection), GovernanceSection, box informativo azul e texto descritivo. CamposSection precisa migrar para 1 coluna, visibilidade progressiva via botao "+" e drag-and-drop (lib aprovada na F1).
 
 ## Definition of Done do Epico
-- [ ] Redundancias removidas
+- [x] Redundancias removidas
 - [x] Preview em frame mobile ~390px
 - [x] Campos em 1 coluna com visibilidade progressiva
 - [x] Drag-and-drop funcional para reordenacao
@@ -33,7 +33,7 @@ EventLeadFormConfigPage possui TemaSection, LandingContextSection, PreviewSectio
 |---|---|---|---|---|---|
 | ISSUE-F2-02-001 | Remover Redundancias e Aplicar Preview Mobile | Remover Tema, box azul, Governanca, texto; preview ~390px | 3 | todo | [ISSUE-F2-02-001-Remover-Redundancias-Aplicar-Preview-Mobile.md](./issues/ISSUE-F2-02-001-Remover-Redundancias-Aplicar-Preview-Mobile.md) |
 | ISSUE-F2-02-002 | Implementar Campos em 1 Coluna com Drag-and-drop | Campos 1 coluna, visibilidade progressiva, dnd | 3 | done | [ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md](./issues/ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md) |
-| ISSUE-F2-02-003 | Remover Redundancias Restantes | Box azul, GovernanceSection, texto descritivo (follow-up F3) | 2 | todo | [ISSUE-F2-02-003-Remover-Redundancias-Restantes.md](./issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) |
+| ISSUE-F2-02-003 | Remover Redundancias Restantes | Box azul, GovernanceSection, texto descritivo (follow-up F3) | 2 | done | [ISSUE-F2-02-003-Remover-Redundancias-Restantes.md](./issues/ISSUE-F2-02-003-Remover-Redundancias-Restantes.md) |
 
 ## Artifact Minimo do Epico
 

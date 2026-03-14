@@ -17,14 +17,12 @@ import { useAuth } from "../../store/auth";
 import {
   CamposSection,
   EventLeadFormConfigHeader,
-  GovernanceSection,
   LandingContextSection,
   PreviewSection,
   UrlsSection,
 } from "./components";
 import {
   useEventLeadFormConfigData,
-  useGovernanceData,
   useLandingPreview,
   useSnackbarFeedback,
 } from "./hooks";
@@ -40,8 +38,6 @@ export default function EventLeadFormConfigPage() {
     showSuccess: (msg) => setSnackbar({ open: true, message: msg, severity: "success" }),
     showError: (msg) => setSnackbar({ open: true, message: msg, severity: "error" }),
   });
-
-  const governanceData = useGovernanceData(token, eventoId);
 
   const previewPayload = useMemo(
     () => ({
@@ -67,7 +63,7 @@ export default function EventLeadFormConfigPage() {
   );
 
   const handleSave = () => {
-    void configData.handleSave(governanceData.loadGovernanceData);
+    void configData.handleSave();
   };
 
   const handleLandingMetaChange = (updates: Partial<{ template_override: string; cta_personalizado: string; descricao_curta: string }>) => {
@@ -114,13 +110,6 @@ export default function EventLeadFormConfigPage() {
                 landingMeta={configData.landingMeta}
                 onTemplateChange={configData.setTemplateId}
                 onLandingMetaChange={handleLandingMetaChange}
-              />
-
-              <GovernanceSection
-                analyticsData={governanceData.analyticsData}
-                auditItems={governanceData.auditItems}
-                analyticsLoading={governanceData.analyticsLoading}
-                auditLoading={governanceData.auditLoading}
               />
 
               <CamposSection

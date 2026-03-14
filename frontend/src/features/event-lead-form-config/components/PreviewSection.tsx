@@ -29,10 +29,6 @@ export function PreviewSection({
         <Typography variant="subtitle1" fontWeight={900}>
           Preview da landing
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: { md: "34ch" } }}>
-          O painel abaixo renderiza a mesma landing form-only publicada, com interacoes
-          desabilitadas por estar em preview interno.
-        </Typography>
       </Box>
 
       <Stack

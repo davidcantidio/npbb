@@ -31,11 +31,23 @@ import { useAuth } from "../../store/auth";
 
 const DRAWER_WIDTH = 240;
 
-type NavItem = {
+type NavSubItem = {
   label: string;
   to: string;
   icon: React.ReactNode;
 };
+
+type NavItem = {
+  label: string;
+  to?: string;
+  icon: React.ReactNode;
+  children?: NavSubItem[];
+};
+
+const ATIVOS_SUBMENU: NavSubItem[] = [
+  { label: "Dashboard", to: "/ativos", icon: <DashboardRoundedIcon /> },
+  { label: "Ingressos", to: "/ingressos", icon: <ConfirmationNumberRoundedIcon /> },
+];
 
 export default function AppLayout() {
   const theme = useTheme();
@@ -46,12 +58,18 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [navMenuAnchor, setNavMenuAnchor] = useState<null | HTMLElement>(null);
+  const [ativosMenuAnchor, setAtivosMenuAnchor] = useState<null | HTMLElement>(null);
+  const [ativosSubmenuAnchor, setAtivosSubmenuAnchor] = useState<null | HTMLElement>(null);
 
   const navItems: NavItem[] = useMemo(
     () => [
       { label: "Dashboard", to: "/dashboard", icon: <DashboardRoundedIcon /> },
       { label: "Eventos", to: "/eventos", icon: <EventRoundedIcon /> },
-      { label: "Ativos", to: "/ativos", icon: <ConfirmationNumberRoundedIcon /> },
+      {
+        label: "Ativos",
+        icon: <ConfirmationNumberRoundedIcon />,
+        children: ATIVOS_SUBMENU,
+      },
       { label: "Leads", to: "/leads", icon: <PeopleAltRoundedIcon /> },
       { label: "Publicidade", to: "/publicidade", icon: <CampaignRoundedIcon /> },
       { label: "Cupons", to: "/cupons", icon: <LocalOfferRoundedIcon /> },
@@ -62,8 +80,23 @@ export default function AppLayout() {
   const isPathActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-  const isNavItemActive = (item: NavItem) =>
-    item.to === "/dashboard" && location.pathname === "/success" ? true : isPathActive(item.to);
+  const isNavItemActive = (item: NavItem) => {
+    if (item.children) {
+      return item.children.some((c) => isPathActive(c.to));
+    }
+    return item.to === "/dashboard" && location.pathname === "/success"
+      ? true
+      : item.to
+        ? isPathActive(item.to)
+        : false;
+  };
+
+  const handleAtivosSubItemClick = (to: string) => {
+    navigate(to);
+    setAtivosMenuAnchor(null);
+    setAtivosSubmenuAnchor(null);
+    setNavMenuAnchor(null);
+  };
 
   const drawer = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -121,9 +154,55 @@ export default function AppLayout() {
             >
               {navItems.map((item) => {
                 const active = isNavItemActive(item);
+                const key = item.to ?? item.label;
+                if (item.children) {
+                  return (
+                    <Box key={key} component="span">
+                      <Button
+                        aria-haspopup="menu"
+                        aria-expanded={Boolean(ativosMenuAnchor)}
+                        onClick={(e) => setAtivosMenuAnchor(e.currentTarget)}
+                        startIcon={item.icon}
+                        color={active ? "primary" : "inherit"}
+                        size="small"
+                        sx={{
+                          textTransform: "none",
+                          fontWeight: active ? 800 : 600,
+                          borderRadius: 2,
+                          whiteSpace: "nowrap",
+                          px: 1.5,
+                          backgroundColor: active ? "action.selected" : "transparent",
+                          "&:hover": {
+                            backgroundColor: active ? "action.selected" : "action.hover",
+                          },
+                        }}
+                      >
+                        {item.label}
+                      </Button>
+                      <Menu
+                        anchorEl={ativosMenuAnchor}
+                        open={Boolean(ativosMenuAnchor)}
+                        onClose={() => setAtivosMenuAnchor(null)}
+                        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                        transformOrigin={{ vertical: "top", horizontal: "left" }}
+                      >
+                        {item.children.map((sub) => (
+                          <MenuItem
+                            key={sub.to}
+                            selected={isPathActive(sub.to)}
+                            onClick={() => handleAtivosSubItemClick(sub.to)}
+                          >
+                            <ListItemIcon sx={{ minWidth: 36 }}>{sub.icon}</ListItemIcon>
+                            <ListItemText primary={sub.label} />
+                          </MenuItem>
+                        ))}
+                      </Menu>
+                    </Box>
+                  );
+                }
                 return (
                   <Button
-                    key={item.to}
+                    key={key}
                     onClick={() => {
                       if (item.to) navigate(item.to);
                     }}
@@ -193,14 +272,35 @@ export default function AppLayout() {
           <Menu
             anchorEl={navMenuAnchor}
             open={Boolean(navMenuAnchor)}
-            onClose={() => setNavMenuAnchor(null)}
+            onClose={() => {
+              setNavMenuAnchor(null);
+              setAtivosSubmenuAnchor(null);
+            }}
             anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
             transformOrigin={{ vertical: "top", horizontal: "left" }}
           >
             {navItems.map((item) => {
+              const key = item.to ?? item.label;
+              if (item.children) {
+                return (
+                  <MenuItem
+                    key={key}
+                    aria-haspopup="menu"
+                    aria-expanded={Boolean(ativosSubmenuAnchor)}
+                    selected={isNavItemActive(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAtivosSubmenuAnchor(ativosSubmenuAnchor ? null : e.currentTarget);
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+                    <ListItemText primary={item.label} />
+                  </MenuItem>
+                );
+              }
               return (
                 <MenuItem
-                  key={item.to}
+                  key={key}
                   selected={isNavItemActive(item)}
                   onClick={() => {
                     setNavMenuAnchor(null);
@@ -212,6 +312,24 @@ export default function AppLayout() {
                 </MenuItem>
               );
             })}
+          </Menu>
+          <Menu
+            anchorEl={ativosSubmenuAnchor}
+            open={Boolean(ativosSubmenuAnchor)}
+            onClose={() => setAtivosSubmenuAnchor(null)}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "left" }}
+          >
+            {ATIVOS_SUBMENU.map((sub) => (
+              <MenuItem
+                key={sub.to}
+                selected={isPathActive(sub.to)}
+                onClick={() => handleAtivosSubItemClick(sub.to)}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>{sub.icon}</ListItemIcon>
+                <ListItemText primary={sub.label} />
+              </MenuItem>
+            ))}
           </Menu>
           <Menu
             anchorEl={userMenuAnchor}

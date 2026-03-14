@@ -17,8 +17,6 @@ import {
   createTag,
   getEvento,
   getEventoFormConfig,
-  getLandingAnalytics,
-  getLandingCustomizationAudit,
   getEventoQuestionario,
   getFormularioCamposPossiveis,
   listDivisoesDemandantes,
@@ -60,8 +58,6 @@ vi.mock("../../services/eventos", () => ({
   deleteGamificacao: vi.fn(),
   exportEventosCsv: vi.fn(),
   getEvento: vi.fn(),
-  getLandingAnalytics: vi.fn(),
-  getLandingCustomizationAudit: vi.fn(),
   getEventoFormConfig: vi.fn(),
   getEventoQuestionario: vi.fn(),
   getFormularioCamposPossiveis: vi.fn(),
@@ -105,8 +101,6 @@ const mockedGetFormularioCamposPossiveis = vi.mocked(getFormularioCamposPossivei
 const mockedListFormularioTemplates = vi.mocked(listFormularioTemplates);
 const mockedUpdateEventoFormConfig = vi.mocked(updateEventoFormConfig);
 const mockedGetEvento = vi.mocked(getEvento);
-const mockedGetLandingAnalytics = vi.mocked(getLandingAnalytics);
-const mockedGetLandingCustomizationAudit = vi.mocked(getLandingCustomizationAudit);
 const mockedListEventoGamificacoes = vi.mocked(listEventoGamificacoes);
 const mockedCreateEventoGamificacao = vi.mocked(createEventoGamificacao);
 const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
@@ -299,30 +293,6 @@ describe("Evento pages smoke", () => {
         },
       }) as never,
     );
-    mockedGetLandingAnalytics.mockResolvedValue([
-      {
-        event_id: 1,
-        categoria: "evento_cultural",
-        tema: "Cultural",
-        page_views: 12,
-        form_starts: 6,
-        submit_attempts: 4,
-        submit_successes: 3,
-        conversion_rate: 0.25,
-        variants: [],
-      },
-    ] as never);
-    mockedGetLandingCustomizationAudit.mockResolvedValue([
-      {
-        id: 1,
-        event_id: 1,
-        field_name: "cta_personalizado",
-        old_value: "Quero conhecer",
-        new_value: "Quero receber novidades",
-        changed_by_user_id: 1,
-        created_at: "2026-03-06T10:00:00Z",
-      },
-    ] as never);
     mockedListEventoGamificacoes.mockResolvedValue([] as never);
     mockedCreateEventoGamificacao.mockResolvedValue({
       id: 1,
@@ -437,17 +407,19 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/preview interno/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Preview da landing/i)).toBeInTheDocument();
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Hero image URL/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/hero_image_url/i)).not.toBeInTheDocument();
     expect(
-      screen.getByText(/O visual do fundo e determinado pelo template selecionado\./i),
-    ).toBeInTheDocument();
-    expect(await screen.findByText(/landing form-only publicada/i)).toBeInTheDocument();
+      screen.queryByText(/O visual do fundo e determinado pelo template selecionado\./i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Customizacao controlada:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/landing form-only publicada/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("landing-preview-badge")).toBeInTheDocument();
-    expect(await screen.findByText(/Analytics da landing/i)).toBeInTheDocument();
-    expect(screen.getByText(/Auditoria de customizacao/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Governanca e performance/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Analytics da landing/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Auditoria de customizacao/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("event-lead-form-config-shell")).toHaveStyle({
       maxWidth: "1280px",
       marginLeft: "auto",

@@ -129,9 +129,16 @@ type AtivoCardProps = {
   onAssign: (item: AtivoListItem) => void;
   onDelete: (item: AtivoListItem) => void;
   onOpenIngressos: (item: AtivoListItem) => void;
+  onOpenIngressosPorEvento: (grupo: { evento_id: number }) => void;
 };
 
-const AtivoCard = memo(function AtivoCard({ grupo, onAssign, onDelete, onOpenIngressos }: AtivoCardProps) {
+const AtivoCard = memo(function AtivoCard({
+  grupo,
+  onAssign,
+  onDelete,
+  onOpenIngressos,
+  onOpenIngressosPorEvento,
+}: AtivoCardProps) {
   return (
     <Paper
       elevation={2}
@@ -144,7 +151,22 @@ const AtivoCard = memo(function AtivoCard({ grupo, onAssign, onDelete, onOpenIng
       }}
     >
       <Box>
-        <Typography variant="subtitle1" fontWeight={800}>
+        <Typography
+          component="button"
+          variant="subtitle1"
+          fontWeight={800}
+          onClick={() => onOpenIngressosPorEvento(grupo)}
+          sx={{
+            border: "none",
+            background: "none",
+            padding: 0,
+            cursor: "pointer",
+            textAlign: "left",
+            font: "inherit",
+            color: "inherit",
+            "&:hover": { textDecoration: "underline" },
+          }}
+        >
           {grupo.evento_nome}
         </Typography>
         <Typography variant="caption" color="text.secondary">
@@ -414,7 +436,18 @@ export default function AtivosList() {
 
   const handleOpenIngressos = useCallback(
     (item: AtivoListItem) => {
-      navigate(`/ingressos?cota_id=${item.id}`);
+      const params = new URLSearchParams();
+      params.set("cota_id", String(item.id));
+      params.set("evento_id", String(item.evento_id));
+      params.set("diretoria_id", String(item.diretoria_id));
+      navigate(`/ingressos?${params.toString()}`);
+    },
+    [navigate],
+  );
+
+  const handleOpenIngressosPorEvento = useCallback(
+    (grupo: { evento_id: number }) => {
+      navigate(`/ingressos?evento_id=${grupo.evento_id}`);
     },
     [navigate],
   );
@@ -784,9 +817,17 @@ export default function AtivosList() {
         onAssign={handleOpenModal}
         onDelete={handleOpenDelete}
         onOpenIngressos={handleOpenIngressos}
+        onOpenIngressosPorEvento={handleOpenIngressosPorEvento}
       />
     ));
-  }, [groupedItems, handleOpenDelete, handleOpenModal, handleOpenIngressos, showSkeletons]);
+  }, [
+    groupedItems,
+    handleOpenDelete,
+    handleOpenModal,
+    handleOpenIngressos,
+    handleOpenIngressosPorEvento,
+    showSkeletons,
+  ]);
 
   return (
     <>

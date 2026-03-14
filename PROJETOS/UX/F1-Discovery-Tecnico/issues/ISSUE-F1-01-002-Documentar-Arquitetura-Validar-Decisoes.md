@@ -32,14 +32,14 @@ O PRD exige: breakpoint para viewports menores (colapso para coluna unica), cont
 - Given TemaSection e LandingContextSection, When comparo valores, Then confirmo que "Contexto da landing" cobre 100% dos valores do "Tema" removido
 
 ## Definition of Done da Issue
-- [ ] Breakpoint definido e documentado
+- [x] Breakpoint definido e documentado
 - [ ] Conteudo da coluna direita Evento e Questionario definido
 - [ ] Decisao sobre biblioteca dnd registrada (existente ou recomendacao com aprovacao)
 - [ ] Cobertura Tema/Contexto confirmada
 
 ## Tasks Decupadas
 
-- [ ] T1: Definir breakpoint de colapso para coluna unica (pesquisar padroes, testar em viewports)
+- [x] T1: Definir breakpoint de colapso para coluna unica (pesquisar padroes, testar em viewports)
 - [ ] T2: Definir conteudo da coluna direita nas etapas Evento e Questionario
 - [ ] T3: Verificar existencia de biblioteca dnd no codebase; se nao, recomendar e documentar para aprovacao
 - [ ] T4: Comparar TemaSection e LandingContextSection e confirmar cobertura 100%
@@ -55,6 +55,24 @@ O PRD exige: breakpoint para viewports menores (colapso para coluna unica), cont
 ## Artifact Minimo
 
 Documento na issue com: breakpoint, conteudo coluna direita, decisao dnd, confirmacao cobertura Tema/Contexto.
+
+## Decisoes Registradas
+
+### T1 - Breakpoint de colapso para coluna unica
+
+- Decisao: usar o breakpoint `md` do MUI como fronteira de colapso para coluna unica.
+- Valor efetivo: `900px` no tema padrao do MUI, ja que o projeto usa `createTheme()` sem override de `breakpoints`.
+- Justificativa:
+  - a etapa de Formulario de Lead ja usa `useMediaQuery(theme.breakpoints.up("md"))` para alternar entre `side-by-side` e `stacked`
+  - o layout desktop dessa etapa reserva uma segunda coluna minima de `390px`, entao abaixo de `md` a area util restante fica apertada para manter painel e preview lado a lado com legibilidade
+  - `EventWizardPageShell` trabalha com larguras maximas de `1080px` e `1280px`, o que reforca `md` como corte coerente entre tablet/laptop pequeno e desktop
+- Impacto para F2:
+  - `Evento`, `Gamificacao`, `Ativacoes` e `Questionario` devem adotar o mesmo criterio: duas colunas apenas em `md` para cima; abaixo disso, pilha em coluna unica
+  - manter consistencia com o contrato responsivo ja existente reduz divergencia visual e evita um breakpoint arbitrario por pagina
+- Evidencia lida:
+  - `frontend/src/features/event-lead-form-config/EventLeadFormConfigPage.tsx`
+  - `frontend/src/components/eventos/EventWizardPageShell.tsx`
+  - `frontend/src/main.tsx`
 
 ## Dependencias
 

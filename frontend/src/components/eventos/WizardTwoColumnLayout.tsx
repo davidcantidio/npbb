@@ -5,6 +5,7 @@ type WizardTwoColumnLayoutProps = {
   leftContent: ReactNode;
   rightContent: ReactNode;
   desktopColumns: string;
+  desktopMinWidth?: number;
   rightSticky?: boolean;
   stickyTop?: number | string;
   testId?: string;
@@ -20,6 +21,7 @@ export default function WizardTwoColumnLayout({
   leftContent,
   rightContent,
   desktopColumns,
+  desktopMinWidth = 1024,
   rightSticky = true,
   stickyTop = 3,
   testId,
@@ -27,7 +29,7 @@ export default function WizardTwoColumnLayout({
   rightTestId,
 }: WizardTwoColumnLayoutProps) {
   const theme = useTheme();
-  const isDesktopLayout = useMediaQuery(theme.breakpoints.up("md"));
+  const isDesktopLayout = useMediaQuery(`(min-width:${desktopMinWidth}px)`);
 
   return (
     <Box

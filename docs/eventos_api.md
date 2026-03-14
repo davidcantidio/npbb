@@ -187,24 +187,11 @@ Aceita qualquer campo de `EventoCreate` como opcional, mais:
 - `404 Not Found`: evento nao encontrado (ou fora do escopo para usuario agencia)
 
 ## DELETE `/evento/{id}`
-Exclui um evento.
+Exclui um evento e todas as dependencias em cascata (ativacoes, cotas, questionarios, formularios, etc.).
 
 ### Resposta
 - `204 No Content`: removido
 - `404 Not Found`: evento nao encontrado (ou fora do escopo para usuario agencia)
-- `409 Conflict` (bloqueado por dependencias):
-  ```json
-  {
-    "detail": {
-      "code": "EVENTO_DELETE_BLOCKED",
-      "message": "Nao e possivel excluir evento com vinculos",
-      "dependencies": {
-        "ativacoes": 1,
-        "cotas": 2
-      }
-    }
-  }
-  ```
 
 ## Dicionarios (GET `/evento/all/*`)
 Usados para preencher dropdowns/autocomplete no front.

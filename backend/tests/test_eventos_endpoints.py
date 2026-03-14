@@ -1242,7 +1242,8 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     assert get_resp.status_code == 404
 
 
-def test_evento_delete_bloqueado_por_dependencias(client, engine):
+def test_evento_delete_com_cascata_exclui_dependencias(client, engine):
+    """DELETE de evento com vinculos exclui em cascata (evento e ativacoes)."""
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
         tipo = seed_tipo(session)
@@ -1270,10 +1271,14 @@ def test_evento_delete_bloqueado_por_dependencias(client, engine):
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
     resp = client.delete(f"/evento/{evento_id}", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 409
-    detail = resp.json()["detail"]
-    assert detail["code"] == "EVENTO_DELETE_BLOCKED"
-    assert "ativacoes" in detail["dependencies"]
+    assert resp.status_code == 204
+
+    with Session(engine) as session:
+        assert session.get(Evento, evento_id) is None
+        ativacoes_restantes = session.exec(
+            select(Ativacao).where(Ativacao.evento_id == evento_id)
+        ).all()
+        assert len(ativacoes_restantes) == 0
 
 
 def test_evento_all_dominios(client, engine):

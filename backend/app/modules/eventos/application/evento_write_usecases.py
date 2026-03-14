@@ -7,31 +7,55 @@ from datetime import date
 from types import SimpleNamespace
 
 from fastapi import Response, status
-from sqlalchemy import func
+from sqlalchemy import func, update as sa_update
 from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, select
 
+from app.models.lead_batch import LeadBatch, LeadSilver
+from app.models.lead_public_models import (
+    EventPublicity,
+    LeadAlias,
+    LeadConversao,
+    LeadImportEtlPreviewSession,
+)
 from app.models.models import (
     Agencia,
     Ativacao,
+    AtivacaoLead,
+    ConversaoAtivacao,
+    Convite,
     CotaCortesia,
+    Cupom,
     DivisaoDemandante,
     Diretoria,
     Evento,
     EventoLandingCustomizationAudit,
     EventoTag,
     EventoTerritorio,
+    FormularioLeadCampo,
+    FormularioLeadConfig,
     Funcionario,
+    Gamificacao,
+    Investimento,
+    LandingAnalyticsEvent,
+    LeadReconhecimentoToken,
+    QuestionarioOpcao,
     QuestionarioPagina,
+    QuestionarioPergunta,
     QuestionarioResposta,
+    QuestionarioRespostaOpcao,
+    QuestionarioRespostaPergunta,
+    SolicitacaoIngresso,
     StatusEvento,
     SubtipoEvento,
     Tag,
+    TermoUsoAtivacao,
     Territorio,
     TipoEvento,
     Usuario,
     UsuarioTipo,
 )
+from app.models.tmj_analytics_models import EventSession, FestivalLead
 from app.schemas.evento import EventoCreate, EventoRead, EventoUpdate
 from app.services.data_health import compute_event_data_health
 from app.services.landing_pages import hydrate_evento_public_urls, normalize_template_override_input
@@ -488,35 +512,69 @@ def excluir_evento_usecase(evento_id: int, session: Session, current_user: Usuar
         if evento.agencia_id != current_user.agencia_id:
             _raise_http(status.HTTP_404_NOT_FOUND, code="EVENTO_NOT_FOUND", message="Evento nao encontrado")
 
-    ativacoes = session.exec(
-        select(func.count()).select_from(Ativacao).where(Ativacao.evento_id == evento_id)
-    ).one()
-    cotas = session.exec(
-        select(func.count()).select_from(CotaCortesia).where(CotaCortesia.evento_id == evento_id)
-    ).one()
-    paginas = session.exec(
-        select(func.count()).select_from(QuestionarioPagina).where(QuestionarioPagina.evento_id == evento_id)
-    ).one()
-    respostas = session.exec(
-        select(func.count()).select_from(QuestionarioResposta).where(QuestionarioResposta.evento_id == evento_id)
-    ).one()
+    # Ordem de exclusao em cascata (dependencias primeiro)
+    # 1. Questionario (de baixo para cima)
+    resposta_ids_subq = select(QuestionarioResposta.id).where(QuestionarioResposta.evento_id == evento_id)
+    rp_ids_subq = select(QuestionarioRespostaPergunta.id).where(
+        QuestionarioRespostaPergunta.resposta_id.in_(resposta_ids_subq)
+    )
+    session.exec(sa_delete(QuestionarioRespostaOpcao).where(QuestionarioRespostaOpcao.resposta_pergunta_id.in_(rp_ids_subq)))
+    session.exec(sa_delete(QuestionarioRespostaPergunta).where(QuestionarioRespostaPergunta.resposta_id.in_(resposta_ids_subq)))
+    session.exec(sa_delete(QuestionarioResposta).where(QuestionarioResposta.evento_id == evento_id))
 
-    blocked = {
-        "ativacoes": int(ativacoes),
-        "cotas": int(cotas),
-        "paginas_questionario": int(paginas),
-        "respostas_questionario": int(respostas),
-    }
-    if any(v > 0 for v in blocked.values()):
-        _raise_http(
-            status.HTTP_409_CONFLICT,
-            code="EVENTO_DELETE_BLOCKED",
-            message="Nao e possivel excluir evento com vinculos",
-            extra={"dependencies": {k: v for k, v in blocked.items() if v > 0}},
-        )
+    pagina_ids_subq = select(QuestionarioPagina.id).where(QuestionarioPagina.evento_id == evento_id)
+    pergunta_ids_subq = select(QuestionarioPergunta.id).where(QuestionarioPergunta.pagina_id.in_(pagina_ids_subq))
+    opcao_ids_subq = select(QuestionarioOpcao.id).where(QuestionarioOpcao.pergunta_id.in_(pergunta_ids_subq))
+    session.exec(sa_delete(QuestionarioRespostaOpcao).where(QuestionarioRespostaOpcao.opcao_id.in_(opcao_ids_subq)))
+    session.exec(sa_delete(QuestionarioOpcao).where(QuestionarioOpcao.pergunta_id.in_(pergunta_ids_subq)))
+    session.exec(sa_delete(QuestionarioPergunta).where(QuestionarioPergunta.pagina_id.in_(pagina_ids_subq)))
+    session.exec(sa_delete(QuestionarioPagina).where(QuestionarioPagina.evento_id == evento_id))
 
+    # 2. Formulario
+    config_ids_subq = select(FormularioLeadConfig.id).where(FormularioLeadConfig.evento_id == evento_id)
+    session.exec(sa_delete(FormularioLeadCampo).where(FormularioLeadCampo.config_id.in_(config_ids_subq)))
+    session.exec(sa_delete(FormularioLeadConfig).where(FormularioLeadConfig.evento_id == evento_id))
+
+    # 3. Landing
+    session.exec(sa_delete(LandingAnalyticsEvent).where(LandingAnalyticsEvent.event_id == evento_id))
+
+    # 4. Cotas e convites
+    cota_ids_subq = select(CotaCortesia.id).where(CotaCortesia.evento_id == evento_id)
+    session.exec(sa_delete(Convite).where(Convite.cota_id.in_(cota_ids_subq)))
+    session.exec(sa_delete(SolicitacaoIngresso).where(SolicitacaoIngresso.evento_id == evento_id))
+    session.exec(sa_delete(CotaCortesia).where(CotaCortesia.evento_id == evento_id))
+
+    # 5. Ativacao (e dependencias)
+    ativacao_ids_subq = select(Ativacao.id).where(Ativacao.evento_id == evento_id)
+    session.exec(sa_delete(TermoUsoAtivacao).where(TermoUsoAtivacao.ativacao_id.in_(ativacao_ids_subq)))
+    session.exec(sa_delete(Investimento).where(Investimento.ativacao_id.in_(ativacao_ids_subq)))
+    session.exec(sa_delete(AtivacaoLead).where(AtivacaoLead.ativacao_id.in_(ativacao_ids_subq)))
+    session.exec(sa_delete(ConversaoAtivacao).where(ConversaoAtivacao.ativacao_id.in_(ativacao_ids_subq)))
+    session.exec(sa_delete(Cupom).where(Cupom.ativacao_id.in_(ativacao_ids_subq)))
+    session.exec(sa_delete(Ativacao).where(Ativacao.evento_id == evento_id))
+
+    # 6. Outros
+    session.exec(sa_delete(Gamificacao).where(Gamificacao.evento_id == evento_id))
+    session.exec(sa_delete(LeadReconhecimentoToken).where(LeadReconhecimentoToken.evento_id == evento_id))
+    session.exec(sa_delete(EventoLandingCustomizationAudit).where(EventoLandingCustomizationAudit.event_id == evento_id))
+
+    # 7. ETL/Leads
+    session.exec(sa_delete(LeadImportEtlPreviewSession).where(LeadImportEtlPreviewSession.evento_id == evento_id))
+    session.exec(sa_delete(LeadSilver).where(LeadSilver.evento_id == evento_id))
+
+    # 8. SET NULL (FK opcional)
+    session.exec(sa_update(LeadBatch).where(LeadBatch.evento_id == evento_id).values(evento_id=None))
+    session.exec(sa_update(LeadConversao).where(LeadConversao.evento_id == evento_id).values(evento_id=None))
+    session.exec(sa_update(LeadAlias).where(LeadAlias.evento_id == evento_id).values(evento_id=None))
+    session.exec(sa_update(EventPublicity).where(EventPublicity.event_id == evento_id).values(event_id=None))
+    session.exec(sa_update(EventSession).where(EventSession.event_id == evento_id).values(event_id=None))
+    session.exec(sa_update(FestivalLead).where(FestivalLead.event_id == evento_id).values(event_id=None))
+
+    # 9. Tags e territorios
     session.exec(sa_delete(EventoTag).where(EventoTag.evento_id == evento_id))
     session.exec(sa_delete(EventoTerritorio).where(EventoTerritorio.evento_id == evento_id))
+
+    # 10. Evento
     session.delete(evento)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

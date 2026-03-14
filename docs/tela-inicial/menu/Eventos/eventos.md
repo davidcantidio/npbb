@@ -58,7 +58,7 @@ Colunas exibidas no front atual:
 |---|---|
 | **+ Novo** | Abre formulario de criacao do evento (`/eventos/novo`) |
 | **Visualizar** | Abre detalhe do evento (`/eventos/:id`) (no MVP: placeholder) |
-| **Excluir** | Modal de confirmacao; chama `DELETE /evento/{id}` e exibe erro caso o backend bloqueie (409) |
+| **Excluir** | Modal de confirmacao; chama `DELETE /evento/{id}` (exclusao em cascata de dependencias) |
 | **Editar** | Navega para `/eventos/:id/editar` (reutiliza o formulario e chama `PUT /evento/{id}`) |
 | **Status** | Dropdown na coluna **Status**; ao alterar, chama `PUT /evento/{id}` com `status_id` |
 | **Atualizar** | Recarrega os dados da listagem |
@@ -69,7 +69,7 @@ Colunas exibidas no front atual:
 
 ## 5. Regras de Negocio
 - Ordenacao: mais recente primeiro (backend ordena por `Evento.id desc`).
-- Exclusao bloqueada quando existir vinculo (o backend retorna `409 EVENTO_DELETE_BLOCKED` com `dependencies`).
+- Exclusao em cascata: ao excluir um evento, ativacoes, cotas, questionarios e demais dependencias sao removidos.
 - Visibilidade: usuario `tipo_usuario=agencia` ve apenas eventos da propria `agencia_id`.
 - Status: exibido como chip com cores (Previsto=neutro, A Confirmar=warning, Confirmado=info, Realizado=success, Cancelado=error).
 
@@ -106,7 +106,7 @@ Contrato completo dos endpoints: `docs/eventos_api.md`.
 - [x] `GET /evento/{id}`
 - [x] `POST /evento`
 - [x] `PUT /evento/{id}`
-- [x] `DELETE /evento/{id}` com validacao de dependencias (409 com `dependencies`)
+- [x] `DELETE /evento/{id}` com exclusao em cascata
 - [x] Dicionarios: `GET /evento/all/cidades`, `GET /evento/all/estados`, `GET /evento/all/diretorias`
 - [x] Exportacao CSV (`GET /evento/export/csv`)
 

@@ -27,7 +27,7 @@ No MVP, a pagina de detalhe mostra os dados basicos do evento, incluindo:
 
 Acoes disponiveis:
 - **Editar**: navega para `/eventos/:id/editar` (reutiliza o formulario e chama `PUT /evento/{id}`).
-- **Excluir**: confirma e chama `DELETE /evento/{id}` (pode retornar 409 se houver dependencias).
+- **Excluir**: confirma e chama `DELETE /evento/{id}` (exclusao em cascata de ativacoes, cotas, questionarios, etc.).
 
 ---
 
@@ -35,7 +35,7 @@ Acoes disponiveis:
 - `GET /evento/{id}`: carrega os dados do evento.
   - `404`: evento nao encontrado (ou fora do escopo para usuario `tipo_usuario=agencia`).
 - `PUT /evento/{id}`: atualiza o evento (UI de edicao ainda nao existe no front).
-- `DELETE /evento/{id}`: exclui o evento (pode retornar 409 se houver dependencias).
+- `DELETE /evento/{id}`: exclui o evento e dependencias em cascata.
 
 Contrato detalhado: `docs/eventos_api.md`.
 
@@ -57,7 +57,7 @@ Observacao: endpoints por aba ainda nao estao implementados (apenas o CRUD basic
 ### Backend
 - [x] `GET /evento/{id}`
 - [x] `PUT /evento/{id}`
-- [x] `DELETE /evento/{id}` com bloqueio por dependencias (409)
+- [x] `DELETE /evento/{id}` com exclusao em cascata
 - [ ] Endpoints por aba (lead form, gamificacao, ativacoes, questionario, etc)
 
 ### Frontend

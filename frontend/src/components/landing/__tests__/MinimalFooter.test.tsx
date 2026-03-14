@@ -20,7 +20,7 @@ describe("MinimalFooter", () => {
     );
   });
 
-  it("aplica variant caption nos dois elementos textuais", () => {
+  it("aplica variant body2 nos dois elementos textuais", () => {
     render(
       <MinimalFooter
         tagline="Banco do Brasil. Pra tudo que voce imaginar."
@@ -29,8 +29,8 @@ describe("MinimalFooter", () => {
       />,
     );
 
-    expect(screen.getByTestId("minimal-footer-tagline")).toHaveClass("MuiTypography-caption");
-    expect(screen.getByTestId("minimal-footer-link")).toHaveClass("MuiTypography-caption");
+    expect(screen.getByTestId("minimal-footer-tagline")).toHaveClass("MuiTypography-body2");
+    expect(screen.getByTestId("minimal-footer-link")).toHaveClass("MuiTypography-body2");
   });
 
   it("não renderiza img nem svg", () => {

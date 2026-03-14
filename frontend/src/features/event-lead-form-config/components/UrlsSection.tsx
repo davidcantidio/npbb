@@ -9,7 +9,7 @@ type UrlsSectionProps = {
 
 export function UrlsSection({ urls, onCopy }: UrlsSectionProps) {
   return (
-    <Box>
+    <Box sx={{ maxWidth: { xs: "100%", md: 480 } }}>
       <Typography variant="subtitle1" fontWeight={900} gutterBottom>
         URLs geradas
       </Typography>

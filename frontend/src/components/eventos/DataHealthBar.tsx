@@ -160,7 +160,7 @@ export function DataHealthBar({
               variant="caption"
               fontWeight={700}
               color={badgeTextColor}
-              sx={{ fontSize: "0.68rem", lineHeight: 1 }}
+              sx={{ fontSize: "0.75rem", lineHeight: 1 }}
             >
               {scoreLabel}
             </Typography>

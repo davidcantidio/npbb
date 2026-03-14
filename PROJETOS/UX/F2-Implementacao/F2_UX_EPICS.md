@@ -4,14 +4,14 @@ version: "1.0"
 status: "done"
 owner: "PM"
 last_updated: "2026-03-14"
-audit_gate: "pending"
+audit_gate: "approved"
 ---
 
 # Epicos - UX / F2 - Implementacao
 
 ## Objetivo da Fase
 
-Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundancias na etapa Formulario de Lead, aplicar preview mobile ~390px, implementar campos em 1 coluna com drag-and-drop e tratar breakpoint para viewports menores.
+Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundancias na etapa Landing Page, aplicar preview mobile ~390px, implementar campos em 1 coluna com drag-and-drop e tratar breakpoint para viewports menores.
 
 ## Gate de Saida da Fase
 
@@ -23,8 +23,8 @@ Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundan
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `pending`
-- ultima_auditoria: `F2-R01`
+- gate_atual: `approved`
+- ultima_auditoria: `F2-R02`
 
 ## Checklist de Transicao de Gate
 
@@ -52,7 +52,7 @@ Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundan
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F2-01 | Layout Side-by-Side | Converter layout para duas colunas em todas as 5 etapas e tratar breakpoint | F1 | done | [EPIC-F2-01-Layout-Side-by-Side.md](./EPIC-F2-01-Layout-Side-by-Side.md) |
-| EPIC-F2-02 | Formulario de Lead - Drag-and-drop e Limpeza | Remover redundancias, preview mobile, campos 1 coluna com dnd | EPIC-F2-01 | done | [EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md](./EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md) |
+| EPIC-F2-02 | Landing Page - Drag-and-drop e Limpeza | Remover redundancias, preview mobile, campos 1 coluna com dnd | EPIC-F2-01 | done | [EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md](./EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md) |
 
 ## Dependencias entre Epicos
 
@@ -65,7 +65,7 @@ Implementar layout side-by-side em todas as 5 etapas do wizard, remover redundan
 - Layout de duas colunas em todas as 5 etapas
 - Breakpoint para viewports menores
 - Remocao de redundancias (Tema duplicado, box azul, Governanca e performance, texto descritivo)
-- Preview mobile ~390px na etapa Formulario de Lead
+- Preview mobile ~390px na etapa Landing Page
 - Campos em 1 coluna com visibilidade progressiva e drag-and-drop
 - Preview de ativacao em frame mobile na etapa Ativacoes
 

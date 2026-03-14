@@ -24,7 +24,7 @@ export default function MobilePreviewFrame({
         isolation: "isolate",
         width: "var(--preview-mobile-width)",
         maxWidth: "100%",
-        height: "min(var(--preview-mobile-base-height), calc(100vh - 220px))",
+        height: "min(var(--preview-mobile-base-height), calc(100vh - 100px))",
         minHeight: "620px",
         overflowX: "hidden",
         overflowY: "auto",

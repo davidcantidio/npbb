@@ -35,7 +35,7 @@ export function EventLeadFormConfigHeader({
     >
       <Box>
         <Typography variant="h4" fontWeight={800}>
-          Formulário de Lead
+          Landing Page
         </Typography>
         <Typography variant="body2" color="text.secondary">
           {subtitle}

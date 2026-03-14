@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-14"
-audit_gate: "not_ready"
+audit_gate: "approved"
 ---
 
 # Epicos - UX / F3 - Validacao
@@ -20,8 +20,8 @@ Garantir ausencia de regressao funcional nas 5 etapas do wizard e aderencia aos 
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `hold`
-- ultima_auditoria: `F3-R01`
+- gate_atual: `approved`
+- ultima_auditoria: `F3-R02`
 
 ## Checklist de Transicao de Gate
 

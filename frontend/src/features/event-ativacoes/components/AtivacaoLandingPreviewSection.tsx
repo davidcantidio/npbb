@@ -4,9 +4,11 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   Stack,
   Typography,
 } from "@mui/material";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import MobilePreviewFrame from "../../../components/landing/MobilePreviewFrame";
 import LandingPageView from "../../../components/landing/LandingPageView";
@@ -97,19 +99,6 @@ export function AtivacaoLandingPreviewSection({
         >
           {previewLoading ? <CircularProgress size={18} color="inherit" /> : "Atualizar preview"}
         </Button>
-        {previewData?.acesso.landing_url ? (
-          <Button
-            component="a"
-            href={previewData.acesso.landing_url}
-            target="_blank"
-            rel="noreferrer"
-            variant="contained"
-            size="small"
-            sx={{ textTransform: "none", whiteSpace: "nowrap", fontWeight: 800 }}
-          >
-            Abrir landing publica
-          </Button>
-        ) : null}
       </Stack>
 
       {previewError ? (
@@ -134,9 +123,31 @@ export function AtivacaoLandingPreviewSection({
           </Typography>
         </Stack>
       ) : previewData ? (
-        <MobilePreviewFrame testId="event-ativacoes-preview-host">
-          <LandingPageView data={previewData} mode="preview" />
-        </MobilePreviewFrame>
+        <Box sx={{ position: "relative" }}>
+          {previewData.acesso.landing_url ? (
+            <IconButton
+              component="a"
+              href={previewData.acesso.landing_url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Abrir landing pública"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                zIndex: 1,
+                backgroundColor: "background.paper",
+                "&:hover": { backgroundColor: "action.hover" },
+              }}
+            >
+              <OpenInNewIcon fontSize="small" />
+            </IconButton>
+          ) : null}
+          <MobilePreviewFrame testId="event-ativacoes-preview-host">
+            <LandingPageView data={previewData} mode="preview" />
+          </MobilePreviewFrame>
+        </Box>
       ) : (
         <Typography variant="body2" color="text.secondary">
           Nenhum preview disponível no momento.

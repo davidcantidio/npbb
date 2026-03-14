@@ -3,7 +3,7 @@
 ## 1. Nome da Tela
 **Detalhes do Evento**
 
-Tela que centraliza todas as informacoes de um evento e, no sistema original, agrega abas de modulos relacionados (Formulario de Lead, Gamificacao, Ativacoes, Questionario, etc).
+Tela que centraliza todas as informacoes de um evento e, no sistema original, agrega abas de modulos relacionados (Landing Page, Gamificacao, Ativacoes, Questionario, etc).
 
 Status no novo sistema (MVP):
 - Frontend: implementado em `/eventos/:id`, com exibicao estruturada dos dados (inclui datas previstas/realizadas, QRCode, diretoria e dominios relacionados).
@@ -44,7 +44,7 @@ Contrato detalhado: `docs/eventos_api.md`.
 ## 5. Escopo futuro (fase 2)
 O objetivo e evoluir a pagina `/eventos/:id` para uma tela com abas, alinhada ao sistema original:
 - Aba **Evento**: visualizar/editar dados do evento (reutilizar o formulario de `docs/tela-inicial/menu/Eventos/Novo evento/form_evento/form_novo_evento.md`).
-- Aba **Formulario de Lead**: configuracao de landing/campos/URLs (ver `docs/tela-inicial/menu/Eventos/Novo evento/form_formulario_leads/form_formulario_leads.md`).
+- Aba **Landing Page**: configuracao de landing/campos/URLs (ver `docs/tela-inicial/menu/Eventos/Novo evento/form_formulario_leads/form_formulario_leads.md`).
 - Aba **Gamificacao**: cadastro/lista de gamificacoes (ver `docs/tela-inicial/menu/Eventos/Novo evento/form_gamificacao/form_gamificacao.md`).
 - Aba **Ativacoes**: CRUD de ativacoes e regras (ver `docs/tela-inicial/menu/Eventos/Novo evento/form_ativacao/form_ativacao.md`).
 - Aba **Questionario**: editor de paginas/perguntas/opcoes (ver `docs/tela-inicial/menu/Eventos/Novo evento/form_questionario/form_questionario.md`).

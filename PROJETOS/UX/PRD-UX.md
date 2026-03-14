@@ -30,7 +30,7 @@ criticality: "media"
 
 ## 1. Objetivo e Contexto
 
-Este PRD define a refatoração do wizard de configuração de evento (5 etapas: Evento, Formulário de Lead, Gamificação, Ativações, Questionário) para eliminar ruído visual, redundâncias e inconsistências que prejudicam a experiência do operador.
+Este PRD define a refatoração do wizard de configuração de evento (5 etapas: Evento, Landing Page, Gamificação, Ativações, Questionário) para eliminar ruído visual, redundâncias e inconsistências que prejudicam a experiência do operador.
 
 O problema foi identificado no [INTAKE-UX.md](./INTAKE-UX.md): campos excessivamente largos, preview fragmentado, dropdown de "Tema" duplicado, box informativo redundante, seção "Governança e performance" desnecessária, texto descritivo sem valor, lista de campos em 2 colunas sem drag-and-drop, densidade visual desproporcional e falta de harmonia entre etapas.
 
@@ -50,7 +50,7 @@ Operador enfrenta fricção desnecessária em cada etapa: precisa ignorar inform
 
 ### 2.3 Evidência técnica
 
-Screenshots da interface atual fornecidos pelo PM em sessão de intake (2026-03-13), cobrindo as etapas Formulário de Lead, Gamificação e Ativações. Problemas identificados diretamente na interface em produção local (localhost).
+Screenshots da interface atual fornecidos pelo PM em sessão de intake (2026-03-13), cobrindo as etapas Landing Page, Gamificação e Ativações. Problemas identificados diretamente na interface em produção local (localhost).
 
 ### 2.4 Componentes afetados
 
@@ -75,7 +75,7 @@ A inconsistência visual e a densidade de informação continuarão gerando fric
 - Aplicar padrão visual consistente: respiro, fontes, espaçamentos
 - Tratar breakpoint para viewports menores (colapso para coluna única — breakpoint a definir na F1)
 
-**Etapa Formulário de Lead:**
+**Etapa Landing Page:**
 - Coluna esquerda: seletor único de template ("Contexto da landing"), CTA personalizado, Descrição curta, seleção de campos
 - Coluna direita: preview da landing em frame mobile (~390px), sem texto descritivo acima
 - Remover dropdown "Tema" redundante (confirmar na F1 que "Contexto da landing" cobre 100% dos valores)
@@ -164,7 +164,7 @@ A inconsistência visual e a densidade de informação continuarão gerando fric
 
 **Entregas:**
 - Converter layout do wizard para duas colunas em todas as 5 etapas
-- Etapa Formulário de Lead: remover redundâncias (Tema, box azul, Governança e performance, texto descritivo); aplicar preview mobile ~390px; implementar campos em 1 coluna com visibilidade progressiva e drag-and-drop
+- Etapa Landing Page: remover redundâncias (Tema, box azul, Governança e performance, texto descritivo); aplicar preview mobile ~390px; implementar campos em 1 coluna com visibilidade progressiva e drag-and-drop
 - Etapa Gamificação: aplicar layout; manter lista à direita
 - Etapa Ativações: aplicar layout; preview da ativação em frame mobile à direita
 - Etapas Evento e Questionário: aplicar layout conforme definido na F1

@@ -1,4 +1,4 @@
-"""Schemas do módulo Formulário de Lead / Landing (por evento).
+"""Schemas do módulo Landing Page (por evento).
 
 Contrato (MVP):
 - Campo "ativo" = existe um registro em `FormularioLeadCampo` para a config do evento.

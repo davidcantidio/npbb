@@ -46,7 +46,7 @@ def obter_formulario_lead_config(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Retorna a configuração do Formulário de Lead para um evento."""
+    """Retorna a configuração da Landing Page para um evento."""
     _shared._check_evento_visible_or_404(session, evento_id, current_user)
 
     computed_urls = build_evento_public_urls(evento_id, backend_base_url=str(request.base_url))
@@ -143,7 +143,7 @@ def upsert_formulario_lead_config(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Cria/atualiza config do Formulário de Lead (MVP: template + campos)."""
+    """Cria/atualiza config da Landing Page (MVP: template + campos)."""
     _shared._check_evento_visible_or_404(session, evento_id, current_user)
 
     update_template = "template_id" in payload.model_fields_set
@@ -162,7 +162,7 @@ def upsert_formulario_lead_config(
     if not config:
         config = FormularioLeadConfig(
             evento_id=evento_id,
-            nome="Formulario de Lead",
+            nome="Landing Page",
         )
     if update_template:
         config.template_id = payload.template_id

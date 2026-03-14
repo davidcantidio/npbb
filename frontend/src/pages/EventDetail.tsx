@@ -315,7 +315,7 @@ export default function EventDetail() {
             disabled={!evento || loading}
             sx={{ textTransform: "none", fontWeight: 800 }}
           >
-            Formulário de Lead
+            Landing Page
           </Button>
           <Button
             component={RouterLink}

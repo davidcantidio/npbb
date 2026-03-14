@@ -41,14 +41,13 @@ export default function EventLeadFormConfigPage() {
 
   const previewPayload = useMemo(
     () => ({
-      template_id: configData.templateId,
+      template_id: null,
       template_override: configData.landingMeta.template_override.trim() || null,
       cta_personalizado: configData.landingMeta.cta_personalizado.trim() || null,
       descricao_curta: configData.landingMeta.descricao_curta.trim() || null,
       campos: configData.camposState.camposPayload,
     }),
     [
-      configData.templateId,
       configData.landingMeta,
       configData.camposState.camposPayload,
     ],
@@ -105,10 +104,7 @@ export default function EventLeadFormConfigPage() {
           leftContent={(
             <Stack spacing={2} sx={{ maxWidth: { md: 760 } }}>
               <LandingContextSection
-                templates={configData.templates}
-                templateId={configData.templateId}
                 landingMeta={configData.landingMeta}
-                onTemplateChange={configData.setTemplateId}
                 onLandingMetaChange={handleLandingMetaChange}
               />
 
@@ -136,7 +132,6 @@ export default function EventLeadFormConfigPage() {
               previewData={preview.previewData}
               previewLoading={preview.previewLoading}
               previewError={preview.previewError}
-              onRefresh={preview.refreshPreview}
             />
           )}
         />

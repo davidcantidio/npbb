@@ -62,7 +62,7 @@ function SortableCampoCard({
       sx={{
         px: 1.5,
         py: 1,
-        borderRadius: 2,
+        borderRadius: 3,
         border: 1,
         borderColor: "divider",
         backgroundColor: ativo ? "rgba(103, 80, 164, 0.05)" : "transparent",
@@ -158,7 +158,7 @@ export function CamposSection({
   };
 
   return (
-    <>
+    <Box sx={{ maxWidth: { xs: "100%", md: 480 } }}>
       <Box>
         <Typography variant="subtitle1" fontWeight={900} gutterBottom>
           Campos possíveis
@@ -171,7 +171,7 @@ export function CamposSection({
       </Box>
 
       {camposAtivosOrdenados.length || camposDisponiveis.length ? (
-        <Stack spacing={1.25}>
+        <Stack spacing={1.25} sx={{ mt: 1.5 }}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext
               items={camposAtivosOrdenados}
@@ -205,7 +205,7 @@ export function CamposSection({
                 color="inherit"
                 startIcon={<AddRoundedIcon />}
                 onClick={() => setShowCamposDisponiveis((prev) => !prev)}
-                sx={{ alignSelf: "flex-start", borderRadius: 999 }}
+                sx={{ alignSelf: "flex-start", borderRadius: 3 }}
               >
                 {showCamposDisponiveis ? "Ocultar campos" : "Adicionar campo"}
               </Button>
@@ -219,7 +219,7 @@ export function CamposSection({
                       sx={{
                         px: 1.5,
                         py: 1,
-                        borderRadius: 2,
+                        borderRadius: 3,
                         border: 1,
                         borderStyle: "dashed",
                         borderColor: "divider",
@@ -256,10 +256,10 @@ export function CamposSection({
           ) : null}
         </Stack>
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
           Nenhum campo disponível.
         </Typography>
       )}
-    </>
+    </Box>
   );
 }

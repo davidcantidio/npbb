@@ -1,4 +1,4 @@
-# Formulario de Lead (Eventos) - Contrato de API
+# Landing Page (Eventos) - Contrato de API
 
 Base da API (dev): `http://localhost:8000`
 
@@ -6,7 +6,7 @@ Todos os endpoints deste documento exigem autenticacao via JWT:
 `Authorization: Bearer <token>`
 
 ## Visao geral (MVP)
-- A configuracao do Formulario de Lead e por evento (`evento_id`).
+- A configuracao da Landing Page e por evento (`evento_id`).
 - `template_id` referencia um `FormularioLandingTemplate` (tema da landing).
 - "Campo ativo" = existe um registro em `FormularioLeadCampo` (ou seja, aparece no array `campos[]`).
   - Campo desativado = ausencia no array.
@@ -56,7 +56,7 @@ curl "http://localhost:8000/evento/all/formulario-templates" \
 ---
 
 ## GET `/evento/all/formulario-campos` (opcional)
-Retorna o catalogo de campos possiveis para o Formulario de Lead (MVP).
+Retorna o catalogo de campos possiveis para a Landing Page (MVP).
 
 ### Resposta
 - `200 OK`: `string[]`
@@ -86,7 +86,7 @@ curl "http://localhost:8000/evento/all/formulario-campos" \
 ---
 
 ## GET `/evento/{id}/form-config`
-Retorna a configuracao do Formulario de Lead do evento.
+Retorna a configuracao da Landing Page do evento.
 
 ### Regras (MVP)
 - Se nao existir `FormularioLeadConfig` persistida para o evento, o backend retorna um "config default" (sem persistir):
@@ -131,7 +131,7 @@ curl "http://localhost:8000/evento/123/form-config" \
 ---
 
 ## PUT `/evento/{id}/form-config`
-Cria/atualiza a configuracao do Formulario de Lead (upsert).
+Cria/atualiza a configuracao da Landing Page (upsert).
 
 ### Body (JSON)
 Campos:

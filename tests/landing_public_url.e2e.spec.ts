@@ -89,9 +89,9 @@ test.describe("Landing publica URL", () => {
       expect(typeof eventoId === "number" && eventoId > 0).toBeTruthy();
 
       await page.goto(`${UI_BASE_URL}/eventos/${eventoId}/formulario-lead`);
-      await expect(page.getByText(/preview da landing/i)).toBeVisible();
+      await expect(page.getByText(/contexto da landing/i)).toBeVisible();
 
-      const openLandingButton = page.getByRole("link", { name: /abrir landing publica/i });
+      const openLandingButton = page.getByRole("link", { name: /abrir landing p[uú]blica/i });
       await expect(openLandingButton).toBeVisible({ timeout: 20_000 });
 
       const href = await openLandingButton.getAttribute("href");

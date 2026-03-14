@@ -2,7 +2,7 @@ import { Step, StepLabel, Stepper, Typography } from "@mui/material";
 
 export const EVENT_WIZARD_STEPS = [
   "Evento",
-  "Formulário de Lead",
+  "Landing Page",
   "Gamificação",
   "Ativações",
   "Questionário",

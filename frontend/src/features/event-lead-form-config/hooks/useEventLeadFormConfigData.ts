@@ -3,11 +3,9 @@ import {
   getEvento,
   getEventoFormConfig,
   getFormularioCamposPossiveis,
-  listFormularioTemplates,
   updateEvento,
   updateEventoFormConfig,
   type EventoFormConfig,
-  type FormularioTemplate,
 } from "../../../services/eventos";
 import { useCamposState } from "./useCamposState";
 
@@ -30,8 +28,6 @@ export function useEventLeadFormConfigData(
 
   const [config, setConfig] = useState<EventoFormConfig | null>(null);
   const [camposPossiveis, setCamposPossiveis] = useState<string[]>([]);
-  const [templates, setTemplates] = useState<FormularioTemplate[]>([]);
-  const [templateId, setTemplateId] = useState<number | null>(null);
   const [landingMeta, setLandingMeta] = useState<LandingMeta>({
     template_override: "",
     cta_personalizado: "",
@@ -50,16 +46,13 @@ export function useEventLeadFormConfigData(
     setLoading(true);
     setError(null);
     try {
-      const [configRes, templatesRes, camposRes, eventoRes] = await Promise.all([
+      const [configRes, camposRes, eventoRes] = await Promise.all([
         getEventoFormConfig(token, eventoId),
-        listFormularioTemplates(token).catch(() => []),
         getFormularioCamposPossiveis(token),
         getEvento(token, eventoId),
       ]);
       setConfig(configRes);
-      setTemplates(templatesRes);
       setCamposPossiveis(camposRes);
-      setTemplateId(configRes.template_id ?? null);
       setLandingMeta({
         template_override: eventoRes.template_override ?? "",
         cta_personalizado: eventoRes.cta_personalizado ?? "",
@@ -86,7 +79,7 @@ export function useEventLeadFormConfigData(
       setSaving(true);
       try {
         const updated = await updateEventoFormConfig(token, eventoId, {
-          template_id: templateId ?? null,
+          template_id: null,
           campos: camposState.camposPayload,
         });
         const updatedEvento = await updateEvento(token, eventoId, {
@@ -96,7 +89,6 @@ export function useEventLeadFormConfigData(
         });
 
         setConfig(updated);
-        setTemplateId(updated.template_id ?? null);
         setLandingMeta({
           template_override: updatedEvento.template_override ?? "",
           cta_personalizado: updatedEvento.cta_personalizado ?? "",
@@ -123,16 +115,12 @@ export function useEventLeadFormConfigData(
       onSaveSuccess,
       showError,
       showSuccess,
-      templateId,
       token,
     ],
   );
 
   return {
     config,
-    templates,
-    templateId,
-    setTemplateId,
     landingMeta,
     setLandingMeta,
     camposPossiveis,

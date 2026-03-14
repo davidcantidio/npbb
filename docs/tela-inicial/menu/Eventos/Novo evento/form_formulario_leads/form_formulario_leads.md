@@ -1,7 +1,7 @@
-# Configuracao do Formulario de Lead / Landing Page (Evento)
+# Configuracao da Landing Page (Evento)
 
 ## 1. Nome da Tela
-**Formulario de Lead** (aba do evento)
+**Landing Page** (aba do evento)
 
 Status no novo sistema:
 - Frontend: implementado (tema + campos + URLs + preview operacional da landing + salvar).
@@ -47,8 +47,7 @@ Checkboxes (exemplo observado no sistema original):
 
 ### 3.6 Acoes
 - Botao **Salvar**
-- Botao **Atualizar preview**
-- Botao **Abrir landing publica**
+- Icone no canto superior do preview para abrir landing publica
 
 ---
 
@@ -92,7 +91,7 @@ Observacao (MVP): as URLs (landing/check-in sem QR/questionario) sao geradas a p
 - [x] Estrategia de URLs (MVP por evento_id) + politica de acesso (AGENCIA ve apenas sua agencia)
 
 ### Frontend
-- [x] Aba/pagina de formulario de lead no detalhe do evento
+- [x] Aba/pagina de Landing Page no detalhe do evento
 - [x] Selecao de tema + checkboxes + secao de URLs + salvar
 - [x] Preview do template com checklist operacional, usando o contrato real da landing
 - [x] Painel de governanca com auditoria de customizacoes e leitura inicial de analytics

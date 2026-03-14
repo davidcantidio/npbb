@@ -407,7 +407,7 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Preview da landing/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Contexto da landing/i)).toBeInTheDocument();
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Hero image URL/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/hero_image_url/i)).not.toBeInTheDocument();
@@ -428,13 +428,8 @@ describe("Evento pages smoke", () => {
     expect(screen.getByTestId("event-lead-form-config-layout")).toBeInTheDocument();
     expect(screen.getByTestId("event-lead-form-config-panel")).toBeInTheDocument();
     expect(screen.getByTestId("event-lead-form-config-preview-column")).toBeInTheDocument();
-    const previewActions = screen.getByTestId("event-lead-preview-actions");
-    expect(within(previewActions).getByRole("button", { name: /atualizar preview/i })).toHaveClass(
-      "MuiButton-sizeSmall",
-    );
-    expect(within(previewActions).getByRole("link", { name: /abrir landing publica/i })).toHaveClass(
-      "MuiButton-sizeSmall",
-    );
+    const openLandingLink = screen.getByRole("link", { name: /abrir landing p[uú]blica/i });
+    expect(openLandingLink).toBeInTheDocument();
     const previewHost = screen.getByTestId("event-lead-preview-host");
     expect(previewHost).toHaveStyle({
       position: "relative",
@@ -541,7 +536,6 @@ describe("Evento pages smoke", () => {
 
   it("auto-refreshes the preview when the selected theme changes", async () => {
     const user = userEvent.setup();
-    mockedListFormularioTemplates.mockResolvedValue([{ id: 7, nome: "Surf" }] as never);
     mockedPreviewEventoLanding
       .mockResolvedValueOnce(createLandingPreviewPayload() as never)
       .mockResolvedValueOnce(
@@ -575,16 +569,16 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
-    const input = screen.getByLabelText(/Template base/i);
+    const input = screen.getByLabelText(/^template$/i);
     await user.click(input);
-    await user.type(input, "Surf");
+    await user.type(input, "esporte_radical");
     await user.keyboard("{ArrowDown}{Enter}");
 
     await waitFor(() =>
       expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
         "token",
         1,
-        expect.objectContaining({ template_id: 7 }),
+        expect.objectContaining({ template_override: "esporte_radical" }),
         expect.objectContaining({ signal: expect.any(Object) }),
       ),
     );
@@ -733,7 +727,7 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
-    const input = screen.getByLabelText(/template override/i);
+    const input = screen.getByLabelText(/^template$/i);
     fireEvent.change(input, { target: { value: "show_musical" } });
     await waitFor(() =>
       expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
@@ -821,7 +815,7 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
-    const input = screen.getByLabelText(/template override/i);
+    const input = screen.getByLabelText(/^template$/i);
     fireEvent.change(input, { target: { value: "template-nao-homologado" } });
 
     expect(

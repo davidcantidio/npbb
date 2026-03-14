@@ -23,7 +23,7 @@ const theme = createTheme({
   shape: { borderRadius: 12 },
   typography: {
     fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, -apple-system, sans-serif',
-    fontSize: 13,
+    fontSize: 14,
     fontWeightRegular: 400,
     fontWeightMedium: 600,
     fontWeightBold: 700,

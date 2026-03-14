@@ -191,7 +191,7 @@ def listar_formulario_templates(
 def listar_formulario_campos(
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Lista o catálogo de campos possíveis para o Formulário de Lead (MVP)."""
+    """Lista o catálogo de campos possíveis para a Landing Page (MVP)."""
     return FORMULARIO_CAMPOS_CATALOGO
 
 

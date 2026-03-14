@@ -23,8 +23,8 @@ last_updated: "2026-03-14"
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
 | F1 - Discovery Tecnico | pending | F1-R01 | [RELATORIO-AUDITORIA-F1-R01.md](F1-Discovery-Tecnico/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | R01 provisional (go); reauditar apos commit |
-| F2 - Implementacao | pending | F2-R01 | [RELATORIO-AUDITORIA-F2-R01.md](F2-Implementacao/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | ISSUE-F2-02-003 concluida; reauditar para aprovar gate |
-| F3 - Validacao | hold | F3-R01 | [RELATORIO-AUDITORIA-F3-R01.md](F3-Validacao/auditorias/RELATORIO-AUDITORIA-F3-R01.md) | Follow-ups F2; PM nao aprovou deploy |
+| F2 - Implementacao | approved | F2-R02 | [RELATORIO-AUDITORIA-F2-R02.md](F2-Implementacao/auditorias/RELATORIO-AUDITORIA-F2-R02.md) | R02 go; gate aprovado |
+| F3 - Validacao | approved | F3-R02 | [RELATORIO-AUDITORIA-F3-R02.md](F3-Validacao/auditorias/RELATORIO-AUDITORIA-F3-R02.md) | R02 go; interface pronta para deploy |
 
 ## Resolucoes de Follow-ups
 
@@ -39,4 +39,6 @@ last_updated: "2026-03-14"
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | F1-R01 | F1 - Discovery Tecnico | 2026-03-14 | Cursor/Composer | eecc68b5 | - | go | provisional | [RELATORIO-AUDITORIA-F1-R01.md](F1-Discovery-Tecnico/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | nenhum | - | - | none |
 | F2-R01 | F2 - Implementacao | 2026-03-14 | Cursor/Composer | eecc68b5 | - | hold | provisional | [RELATORIO-AUDITORIA-F2-R01.md](F2-Implementacao/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | scope-drift high | issue-local | ISSUE-F2-02-003 | none |
+| F2-R02 | F2 - Implementacao | 2026-03-14 | Cursor/Composer | fb711794 | eecc68b5 | go | done | [RELATORIO-AUDITORIA-F2-R02.md](F2-Implementacao/auditorias/RELATORIO-AUDITORIA-F2-R02.md) | nenhum | - | - | none |
 | F3-R01 | F3 - Validacao | 2026-03-14 | Cursor/Composer | eecc68b5 | - | hold | provisional | [RELATORIO-AUDITORIA-F3-R01.md](F3-Validacao/auditorias/RELATORIO-AUDITORIA-F3-R01.md) | scope-drift high | issue-local | ISSUE-F2-02-003 | none |
+| F3-R02 | F3 - Validacao | 2026-03-14 | Cursor/Composer | fb711794 | eecc68b5 | go | done | [RELATORIO-AUDITORIA-F3-R02.md](F3-Validacao/auditorias/RELATORIO-AUDITORIA-F3-R02.md) | nenhum | - | - | none |

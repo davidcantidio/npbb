@@ -23,7 +23,7 @@ supersedes: "INTAKE-LP-PREVIEW.md"
 
 ## 1. Problema ou Oportunidade
 
-O wizard de configuração de evento (5 etapas: Evento, Formulário de Lead,
+O wizard de configuração de evento (5 etapas: Evento, Landing Page,
 Gamificação, Ativações, Questionário) apresenta múltiplos problemas de
 diagramação e densidade visual que prejudicam a experiência do operador:
 
@@ -62,7 +62,7 @@ configurar com eficiência e confiança sem distrações ou ruído visual.
    - **Coluna esquerda:** painel de configuração da etapa atual
    - **Coluna direita:** conteúdo contextual da etapa (preview mobile
      ou lista de itens configurados)
-3. Na etapa **Formulário de Lead:**
+3. Na etapa **Landing Page:**
    - Coluna esquerda: seletor de template único (campo "Contexto da
      landing"), CTA personalizado, Descrição curta e seleção de campos
    - Coluna direita: preview da landing em frame mobile (≈390 px,
@@ -133,7 +133,7 @@ wizard.
 ## 8. Arquitetura ou Superfícies Impactadas
 
 - Camada de UI (frontend-web) exclusivamente
-- Todas as 5 páginas do wizard: Evento, Formulário de Lead,
+- Todas as 5 páginas do wizard: Evento, Landing Page,
   Gamificação, Ativações, Questionário
 - Componentes de preview (landing e ativação)
 - Componente de campos possíveis (layout, drag-and-drop, visibilidade
@@ -196,7 +196,7 @@ a carga cognitiva e reduz a confiança na configuração.
 
 **Evidência técnica:**
 Screenshots da interface atual fornecidos pelo PM em sessão de
-intake (2026-03-13), cobrindo as etapas Formulário de Lead,
+intake (2026-03-13), cobrindo as etapas Landing Page,
 Gamificação e Ativações. Problemas identificados diretamente
 na interface em produção local (localhost).
 

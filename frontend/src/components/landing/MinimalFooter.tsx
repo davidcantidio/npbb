@@ -23,7 +23,7 @@ export default function MinimalFooter({
       alignItems={isPreview ? "flex-start" : { xs: "flex-start", md: "center" }}
       sx={{ color: textColor }}
     >
-      <Typography data-testid="minimal-footer-tagline" variant="caption" color="inherit">
+      <Typography data-testid="minimal-footer-tagline" variant="body2" color="inherit">
         {tagline}
       </Typography>
       <Link
@@ -32,7 +32,7 @@ export default function MinimalFooter({
         target="_blank"
         rel="noreferrer"
         underline="hover"
-        variant="caption"
+        variant="body2"
         color="inherit"
       >
         Politica de privacidade e LGPD

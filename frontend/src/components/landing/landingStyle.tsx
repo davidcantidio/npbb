@@ -216,6 +216,7 @@ export function buildLandingTheme(data: LandingPageData) {
     },
     shape: { borderRadius: 20 },
     typography: {
+      fontSize: 16,
       fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, sans-serif',
       h1: { fontSize: "3rem", fontWeight: 800, lineHeight: 1.05 },
       h2: { fontSize: "2rem", fontWeight: 800, lineHeight: 1.1 },
@@ -252,6 +253,7 @@ export function buildFormCardTheme(data: LandingPageData) {
     },
     shape: { borderRadius: 20 },
     typography: {
+      fontSize: 16,
       fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, sans-serif',
       h5: { fontWeight: 800 },
       button: { fontWeight: 800, textTransform: "none" },

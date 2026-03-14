@@ -6,11 +6,11 @@ owner: "PM"
 last_updated: "2026-03-14"
 ---
 
-# EPIC-F2-02 - Formulario de Lead - Drag-and-drop e Limpeza
+# EPIC-F2-02 - Landing Page - Drag-and-drop e Limpeza
 
 ## Objetivo
 
-Remover redundancias na etapa Formulario de Lead (Tema duplicado, box azul, Governanca e performance, texto descritivo), aplicar preview em frame mobile ~390px, e implementar campos em 1 coluna com visibilidade progressiva e reordenacao por drag-and-drop.
+Remover redundancias na etapa Landing Page (Tema duplicado, box azul, Governanca e performance, texto descritivo), aplicar preview em frame mobile ~390px, e implementar campos em 1 coluna com visibilidade progressiva e reordenacao por drag-and-drop.
 
 ## Resultado de Negocio Mensuravel
 
@@ -37,7 +37,7 @@ EventLeadFormConfigPage possui TemaSection, LandingContextSection, PreviewSectio
 
 ## Artifact Minimo do Epico
 
-Formulario de Lead refatorado; preview mobile; drag-and-drop funcional.
+Landing Page refatorado; preview mobile; drag-and-drop funcional.
 
 ## Dependencias
 - [Intake](../../INTAKE-UX.md)

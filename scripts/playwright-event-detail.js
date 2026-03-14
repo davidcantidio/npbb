@@ -52,7 +52,7 @@ async function main() {
     }
   }
 
-  await clickTabAndShot(/Formulário de Lead/i, 'playwright-event-detail-lead.png');
+  await clickTabAndShot(/Landing Page/i, 'playwright-event-detail-lead.png');
   await clickTabAndShot(/Gamifica/i, 'playwright-event-detail-gamificacao.png');
   await clickTabAndShot(/Ativaç/i, 'playwright-event-detail-ativacoes.png');
   await clickTabAndShot(/Questionário/i, 'playwright-event-detail-questionario.png');

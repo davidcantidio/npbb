@@ -248,7 +248,7 @@ export default function AppLayout() {
                   width: 28,
                   height: 28,
                   bgcolor: "primary.main",
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 900,
                 }}
               >

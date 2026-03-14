@@ -61,7 +61,6 @@ export default function Login() {
   return (
     <Container maxWidth="sm" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
       <Paper
-        elevation={3}
         sx={{
           width: "100%",
           p: 4,
@@ -108,7 +107,6 @@ export default function Login() {
                 variant="text"
                 size="small"
                 onClick={() => setForgotOpen(true)}
-                sx={{ textTransform: "none", fontWeight: 700 }}
               >
                 Esqueceu a senha?
               </Button>
@@ -123,7 +121,6 @@ export default function Login() {
               size="large"
               type="submit"
               disabled={loading || authLoading}
-              sx={{ textTransform: "none", fontWeight: 700 }}
             >
               {loading || authLoading ? <CircularProgress size={22} color="inherit" /> : "Entrar"}
             </Button>
@@ -133,7 +130,6 @@ export default function Login() {
               onClick={() => {
                 navigate("/novo-usuario");
               }}
-              sx={{ textTransform: "none", fontWeight: 700 }}
             >
               Criar Conta
             </Button>

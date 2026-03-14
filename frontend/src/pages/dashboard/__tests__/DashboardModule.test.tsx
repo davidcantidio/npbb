@@ -11,9 +11,14 @@ import type { AgeAnalysisResponse } from "../../../types/dashboard";
 import DashboardHome from "../DashboardHome";
 import LeadsAgeAnalysisPage from "../LeadsAgeAnalysisPage";
 import { useAuth } from "../../../store/auth";
+import { useThemeMode } from "../../../theme/ThemeModeProvider";
 
 vi.mock("../../../store/auth", () => ({
   useAuth: vi.fn(),
+}));
+
+vi.mock("../../../theme/ThemeModeProvider", () => ({
+  useThemeMode: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useAgeAnalysis", () => ({
@@ -25,6 +30,7 @@ vi.mock("../../../services/leads_import", () => ({
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedUseThemeMode = vi.mocked(useThemeMode);
 const mockedUseAgeAnalysis = vi.mocked(useAgeAnalysis);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 
@@ -107,6 +113,15 @@ function renderDashboardModule(initialEntry: string) {
 }
 
 describe("Dashboard module", () => {
+  beforeEach(() => {
+    mockedUseThemeMode.mockReturnValue({
+      mode: "light",
+      resolvedMode: "light",
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+  });
+
   it("redirects to login when the user is not authenticated", async () => {
     mockedUseAgeAnalysis.mockReturnValue({
       data: null,

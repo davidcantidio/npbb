@@ -223,7 +223,6 @@ export default function Register() {
   return (
     <Container maxWidth="sm" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
       <Paper
-        elevation={3}
         sx={{
           width: "100%",
           p: 4,
@@ -303,7 +302,6 @@ export default function Register() {
                     onClick={() => {
                       navigate("/login");
                     }}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     Voltar para login
                   </Button>
@@ -312,7 +310,6 @@ export default function Register() {
                     type="button"
                     onClick={handleNext}
                     disabled={!canContinueFromType}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     Continuar
                   </Button>
@@ -381,7 +378,6 @@ export default function Register() {
                     variant="outlined"
                     type="button"
                     onClick={handleBack}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     Voltar
                   </Button>
@@ -390,7 +386,6 @@ export default function Register() {
                     type="button"
                     onClick={handleNext}
                     disabled={!canContinueFromAgency}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     Continuar
                   </Button>
@@ -548,7 +543,6 @@ export default function Register() {
                     variant="outlined"
                     type="button"
                     onClick={handleBack}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     Voltar
                   </Button>
@@ -557,7 +551,6 @@ export default function Register() {
                     size="large"
                     type="submit"
                     disabled={!canSubmit || submitting}
-                    sx={{ textTransform: "none", fontWeight: 700 }}
                   >
                     {submitting ? <CircularProgress size={22} color="inherit" /> : "Criar Conta"}
                   </Button>
@@ -569,7 +562,7 @@ export default function Register() {
                   onClick={() => {
                     navigate("/login");
                   }}
-                  sx={{ textTransform: "none", fontWeight: 700, alignSelf: "flex-start" }}
+                  sx={{ alignSelf: "flex-start" }}
                 >
                   Voltar para login
                 </Button>

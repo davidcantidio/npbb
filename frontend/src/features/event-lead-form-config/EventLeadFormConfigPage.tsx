@@ -71,7 +71,7 @@ export default function EventLeadFormConfigPage() {
 
   return (
     <EventWizardPageShell width="wide" testId="event-lead-form-config-shell">
-      <EventWizardStepper activeStep={1} sx={{ mb: 2 }} />
+      <EventWizardStepper activeStep={1} eventoId={eventoId} sx={{ mb: 2 }} />
 
       <EventLeadFormConfigHeader
         eventoId={eventoId}

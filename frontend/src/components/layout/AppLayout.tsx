@@ -25,9 +25,12 @@ import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../store/auth";
+import { useThemeMode } from "../../theme/ThemeModeProvider";
 
 const DRAWER_WIDTH = 240;
 
@@ -49,22 +52,37 @@ const ATIVOS_SUBMENU: NavSubItem[] = [
   { label: "Ingressos", to: "/ingressos", icon: <ConfirmationNumberRoundedIcon /> },
 ];
 
+const EVENTOS_SUBMENU: NavSubItem[] = [
+  { label: "Lista de eventos", to: "/eventos", icon: <EventRoundedIcon /> },
+  { label: "Novo evento", to: "/eventos/novo", icon: <EventRoundedIcon /> },
+  { label: "Dados do evento", to: "/eventos/editar", icon: <EventRoundedIcon /> },
+  { label: "Landing Page", to: "/eventos/formulario-lead", icon: <EventRoundedIcon /> },
+  { label: "Gamificação", to: "/eventos/gamificacao", icon: <EventRoundedIcon /> },
+  { label: "Ativações", to: "/eventos/ativacoes", icon: <EventRoundedIcon /> },
+  { label: "Questionário", to: "/eventos/questionario", icon: <EventRoundedIcon /> },
+];
+
 export default function AppLayout() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { resolvedMode, toggleMode } = useThemeMode();
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [navMenuAnchor, setNavMenuAnchor] = useState<null | HTMLElement>(null);
-  const [ativosMenuAnchor, setAtivosMenuAnchor] = useState<null | HTMLElement>(null);
-  const [ativosSubmenuAnchor, setAtivosSubmenuAnchor] = useState<null | HTMLElement>(null);
+  const [submenuAnchor, setSubmenuAnchor] = useState<null | HTMLElement>(null);
+  const [submenuKey, setSubmenuKey] = useState<string | null>(null);
 
   const navItems: NavItem[] = useMemo(
     () => [
       { label: "Dashboard", to: "/dashboard", icon: <DashboardRoundedIcon /> },
-      { label: "Eventos", to: "/eventos", icon: <EventRoundedIcon /> },
+      {
+        label: "Eventos",
+        icon: <EventRoundedIcon />,
+        children: EVENTOS_SUBMENU,
+      },
       {
         label: "Ativos",
         icon: <ConfirmationNumberRoundedIcon />,
@@ -91,10 +109,10 @@ export default function AppLayout() {
         : false;
   };
 
-  const handleAtivosSubItemClick = (to: string) => {
+  const handleSubItemClick = (to: string) => {
     navigate(to);
-    setAtivosMenuAnchor(null);
-    setAtivosSubmenuAnchor(null);
+    setSubmenuAnchor(null);
+    setSubmenuKey(null);
     setNavMenuAnchor(null);
   };
 
@@ -116,13 +134,9 @@ export default function AppLayout() {
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <AppBar
         position="fixed"
-        color="transparent"
-        elevation={0}
         sx={{
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           ml: { md: `${DRAWER_WIDTH}px` },
-          borderBottom: 1,
-          borderColor: "divider",
           zIndex: (t) => t.zIndex.drawer + 1,
         }}
       >
@@ -154,17 +168,20 @@ export default function AppLayout() {
                 const active = isNavItemActive(item);
                 const key = item.to ?? item.label;
                 if (item.children) {
+                  const isThisMenuOpen = Boolean(submenuAnchor) && submenuKey === item.label;
                   return (
                     <Box key={key} component="span">
                       <Button
                         aria-haspopup="menu"
-                        aria-expanded={Boolean(ativosMenuAnchor)}
-                        onClick={(e) => setAtivosMenuAnchor(e.currentTarget)}
+                        aria-expanded={isThisMenuOpen}
+                        onClick={(e) => {
+                          setSubmenuAnchor(e.currentTarget);
+                          setSubmenuKey(item.label);
+                        }}
                         startIcon={item.icon}
                         color={active ? "primary" : "inherit"}
                         size="small"
                         sx={{
-                          textTransform: "none",
                           fontWeight: active ? 800 : 600,
                           borderRadius: 2,
                           whiteSpace: "nowrap",
@@ -178,9 +195,12 @@ export default function AppLayout() {
                         {item.label}
                       </Button>
                       <Menu
-                        anchorEl={ativosMenuAnchor}
-                        open={Boolean(ativosMenuAnchor)}
-                        onClose={() => setAtivosMenuAnchor(null)}
+                        anchorEl={submenuAnchor}
+                        open={isThisMenuOpen}
+                        onClose={() => {
+                          setSubmenuAnchor(null);
+                          setSubmenuKey(null);
+                        }}
                         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
                         transformOrigin={{ vertical: "top", horizontal: "left" }}
                       >
@@ -188,7 +208,7 @@ export default function AppLayout() {
                           <MenuItem
                             key={sub.to}
                             selected={isPathActive(sub.to)}
-                            onClick={() => handleAtivosSubItemClick(sub.to)}
+                            onClick={() => handleSubItemClick(sub.to)}
                           >
                             <ListItemIcon sx={{ minWidth: 36 }}>{sub.icon}</ListItemIcon>
                             <ListItemText primary={sub.label} />
@@ -208,7 +228,6 @@ export default function AppLayout() {
                     color={active ? "primary" : "inherit"}
                     size="small"
                     sx={{
-                      textTransform: "none",
                       fontWeight: active ? 800 : 600,
                       borderRadius: 2,
                       whiteSpace: "nowrap",
@@ -238,7 +257,7 @@ export default function AppLayout() {
           )}
           <Button
             onClick={(e) => setUserMenuAnchor(e.currentTarget)}
-            sx={{ textTransform: "none", fontWeight: 800, borderRadius: 2 }}
+            sx={{ fontWeight: 800, borderRadius: 2 }}
             color="inherit"
             startIcon={
               <Avatar
@@ -272,7 +291,8 @@ export default function AppLayout() {
             open={Boolean(navMenuAnchor)}
             onClose={() => {
               setNavMenuAnchor(null);
-              setAtivosSubmenuAnchor(null);
+              setSubmenuAnchor(null);
+              setSubmenuKey(null);
             }}
             anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
             transformOrigin={{ vertical: "top", horizontal: "left" }}
@@ -280,15 +300,22 @@ export default function AppLayout() {
             {navItems.map((item) => {
               const key = item.to ?? item.label;
               if (item.children) {
+                const isThisSubmenuOpen = Boolean(submenuAnchor) && submenuKey === item.label;
                 return (
                   <MenuItem
                     key={key}
                     aria-haspopup="menu"
-                    aria-expanded={Boolean(ativosSubmenuAnchor)}
+                    aria-expanded={isThisSubmenuOpen}
                     selected={isNavItemActive(item)}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setAtivosSubmenuAnchor(ativosSubmenuAnchor ? null : e.currentTarget);
+                      if (isThisSubmenuOpen) {
+                        setSubmenuAnchor(null);
+                        setSubmenuKey(null);
+                      } else {
+                        setSubmenuAnchor(e.currentTarget);
+                        setSubmenuKey(item.label);
+                      }
                     }}
                   >
                     <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
@@ -312,22 +339,27 @@ export default function AppLayout() {
             })}
           </Menu>
           <Menu
-            anchorEl={ativosSubmenuAnchor}
-            open={Boolean(ativosSubmenuAnchor)}
-            onClose={() => setAtivosSubmenuAnchor(null)}
+            anchorEl={submenuAnchor}
+            open={Boolean(submenuAnchor)}
+            onClose={() => {
+              setSubmenuAnchor(null);
+              setSubmenuKey(null);
+            }}
             anchorOrigin={{ vertical: "top", horizontal: "right" }}
             transformOrigin={{ vertical: "top", horizontal: "left" }}
           >
-            {ATIVOS_SUBMENU.map((sub) => (
-              <MenuItem
-                key={sub.to}
-                selected={isPathActive(sub.to)}
-                onClick={() => handleAtivosSubItemClick(sub.to)}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>{sub.icon}</ListItemIcon>
-                <ListItemText primary={sub.label} />
-              </MenuItem>
-            ))}
+            {(navItems.find((i) => i.children && i.label === submenuKey)?.children ?? []).map(
+              (sub) => (
+                <MenuItem
+                  key={sub.to}
+                  selected={isPathActive(sub.to)}
+                  onClick={() => handleSubItemClick(sub.to)}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>{sub.icon}</ListItemIcon>
+                  <ListItemText primary={sub.label} />
+                </MenuItem>
+              ),
+            )}
           </Menu>
           <Menu
             anchorEl={userMenuAnchor}
@@ -336,6 +368,24 @@ export default function AppLayout() {
             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             transformOrigin={{ vertical: "top", horizontal: "right" }}
           >
+            <MenuItem
+              onClick={() => {
+                toggleMode();
+                setUserMenuAnchor(null);
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                {resolvedMode === "dark" ? (
+                  <LightModeRoundedIcon fontSize="small" />
+                ) : (
+                  <DarkModeRoundedIcon fontSize="small" />
+                )}
+              </ListItemIcon>
+              <ListItemText
+                primary={resolvedMode === "dark" ? "Usar tema claro" : "Usar tema escuro"}
+                secondary={resolvedMode === "dark" ? "Tema atual: escuro" : "Tema atual: claro"}
+              />
+            </MenuItem>
             <MenuItem
               onClick={() => {
                 setUserMenuAnchor(null);

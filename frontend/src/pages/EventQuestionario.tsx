@@ -582,7 +582,7 @@ export default function EventQuestionario() {
 
   return (
     <EventWizardPageShell width="wide" testId="event-questionario-shell">
-      <EventWizardStepper activeStep={4} sx={{ mb: 2 }} />
+      <EventWizardStepper activeStep={4} eventoId={eventoId} sx={{ mb: 2 }} />
 
       <Stack
         direction={{ xs: "column", md: "row" }}

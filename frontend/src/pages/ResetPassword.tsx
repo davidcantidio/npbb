@@ -78,7 +78,6 @@ export default function ResetPassword() {
   return (
     <Container maxWidth="sm" sx={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
       <Paper
-        elevation={3}
         sx={{
           width: "100%",
           p: 4,
@@ -134,7 +133,6 @@ export default function ResetPassword() {
               size="large"
               type="submit"
               disabled={loading}
-              sx={{ textTransform: "none", fontWeight: 700 }}
             >
               {loading ? <CircularProgress size={22} color="inherit" /> : "Atualizar senha"}
             </Button>
@@ -145,7 +143,6 @@ export default function ResetPassword() {
               onClick={() => {
                 navigate("/login");
               }}
-              sx={{ textTransform: "none", fontWeight: 700 }}
             >
               Voltar para login
             </Button>

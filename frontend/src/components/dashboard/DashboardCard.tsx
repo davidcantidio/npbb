@@ -1,5 +1,6 @@
 import ArrowOutwardRoundedIcon from "@mui/icons-material/ArrowOutwardRounded";
 import { Box, Card, CardActionArea, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { Link as RouterLink } from "react-router-dom";
 
 import { getDashboardIcon } from "./dashboardIconMap";
@@ -27,7 +28,10 @@ export function DashboardCard({ entry }: DashboardCardProps) {
               borderRadius: 2,
               display: "grid",
               placeItems: "center",
-              bgcolor: entry.enabled ? "primary.50" : "grey.100",
+              bgcolor: (theme) =>
+                entry.enabled
+                  ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.16 : 0.08)
+                  : alpha(theme.palette.text.primary, theme.palette.mode === "dark" ? 0.1 : 0.06),
               color: entry.enabled ? "primary.main" : "text.secondary",
             }}
           >

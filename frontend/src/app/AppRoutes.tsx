@@ -14,6 +14,7 @@ import PublicidadeImport from "../pages/PublicidadeImport";
 import Register from "../pages/Register";
 import ResetPassword from "../pages/ResetPassword";
 import Success from "../pages/Success";
+import AppThemeShell from "../theme/AppThemeShell";
 
 const DashboardHome = lazy(() => import("../pages/dashboard/DashboardHome"));
 const EventAtivacoes = lazy(() => import("../pages/EventAtivacoes"));
@@ -27,6 +28,7 @@ const LeadsImport = lazy(() => import("../pages/LeadsImport"));
 const MapeamentoPage = lazy(() => import("../pages/leads/MapeamentoPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
 const PipelineStatusPage = lazy(() => import("../pages/leads/PipelineStatusPage"));
+const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
 
 export default function AppRoutes() {
   const withSuspense = (element: React.ReactNode) => (
@@ -49,46 +51,68 @@ export default function AppRoutes() {
       />
       <Route path="/landing/eventos/:eventId" element={withSuspense(<EventLandingPage />)} />
       <Route path="/landing/ativacoes/:ativacaoId" element={withSuspense(<EventLandingPage />)} />
-      <Route path="/" element={<Login />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/novo-usuario" element={<Register />} />
-      <Route path="/register" element={<Navigate to="/novo-usuario" replace />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route element={<AppThemeShell />}>
+        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/novo-usuario" element={<Register />} />
+        <Route path="/register" element={<Navigate to="/novo-usuario" replace />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/success" element={<Success />} />
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/success" element={<Success />} />
 
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={withSuspense(<DashboardHome />)} />
-          <Route path="leads" element={<Navigate to="analise-etaria" replace />} />
-          <Route path="leads/analise-etaria" element={withSuspense(<LeadsAgeAnalysisPage />)} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={withSuspense(<DashboardHome />)} />
+            <Route path="leads" element={<Navigate to="analise-etaria" replace />} />
+            <Route path="leads/analise-etaria" element={withSuspense(<LeadsAgeAnalysisPage />)} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+
+          <Route path="/eventos" element={withSuspense(<EventsList />)} />
+          <Route path="/eventos/novo" element={withSuspense(<NewEvent />)} />
+          <Route
+            path="/eventos/editar"
+            element={withSuspense(<EventSelectorPage section="editar" />)}
+          />
+          <Route
+            path="/eventos/formulario-lead"
+            element={withSuspense(<EventSelectorPage section="formulario-lead" />)}
+          />
+          <Route
+            path="/eventos/gamificacao"
+            element={withSuspense(<EventSelectorPage section="gamificacao" />)}
+          />
+          <Route
+            path="/eventos/ativacoes"
+            element={withSuspense(<EventSelectorPage section="ativacoes" />)}
+          />
+          <Route
+            path="/eventos/questionario"
+            element={withSuspense(<EventSelectorPage section="questionario" />)}
+          />
+          <Route path="/eventos/:id/editar" element={withSuspense(<NewEvent />)} />
+          <Route path="/eventos/:id/formulario-lead" element={withSuspense(<EventLeadFormConfig />)} />
+          <Route path="/eventos/:id/gamificacao" element={withSuspense(<EventGamificacao />)} />
+          <Route path="/eventos/:id/ativacoes" element={withSuspense(<EventAtivacoes />)} />
+          <Route path="/eventos/:id/questionario" element={withSuspense(<EventQuestionario />)} />
+          <Route path="/eventos/:id" element={<EventDetail />} />
+
+          <Route path="/ativos" element={<AtivosList />} />
+          <Route path="/ingressos" element={<IngressosPortal />} />
+          <Route path="/leads" element={<Navigate to="/leads/importar" replace />} />
+          <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
+          <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
+          <Route path="/leads/mapeamento" element={withSuspense(<MapeamentoPage />)} />
+          <Route path="/leads/pipeline" element={withSuspense(<PipelineStatusPage />)} />
+          <Route path="/publicidade" element={<PublicidadeImport />} />
+          <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
         </Route>
-
-        <Route path="/eventos" element={withSuspense(<EventsList />)} />
-        <Route path="/eventos/novo" element={withSuspense(<NewEvent />)} />
-        <Route path="/eventos/:id/editar" element={withSuspense(<NewEvent />)} />
-        <Route path="/eventos/:id/formulario-lead" element={withSuspense(<EventLeadFormConfig />)} />
-        <Route path="/eventos/:id/gamificacao" element={withSuspense(<EventGamificacao />)} />
-        <Route path="/eventos/:id/ativacoes" element={withSuspense(<EventAtivacoes />)} />
-        <Route path="/eventos/:id/questionario" element={withSuspense(<EventQuestionario />)} />
-        <Route path="/eventos/:id" element={<EventDetail />} />
-
-        <Route path="/ativos" element={<AtivosList />} />
-        <Route path="/ingressos" element={<IngressosPortal />} />
-        <Route path="/leads" element={<Navigate to="/leads/importar" replace />} />
-        <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
-        <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
-        <Route path="/leads/mapeamento" element={withSuspense(<MapeamentoPage />)} />
-        <Route path="/leads/pipeline" element={withSuspense(<PipelineStatusPage />)} />
-        <Route path="/publicidade" element={<PublicidadeImport />} />
-        <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

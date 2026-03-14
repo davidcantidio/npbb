@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -463,7 +463,7 @@ export default function EventWizardPage() {
 
         <Box component="form" ref={formRef} onSubmit={handleSubmit} noValidate>
           <Stack spacing={3}>
-            <EventWizardStepper activeStep={0} />
+            <EventWizardStepper activeStep={0} eventoId={isEdit ? eventoId : undefined} />
             <WizardTwoColumnLayout
               testId="event-wizard-layout"
               leftTestId="event-wizard-form-column"

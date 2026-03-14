@@ -41,7 +41,9 @@ export function GamificacaoPresentingView({
 }: PresentingViewProps) {
   return (
     <Stack spacing={2.5}>
-      <Typography variant="h5">{gam.nome}</Typography>
+      <Typography component="h2" variant="h5">
+        {gam.nome}
+      </Typography>
 
       <Typography variant="body1" color="text.secondary">
         {gam.descricao}
@@ -83,7 +85,9 @@ export function GamificacaoPresentingView({
 export function GamificacaoActiveView({ gam, loading, error, onComplete }: ActiveViewProps) {
   return (
     <Stack spacing={2.5}>
-      <Typography variant="h5">{gam.nome}</Typography>
+      <Typography component="h2" variant="h5">
+        {gam.nome}
+      </Typography>
 
       <Typography variant="body1" color="text.secondary">
         {gam.descricao}
@@ -135,7 +139,7 @@ export function GamificacaoCompletedView({ gam, onReset, disableReset }: Complet
         &#10003;
       </Box>
 
-      <Typography variant="h5">
+      <Typography component="h2" variant="h5">
         {gam.titulo_feedback || "Parabens!"}
       </Typography>
 

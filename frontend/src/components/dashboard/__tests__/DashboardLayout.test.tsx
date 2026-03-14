@@ -8,13 +8,19 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import DashboardLayout from "../DashboardLayout";
 import AppLayout from "../../layout/AppLayout";
 import { useAuth } from "../../../store/auth";
+import { useThemeMode } from "../../../theme/ThemeModeProvider";
 
 vi.mock("../../../store/auth", () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock("../../../theme/ThemeModeProvider", () => ({
+  useThemeMode: vi.fn(),
+}));
+
 const theme = createTheme();
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedUseThemeMode = vi.mocked(useThemeMode);
 
 function renderWithTheme(ui: ReactElement) {
   return render(
@@ -88,6 +94,12 @@ describe("DashboardLayout", () => {
       refresh: vi.fn(),
       login: vi.fn(),
       logout: vi.fn(),
+    });
+    mockedUseThemeMode.mockReturnValue({
+      mode: "light",
+      resolvedMode: "light",
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
     });
   });
 

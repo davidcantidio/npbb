@@ -130,7 +130,7 @@ export function ForgotPasswordDialog({ open, initialEmail, onClose }: Props) {
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={submitting} sx={{ textTransform: "none" }}>
+        <Button onClick={onClose} disabled={submitting}>
           Cancelar
         </Button>
         <Button
@@ -138,7 +138,6 @@ export function ForgotPasswordDialog({ open, initialEmail, onClose }: Props) {
           type="submit"
           form="forgot-password-form"
           disabled={submitting}
-          sx={{ textTransform: "none", fontWeight: 700 }}
         >
           {submitting ? <CircularProgress size={22} color="inherit" /> : "Enviar"}
         </Button>

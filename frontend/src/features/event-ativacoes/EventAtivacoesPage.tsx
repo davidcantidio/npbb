@@ -52,7 +52,7 @@ export default function EventAtivacoesPage() {
 
   return (
     <EventWizardPageShell width="wide" testId="event-ativacoes-shell">
-      <EventWizardStepper activeStep={3} sx={{ mb: 2 }} />
+      <EventWizardStepper activeStep={3} eventoId={eventoId} sx={{ mb: 2 }} />
 
       <Stack
         direction={{ xs: "column", md: "row" }}

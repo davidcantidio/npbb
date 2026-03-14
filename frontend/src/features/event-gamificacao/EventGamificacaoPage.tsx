@@ -46,7 +46,7 @@ export default function EventGamificacaoPage() {
 
   return (
     <EventWizardPageShell width="wide" testId="event-gamificacao-shell">
-      <EventWizardStepper activeStep={2} sx={{ mb: 2 }} />
+      <EventWizardStepper activeStep={2} eventoId={eventoId} sx={{ mb: 2 }} />
 
       <Stack
         direction={{ xs: "column", md: "row" }}

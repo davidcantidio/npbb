@@ -75,7 +75,7 @@ export default function FormCard({
           {!submitted ? (
             <Stack spacing={2.5}>
               <Box>
-                <Typography variant="h5" gutterBottom>
+                <Typography component={isPreview ? "h2" : "h1"} variant="h5" gutterBottom>
                   {content.formTitle}
                 </Typography>
                 {content.formSubtitle ? (
@@ -209,7 +209,9 @@ export default function FormCard({
           ) : (
             <Stack spacing={2.5}>
               <Chip label="Cadastro concluido" sx={{ alignSelf: "flex-start", bgcolor: alpha(data.template.color_secondary, 0.9) }} />
-              <Typography variant="h5">{submitted.mensagem_sucesso}</Typography>
+              <Typography component="h2" variant="h5">
+                {submitted.mensagem_sucesso}
+              </Typography>
               <Typography variant="body1" color="text.secondary">
                 Seu cadastro foi registrado para {data.evento.nome}. Em breve o time do BB pode entrar em contato.
               </Typography>

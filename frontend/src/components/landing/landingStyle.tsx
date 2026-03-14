@@ -2,6 +2,10 @@ import { Box, createTheme } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
 import type { LandingPageData } from "../../services/landing_public";
+import {
+  LANDING_SHAPE_RADIUS,
+  createCommonThemeOptions,
+} from "../../theme";
 
 export const TEMPLATE_CATEGORIES = [
   "corporativo",
@@ -199,31 +203,50 @@ export function buildLandingTheme(data: LandingPageData) {
   const background = data.template.color_background || "#F7F8FF";
   const text = data.template.color_text || "#111827";
   const dark = isDarkColor(background) || isDarkColor(primary);
+  const primaryText = dark ? "#F8FAFC" : text;
 
-  return createTheme({
-    palette: {
-      mode: dark ? "dark" : "light",
-      primary: { main: primary },
-      secondary: { main: secondary },
-      background: {
-        default: background,
-        paper: dark ? alpha("#FFFFFF", 0.08) : "#FFFFFF",
+  return createTheme(
+    createCommonThemeOptions({
+      shapeRadius: LANDING_SHAPE_RADIUS,
+      scale: "landing",
+      palette: {
+        mode: dark ? "dark" : "light",
+        primary: {
+          main: primary,
+          contrastText: "#FFFFFF",
+        },
+        secondary: {
+          main: secondary,
+          contrastText: dark ? "#07111F" : "#111827",
+        },
+        info: {
+          main: primary,
+        },
+        success: {
+          main: "#10B981",
+        },
+        warning: {
+          main: secondary,
+        },
+        error: {
+          main: "#EF4444",
+        },
+        background: {
+          default: background,
+          paper: dark ? alpha("#FFFFFF", 0.08) : "#FFFFFF",
+        },
+        text: {
+          primary: primaryText,
+          secondary: dark ? alpha("#FFFFFF", 0.82) : alpha(text, 0.76),
+        },
+        divider: dark ? alpha("#FFFFFF", 0.14) : alpha(text, 0.12),
+        action: {
+          hover: alpha(primaryText, dark ? 0.08 : 0.04),
+          selected: alpha(primary, dark ? 0.16 : 0.08),
+        },
       },
-      text: {
-        primary: text,
-        secondary: dark ? alpha("#FFFFFF", 0.82) : alpha(text, 0.76),
-      },
-    },
-    shape: { borderRadius: 12 },
-    typography: {
-      fontSize: 14,
-      fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, sans-serif',
-      h1: { fontSize: "2rem", fontWeight: 800, lineHeight: 1.05 },
-      h2: { fontSize: "1.5rem", fontWeight: 800, lineHeight: 1.1 },
-      h5: { fontWeight: 800 },
-      button: { fontWeight: 800, textTransform: "none" },
-    },
-  });
+    }),
+  );
 }
 
 export function buildFormCardTheme(data: LandingPageData) {
@@ -231,34 +254,48 @@ export function buildFormCardTheme(data: LandingPageData) {
   const secondary = data.template.color_secondary || "#FCFC30";
   const surfaceText = "#07111F";
 
-  return createTheme({
-    palette: {
-      mode: "light",
-      primary: {
-        main: primary,
-        contrastText: "#FFFFFF",
+  return createTheme(
+    createCommonThemeOptions({
+      shapeRadius: LANDING_SHAPE_RADIUS,
+      scale: "landing",
+      palette: {
+        mode: "light",
+        primary: {
+          main: primary,
+          contrastText: "#FFFFFF",
+        },
+        secondary: {
+          main: secondary,
+          contrastText: surfaceText,
+        },
+        info: {
+          main: primary,
+        },
+        success: {
+          main: "#10B981",
+        },
+        warning: {
+          main: secondary,
+        },
+        error: {
+          main: "#EF4444",
+        },
+        background: {
+          default: "#FFFFFF",
+          paper: "#FFFFFF",
+        },
+        text: {
+          primary: surfaceText,
+          secondary: alpha(surfaceText, 0.76),
+        },
+        divider: alpha(surfaceText, 0.12),
+        action: {
+          hover: alpha(surfaceText, 0.04),
+          selected: alpha(primary, 0.08),
+        },
       },
-      secondary: {
-        main: secondary,
-        contrastText: surfaceText,
-      },
-      background: {
-        default: "#FFFFFF",
-        paper: "#FFFFFF",
-      },
-      text: {
-        primary: surfaceText,
-        secondary: alpha(surfaceText, 0.76),
-      },
-    },
-    shape: { borderRadius: 12 },
-    typography: {
-      fontSize: 14,
-      fontFamily: '"Roboto Flex Variable", "Roboto", "Inter", system-ui, sans-serif',
-      h5: { fontWeight: 800 },
-      button: { fontWeight: 800, textTransform: "none" },
-    },
-  });
+    }),
+  );
 }
 
 export function getLayoutVisualSpec(data: LandingPageData): LayoutVisualSpec {

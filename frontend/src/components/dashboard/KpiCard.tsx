@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Card, CardContent, LinearProgress, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { InfoTooltip } from "./InfoTooltip";
 
 type KpiCardProps = {
@@ -51,7 +52,7 @@ export function KpiCard({
                 borderRadius: 2,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: "primary.50",
+                bgcolor: (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.16 : 0.08),
                 color: "primary.main",
                 flexShrink: 0,
               }}

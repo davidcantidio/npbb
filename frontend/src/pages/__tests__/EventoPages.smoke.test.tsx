@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -538,41 +538,50 @@ describe("Evento pages smoke", () => {
 
   it("auto-refreshes the preview when copy and active fields change", async () => {
     const user = userEvent.setup();
-    mockedPreviewEventoLanding
-      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
-      .mockResolvedValueOnce(
-        createLandingPreviewPayload({
-          evento: {
-            cta_personalizado: "Receber novidades",
-            descricao_curta: "Preview com Nome e Email.",
-          },
-          formulario: {
-            campos: [
-              {
-                key: "email",
-                label: "Email",
-                input_type: "email",
-                required: true,
-                autocomplete: "email",
-                placeholder: "voce@exemplo.com",
-              },
-              {
-                key: "nome",
-                label: "Nome",
-                input_type: "text",
-                required: true,
-                autocomplete: "name",
-                placeholder: "Como voce gostaria de ser chamado?",
-              },
-            ],
-            campos_obrigatorios: ["email", "nome"],
-            campos_opcionais: [],
-          },
-          template: {
-            cta_text: "Receber novidades",
-          },
-        }) as never,
-      );
+    mockedPreviewEventoLanding.mockImplementation((_, __, payload) => {
+      const hasUpdatedCopy =
+        payload.cta_personalizado === "Receber novidades"
+        && payload.descricao_curta === "Preview com Nome e Email.";
+      const hasNomeField = payload.campos.some((campo) => campo.nome_campo === "Nome");
+
+      if (hasUpdatedCopy && hasNomeField) {
+        return Promise.resolve(
+          createLandingPreviewPayload({
+            evento: {
+              cta_personalizado: "Receber novidades",
+              descricao_curta: "Preview com Nome e Email.",
+            },
+            formulario: {
+              campos: [
+                {
+                  key: "email",
+                  label: "Email",
+                  input_type: "email",
+                  required: true,
+                  autocomplete: "email",
+                  placeholder: "voce@exemplo.com",
+                },
+                {
+                  key: "nome",
+                  label: "Nome",
+                  input_type: "text",
+                  required: true,
+                  autocomplete: "name",
+                  placeholder: "Como voce gostaria de ser chamado?",
+                },
+              ],
+              campos_obrigatorios: ["email", "nome"],
+              campos_opcionais: [],
+            },
+            template: {
+              cta_text: "Receber novidades",
+            },
+          }),
+        ) as never;
+      }
+
+      return Promise.resolve(createLandingPreviewPayload()) as never;
+    });
 
     render(
       <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
@@ -583,8 +592,12 @@ describe("Evento pages smoke", () => {
     );
 
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/CTA personalizado/i), "Receber novidades");
-    await user.type(screen.getByLabelText(/Descricao curta/i), "Preview com Nome e Email.");
+    fireEvent.change(screen.getByLabelText(/CTA personalizado/i), {
+      target: { value: "Receber novidades" },
+    });
+    fireEvent.change(screen.getByLabelText(/Descricao curta/i), {
+      target: { value: "Preview com Nome e Email." },
+    });
     await user.click(
       within(screen.getByTestId("lead-field-card-nome")).getByRole("checkbox", { name: /Ativo/i }),
     );
@@ -608,14 +621,18 @@ describe("Evento pages smoke", () => {
   });
 
   it("keeps the latest preview when an older request resolves later", async () => {
-    const user = userEvent.setup();
     const oldPreview = createDeferred<LandingPageData>();
     const latestPreview = createDeferred<LandingPageData>();
 
-    mockedPreviewEventoLanding
-      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
-      .mockImplementationOnce(() => oldPreview.promise as never)
-      .mockImplementationOnce(() => latestPreview.promise as never);
+    mockedPreviewEventoLanding.mockImplementation((_, __, payload) => {
+      if (payload.template_override === "show_musical") {
+        return oldPreview.promise as never;
+      }
+      if (payload.template_override === "tecnologia") {
+        return latestPreview.promise as never;
+      }
+      return Promise.resolve(createLandingPreviewPayload()) as never;
+    });
 
     render(
       <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
@@ -628,13 +645,25 @@ describe("Evento pages smoke", () => {
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
     const input = screen.getByLabelText(/template override/i);
-    await user.clear(input);
-    await user.type(input, "show_musical");
-    await waitFor(() => expect(mockedPreviewEventoLanding).toHaveBeenCalledTimes(2));
+    fireEvent.change(input, { target: { value: "show_musical" } });
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+        "token",
+        1,
+        expect.objectContaining({ template_override: "show_musical" }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
 
-    await user.clear(input);
-    await user.type(input, "tecnologia");
-    await waitFor(() => expect(mockedPreviewEventoLanding).toHaveBeenCalledTimes(3));
+    fireEvent.change(input, { target: { value: "tecnologia" } });
+    await waitFor(() =>
+      expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(
+        "token",
+        1,
+        expect.objectContaining({ template_override: "tecnologia" }),
+        expect.objectContaining({ signal: expect.any(Object) }),
+      ),
+    );
 
     latestPreview.resolve(
       createLandingPreviewPayload({
@@ -686,10 +715,12 @@ describe("Evento pages smoke", () => {
   });
 
   it("keeps the last preview visible and surfaces validation errors from preview requests", async () => {
-    const user = userEvent.setup();
-    mockedPreviewEventoLanding
-      .mockResolvedValueOnce(createLandingPreviewPayload() as never)
-      .mockRejectedValueOnce(new Error("template_override fora do catalogo homologado") as never);
+    mockedPreviewEventoLanding.mockImplementation((_, __, payload) => {
+      if (payload.template_override === "template-nao-homologado") {
+        return Promise.reject(new Error("template_override fora do catalogo homologado")) as never;
+      }
+      return Promise.resolve(createLandingPreviewPayload()) as never;
+    });
 
     render(
       <MemoryRouter initialEntries={["/eventos/1/formulario-lead"]}>
@@ -702,8 +733,7 @@ describe("Evento pages smoke", () => {
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
     const input = screen.getByLabelText(/template override/i);
-    await user.clear(input);
-    await user.type(input, "template-nao-homologado");
+    fireEvent.change(input, { target: { value: "template-nao-homologado" } });
 
     expect(
       await screen.findByText(/template_override fora do catalogo homologado/i),

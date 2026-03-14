@@ -80,11 +80,11 @@ describe("AgeDistributionChart", () => {
     );
 
     expect(screen.getAllByText("Evento Tooltip")).toHaveLength(2);
-    expect(screen.getByText("18-25")).toBeInTheDocument();
+    expect(screen.getByText("18–25")).toBeInTheDocument();
     expect(screen.getByText("5 • 50,0%")).toBeInTheDocument();
-    expect(screen.getByText("26-40")).toBeInTheDocument();
+    expect(screen.getByText("26–40")).toBeInTheDocument();
     expect(screen.getByText("3 • 30,0%")).toBeInTheDocument();
-    expect(screen.getByText("Fora de 18-40")).toBeInTheDocument();
+    expect(screen.getByText("Fora de 18–40")).toBeInTheDocument();
     expect(screen.getAllByText("1 • 10,0%")).toHaveLength(2);
     expect(screen.getByText("Sem informacao")).toBeInTheDocument();
   });

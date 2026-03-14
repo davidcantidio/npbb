@@ -437,7 +437,7 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/preview atualiza em tempo real/i)).toBeInTheDocument();
+    expect(await screen.findByText(/preview interno/i)).toBeInTheDocument();
     expect(screen.queryByText(/Salvar e continuar/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Hero image URL/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/hero_image_url/i)).not.toBeInTheDocument();
@@ -603,7 +603,7 @@ describe("Evento pages smoke", () => {
 
     expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
 
-    const input = screen.getByLabelText(/^Tema$/i);
+    const input = screen.getByLabelText(/Template base/i);
     await user.click(input);
     await user.type(input, "Surf");
     await user.keyboard("{ArrowDown}{Enter}");
@@ -674,7 +674,7 @@ describe("Evento pages smoke", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: /quero conhecer/i })).toBeInTheDocument();
+    expect(await screen.findByTestId("landing-preview-badge")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/CTA personalizado/i), {
       target: { value: "Receber novidades" },
     });
@@ -750,7 +750,9 @@ describe("Evento pages smoke", () => {
 
     const emailDragHandle = await screen.findByRole("button", { name: /Reordenar campo Email/i });
     emailDragHandle.focus();
-    await user.keyboard("{Space}{ArrowUp}{Space}");
+    fireEvent.keyDown(emailDragHandle, { key: " ", code: "Space", keyCode: 32, charCode: 32 });
+    fireEvent.keyDown(emailDragHandle, { key: "ArrowUp", code: "ArrowUp", keyCode: 38 });
+    fireEvent.keyDown(emailDragHandle, { key: " ", code: "Space", keyCode: 32, charCode: 32 });
 
     await waitFor(() =>
       expect(mockedPreviewEventoLanding).toHaveBeenLastCalledWith(

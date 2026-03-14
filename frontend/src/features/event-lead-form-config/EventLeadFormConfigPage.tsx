@@ -20,7 +20,6 @@ import {
   GovernanceSection,
   LandingContextSection,
   PreviewSection,
-  TemaSection,
   UrlsSection,
 } from "./components";
 import {
@@ -109,14 +108,11 @@ export default function EventLeadFormConfigPage() {
           desktopColumns="minmax(0, 1fr) minmax(390px, 430px)"
           leftContent={(
             <Stack spacing={2} sx={{ maxWidth: { md: 760 } }}>
-              <TemaSection
+              <LandingContextSection
                 templates={configData.templates}
                 templateId={configData.templateId}
-                onTemplateChange={configData.setTemplateId}
-              />
-
-              <LandingContextSection
                 landingMeta={configData.landingMeta}
+                onTemplateChange={configData.setTemplateId}
                 onLandingMetaChange={handleLandingMetaChange}
               />
 

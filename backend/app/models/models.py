@@ -216,7 +216,7 @@ class Evento(SQLModel, table=True):
     descricao_curta: Optional[str] = Field(default=None, max_length=500)
     # Divisao demandante (lookup table).
     divisao_demandante_id: Optional[int] = Field(default=None, foreign_key="divisao_demandante.id")
-    qr_code_url: Optional[str] = Field(default=None, max_length=500)
+    qr_code_url: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     # Codigo externo para reconciliacao de imports (ex.: publicidade).
     external_project_code: Optional[str] = Field(default=None, max_length=120, index=True)
 

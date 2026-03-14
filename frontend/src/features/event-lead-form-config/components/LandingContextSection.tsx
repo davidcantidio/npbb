@@ -1,16 +1,28 @@
 import { Alert, Autocomplete, Box, Stack, TextField, Typography } from "@mui/material";
 import { LANDING_CUSTOMIZATION_MESSAGE, TEMPLATE_OVERRIDE_OPTIONS } from "../constants";
+import type { FormularioTemplate } from "../../../services/eventos";
 import type { LandingMeta } from "../hooks/useEventLeadFormConfigData";
 
 type LandingContextSectionProps = {
+  templates: FormularioTemplate[];
+  templateId: number | null;
   landingMeta: LandingMeta;
+  onTemplateChange: (templateId: number | null) => void;
   onLandingMetaChange: (updates: Partial<LandingMeta>) => void;
 };
 
 export function LandingContextSection({
+  templates,
+  templateId,
   landingMeta,
+  onTemplateChange,
   onLandingMetaChange,
 }: LandingContextSectionProps) {
+  const selectedTemplate =
+    templateId == null
+      ? null
+      : templates.find((template) => template.id === templateId) ?? null;
+
   return (
     <Box>
       <Typography variant="subtitle1" fontWeight={900} gutterBottom>
@@ -21,6 +33,23 @@ export function LandingContextSection({
         de usar a URL em campo.
       </Typography>
       <Stack spacing={1.5}>
+        <Box sx={{ width: "100%", maxWidth: { xs: "100%", md: 420 } }}>
+          <Autocomplete
+            options={templates}
+            value={selectedTemplate}
+            onChange={(_, value) => onTemplateChange(value ? value.id : null)}
+            getOptionLabel={(option) => option.nome}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            sx={{ width: "100%" }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Template base"
+                placeholder="Selecione..."
+              />
+            )}
+          />
+        </Box>
         <Box sx={{ width: "100%", maxWidth: { xs: "100%", md: 520 } }}>
           <Autocomplete
             freeSolo

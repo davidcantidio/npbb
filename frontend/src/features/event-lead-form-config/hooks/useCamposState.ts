@@ -7,111 +7,209 @@ export type FormularioCampoInput = {
   ordem?: number;
 };
 
+function normalizeCampoNome(nome: string) {
+  return String(nome || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+const CAMPOS_DEFAULTS = ["CPF", "Nome", "Sobrenome", "Data de nascimento"] as const;
+const CAMPOS_SEMPRE_OBRIGATORIOS = new Set([normalizeCampoNome("CPF")]);
+
+function isCampoSempreObrigatorioNome(nome: string) {
+  return CAMPOS_SEMPRE_OBRIGATORIOS.has(normalizeCampoNome(nome));
+}
+
+function buildUniqueCampos(camposPossiveis: string[]) {
+  const seen = new Set<string>();
+  const items: string[] = [];
+  for (const nome of camposPossiveis) {
+    const normalized = String(nome || "").trim();
+    if (!normalized) continue;
+
+    const normalizedKey = normalizeCampoNome(normalized);
+    if (seen.has(normalizedKey)) continue;
+
+    seen.add(normalizedKey);
+    items.push(normalized);
+  }
+  return items;
+}
+
+function createCatalogLookup(camposPossiveis: string[]) {
+  return new Map(camposPossiveis.map((nome) => [normalizeCampoNome(nome), nome]));
+}
+
+function getDefaultCampos(catalogLookup: Map<string, string>) {
+  return CAMPOS_DEFAULTS.map((nome) => catalogLookup.get(normalizeCampoNome(nome))).filter(
+    (nome): nome is string => Boolean(nome),
+  );
+}
+
+function sortCamposConfigurados(campos: FormularioCampoInput[]) {
+  return [...campos].sort((left, right) => {
+    const leftOrder = Number.isFinite(left?.ordem) ? Number(left.ordem) : Number.MAX_SAFE_INTEGER;
+    const rightOrder = Number.isFinite(right?.ordem)
+      ? Number(right.ordem)
+      : Number.MAX_SAFE_INTEGER;
+
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return String(left?.nome_campo || "").localeCompare(String(right?.nome_campo || ""));
+  });
+}
+
 export function useCamposState(camposPossiveis: string[]) {
   const [camposAtivos, setCamposAtivos] = useState<Set<string>>(() => new Set());
   const [camposObrigatorios, setCamposObrigatorios] = useState<Record<string, boolean>>(
     () => ({}),
   );
+  const [camposOrdemAtivos, setCamposOrdemAtivos] = useState<string[]>([]);
 
   const camposPossiveisUniq = useMemo(() => {
-    const seen = new Set<string>();
-    const items: string[] = [];
-    for (const nome of camposPossiveis) {
-      const normalized = String(nome || "").trim();
-      if (!normalized) continue;
-      if (seen.has(normalized.toLowerCase())) continue;
-      seen.add(normalized.toLowerCase());
-      items.push(normalized);
-    }
-    return items;
+    return buildUniqueCampos(camposPossiveis);
   }, [camposPossiveis]);
 
+  const camposAtivosOrdenados = useMemo(() => {
+    const ativosByKey = new Map(
+      [...camposAtivos].map((nome) => [normalizeCampoNome(nome), nome]),
+    );
+    const usados = new Set<string>();
+    const ordered: string[] = [];
+
+    for (const nome of camposOrdemAtivos) {
+      const key = normalizeCampoNome(nome);
+      const canonical = ativosByKey.get(key);
+      if (!canonical || usados.has(key)) continue;
+
+      usados.add(key);
+      ordered.push(canonical);
+    }
+
+    for (const nome of camposPossiveisUniq) {
+      const key = normalizeCampoNome(nome);
+      const canonical = ativosByKey.get(key);
+      if (!canonical || usados.has(key)) continue;
+
+      usados.add(key);
+      ordered.push(canonical);
+    }
+
+    for (const nome of camposAtivos) {
+      const key = normalizeCampoNome(nome);
+      if (usados.has(key)) continue;
+
+      usados.add(key);
+      ordered.push(nome);
+    }
+
+    return ordered;
+  }, [camposAtivos, camposOrdemAtivos, camposPossiveisUniq]);
+
+  const camposDisponiveis = useMemo(
+    () => camposPossiveisUniq.filter((nome) => !camposAtivos.has(nome)),
+    [camposAtivos, camposPossiveisUniq],
+  );
+
   const camposPayload = useMemo(() => {
-    const ordemByLower = new Map(
-      camposPossiveisUniq.map((nome, index) => [nome.toLowerCase(), index]),
-    );
-    const payload: NonNullable<PreviewEventoLandingPayload["campos"]> = camposPossiveisUniq
-      .map((nome, index) => {
-        if (!camposAtivos.has(nome)) return null;
-        return {
-          nome_campo: nome,
-          obrigatorio: camposObrigatorios[nome] ?? true,
-          ordem: index,
-        };
-      })
-      .filter(
-        (value): value is NonNullable<PreviewEventoLandingPayload["campos"]>[number] =>
-          value !== null,
-      );
-
-    const extras = [...camposAtivos].filter(
-      (nome) => !ordemByLower.has(nome.toLowerCase()),
-    );
-    extras.sort((a, b) => a.localeCompare(b));
-    extras.forEach((nome, index) => {
-      payload.push({
-        nome_campo: nome,
-        obrigatorio: camposObrigatorios[nome] ?? true,
-        ordem: camposPossiveisUniq.length + index,
-      });
-    });
-
-    return payload;
-  }, [camposAtivos, camposObrigatorios, camposPossiveisUniq]);
+    return camposAtivosOrdenados.map((nome, index) => ({
+      nome_campo: nome,
+      obrigatorio: isCampoSempreObrigatorioNome(nome) ? true : (camposObrigatorios[nome] ?? true),
+      ordem: index,
+    }));
+  }, [camposAtivosOrdenados, camposObrigatorios]);
 
   const toggleCampo = useCallback((nome: string) => {
     setCamposAtivos((prev) => {
       const next = new Set(prev);
       const wasActive = next.has(nome);
-      if (wasActive) next.delete(nome);
-      else next.add(nome);
+      if (wasActive) {
+        if (isCampoSempreObrigatorioNome(nome)) return prev;
 
-      if (!wasActive) {
-        setCamposObrigatorios((prevObrigatorios) => {
-          if (Object.prototype.hasOwnProperty.call(prevObrigatorios, nome))
-            return prevObrigatorios;
-          return { ...prevObrigatorios, [nome]: true };
-        });
+        next.delete(nome);
+        setCamposOrdemAtivos((prevOrdem) => prevOrdem.filter((item) => item !== nome));
+        return next;
       }
+
+      next.add(nome);
+      setCamposOrdemAtivos((prevOrdem) =>
+        prevOrdem.includes(nome) ? prevOrdem : [...prevOrdem, nome],
+      );
+
+      setCamposObrigatorios((prevObrigatorios) => {
+        if (Object.prototype.hasOwnProperty.call(prevObrigatorios, nome)) return prevObrigatorios;
+        return { ...prevObrigatorios, [nome]: true };
+      });
 
       return next;
     });
   }, []);
 
   const setCampoObrigatorio = useCallback((nome: string, obrigatorio: boolean) => {
+    if (isCampoSempreObrigatorioNome(nome) && !obrigatorio) return;
     setCamposObrigatorios((prev) => ({ ...prev, [nome]: obrigatorio }));
   }, []);
 
   const syncFromConfig = useCallback(
     (campos: FormularioCampoInput[] | null | undefined, catalog?: string[]) => {
-      const catalogSource = catalog ?? camposPossiveis;
-      const catalogByLower = new Map(
-        catalogSource.map((nome) => [nome.trim().toLowerCase(), nome.trim()]),
-      );
+      const catalogSource = buildUniqueCampos(catalog ?? camposPossiveis);
+      const catalogLookup = createCatalogLookup(catalogSource);
       const nextAtivos = new Set<string>();
       const nextObrigatorios: Record<string, boolean> = {};
-      for (const campo of campos || []) {
-        const normalized = String(campo?.nome_campo || "").trim();
-        if (!normalized) continue;
-        const canonical = catalogByLower.get(normalized.toLowerCase()) ?? normalized;
-        nextAtivos.add(canonical);
-        nextObrigatorios[canonical] = Boolean(campo?.obrigatorio);
+      const nextOrdem: string[] = [];
+
+      const ensureCampoAtivo = (nome: string, obrigatorio = true) => {
+        if (nextAtivos.has(nome)) return;
+        nextAtivos.add(nome);
+        nextObrigatorios[nome] = isCampoSempreObrigatorioNome(nome) ? true : obrigatorio;
+        nextOrdem.push(nome);
+      };
+
+      const camposConfigurados = sortCamposConfigurados(campos ?? []);
+      if (camposConfigurados.length) {
+        for (const campo of camposConfigurados) {
+          const normalized = String(campo?.nome_campo || "").trim();
+          if (!normalized) continue;
+
+          const canonical = catalogLookup.get(normalizeCampoNome(normalized)) ?? normalized;
+          ensureCampoAtivo(canonical, Boolean(campo?.obrigatorio));
+        }
+      } else {
+        getDefaultCampos(catalogLookup).forEach((nome) => ensureCampoAtivo(nome));
       }
+
+      const cpfCanonical = catalogLookup.get(normalizeCampoNome("CPF"));
+      if (cpfCanonical && !nextAtivos.has(cpfCanonical)) {
+        nextAtivos.add(cpfCanonical);
+        nextObrigatorios[cpfCanonical] = true;
+        nextOrdem.unshift(cpfCanonical);
+      }
+
       setCamposAtivos(nextAtivos);
       setCamposObrigatorios(nextObrigatorios);
+      setCamposOrdemAtivos(nextOrdem);
     },
     [camposPossiveis],
   );
 
   return {
     camposAtivos,
+    camposAtivosOrdenados,
+    camposDisponiveis,
     camposObrigatorios,
     camposPossiveisUniq,
     camposPayload,
+    isCampoSempreObrigatorio: isCampoSempreObrigatorioNome,
     toggleCampo,
     setCampoObrigatorio,
     setCamposAtivos,
     setCamposObrigatorios,
+    setCamposOrdemAtivos,
     syncFromConfig,
   };
 }

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -55,10 +55,10 @@ Escopo desta correção:
 
 ## Definition of Done da Issue
 
-- [ ] todos os artefatos da F1 estão commitados
-- [ ] árvore limpa (`git status` sem arquivos M ou ??)
-- [ ] revalidação da auditoria solicitada ou executada com árvore limpa
-- [ ] dependência ao relatório F1-R01 documentada nesta issue
+- [x] todos os artefatos da F1 estão commitados
+- [x] árvore limpa (`git status` sem arquivos M ou ??)
+- [x] revalidação da auditoria solicitada ou executada com árvore limpa
+- [x] dependência ao relatório F1-R01 documentada nesta issue
 
 ## Tasks
 

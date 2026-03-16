@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -43,7 +43,7 @@ ate o head sem erro no ambiente alvo.
 | ISSUE-F1-01-005 | Endurecer revalidacao head no Supabase sem fallback ambiguo | Modo estrito ALEMBIC_STRICT_DIRECT_URL que aceite apenas DIRECT_URL e gere evidencia bruta para liberar F2 | 3 | done | [ISSUE-F1-01-005-Endurecer-Revalidacao-Head-no-Supabase-sem-Fallback-Ambiguo.md](./issues/ISSUE-F1-01-005-Endurecer-Revalidacao-Head-no-Supabase-sem-Fallback-Ambiguo.md) |
 | ISSUE-F1-01-006 | Fechar cobertura do modo estrito e alinhar gate da fase | Fechar lacuna de regressao do modo estrito e alinhar estado documental do gate | 2 | done | [ISSUE-F1-01-006-Fechar-Cobertura-do-Modo-Estrito-e-Alinhar-Gate-da-Fase.md](./issues/ISSUE-F1-01-006-Fechar-Cobertura-do-Modo-Estrito-e-Alinhar-Gate-da-Fase.md) |
 | ISSUE-F1-01-007 | Sincronizar cascata documental do fechamento da F1 | Corrigir a cascata documental local apos a review da ISSUE-F1-01-006 | 1 | done | [ISSUE-F1-01-007-Sincronizar-Cascata-Documental-do-Fechamento-da-F1](./issues/ISSUE-F1-01-007-Sincronizar-Cascata-Documental-do-Fechamento-da-F1/) |
-| ISSUE-F1-01-008 | Commit e revalidar auditoria F1 | Fazer commit dos artefatos e revalidar auditoria com arvore limpa (follow-up B1 F1-R01) | 1 | todo | [ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1](./issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/) |
+| ISSUE-F1-01-008 | Commit e revalidar auditoria F1 | Fazer commit dos artefatos e revalidar auditoria com arvore limpa (follow-up B1 F1-R01) | 1 | done | [ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1](./issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/) |
 
 ## Artifact Minimo do Epico
 

@@ -3,7 +3,7 @@ doc_id: "TASK-1.md"
 issue_id: "ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1"
 task_id: "T1"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 ---

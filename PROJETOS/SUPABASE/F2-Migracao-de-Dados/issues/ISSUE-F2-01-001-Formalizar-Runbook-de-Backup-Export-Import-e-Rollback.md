@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -35,14 +35,14 @@ fora desse escopo.
 - Given necessidade de rollback, When o operador consultar o runbook, Then o caminho de retorno ao backup do Supabase esta descrito de forma objetiva
 
 ## Definition of Done da Issue
-- [ ] runbook unico fechado para backup, export, import, validacao e rollback
-- [ ] sequencia operacional alinhada ao PRD e aos contratos atuais de conexao
-- [ ] criterios de parada e precondicoes criticas declarados
+- [x] runbook unico fechado para backup, export, import, validacao e rollback
+- [x] sequencia operacional alinhada ao PRD e aos contratos atuais de conexao
+- [x] criterios de parada e precondicoes criticas declarados
 
 ## Tasks Decupadas
-- [ ] T1: consolidar as restricoes e precondicoes do PRD e do repositorio para a migracao de dados
-- [ ] T2: definir a sequencia canonica de backup, export, import, validacao e rollback
-- [ ] T3: validar o runbook contra os contratos atuais de conexao, tooling e risco operacional
+- [x] T1: consolidar as restricoes e precondicoes do PRD e do repositorio para a migracao de dados
+- [x] T2: definir a sequencia canonica de backup, export, import, validacao e rollback
+- [x] T3: validar o runbook contra os contratos atuais de conexao, tooling e risco operacional
 
 ## Instructions por Task
 
@@ -123,6 +123,8 @@ fora desse escopo.
 
 Runbook unico com precondicoes, sequencia operacional, validacoes e rollback da
 migracao de dados.
+
+**Artifact gerado:** [docs/RUNBOOK-MIGRACAO-SUPABASE.md](../../../../docs/RUNBOOK-MIGRACAO-SUPABASE.md)
 
 ## Dependencias
 - [Intake](../../INTAKE-SUPABASE.md)

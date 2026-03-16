@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-01-Preparar-Backup-e-Export-do-PostgreSQL-Local.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -35,7 +35,7 @@ acao destrutiva na base alvo.
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F2-01-001 | Formalizar runbook de backup, export, import e rollback | Fechar a sequencia operacional da migracao sem improviso | 2 | todo | [ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md](./issues/ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md) |
+| ISSUE-F2-01-001 | Formalizar runbook de backup, export, import e rollback | Fechar a sequencia operacional da migracao sem improviso | 2 | done | [ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md](./issues/ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md) |
 | ISSUE-F2-01-002 | Automatizar backup do Supabase e export do PostgreSQL local | Gerar artefatos de seguranca e export com comandos reproduziveis | 3 | todo | [ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md](./issues/ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md) |
 
 ## Artifact Minimo do Epico

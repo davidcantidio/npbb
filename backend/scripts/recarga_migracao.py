@@ -188,11 +188,35 @@ def run_importacao(pg_restore_path: str, supabase_url: str, export_path: Path) -
     print("Importacao concluida. Dados locais carregados no Supabase.")
 
 
+def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) -> None:
+    """
+    T4: Consolida o estado final da recarga para a etapa de validação.
+    Confirma acessibilidade do Supabase e registra resultado da rodada.
+    """
+    engine = create_engine(supabase_url)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        raise SystemExit(
+            f"ERRO: Supabase recarregado nao acessivel. Ambiente nao apto para validacao pos-carga.\n"
+            f"Detalhe: {e}"
+        ) from e
+
+    print("\n=== Consolidacao da rodada ===")
+    print("Caminho usado: pg_restore (formato custom)")
+    print(f"Backup Supabase preservado: {backup_path}")
+    print(f"Export local utilizado: {export_path}")
+    print("Resultado: recarga concluida com sucesso")
+    print("\nBackup do Supabase preservado ate o encerramento da validacao da F3.")
+    print("Ambiente pronto para validacao pos-carga (ISSUE-F2-02-002).")
+
+
 def main() -> None:
     """Ordem: 1) validar precondições, 2) limpar, 3) importar, 4) consolidar."""
-    print("=== Recarga Controlada - Migracao F2 (Supabase) ===\n")
-
     pg_restore_path, supabase_url, backup_path, export_path = validate_preconditions()
+
+    print("=== Recarga Controlada - Migracao F2 (Supabase) ===\n")
     print("Precondicoes OK:")
     print(f"  - Caminho de recarga: {RECARGA_PATH}")
     print(f"  - Backup Supabase: {backup_path}")
@@ -205,7 +229,8 @@ def main() -> None:
     # T3: Importação
     run_importacao(pg_restore_path, supabase_url, export_path)
 
-    # TODO T4: consolidação
+    # T4: Consolidação
+    run_consolidacao(supabase_url, backup_path, export_path)
 
 
 if __name__ == "__main__":

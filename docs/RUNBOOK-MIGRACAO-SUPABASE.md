@@ -83,6 +83,19 @@ cd backend && python -m scripts.backup_export_migracao
 
 Artefatos gerados em `artifacts_migracao/` (backup_supabase_*.dump, export_local_*.dump).
 
+### 2.2.1 Automação (passos 3 e 4 — recarga)
+
+O script `backend/scripts/recarga_migracao.py` automatiza os passos 3 e 4 (limpeza + import):
+
+```bash
+cd backend && python -m scripts.recarga_migracao
+```
+
+**Pré-requisitos:** execute primeiro `backup_export_migracao.py`; configure no `.env`:
+- `SUPABASE_DIRECT_URL` ou `DIRECT_URL` — conexão direct ao Supabase
+
+O script valida precondições, executa limpeza controlada (TRUNCATE CASCADE), importa via `pg_restore` e consolida o estado para a validação pós-carga.
+
 ### 2.3 Uso de DIRECT_URL vs DATABASE_URL
 
 | Operação | URL | Motivo |

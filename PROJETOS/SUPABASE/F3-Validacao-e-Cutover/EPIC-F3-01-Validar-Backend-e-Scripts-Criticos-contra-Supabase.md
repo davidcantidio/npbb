@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -29,15 +29,15 @@ contrato atual de conexao.
 
 ## Definition of Done do Epico
 - [x] runtime do backend validado com Supabase
-- [ ] scripts criticos revisados contra o novo contrato operacional
-- [ ] fallback de testes com SQLite preservado
+- [x] scripts criticos revisados contra o novo contrato operacional
+- [x] fallback de testes com SQLite preservado
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F3-01-001 | Validar runtime do backend com Supabase | Comprovar que a API sobe e responde com o Supabase como banco de runtime | 3 | done | [ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase](./issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase/) |
-| ISSUE-F3-01-002 | Validar scripts criticos e invariantes de teste | Confirmar os contratos de scripts sensiveis e do fallback SQLite em testes | 2 | todo | [ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste](./issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste/) |
+| ISSUE-F3-01-002 | Validar scripts criticos e invariantes de teste | Confirmar os contratos de scripts sensiveis e do fallback SQLite em testes | 2 | done | [ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste](./issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste/) |
 
 ## Artifact Minimo do Epico
 

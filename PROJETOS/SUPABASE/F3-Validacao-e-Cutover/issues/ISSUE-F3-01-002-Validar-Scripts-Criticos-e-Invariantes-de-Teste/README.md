@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -34,9 +34,9 @@ duas frentes continuam coerentes apos a migracao do banco.
 - Given a revisao encerrada, When a fase final for documentada, Then existe evidencia minima de que operacao e testes continuam coerentes
 
 ## Definition of Done da Issue
-- [ ] scripts criticos revisados contra o contrato atual de conexao
-- [ ] fallback SQLite de testes confirmado
-- [ ] evidencias minimas de manutencao consolidadas
+- [x] scripts criticos revisados contra o contrato atual de conexao
+- [x] fallback SQLite de testes confirmado
+- [x] evidencias minimas de manutencao consolidadas
 
 ## Tasks
 

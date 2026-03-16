@@ -1,5 +1,7 @@
 # Troubleshooting
 
+Banco padrao do projeto: Supabase. PostgreSQL local e opcional (dev) ou usado apenas em scripts de migracao F2.
+
 ## 1) DATABASE_URL nao configurada
 **Sintoma:** `RuntimeError: DATABASE_URL nao configurada ...`
 **Solucao:** crie `backend/.env` a partir de `.env.example` e configure `DATABASE_URL`/`DIRECT_URL`.
@@ -85,9 +87,9 @@ Remove-Item -Recurse -Force frontend/node_modules
 **Sintoma:** timeouts ou erro de migrations.
 **Solucao:** use `DIRECT_URL` (porta 5432) para migrations/seed e `DATABASE_URL` (pooler) para runtime.
 
-## 14) Tests falham por SQLite
+## 14) Tests falham por conexao no pytest
 **Sintoma:** erro de conexao no pytest.
-**Solucao:** exporte `TESTING=true` ou configure `DATABASE_URL` para um banco de teste.
+**Solucao:** exporte `TESTING=true` para usar SQLite automaticamente (caminho padrao de testes). Alternativa: configure `DATABASE_URL` para um banco de teste.
 
 ## 15) Validar runtime com Supabase
 **Objetivo:** confirmar que o backend usa o Supabase como banco (nao PostgreSQL local).
@@ -99,6 +101,7 @@ Remove-Item -Recurse -Force frontend/node_modules
 Se `DATABASE_URL` apontar para `127.0.0.1` ou `localhost`, o runtime usara o PostgreSQL local e nao o Supabase.
 
 ## 16) backup_export_migracao falha (credenciais ou tooling)
+**Contexto:** script de migracao F2 (backup Supabase + export local). PostgreSQL local nao e requisito para operacao normal.
 **Sintoma:** `ERRO: LOCAL_DIRECT_URL nao configurado`, `pg_dump nao encontrado no PATH` ou `pg_restore nao encontrado no PATH`.
 **Solucao:**
 - Configure no `backend/.env`: `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` (ver `.env.example`).

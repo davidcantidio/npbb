@@ -43,7 +43,7 @@ do caminho principal e SQLite preservado apenas para testes.
 
 - [x] [T1: Mapear pontos de drift documental e de configuracao](./TASK-1.md) — [INVENTARIO-DRIFT.md](./INVENTARIO-DRIFT.md)
 - [x] [T2: Atualizar configuracao e setup para Supabase como banco unico](./TASK-2.md)
-- [T3: Alinhar troubleshooting e deploy ao estado final validado](./TASK-3.md)
+- [x] [T3: Alinhar troubleshooting e deploy ao estado final validado](./TASK-3.md)
 - [T4: Revisao final de consistencia entre arquivos atualizados](./TASK-4.md)
 
 ## Arquivos Reais Envolvidos

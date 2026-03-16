@@ -89,6 +89,27 @@ def _find_latest_artifact(prefix: str) -> Path | None:
     return matches[0] if matches else None
 
 
+def _validate_artifact_contract(pg_restore_path: str, export_path: Path) -> None:
+    """
+    ISSUE-F2-02-003: Pre-valida o artefato de export antes de qualquer passo destrutivo.
+    Bloqueia a recarga se o dump contiver dados de alembic_version (contrato incompatível com F1).
+    """
+    cmd = [pg_restore_path, "--list", str(export_path)]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise SystemExit(
+            f"ERRO: Artefato ilegivel para pre-validacao: {export_path}\n"
+            f"pg_restore --list falhou.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+    combined = (result.stdout or "") + (result.stderr or "")
+    if "alembic_version" in combined:
+        raise SystemExit(
+            f"ERRO: Artefato incompativel com schema validado em F1: {export_path}\n"
+            "O dump contem dados de alembic_version. Execute novamente o backup_export_migracao "
+            "com a versao corrigida do script (--exclude-table-data=public.alembic_version)."
+        )
+
+
 def validate_preconditions() -> tuple[str, str, Path, Path]:
     """
     T1: Valida precondições e retorna (pg_restore_path, supabase_url, backup_path, export_path).
@@ -118,6 +139,9 @@ def validate_preconditions() -> tuple[str, str, Path, Path]:
 
     # 3. Conferir DIRECT_URL do Supabase
     supabase_url = _get_supabase_url()
+
+    # 4. ISSUE-F2-02-003: Pre-validar contrato do artefato (antes de qualquer passo destrutivo)
+    _validate_artifact_contract(pg_restore_path, export_path)
 
     return pg_restore_path, supabase_url, backup_path, export_path
 

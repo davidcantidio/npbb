@@ -163,12 +163,14 @@ def run_export_local(pg_dump: str, local_url: str, out_dir: Path) -> Path:
     out_file = out_dir / f"export_local_{timestamp}.dump"
     libpq_url = _sqlalchemy_to_libpq(local_url)
 
+    # ISSUE-F2-02-003: excluir alembic_version do dump para compatibilidade com schema validado em F1
     cmd = [
         pg_dump,
         "--format=custom",
         "--data-only",
         "--no-owner",
         "--no-acl",
+        "--exclude-table-data=public.alembic_version",
         "-f", str(out_file),
         libpq_url,
     ]

@@ -84,7 +84,7 @@ cd backend && python -m scripts.backup_export_migracao
 
 **Tooling obrigatório:** `pg_dump` e `pg_restore` no PATH (o segundo é usado para validar os dumps antes de declarar sucesso).
 
-**Validação final:** o script só imprime a mensagem de prontidao para F2-02 após validar objetivamente os dumps gerados (existência, tamanho > 0, `pg_restore --list` sem erro). Se a validação falhar, o fluxo termina com erro e não declara os artefatos prontos.
+**Validação final:** o script só imprime a mensagem de prontidao para F2-02 após validar objetivamente os dumps gerados (existência, tamanho > 0, `pg_restore --list` sem erro). O export local exclui `alembic_version` (contrato F1, ISSUE-F2-02-003). Se a validação falhar, o fluxo termina com erro e não declara os artefatos prontos.
 
 Artefatos gerados em `artifacts_migracao/` (backup_supabase_*.dump, export_local_*.dump).
 
@@ -97,9 +97,10 @@ cd backend && python -m scripts.recarga_migracao
 ```
 
 **Pré-requisitos:** execute primeiro `backup_export_migracao.py`; configure no `.env`:
-- `SUPABASE_DIRECT_URL` ou `DIRECT_URL` — conexão direct ao Supabase
+- `SUPABASE_DIRECT_URL` ou `DIRECT_URL` — conexão direct ao Supabase (limpeza/import)
+- `DATABASE_URL` — conexão de runtime; a consolidação só libera para F2-02-002 quando apontar para o Supabase (não local)
 
-O script valida precondições (incluindo contrato do artefato, ISSUE-F2-02-003), executa limpeza controlada (TRUNCATE CASCADE), importa via `pg_restore --single-transaction` (atomicidade) e consolida o estado para a validação pós-carga.
+O script valida precondições (incluindo contrato do artefato, ISSUE-F2-02-003), executa limpeza controlada (TRUNCATE CASCADE), importa via `pg_restore --single-transaction` (atomicidade) e consolida o estado. A consolidação só declara prontidão quando `DATABASE_URL` estiver apta para o Supabase.
 
 ### 2.3 Uso de DIRECT_URL vs DATABASE_URL
 

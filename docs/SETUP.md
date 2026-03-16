@@ -132,6 +132,13 @@ python scripts/seed_domains.py
 python scripts/seed_sample.py
 ```
 
+### 6) Migracao F2 (backup e export)
+Para gerar backup do Supabase e export do PostgreSQL local antes da recarga:
+```bash
+cd backend && python -m scripts.backup_export_migracao
+```
+Configure `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` no `.env`. Ver [RUNBOOK-MIGRACAO-SUPABASE.md](RUNBOOK-MIGRACAO-SUPABASE.md).
+
 ## Frontend
 ### 1) Instalar deps
 ```bash

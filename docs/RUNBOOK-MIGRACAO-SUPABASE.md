@@ -69,7 +69,21 @@ A rodada de migração segue esta ordem. **Nenhum passo destrutivo** (limpeza/tr
 - **Import**: `psql` (para SQL plain) ou `pg_restore` (para formato custom)
 - **Ordem de limpeza**: truncate em ordem reversa de dependência de FKs antes do reload (detalhes na fase F2)
 
-### 2.2 Uso de DIRECT_URL vs DATABASE_URL
+### 2.2 Automação (passos 1 e 2)
+
+O script `backend/scripts/backup_export_migracao.py` automatiza os passos 1 e 2 (backup Supabase + export local):
+
+```bash
+cd backend && python -m scripts.backup_export_migracao
+```
+
+**Pré-requisitos:** configure no `.env`:
+- `SUPABASE_DIRECT_URL` ou `DIRECT_URL` — conexão direct ao Supabase (backup)
+- `LOCAL_DIRECT_URL` — conexão ao PostgreSQL local (export)
+
+Artefatos gerados em `artifacts_migracao/` (backup_supabase_*.dump, export_local_*.dump).
+
+### 2.3 Uso de DIRECT_URL vs DATABASE_URL
 
 | Operação | URL | Motivo |
 |----------|-----|--------|
@@ -79,7 +93,7 @@ A rodada de migração segue esta ordem. **Nenhum passo destrutivo** (limpeza/tr
 | Import no Supabase | `DIRECT_URL` | Restore exige conexão direta |
 | Runtime da API | `DATABASE_URL` | Pooler pode ser usado em produção |
 
-### 2.3 Critérios de parada (antes de passo destrutivo)
+### 2.4 Critérios de parada (antes de passo destrutivo)
 
 - **Antes de limpeza**: confirmar que backup do Supabase existe e export local está disponível
 - **Antes de import**: confirmar que limpeza foi concluída sem erro

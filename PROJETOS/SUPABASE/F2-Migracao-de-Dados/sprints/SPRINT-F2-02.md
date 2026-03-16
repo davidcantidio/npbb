@@ -24,6 +24,7 @@ validacao de integridade e rollback da fase de dados.
 |---|---|---|---|---|
 | ISSUE-F2-02-001 | Implementar recarga controlada de dados no Supabase | 5 | done | [ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md](../issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md) |
 | ISSUE-F2-02-002 | Validar integridade pos-carga e procedimento de rollback | 3 | todo | [ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md](../issues/ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md) |
+| ISSUE-F2-02-003 | Endurecer contratos e atomicidade da recarga no Supabase | 3 | done | [ISSUE-F2-02-003-Endurecer-Contratos-e-Atomicidade-da-Recarga-no-Supabase.md](../issues/ISSUE-F2-02-003-Endurecer-Contratos-e-Atomicidade-da-Recarga-no-Supabase.md) |
 
 ## Riscos e Bloqueios
 

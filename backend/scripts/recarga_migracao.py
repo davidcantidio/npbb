@@ -25,6 +25,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 # Garante que o pacote app seja encontrado
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -226,6 +227,19 @@ def _is_local_runtime(url: str) -> bool:
     return "127.0.0.1" in lower or "localhost" in lower
 
 
+def _normalize_db_target(url: str) -> tuple[str, str]:
+    """
+    ISSUE-F2-02-004: Retorna (host_normalizado, database) para comparacao de alvo.
+    Para Supabase, pooler e direct do mesmo projeto compartilham o host apos remover -pooler.
+    """
+    parsed = make_url(url)
+    host = (parsed.host or "").lower()
+    database = (parsed.database or "postgres").lower()
+    if ".supabase.co" in host and "-pooler" in host:
+        host = host.replace("-pooler", "")
+    return (host, database)
+
+
 def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) -> None:
     """
     T4: Consolida o estado final da recarga para a etapa de validação.
@@ -258,17 +272,28 @@ def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) ->
             "configurada para o Supabase (pooler ou direct). Ajuste o .env e execute novamente."
         )
 
-    # 3. Validar que o runtime (DATABASE_URL) conecta ao Supabase
+    # 3. Validar que o runtime (DATABASE_URL) conecta
     engine_runtime = create_engine(runtime_url)
     try:
         with engine_runtime.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as e:
         raise SystemExit(
-            f"ERRO: DATABASE_URL (runtime) nao conecta ao Supabase. Ambiente nao apto para validacao pos-carga.\n"
+            f"ERRO: DATABASE_URL (runtime) nao conecta. Ambiente nao apto para validacao pos-carga.\n"
             f"Detalhe: {e}\n"
             "Verifique se DATABASE_URL aponta para o pooler/direct do Supabase e se as credenciais estao corretas."
         ) from e
+
+    # 4. ISSUE-F2-02-004: Validar alinhamento entre runtime e alvo recarregado
+    target_supabase = _normalize_db_target(supabase_url)
+    target_runtime = _normalize_db_target(runtime_url)
+    if target_supabase != target_runtime:
+        raise SystemExit(
+            "ERRO: DATABASE_URL aponta para alvo diferente do Supabase recarregado. "
+            "A consolidacao so libera quando o runtime (DATABASE_URL) estiver alinhado ao mesmo "
+            "Supabase da recarga (DIRECT_URL). Conectividade remota isolada nao basta. "
+            "Ajuste DATABASE_URL no .env para o pooler/direct do Supabase alvo e execute novamente."
+        )
 
     print("\n=== Consolidacao da rodada ===")
     print("Caminho usado: pg_restore (formato custom)")

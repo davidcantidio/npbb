@@ -206,11 +206,11 @@ def test_run_consolidacao_blocks_when_database_url_remote_divergent(
 def test_run_consolidacao_succeeds_when_database_url_apt(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Consolidacao libera quando DATABASE_URL apta para Supabase."""
+    """Consolidacao libera quando DATABASE_URL alinhada ao mesmo Supabase alvo da recarga."""
     def getenv(k: str, d: str | None = None) -> str | None:
         if k == "DATABASE_URL":
-            return "postgresql://u:p@aws-0-xx.supabase.co:6543/postgres"
-        return "postgresql://u:p@db.supabase.co:5432/db" if k == "DIRECT_URL" else d
+            return "postgresql://u:p@aws-0-xx-pooler.supabase.co:6543/postgres"
+        return "postgresql://u:p@aws-0-xx.supabase.co:5432/postgres" if k == "DIRECT_URL" else d
 
     monkeypatch.setattr("os.getenv", getenv)
 
@@ -221,7 +221,7 @@ def test_run_consolidacao_succeeds_when_database_url_apt(
     monkeypatch.setattr(recarga_migracao, "create_engine", lambda url: mock_engine)
 
     recarga_migracao.run_consolidacao(
-        supabase_url="postgresql://u:p@db.supabase.co:5432/db",
+        supabase_url="postgresql://u:p@aws-0-xx.supabase.co:5432/postgres",
         backup_path=tmp_path / "backup.dump",
         export_path=tmp_path / "export.dump",
     )

@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F3-01.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -22,7 +22,7 @@ fechar a documentacao e a configuracao final do projeto.
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F3-01-001 | Validar runtime do backend com Supabase | 3 | todo | [ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md](../issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md) |
+| ISSUE-F3-01-001 | Validar runtime do backend com Supabase | 3 | done | [ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md](../issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md) |
 | ISSUE-F3-01-002 | Validar scripts criticos e invariantes de teste | 2 | todo | [ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste.md](../issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste.md) |
 | ISSUE-F3-02-001 | Atualizar configuracao e documentacao para Supabase como banco unico | 3 | todo | [ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico.md](../issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico.md) |
 

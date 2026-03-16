@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -35,14 +35,14 @@ sensiveis de banco.
 - Given a validacao de runtime concluida, When a documentacao final for ajustada, Then o estado operacional validado esta claro
 
 ## Definition of Done da Issue
-- [ ] backend iniciado com `DATABASE_URL` do Supabase
-- [ ] checks minimos de disponibilidade executados com sucesso
-- [ ] bloqueios objetivos de runtime registrados, se existirem
+- [x] backend iniciado com `DATABASE_URL` do Supabase
+- [x] checks minimos de disponibilidade executados com sucesso
+- [x] bloqueios objetivos de runtime registrados, se existirem
 
 ## Tasks Decupadas
-- [ ] T1: preparar o ambiente de runtime e conferir o contrato de URLs
-- [ ] T2: iniciar a API e executar os checks basicos de disponibilidade
-- [ ] T3: consolidar o resultado da validacao de runtime para liberar a documentacao final
+- [x] T1: preparar o ambiente de runtime e conferir o contrato de URLs
+- [x] T2: iniciar a API e executar os checks basicos de disponibilidade
+- [x] T3: consolidar o resultado da validacao de runtime para liberar a documentacao final
 
 ## Instructions por Task
 

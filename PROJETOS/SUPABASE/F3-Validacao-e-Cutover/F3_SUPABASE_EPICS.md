@@ -1,7 +1,7 @@
 ---
 doc_id: "F3_SUPABASE_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 audit_gate: "not_ready"
@@ -51,7 +51,7 @@ PostgreSQL local como requisito operacional padrao.
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F3-01 | Validar backend e scripts criticos contra Supabase | Confirmar runtime, scripts e invariantes minimos apos a migracao de dados | F2 concluida | todo | [EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md](./EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md) |
+| EPIC-F3-01 | Validar backend e scripts criticos contra Supabase | Confirmar runtime, scripts e invariantes minimos apos a migracao de dados | F2 concluida | active | [EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md](./EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md) |
 | EPIC-F3-02 | Consolidar configuracao final e remover dependencia do Postgres local | Atualizar setup, troubleshooting e deploy para Supabase como banco unico | EPIC-F3-01 | todo | [EPIC-F3-02-Consolidar-Configuracao-Final-e-Remover-Dependencia-do-Postgres-Local.md](./EPIC-F3-02-Consolidar-Configuracao-Final-e-Remover-Dependencia-do-Postgres-Local.md) |
 
 ## Dependencias entre Epicos

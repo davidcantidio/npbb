@@ -4,23 +4,17 @@ Este guia cobre o setup completo. Se quiser apenas o caminho feliz, veja o READM
 
 ## TL;DR (caminho feliz)
 ```bash
-# backend (raiz do repo)
-source backend/.venv/bin/activate
-./scripts/dev_backend.sh
-
-# backend
+# backend (raiz do repo) — Supabase como banco unico
 cd backend
-brew install postgresql@16
-brew services start postgresql@16
-/opt/homebrew/opt/postgresql@16/bin/createdb npbb  # execute uma vez (ignore se ja existir)
 /opt/homebrew/bin/python3.12 -m venv .venv  # macOS/Homebrew
 # python -m venv .venv  # Linux/Windows
 source .venv/bin/activate  # Linux/macOS
 # .\.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-copy .env.example .env
-PYTHONPATH=.. python -m uvicorn app.main:app --reload
-# alternativa: ./scripts/dev_api.sh
+cp .env.example .env  # configure DATABASE_URL e DIRECT_URL com seu projeto Supabase
+cd ..
+source backend/.venv/bin/activate
+./scripts/dev_backend.sh
 
 # frontend (em outro terminal)
 cd frontend
@@ -32,10 +26,11 @@ npm run dev
 ## Pre-requisitos
 - Python **3.12**
 - Node.js **18+**
-- Postgres local (Homebrew `postgresql@16`)
+- Projeto Supabase (banco unico do projeto). PostgreSQL local e opcional para dev.
 
 ## Backend
-### 0) Preparar Postgres local (macOS/Homebrew)
+### 0) Alternativa: PostgreSQL local (dev)
+Se preferir rodar com banco local em vez do Supabase:
 ```bash
 brew install postgresql@16
 brew services start postgresql@16
@@ -61,14 +56,20 @@ copy .env.example .env  # Windows
 # cp .env.example .env  # Linux/macOS
 ```
 
-Exemplo (sem PII, substitua pelos seus valores):
+Exemplo Supabase (substitua pelos seus valores do projeto):
 ```env
-DATABASE_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
-DIRECT_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
+DATABASE_URL="postgresql+psycopg2://postgres.<project_ref>:<password>@<pooler_host>:6543/postgres"
+DIRECT_URL="postgresql+psycopg2://postgres.<project_ref>:<password>@<db_host>:5432/postgres"
 SECRET_KEY="change-me"
 FRONTEND_ORIGIN="http://localhost:5173"
 EMAIL_BACKEND="console"
 PASSWORD_RESET_DEBUG="false"
+```
+
+Alternativa (PostgreSQL local para dev):
+```env
+DATABASE_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
+DIRECT_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
 ```
 
 Observacoes:

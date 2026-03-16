@@ -1,6 +1,6 @@
 ---
 doc_id: "GOV-ISSUE-FIRST.md"
-version: "2.2"
+version: "2.3"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -61,8 +61,9 @@ Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PRO
 - `EPIC-*.md`: manifesto do epico, DoD do epico, dependencias, artefato minimo e indice das issues
 - `issues/ISSUE-*/` (pasta) ou `issues/ISSUE-*.md` (legado): user story, plano TDD, criterios
   `Given/When/Then`, DoD; quando granularizada, tasks em `TASK-*.md`; `decision_refs` e instructions
-  por task quando exigidas; follow-up de review pos-issue deve preservar rastreabilidade explicita
-  para a issue de origem
+  por task quando exigidas; quando `task_instruction_mode: required` e a task envolver codigo,
+  o plano TDD da issue deve descer para a task via `tdd_aplicavel` e `testes_red`; follow-up
+  de review pos-issue deve preservar rastreabilidade explicita para a issue de origem
 - `sprints/SPRINT-*.md`: selecao de issues, capacidade, riscos e consolidacao de status
 - `auditorias/RELATORIO-AUDITORIA-*.md`: usar `TEMPLATE-AUDITORIA-RELATORIO.md`
 
@@ -223,7 +224,32 @@ Notas obrigatorias:
 - o detalhamento operacional de cada task vive em `TASK-N.md`
 - quando `task_instruction_mode: required`, os campos obrigatorios aparecem no
   corpo de cada `TASK-N.md`, nunca como bloco inline no `README.md`
+- quando a task envolver codigo com cobertura automatizavel, `TASK-N.md` deve declarar
+  `tdd_aplicavel: true` e descrever `testes_red` antes de `passos_atomicos`
 - o status do `README.md` e agregado das tasks
+
+Exemplo minimo de `TASK-1.md` quando TDD aplica:
+
+```markdown
+---
+doc_id: "TASK-1.md"
+issue_id: "ISSUE-F1-01-001-NOME"
+task_id: "T1"
+version: "1.1"
+status: "todo"
+owner: "PM"
+last_updated: "YYYY-MM-DD"
+tdd_aplicavel: true
+---
+
+## testes_red
+- testes_a_escrever_primeiro:
+  - ...
+- comando_para_rodar:
+  - `cd backend && python -m pytest -q -k contrato`
+- criterio_red:
+  - os testes devem falhar antes da implementacao
+```
 
 ## Template de Compatibilidade Legada: `issues/ISSUE-*.md`
 
@@ -270,8 +296,20 @@ Como <papel>, quero <acao> para <resultado>.
 - precondicoes:
 - arquivos_a_ler_ou_tocar:
   - `frontend/...`
+- tdd_aplicavel: true
+- testes_red:
+  - testes_a_escrever_primeiro:
+    - ...
+  - comando_para_rodar:
+    - `npm run test -- --run`
+  - criterio_red:
+    - os testes devem falhar antes da implementacao
 - passos_atomicos:
-  1. ...
+  1. escrever os testes listados em `testes_red`
+  2. rodar os testes e confirmar falha inicial
+  3. implementar o minimo necessario para passar
+  4. rodar os testes e confirmar green
+  5. refatorar se necessario mantendo green
 - comandos_permitidos:
   - `npm run test -- --run`
 - resultado_esperado:
@@ -347,6 +385,8 @@ last_updated: "YYYY-MM-DD"
 - `optional`: tasks podem permanecer como checklist curto
 - `required`: cada task precisa de bloco proprio em `## Instructions por Task` ou arquivo
   `TASK-N.md` quando a issue for granularizada
+- em task com codigo e `tdd_aplicavel: true`, o detalhamento por task deve explicitar
+  `testes_red` e ordem red -> green -> refactor
 - usar `required` conforme `SPEC-TASK-INSTRUCTIONS.md`
 
 ## Status Agregado (Issue Granularizada)

@@ -1,10 +1,10 @@
 ---
 doc_id: "F2_SUPABASE_EPICS.md"
-version: "1.1"
+version: "1.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
-audit_gate: "pending"
+audit_gate: "approved"
 ---
 
 # Epicos - SUPABASE / F2 - Migracao de Dados
@@ -23,8 +23,9 @@ validada com rollback operacionalmente viavel.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `pending`
-- ultima_auditoria: `nao_aplicavel`
+- gate_atual: `approved`
+- ultima_auditoria: `F2-R01` (go)
+- observacao: o gate da F2 esta aprovado, mas a progressao global para F3 continua subordinada ao estado da fase anterior no `AUDIT-LOG.md`
 
 ## Checklist de Transicao de Gate
 
@@ -42,10 +43,10 @@ validada com rollback operacionalmente viavel.
 - [ ] o estado do gate foi atualizado para `hold`
 
 ### `pending -> approved`
-- [ ] existe `RELATORIO-AUDITORIA-F2-R<NN>.md`
-- [ ] `AUDIT-LOG.md` foi atualizado
-- [ ] o veredito da auditoria e `go`
-- [ ] o estado do gate foi atualizado para `approved`
+- [x] existe `RELATORIO-AUDITORIA-F2-R<NN>.md`
+- [x] `AUDIT-LOG.md` foi atualizado
+- [x] o veredito da auditoria e `go`
+- [x] o estado do gate foi atualizado para `approved`
 
 ## Epicos
 

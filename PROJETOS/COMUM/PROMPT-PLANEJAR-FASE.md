@@ -1,6 +1,6 @@
 ---
 doc_id: "PROMPT-PLANEJAR-FASE.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -78,6 +78,9 @@ Se a sprint ainda nao estiver definida, o arquivo em `sprints/` pode ser omitido
   vive nos `TASK-N.md`; em issue legada, em `## Instructions por Task`
 - se a issue for simples, usar `task_instruction_mode: optional` e manter
   apenas as tasks decupadas no formato escolhido
+- quando a task envolver codigo novo ou alteracao com cobertura de teste, marcar
+  `tdd_aplicavel: true` no detalhamento da task e preencher `testes_red` +
+  `passos_atomicos` na ordem TDD definida em `SPEC-TASK-INSTRUCTIONS.md`
 - `SPRINT-*.md` nao repete criterios, DoD ou tarefas da issue
 - usar apenas os status documentais `todo`, `active`, `done`, `cancelled`
 - ao concluir uma fase, o arquivamento futuro sera em `<projeto>/feito/`

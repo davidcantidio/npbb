@@ -1,6 +1,6 @@
 ---
 doc_id: "SPEC-TASK-INSTRUCTIONS.md"
-version: "2.2"
+version: "2.3"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -66,11 +66,31 @@ Campos minimos por task:
 - `objetivo`
 - `precondicoes`
 - `arquivos_a_ler_ou_tocar`
+- `tdd_aplicavel` (`true`, `false` ou omitido; omitido equivale a `false`)
+- `testes_red` quando `tdd_aplicavel: true`
 - `passos_atomicos`
 - `comandos_permitidos`
 - `resultado_esperado`
 - `testes_ou_validacoes_obrigatorias`
 - `stop_conditions`
+
+Regras adicionais quando `tdd_aplicavel: true`:
+
+- `testes_red` deve aparecer imediatamente antes de `passos_atomicos`
+- `testes_red` deve listar os testes ou cenarios a escrever primeiro
+- `testes_red` deve declarar o comando que executa esses testes
+- `testes_red` deve declarar explicitamente que os testes precisam falhar antes da implementacao
+- cada comando citado em `testes_red` tambem deve constar em `comandos_permitidos`
+- `passos_atomicos` deve refletir a ordem TDD: escrever testes, rodar e confirmar falha, implementar minimo, rodar e confirmar sucesso, refatorar se necessario
+- `testes_ou_validacoes_obrigatorias` permanece reservado para as validacoes finais, apos o green estar confirmado
+
+Quando `tdd_aplicavel: false` ou o campo estiver omitido, `testes_red` nao e obrigatorio e a
+task continua no comportamento atual.
+
+Formato de `tdd_aplicavel`:
+
+- issue granularizada: campo no frontmatter de `TASK-N.md`
+- issue legada: campo inline no bloco `### Tn` dentro de `## Instructions por Task`
 
 ## Criterio de Atomicidade
 
@@ -79,6 +99,7 @@ Uma instruction atomica deve:
 - descrever uma unica acao verificavel por passo
 - evitar branching pesado ou fluxos com muitas alternativas
 - explicitar ordem quando a sequencia for critica
+- quando `tdd_aplicavel: true`, separar claramente a fase red da fase green
 - permitir que outro agente execute sem reinterpretar o objetivo da task
 - dizer claramente quando parar e reportar bloqueio
 
@@ -87,6 +108,7 @@ Uma instruction ruim costuma:
 - misturar varias alteracoes em um unico passo
 - depender de conhecimento tacito nao documentado
 - omitir arquivos ou testes obrigatorios
+- em task TDD, tratar testes apenas como validacao final em vez de driver da implementacao
 - usar formulacoes vagas como "ajustar se necessario" sem criterio objetivo
 
 ## Regra de Elegibilidade
@@ -94,12 +116,15 @@ Uma instruction ruim costuma:
 - issue com `task_instruction_mode: required` sem detalhamento completo por task no formato escolhido nao e elegivel para execucao
 - o agente executor deve responder `BLOQUEADO` em vez de improvisar
 - o bloqueio vale tambem quando houver task sem `TASK-N.md` correspondente, sem bloco correspondente em `## Instructions por Task`, ou com campos minimos ausentes
+- o bloqueio vale tambem quando `tdd_aplicavel: true` estiver sem `testes_red`, sem comando red,
+  sem criterio explicito de falha inicial, ou sem `passos_atomicos` na ordem TDD
 
 ## Compatibilidade de Rollout
 
 - issues antigas sem `task_instruction_mode` podem ser tratadas como `optional` ate serem revisadas
 - nao ha retrofit em massa obrigatorio neste rollout
 - qualquer issue nova de alto risco deve nascer com `task_instruction_mode: required`
+- tasks sem `tdd_aplicavel` continuam compativeis e equivalem a `false`
 
 ## Issue Granularizada (Pasta com TASK-N.md)
 
@@ -140,6 +165,73 @@ task_instruction_mode: "required"
 Cada `TASK-N.md` deve seguir `TEMPLATE-TASK.md` e conter todos os campos minimos
 listados nesta spec.
 
+## Exemplo Canonico - TASK-N Backend com TDD
+
+```markdown
+---
+doc_id: "TASK-1.md"
+issue_id: "ISSUE-F1-02-001-EXEMPLO"
+task_id: "T1"
+version: "1.1"
+status: "todo"
+owner: "PM"
+last_updated: "YYYY-MM-DD"
+tdd_aplicavel: true
+---
+
+# T1 - Ajustar contrato do endpoint de ativacoes
+
+## objetivo
+
+Fazer o endpoint retornar o campo `slug` normalizado sem quebrar o contrato atual.
+
+## precondicoes
+
+- router atual identificado
+- suite de testes HTTP da feature existente
+
+## arquivos_a_ler_ou_tocar
+
+- `backend/app/routers/ativacoes.py`
+- `backend/tests/test_ativacoes_router.py`
+
+## testes_red
+
+- testes_a_escrever_primeiro:
+  - adicionar caso cobrindo resposta com `slug` normalizado
+  - adicionar caso cobrindo ausencia de `slug` quando o nome vier vazio
+- comando_para_rodar:
+  - `cd backend && TESTING=true python -m pytest -q backend/tests/test_ativacoes_router.py -k slug`
+- criterio_red:
+  - os testes novos devem falhar antes da implementacao; se passarem sem mudanca de codigo, parar e revisar a task
+
+## passos_atomicos
+
+1. escrever os testes listados em `testes_red`
+2. rodar o comando red e confirmar falha real ligada ao contrato esperado
+3. implementar o minimo necessario no endpoint para fazer apenas esses testes passarem
+4. rodar novamente a suite alvo e confirmar green
+5. refatorar nomes ou extracoes locais sem ampliar escopo, mantendo a suite green
+
+## comandos_permitidos
+
+- `cd backend && TESTING=true python -m pytest -q backend/tests/test_ativacoes_router.py -k slug`
+
+## resultado_esperado
+
+Endpoint retorna `slug` normalizado, com cobertura automatizada descrevendo o comportamento.
+
+## testes_ou_validacoes_obrigatorias
+
+- `cd backend && TESTING=true python -m pytest -q backend/tests/test_ativacoes_router.py`
+- revisar resposta do endpoint contra os criterios de aceitacao da issue
+
+## stop_conditions
+
+- parar se os testes novos passarem antes de qualquer implementacao
+- parar se o contrato atual observado divergir do manifesto da issue
+```
+
 ## Exemplo de Compatibilidade - Issue Legada Required
 
 ```markdown
@@ -165,6 +257,7 @@ task_instruction_mode: "required"
 - arquivos_a_ler_ou_tocar:
   - `backend/alembic/versions/...`
   - `backend/app/models/models.py`
+- tdd_aplicavel: false
 - passos_atomicos:
   1. gerar ou criar o arquivo de migration sobre a revision correta
   2. adicionar as colunas novas no `upgrade()` com nullability e defaults definidos pela issue
@@ -197,6 +290,55 @@ task_instruction_mode: "optional"
 - [ ] T2: atualizar o teste unitario correspondente
 ```
 
+## Exemplo Canonico - Issue Legada Required com TDD
+
+```markdown
+---
+doc_id: "ISSUE-F2-01-010-AJUSTAR-FILTRO-DE-BUSCA.md"
+version: "1.0"
+status: "todo"
+owner: "PM"
+last_updated: "YYYY-MM-DD"
+task_instruction_mode: "required"
+---
+
+## Tarefas Decupadas
+- [ ] T1: corrigir debounce do filtro no frontend
+
+## Instructions por Task
+
+### T1
+- objetivo: corrigir debounce sem regressao visual ou funcional
+- precondicoes: componente alvo identificado; suite do filtro existente
+- arquivos_a_ler_ou_tocar:
+  - `frontend/src/features/filtros/BuscaDebounced.tsx`
+  - `frontend/src/features/filtros/BuscaDebounced.test.tsx`
+- tdd_aplicavel: true
+- testes_red:
+  - testes_a_escrever_primeiro:
+    - adicionar caso cobrindo disparo unico apos digitar rapidamente
+    - adicionar caso cobrindo limpeza do timer no unmount
+  - comando_para_rodar:
+    - `cd frontend && npm run test -- BuscaDebounced.test.tsx --run`
+  - criterio_red:
+    - os testes devem falhar antes da implementacao; se ja passarem, parar e revisar o entendimento
+- passos_atomicos:
+  1. escrever os testes listados em `testes_red`
+  2. rodar a suite alvo e confirmar falha inicial
+  3. implementar o minimo necessario para fazer os testes passarem
+  4. rodar novamente a suite alvo e confirmar green
+  5. refatorar apenas nomes ou extracoes locais mantendo green
+- comandos_permitidos:
+  - `cd frontend && npm run test -- BuscaDebounced.test.tsx --run`
+- resultado_esperado: filtro com debounce previsivel e cobertura automatizada
+- testes_ou_validacoes_obrigatorias:
+  - `cd frontend && npm run test -- BuscaDebounced.test.tsx --run`
+  - validar manualmente que o filtro segue responsivo na tela alvo
+- stop_conditions:
+  - parar se os testes novos nao falharem antes da implementacao
+  - parar se o componente real divergir do contrato descrito na issue
+```
+
 ## Commit apos Cada Task
 
 - apos concluir cada task, o executor deve fazer commit antes de prosseguir
@@ -212,4 +354,6 @@ Antes de marcar uma issue `required` como pronta para execucao, confirme:
 - [ ] todo detalhamento por task tem os campos minimos
 - [ ] os passos atomicos estao em ordem e sem branching pesado
 - [ ] os testes obrigatorios estao declarados
+- [ ] quando `tdd_aplicavel: true`, `testes_red` esta presente e separado das validacoes finais
+- [ ] quando `tdd_aplicavel: true`, `passos_atomicos` explicita a ordem red -> green -> refactor
 - [ ] existe ao menos uma `stop_condition` objetiva por task

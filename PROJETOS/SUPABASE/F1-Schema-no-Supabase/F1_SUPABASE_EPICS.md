@@ -1,10 +1,10 @@
 ---
 doc_id: "F1_SUPABASE_EPICS.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
-audit_gate: "approved"
+audit_gate: "hold"
 ---
 
 # Epicos - SUPABASE / F1 - Schema no Supabase
@@ -23,8 +23,9 @@ liberar a fase de migracao de dados.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `approved`
-- ultima_auditoria: `F1-R02` (go)
+- gate_atual: `hold`
+- ultima_auditoria: `F1-R03` (hold, provisional)
+- observacao: a fase foi reaberta por worktree sujo na rodada `F1-R03`; resolver o follow-up bloqueante antes de retomar a progressao formal do projeto
 
 ## Checklist de Transicao de Gate
 

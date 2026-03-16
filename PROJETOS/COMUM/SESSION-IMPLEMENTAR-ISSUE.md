@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-ISSUE.md"
-version: "1.5"
+version: "1.6"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -102,12 +102,15 @@ Nao e possivel determinar automaticamente qual situacao se aplica.
   `active`. Execute apenas essa task; ao concluir, atualize `status: done` no `TASK-N.md`,
   recalcule o status agregado no `README.md` (`active` se ainda houver task aberta; `done`
   apenas quando todas estiverem encerradas), e faca commit; se todas as tasks estiverem done,
-  execute a cascata de fechamento.
+  execute a cascata de fechamento. Se a task alvo tiver `tdd_aplicavel: true`, o plano de
+  execucao deve explicitar as subfases `red`, `green` e `refactor` antes de qualquer mudanca de
+  codigo.
 - **Issue legada (arquivo):** Liste as tasks em ordem. Se `TASK_ID` foi informado, valide que
   existe bloco correspondente e que a task nao esta encerrada; se nao existir, responda
   `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task elegivel. Em ambos os casos, execute
   apenas uma task por vez e identifique quais acoes vao alterar arquivo, rodar teste ou
-  atualizar documento.
+  atualizar documento. Se a task alvo tiver `tdd_aplicavel: true`, o plano de execucao deve
+  explicitar as subfases `red`, `green` e `refactor`.
 
 ### Passo 2 - Execucao com HITL
 
@@ -117,6 +120,14 @@ Antes de cada acao material, anuncie:
 EXECUTANDO: <Tn ou acao>
 → "sim" / "pular" / "ajustar [instrucao]"
 ```
+
+Quando a task tiver `tdd_aplicavel: true`, siga obrigatoriamente esta ordem antes de implementar:
+
+1. escrever os testes descritos em `testes_red`
+2. rodar o comando de `testes_red` e confirmar falha real ligada ao gap da task
+3. se os testes nao falharem, parar e reportar bloqueio ou inconsistência de task
+4. so depois da falha confirmada implementar o codigo minimo para fazer a suite passar
+5. rodar novamente a suite alvo, confirmar green e so entao refatorar se necessario
 
 **Apos cada task concluida**, antes de prosseguir para a proxima task ou para o
 fechamento, sincronize os status documentais e faca commit com mensagem

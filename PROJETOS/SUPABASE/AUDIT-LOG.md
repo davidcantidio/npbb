@@ -22,7 +22,8 @@ last_updated: "2026-03-16"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1-Schema-no-Supabase | approved | F1-R02 | [RELATORIO-AUDITORIA-F1-R02.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R02.md) | — |
+| F1-Schema-no-Supabase | hold | F1-R03 | [RELATORIO-AUDITORIA-F1-R03.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R03.md) | rodada provisional por worktree sujo |
+| F2-Migracao-de-Dados | approved | F2-R01 | [RELATORIO-AUDITORIA-F2-R01.md](./F2-Migracao-de-Dados/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | observacoes estruturais `warn` nao bloqueantes em scripts operacionais |
 
 ## Resolucoes de Follow-ups
 
@@ -36,3 +37,5 @@ last_updated: "2026-03-16"
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | F1-R01 | F1-Schema-no-Supabase | 2026-03-16 | cursor-composer | 2828545052e3018f581e0d83130bccdeba960fea | - | hold | provisional | [RELATORIO-AUDITORIA-F1-R01.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | worktree sujo | issue-local | B1 pendente | - |
 | F1-R02 | F1-Schema-no-Supabase | 2026-03-16 | cursor-composer | 6d52905539cd1c993fb9434eb5b2af50327819cb | 2828545052e3018f581e0d83130bccdeba960fea | go | done | [RELATORIO-AUDITORIA-F1-R02.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R02.md) | — | — | — | F1-R01 |
+| F1-R03 | F1-Schema-no-Supabase | 2026-03-16 | gpt-5-codex | 2428c1b4ee20c0c55717ca4c6675cf57944ddbfd | 6d52905539cd1c993fb9434eb5b2af50327819cb | hold | provisional | [RELATORIO-AUDITORIA-F1-R03.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R03.md) | worktree sujo | issue-local | B1 pendente | F1-R02 |
+| F2-R01 | F2-Migracao-de-Dados | 2026-03-16 | gpt-5-codex | e3ab94fc6f4352ea34fbf7a35a96364c1be02957 | - | go | done | [RELATORIO-AUDITORIA-F2-R01.md](./F2-Migracao-de-Dados/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | — | — | — | - |

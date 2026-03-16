@@ -143,6 +143,9 @@ Antes de implementar, leia `task_instruction_mode` no frontmatter do
   cada `TASK-N.md` tem os campos minimos de `TEMPLATE-TASK.md`
 - se `task_instruction_mode` for `required` em issue legada, valide a secao
   `## Instructions por Task`
+- se a task selecionada tiver `tdd_aplicavel: true`, valide que `testes_red`
+  existe, que inclui testes a escrever primeiro, comando red e criterio explicito
+  de falha inicial, e que `passos_atomicos` segue a ordem red -> green -> refactor
 - se faltar o detalhamento obrigatorio do formato escolhido, reporte
   `BLOQUEADO` e pare
 
@@ -202,13 +205,19 @@ Principios obrigatorios:
 2. Se a issue for granularizada, executar apenas a proxima `TASK-N.md`; se for
    legada com `task_instruction_mode: required`, executar cada task seguindo
    sua instrucao atomica inline
-3. **Apos cada task concluida**, atualizar o status da task correspondente e o
+3. Se a task alvo tiver `tdd_aplicavel: true`, executar primeiro o red da task:
+   escrever os testes descritos em `testes_red`, rodar o comando declarado e
+   confirmar que os testes falham antes de alterar codigo; se nao falharem,
+   reportar `BLOQUEADO`
+4. So depois do red confirmado implementar o minimo necessario para a task,
+   rerodar a suite alvo e confirmar green antes de refatorar
+5. **Apos cada task concluida**, atualizar o status da task correspondente e o
    status agregado da issue, depois fazer commit com mensagem descritiva conforme
    `GOV-COMMIT-POR-TASK.md` (PROJETO, ISSUE_ID, TASK_ID, descricao breve)
-4. Executar `Red`, `Green` e `Refactor` conforme o `README.md` da issue ou o
-   arquivo legado
-5. Rodar os testes diretamente relacionados
-6. Registrar desvios como proposta de decisao quando necessario
+6. Executar `Red`, `Green` e `Refactor` conforme o `README.md` da issue ou o
+   arquivo legado, respeitando o detalhamento da task quando `tdd_aplicavel: true`
+7. Rodar os testes diretamente relacionados
+8. Registrar desvios como proposta de decisao quando necessario
 
 ### Sequencia minima para AUDITORIA
 

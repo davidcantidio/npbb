@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -34,14 +34,14 @@ de conexao vigente no repositorio.
 - Given falta de credencial ou de `pg_dump`, When a automacao e iniciada, Then o fluxo falha antes de qualquer efeito colateral no Supabase
 
 ## Definition of Done da Issue
-- [ ] automacao gera backup do Supabase de forma reproduzivel
-- [ ] automacao gera export do PostgreSQL local no formato aprovado
-- [ ] precondicoes e falhas antecipadas estao declaradas de forma objetiva
+- [x] automacao gera backup do Supabase de forma reproduzivel
+- [x] automacao gera export do PostgreSQL local no formato aprovado
+- [x] precondicoes e falhas antecipadas estao declaradas de forma objetiva
 
 ## Tasks Decupadas
-- [ ] T1: fechar a interface operacional da automacao a partir do runbook aprovado
-- [ ] T2: implementar os passos de backup do Supabase e export do PostgreSQL local
-- [ ] T3: validar a rodada nao destrutiva e consolidar os artefatos gerados
+- [x] T1: fechar a interface operacional da automacao a partir do runbook aprovado
+- [x] T2: implementar os passos de backup do Supabase e export do PostgreSQL local
+- [x] T3: validar a rodada nao destrutiva e consolidar os artefatos gerados
 
 ## Instructions por Task
 
@@ -119,6 +119,8 @@ de conexao vigente no repositorio.
 
 Automacao reexecutavel que gera backup do Supabase e export do PostgreSQL local
 antes da recarga de dados.
+
+**Artifact gerado:** [backend/scripts/backup_export_migracao.py](../../../../backend/scripts/backup_export_migracao.py) — artefatos em `artifacts_migracao/`.
 
 ## Dependencias
 - [Intake](../../INTAKE-SUPABASE.md)

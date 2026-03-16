@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-01-Preparar-Backup-e-Export-do-PostgreSQL-Local.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -27,16 +27,16 @@ acao destrutiva na base alvo.
 - `backend/scripts/seed_common.py` reforca a preferencia por `DIRECT_URL` para operacoes sensiveis de banco
 
 ## Definition of Done do Epico
-- [ ] runbook de migracao fechado com precondicoes, ordem e rollback
-- [ ] backup do Supabase gerado antes da recarga
-- [ ] export do PostgreSQL local gerado para alimentar o import
+- [x] runbook de migracao fechado com precondicoes, ordem e rollback
+- [x] backup do Supabase gerado antes da recarga
+- [x] export do PostgreSQL local gerado para alimentar o import
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
 | ISSUE-F2-01-001 | Formalizar runbook de backup, export, import e rollback | Fechar a sequencia operacional da migracao sem improviso | 2 | done | [ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md](./issues/ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md) |
-| ISSUE-F2-01-002 | Automatizar backup do Supabase e export do PostgreSQL local | Gerar artefatos de seguranca e export com comandos reproduziveis | 3 | todo | [ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md](./issues/ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md) |
+| ISSUE-F2-01-002 | Automatizar backup do Supabase e export do PostgreSQL local | Gerar artefatos de seguranca e export com comandos reproduziveis | 3 | done | [ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md](./issues/ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md) |
 
 ## Artifact Minimo do Epico
 

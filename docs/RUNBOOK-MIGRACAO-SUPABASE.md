@@ -49,15 +49,46 @@ Este runbook define a sequência operacional para migrar dados do PostgreSQL loc
 
 ---
 
-## 2. Sequência canônica (em elaboração)
+## 2. Sequência canônica
 
-_(Seção a ser preenchida na T2)_
+A rodada de migração segue esta ordem. **Nenhum passo destrutivo** (limpeza/truncate) pode ocorrer antes do backup do Supabase e do export local estarem concluídos.
+
+| # | Passo | Comando-base | URL usada | Critério de parada antes |
+|---|-------|--------------|-----------|--------------------------|
+| 1 | Backup do Supabase | `pg_dump` com `DIRECT_URL` do Supabase | `DIRECT_URL` | — |
+| 2 | Export PostgreSQL local | `pg_dump --data-only` (ou `--format=custom`) | conexão local | Backup do Supabase existe? |
+| 3 | Limpeza controlada do alvo | truncate em ordem reversa de FKs | `DIRECT_URL` | Backup e export existem? |
+| 4 | Import no Supabase | `psql` ou `pg_restore` | `DIRECT_URL` | Limpeza concluída sem erro? |
+| 5 | Validação pós-carga | backend + testes | `DATABASE_URL` (runtime) | Import concluído? |
+| 6 | Rollback (se falha) | Supabase Dashboard ou `pg_restore` | — | Backup preservado até F3 |
+
+### 2.1 Comandos-base da rodada
+
+- **Backup Supabase**: `pg_dump` com `DIRECT_URL` (porta 5432) — pooler não deve ser usado para dump
+- **Export local**: `pg_dump --data-only` ou `pg_dump --format=custom` após schema aplicado
+- **Import**: `psql` (para SQL plain) ou `pg_restore` (para formato custom)
+- **Ordem de limpeza**: truncate em ordem reversa de dependência de FKs antes do reload (detalhes na fase F2)
+
+### 2.2 Uso de DIRECT_URL vs DATABASE_URL
+
+| Operação | URL | Motivo |
+|----------|-----|--------|
+| Backup do Supabase | `DIRECT_URL` | Dump exige conexão direta; pooler pode causar timeouts |
+| Export local | conexão local | PostgreSQL local |
+| Limpeza/truncate no Supabase | `DIRECT_URL` | Operações DDL/DML sensíveis |
+| Import no Supabase | `DIRECT_URL` | Restore exige conexão direta |
+| Runtime da API | `DATABASE_URL` | Pooler pode ser usado em produção |
+
+### 2.3 Critérios de parada (antes de passo destrutivo)
+
+- **Antes de limpeza**: confirmar que backup do Supabase existe e export local está disponível
+- **Antes de import**: confirmar que limpeza foi concluída sem erro
+- **Parar imediatamente** se `pg_dump` não estiver disponível ou credenciais forem inválidas
 
 ---
 
 ## 3. Rollback
 
-_(Detalhes a serem consolidados na T2/T3)_
-
-- Backup do Supabase preservado até o fim da validação da F3
-- Restore via Supabase Dashboard ou `pg_restore`
+- **Backup do Supabase** preservado até o fim da validação da F3
+- **Restore**: via Supabase Dashboard ou `pg_restore` em caso de falha
+- **Dump local**: manter como cópia de segurança até validação completa (PRD)

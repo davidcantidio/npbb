@@ -185,6 +185,8 @@
   },
   "active": "58610ee488185605",
   "lastOpenFiles": [
+    "SUPABASE/AUDIT-LOG.md",
+    "SUPABASE/INTAKE-SUPABASE.md",
     "SUPABASE/SESSION-AUDITAR-FASE.md",
     "SUPABASE/SESSION-IMPLEMENTAR-ISSUE.md",
     "SUPABASE/SESSION-REMEDIAR-HOLD.md",
@@ -219,8 +221,6 @@
     "UX/F2-Implementacao/issues/ISSUE-F2-01-001-Converter-Layout-Duas-Colunas.md",
     "UX/F2-Implementacao/issues",
     "UX/F2-Implementacao/EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md",
-    "UX/F2-Implementacao/EPIC-F2-01-Layout-Side-by-Side.md",
-    "UX/F2-Implementacao/F2_UX_EPICS.md",
     "Sem título 1.canvas",
     "Sem título 2.canvas",
     "Sem título.canvas"

@@ -178,3 +178,7 @@ ATUALIZANDO: <caminho do SPRINT-*.md>
 
 **Não pule nenhum dos quatro passos.** Status inconsistente no épico ou no
 manifesto da fase bloqueia a leitura correta pelo próximo agente ou sessão.
+
+> Se o PM quiser uma segunda leitura apos a execucao desta issue, use
+> `SESSION-REVISAR-ISSUE.md`. Essa revisao e opcional, nao substitui a
+> auditoria de fase e nao reabre automaticamente a issue original.

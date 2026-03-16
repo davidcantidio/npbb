@@ -44,7 +44,7 @@ Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PRO
 - `AUDIT-LOG.md`: usar `TEMPLATE-AUDITORIA-LOG.md`
 - `F<N>_<PROJETO>_EPICS.md`: objetivo da fase, gate, tabela de epicos, dependencias e checklist de transicao do gate
 - `EPIC-*.md`: manifesto do epico, DoD do epico, dependencias, artefato minimo e indice das issues
-- `issues/ISSUE-*.md`: user story, plano TDD, criterios `Given/When/Then`, DoD, tasks, `decision_refs` e instructions por task quando exigidas
+- `issues/ISSUE-*.md`: user story, plano TDD, criterios `Given/When/Then`, DoD, tasks, `decision_refs` e instructions por task quando exigidas; follow-up de review pos-issue deve preservar rastreabilidade explicita para a issue de origem
 - `sprints/SPRINT-*.md`: selecao de issues, capacidade, riscos e consolidacao de status
 - `auditorias/RELATORIO-AUDITORIA-*.md`: usar `TEMPLATE-AUDITORIA-RELATORIO.md`
 
@@ -215,6 +215,23 @@ Como <papel>, quero <acao> para <resultado>.
 - [Fase](../F1_PROJETO_EPICS.md)
 - [PRD](../../PRD-PROJETO.md)
 ```
+
+## Template de `sprints/SPRINT-*.md`
+
+## Rastreabilidade de Follow-up de Review
+
+- follow-up local gerado por revisao pos-issue nao reabre a issue original
+- a nova issue deve permanecer no mesmo epico e fase enquanto a remediacao for
+  local e contida
+- a secao `Contexto Tecnico` da nova issue deve citar:
+  - issue de origem
+  - evidencia da revisao
+  - sintoma observado
+  - risco de nao corrigir
+- a secao `Dependencias` deve incluir a issue de origem alem das referencias
+  canonicas do projeto
+- se o achado exceder ajuste local, a saida correta e `INTAKE-*.md`, nao nova
+  issue local
 
 ## Template de `sprints/SPRINT-*.md`
 

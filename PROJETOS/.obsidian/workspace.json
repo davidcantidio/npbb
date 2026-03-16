@@ -181,6 +181,8 @@
   },
   "active": "d387956fd7ef378b",
   "lastOpenFiles": [
+    "COMUM/SESSION-REVISAR-ISSUE.md",
+    "COMUM/PROMPT-REVISAR-ISSUE.md",
     "SUPABASE/F3-Validacao-e-Cutover/sprints/SPRINT-F3-01.md",
     "SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico.md",
     "SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste.md",
@@ -214,8 +216,6 @@
     "SUPABASE/SESSION-PLANEJAR-PROJETO.md",
     "COMUM/SESSION-CRIAR-PRD.md",
     "SUPABASE/PRD-SUPABASE.md",
-    "SUPABASE/AUDIT-LOG.md",
-    "SUPABASE/INTAKE-SUPABASE.md",
     "SUPABASE",
     "Sem título 1.canvas",
     "Sem título 2.canvas",

@@ -11,7 +11,7 @@ last_updated: "2026-03-10"
 > Mapa de todos os prompts de sessao disponiveis no framework.
 > Use este arquivo como ponto de entrada quando operar em chat interativo
 > em vez de Cloud Agent autonomo.
-> O estado atual do framework possui sete prompts operacionais com
+> O estado atual do framework possui oito prompts operacionais com
 > nomenclatura canonica `SESSION-*.md`; este arquivo e o mapa de entrada
 > que inventaria esses prompts sem contar como prompt operacional adicional.
 
@@ -34,6 +34,7 @@ PROJETOS/COMUM/
   SESSION-CRIAR-PRD.md
   SESSION-PLANEJAR-PROJETO.md
   SESSION-IMPLEMENTAR-ISSUE.md
+  SESSION-REVISAR-ISSUE.md
   SESSION-AUDITAR-FASE.md
   SESSION-REMEDIAR-HOLD.md
   SESSION-REFATORAR-MONOLITO.md
@@ -48,6 +49,7 @@ PROJETOS/COMUM/
 | `SESSION-CRIAR-PRD` | `PROJETOS/COMUM/SESSION-CRIAR-PRD.md` | intake aprovado -> PRD | active |
 | `SESSION-PLANEJAR-PROJETO` | `PROJETOS/COMUM/SESSION-PLANEJAR-PROJETO.md` | PRD -> fases, epicos, issues e sprints | active |
 | `SESSION-IMPLEMENTAR-ISSUE` | `PROJETOS/COMUM/SESSION-IMPLEMENTAR-ISSUE.md` | execucao de issue especifica | active |
+| `SESSION-REVISAR-ISSUE` | `PROJETOS/COMUM/SESSION-REVISAR-ISSUE.md` | revisao opcional de issue executada e roteamento de correcao local | active |
 | `SESSION-AUDITAR-FASE` | `PROJETOS/COMUM/SESSION-AUDITAR-FASE.md` | gate de fase e follow-ups | active |
 | `SESSION-REMEDIAR-HOLD` | `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md` | relatorio hold -> issues locais ou intakes de remediacao | active |
 | `SESSION-REFATORAR-MONOLITO` | `PROJETOS/COMUM/SESSION-REFATORAR-MONOLITO.md` | intake de remediacao -> mini-projeto de decomposicao | active |
@@ -60,6 +62,7 @@ PROJETOS/COMUM/
 | gerar PRD | `SESSION-CRIAR-PRD` |
 | planejar projeto ou fase | `SESSION-PLANEJAR-PROJETO` |
 | executar uma issue | `SESSION-IMPLEMENTAR-ISSUE` |
+| revisar uma issue ja executada | `SESSION-REVISAR-ISSUE` |
 | auditar uma fase | `SESSION-AUDITAR-FASE` |
 | rotear follow-ups de auditoria `hold` | `SESSION-REMEDIAR-HOLD` |
 | transformar monolito em remediacao estruturada | `SESSION-REFATORAR-MONOLITO` |

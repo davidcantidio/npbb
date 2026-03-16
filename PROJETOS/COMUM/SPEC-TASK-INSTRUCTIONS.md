@@ -45,6 +45,7 @@ Use `task_instruction_mode: required` quando a issue contiver qualquer um destes
 - ordem de execucao critica
 - alteracao multi-camada ou multi-arquivo com dependencia forte
 - remediacao originada de auditoria `hold`
+- remediacao originada de revisao pos-issue com risco alto ou regressao delicada
 - handoff planejado para outra IA ou sessao
 
 Se nenhum desses fatores existir, `optional` e o default recomendado.

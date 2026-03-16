@@ -136,6 +136,35 @@ Regras de aplicacao:
   reservado ao fechamento do gate de auditoria com veredito `go`
 - issue `cancelled` conta como encerrada para calculo de completude do epico e da sprint
 
+## Review Pos-Issue Opcional
+
+- `SESSION-REVISAR-ISSUE.md` e um fluxo ad hoc, acionado apenas quando o PM
+  pedir uma segunda leitura apos a execucao de uma issue
+- a review pos-issue nao altera a cadeia canonica
+  `Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias`
+- a review pos-issue nao substitui a auditoria formal da fase
+- a review pode inspecionar uma issue ja marcada como `done`, mas nao reabre
+  automaticamente a issue original nem desfaz a cascata
+  `issue -> epico -> fase -> sprint`
+- vereditos canonicos da review: `aprovada`, `correcao_requerida`, `cancelled`
+- `aprovada`: encerra a review sem gerar artefato novo
+- `correcao_requerida`: gera follow-up rastreavel; se a remediacao for local e
+  contida, abrir nova `ISSUE-*.md` no mesmo epico e fase; se for estrutural ou
+  sistemica, abrir `INTAKE-*.md`
+- issue gerada por review deve citar a issue de origem no `Contexto Tecnico` e
+  em `Dependencias`
+- review pos-issue nao gera relatorio persistido; o unico artefato novo
+  permitido em v1 e a `ISSUE-*.md` local quando houver follow-up elegivel
+- quando a review gerar nova issue local, a sincronizacao documental minima e:
+  - adicionar a issue ao `EPIC-*.md` pai
+  - manter ou retornar o epico para `active`, se necessario
+  - se a fase estiver com `audit_gate: pending`, voltar para `not_ready`
+  - a sprint nao e atualizada automaticamente; a nova issue entra no fluxo de
+    planejamento normal
+- fase com `audit_gate: approved` nao deve receber nova issue local de review;
+  qualquer remediacao apos aprovacao deve seguir fluxo proprio fora da fase ja
+  fechada
+
 ## Arquivamento de Fase
 
 - cada projeto ativo deve manter `feito/`, `INTAKE-<PROJETO>.md`, `PRD-<PROJETO>.md` e `AUDIT-LOG.md`

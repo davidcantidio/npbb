@@ -163,6 +163,31 @@ def run_limpeza_controlada(supabase_url: str) -> None:
     print("Limpeza concluida. Ambiente alvo pronto para importacao.")
 
 
+def run_importacao(pg_restore_path: str, supabase_url: str, export_path: Path) -> None:
+    """
+    T3: Importa no Supabase o dataset do PostgreSQL local via pg_restore.
+    Interrompe se houver falha estrutural durante a carga.
+    """
+    libpq_url = _sqlalchemy_to_libpq(supabase_url)
+
+    cmd = [
+        pg_restore_path,
+        "--data-only",
+        "--no-owner",
+        "--no-acl",
+        "-d", libpq_url,
+        str(export_path),
+    ]
+    print(f"Executando importacao: pg_restore -> Supabase")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise SystemExit(
+            f"ERRO: Importacao falhou. Falha estrutural ou schema fora do escopo aprovado.\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+    print("Importacao concluida. Dados locais carregados no Supabase.")
+
+
 def main() -> None:
     """Ordem: 1) validar precondições, 2) limpar, 3) importar, 4) consolidar."""
     print("=== Recarga Controlada - Migracao F2 (Supabase) ===\n")
@@ -177,7 +202,9 @@ def main() -> None:
     # T2: Limpeza controlada
     run_limpeza_controlada(supabase_url)
 
-    # TODO T3: importação
+    # T3: Importação
+    run_importacao(pg_restore_path, supabase_url, export_path)
+
     # TODO T4: consolidação
 
 

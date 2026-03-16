@@ -181,6 +181,7 @@
   },
   "active": "d387956fd7ef378b",
   "lastOpenFiles": [
+    "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-004-Revalidar-Upgrade-Head-no-Supabase-com-Evidencia-Rastreavel.md",
     "SUPABASE/F1-Schema-no-Supabase/EVIDENCIA-F1-01-002-Schema-Supabase.md",
     "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-003-Endurecer-Fallback-de-URLs-no-Fluxo-Alembic.md",
     "SUPABASE/SESSION-REVISAR-ISSUE.md",
@@ -206,7 +207,6 @@
     "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md",
     "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md",
     "SUPABASE/F1-Schema-no-Supabase/EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md",
-    "SUPABASE/F1-Schema-no-Supabase/F1_SUPABASE_EPICS.md",
     "SUPABASE/F3-Validacao-e-Cutover/sprints",
     "SUPABASE/F3-Validacao-e-Cutover/issues",
     "SUPABASE/F3-Validacao-e-Cutover",

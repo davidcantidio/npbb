@@ -39,6 +39,7 @@ ate o head sem erro no ambiente alvo.
 | ISSUE-F1-01-001 | Adequar execucao de migrations ao Supabase | Alinhar entrypoints, fallback e mensagens de erro do fluxo Alembic | 3 | done | [ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md](./issues/ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md) |
 | ISSUE-F1-01-003 | Endurecer fallback de URLs no fluxo Alembic | Corrigir o fallback do Alembic e cobrir o contrato de URLs com testes de regressao | 3 | todo | [ISSUE-F1-01-003-Endurecer-Fallback-de-URLs-no-Fluxo-Alembic.md](./issues/ISSUE-F1-01-003-Endurecer-Fallback-de-URLs-no-Fluxo-Alembic.md) |
 | ISSUE-F1-01-002 | Validar schema do Supabase com Alembic upgrade head | Executar e comprovar a subida do schema ate o head no ambiente alvo | 5 | done | [ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md](./issues/ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md) |
+| ISSUE-F1-01-004 | Revalidar upgrade head no Supabase com evidencia rastreavel | Reexecutar a validacao no Supabase com prova objetiva do uso de `DIRECT_URL` e da revision final aplicada | 3 | todo | [ISSUE-F1-01-004-Revalidar-Upgrade-Head-no-Supabase-com-Evidencia-Rastreavel.md](./issues/ISSUE-F1-01-004-Revalidar-Upgrade-Head-no-Supabase-com-Evidencia-Rastreavel.md) |
 
 ## Artifact Minimo do Epico
 

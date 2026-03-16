@@ -27,6 +27,7 @@ __pycache__/
 
 # Dumps de banco (backup local)
 *.dump
+artifacts_migracao/
 
 # Cache / lock / temp / runtime data
 /.npm

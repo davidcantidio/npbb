@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
-audit_gate: "hold"
+audit_gate: "approved"
 ---
 
 # Epicos - SUPABASE / F1 - Schema no Supabase
@@ -23,16 +23,16 @@ liberar a fase de migracao de dados.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `hold`
-- ultima_auditoria: `F1-R01` (provisional — worktree sujo)
+- gate_atual: `approved`
+- ultima_auditoria: `F1-R02` (go)
 
 ## Checklist de Transicao de Gate
 
 > A semantica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done` (EPIC-F1-01 active — ISSUE-F1-01-008 em aberto)
-- [ ] todas as issues filhas estao `done` (ISSUE-F1-01-008 em aberto)
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
 - [x] DoD da fase foi revisado
 
 ### `pending -> hold`
@@ -42,10 +42,10 @@ liberar a fase de migracao de dados.
 - [x] o estado do gate foi atualizado para `hold`
 
 ### `pending -> approved`
-- [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`
-- [ ] `AUDIT-LOG.md` foi atualizado
-- [ ] o veredito da auditoria e `go`
-- [ ] o estado do gate foi atualizado para `approved`
+- [x] existe `RELATORIO-AUDITORIA-F1-R02.md`
+- [x] `AUDIT-LOG.md` foi atualizado
+- [x] o veredito da auditoria e `go`
+- [x] o estado do gate foi atualizado para `approved`
 
 ## Epicos
 

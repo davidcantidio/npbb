@@ -22,16 +22,17 @@ last_updated: "2026-03-16"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1-Schema-no-Supabase | hold | F1-R01 | [RELATORIO-AUDITORIA-F1-R01.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | provisional — worktree sujo |
+| F1-Schema-no-Supabase | approved | F1-R02 | [RELATORIO-AUDITORIA-F1-R02.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R02.md) | — |
 
 ## Resolucoes de Follow-ups
 
 | Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
 |---|---|---|---|---|---|---|---|
-| 2026-03-16 | F1-R01 | F1-Schema-no-Supabase | B1 | issue-local | Commit e revalidar auditoria com arvore limpa | [ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1](./F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/) | — |
+| 2026-03-16 | F1-R01 | F1-Schema-no-Supabase | B1 | issue-local | Commit e revalidar auditoria com arvore limpa | [ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1](./F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/) | resolvido F1-R02 |
 
 ## Rodadas
 
 | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | F1-R01 | F1-Schema-no-Supabase | 2026-03-16 | cursor-composer | 2828545052e3018f581e0d83130bccdeba960fea | - | hold | provisional | [RELATORIO-AUDITORIA-F1-R01.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | worktree sujo | issue-local | B1 pendente | - |
+| F1-R02 | F1-Schema-no-Supabase | 2026-03-16 | cursor-composer | 6d52905539cd1c993fb9434eb5b2af50327819cb | 2828545052e3018f581e0d83130bccdeba960fea | go | done | [RELATORIO-AUDITORIA-F1-R02.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R02.md) | — | — | — | F1-R01 |

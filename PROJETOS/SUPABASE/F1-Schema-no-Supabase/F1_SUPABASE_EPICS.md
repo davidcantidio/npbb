@@ -4,7 +4,7 @@ version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
-audit_gate: "not_ready"
+audit_gate: "pending"
 ---
 
 # Epicos - SUPABASE / F1 - Schema no Supabase
@@ -31,8 +31,8 @@ liberar a fase de migracao de dados.
 > A semantica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
 - [ ] DoD da fase foi revisado
 
 ### `pending -> hold`
@@ -51,7 +51,7 @@ liberar a fase de migracao de dados.
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Compatibilizar e validar migrations Alembic no Supabase | Alinhar a execucao de migrations e provar que o schema local sobe no Supabase | nenhuma | active | [EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md](./EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md) |
+| EPIC-F1-01 | Compatibilizar e validar migrations Alembic no Supabase | Alinhar a execucao de migrations e provar que o schema local sobe no Supabase | nenhuma | done | [EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md](./EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md) |
 
 ## Dependencias entre Epicos
 
@@ -71,6 +71,6 @@ liberar a fase de migracao de dados.
 - alteracoes no frontend
 
 ## Definition of Done da Fase
-- [ ] `EPIC-F1-01` concluido com as issues filhas `done`
-- [ ] `alembic upgrade head` validado contra o Supabase com evidencia tecnica
-- [ ] a fase libera F2 sem dependencia do PostgreSQL local para aplicar schema
+- [x] `EPIC-F1-01` concluido com as issues filhas `done`
+- [x] `alembic upgrade head` validado contra o Supabase com evidencia tecnica
+- [x] a fase libera F2 sem dependencia do PostgreSQL local para aplicar schema

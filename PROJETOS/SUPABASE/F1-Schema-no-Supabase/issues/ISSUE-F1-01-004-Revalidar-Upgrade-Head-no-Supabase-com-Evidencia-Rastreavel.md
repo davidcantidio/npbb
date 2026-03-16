@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-004-Revalidar-Upgrade-Head-no-Supabase-com-Evidencia-Rastreavel.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -64,19 +64,19 @@ para `DATABASE_URL` no caminho de validacao do Supabase.
 
 ## Definition of Done da Issue
 
-- [ ] `ISSUE-F1-01-003` concluida ou bloqueio explicitado
-- [ ] rodada real de `alembic upgrade head` executada no Supabase com
+- [x] `ISSUE-F1-01-003` concluida ou bloqueio explicitado
+- [x] rodada real de `alembic upgrade head` executada no Supabase com
       `DIRECT_URL`
-- [ ] revision final observada no ambiente alvo registrada com evidencia minima
-- [ ] verificacao automatizada de head unico reexecutada com sucesso
-- [ ] status de prontidao para F2 declarado sem inferencia
+- [x] revision final observada no ambiente alvo registrada com evidencia minima
+- [x] verificacao automatizada de head unico reexecutada com sucesso
+- [x] status de prontidao para F2 declarado sem inferencia
 
 ## Tasks Decupadas
 
-- [ ] T1: confirmar as pre-condicoes da revalidacao e o contrato estrito de URLs
-- [ ] T2: executar a rodada real de `alembic upgrade head` no Supabase
-- [ ] T3: validar a revision final aplicada e o historico Alembic local
-- [ ] T4: consolidar a evidencia rastreavel para liberar ou bloquear a F2
+- [x] T1: confirmar as pre-condicoes da revalidacao e o contrato estrito de URLs
+- [x] T2: executar a rodada real de `alembic upgrade head` no Supabase
+- [x] T3: validar a revision final aplicada e o historico Alembic local
+- [x] T4: consolidar a evidencia rastreavel para liberar ou bloquear a F2
 
 ## Instructions por Task
 

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -41,7 +41,7 @@ do caminho principal e SQLite preservado apenas para testes.
 
 ## Tasks
 
-- [T1: Mapear pontos de drift documental e de configuracao](./TASK-1.md)
+- [x] [T1: Mapear pontos de drift documental e de configuracao](./TASK-1.md) — [INVENTARIO-DRIFT.md](./INVENTARIO-DRIFT.md)
 - [T2: Atualizar configuracao e setup para Supabase como banco unico](./TASK-2.md)
 - [T3: Alinhar troubleshooting e deploy ao estado final validado](./TASK-3.md)
 - [T4: Revisao final de consistencia entre arquivos atualizados](./TASK-4.md)

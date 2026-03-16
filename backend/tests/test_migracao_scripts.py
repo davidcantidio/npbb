@@ -178,6 +178,31 @@ def test_run_consolidacao_blocks_when_database_url_points_to_local(
         )
 
 
+def test_run_consolidacao_blocks_when_database_url_remote_divergent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """ISSUE-F2-02-004: Consolidacao bloqueia quando DATABASE_URL remota, conectavel, mas divergente do Supabase alvo."""
+    def getenv(k: str, d: str | None = None) -> str | None:
+        if k == "DATABASE_URL":
+            return "postgresql://u:p@db.example.com:5432/otherdb"
+        return "postgresql://u:p@db.supabase.co:5432/postgres" if k == "DIRECT_URL" else d
+
+    monkeypatch.setattr("os.getenv", getenv)
+
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__ = lambda self: mock_conn
+    mock_engine.connect.return_value.__exit__ = lambda *a: None
+    monkeypatch.setattr(recarga_migracao, "create_engine", lambda url: mock_engine)
+
+    with pytest.raises(SystemExit, match="alvo|diferente|divergente"):
+        recarga_migracao.run_consolidacao(
+            supabase_url="postgresql://u:p@db.supabase.co:5432/postgres",
+            backup_path=tmp_path / "backup.dump",
+            export_path=tmp_path / "export.dump",
+        )
+
+
 def test_run_consolidacao_succeeds_when_database_url_apt(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

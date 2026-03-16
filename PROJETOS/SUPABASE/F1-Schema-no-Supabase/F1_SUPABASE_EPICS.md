@@ -23,7 +23,7 @@ liberar a fase de migracao de dados.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate

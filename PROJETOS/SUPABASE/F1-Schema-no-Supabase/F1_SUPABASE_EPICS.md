@@ -31,8 +31,8 @@ liberar a fase de migracao de dados.
 > A semantica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [x] todos os epicos estao `done`
-- [x] todas as issues filhas estao `done`
+- [ ] todos os epicos estao `done` (EPIC-F1-01 active — ISSUE-F1-01-008 em aberto)
+- [ ] todas as issues filhas estao `done` (ISSUE-F1-01-008 em aberto)
 - [x] DoD da fase foi revisado
 
 ### `pending -> hold`

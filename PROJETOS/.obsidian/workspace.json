@@ -181,6 +181,10 @@
   },
   "active": "d387956fd7ef378b",
   "lastOpenFiles": [
+    "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/TASK-2.md",
+    "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/TASK-1.md",
+    "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/README.md",
+    "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1",
     "SUPABASE/F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md",
     "SUPABASE/F1-Schema-no-Supabase/auditorias",
     "SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-007-Sincronizar-Cascata-Documental-do-Fechamento-da-F1/TASK-3.md",
@@ -206,9 +210,6 @@
     "SUPABASE/F3-Validacao-e-Cutover/sprints/SPRINT-F3-01.md",
     "SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico.md",
     "SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste.md",
-    "SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md",
-    "SUPABASE/F3-Validacao-e-Cutover/EPIC-F3-02-Consolidar-Configuracao-Final-e-Remover-Dependencia-do-Postgres-Local.md",
-    "SUPABASE/F3-Validacao-e-Cutover/EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md",
     "SUPABASE/F3-Validacao-e-Cutover/sprints",
     "SUPABASE/F3-Validacao-e-Cutover/issues",
     "SUPABASE/F3-Validacao-e-Cutover",
@@ -216,7 +217,6 @@
     "SUPABASE/F2-Migracao-de-Dados/issues",
     "SUPABASE/F2-Migracao-de-Dados",
     "SUPABASE/F1-Schema-no-Supabase/sprints",
-    "SUPABASE/F1-Schema-no-Supabase/issues",
     "Sem título 1.canvas",
     "Sem título 2.canvas",
     "Sem título.canvas"

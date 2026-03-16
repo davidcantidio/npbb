@@ -28,7 +28,7 @@ last_updated: "2026-03-16"
 
 | Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
 |---|---|---|---|---|---|---|---|
-| - | - | - | - | - | - | - | - |
+| 2026-03-16 | F1-R01 | F1-Schema-no-Supabase | B1 | issue-local | Commit e revalidar auditoria com arvore limpa | [ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1](./F1-Schema-no-Supabase/issues/ISSUE-F1-01-008-Commit-e-Revalidar-Auditoria-F1/) | — |
 
 ## Rodadas
 

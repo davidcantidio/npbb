@@ -2,7 +2,14 @@
 
 ## 1) DATABASE_URL nao configurada
 **Sintoma:** `RuntimeError: DATABASE_URL nao configurada ...`
-**Solucao:** crie `backend/.env` a partir de `.env.example` e configure `DATABASE_URL`/`DIRECT_URL` (ex.: `postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb`).
+**Solucao:** crie `backend/.env` a partir de `.env.example` e configure `DATABASE_URL`/`DIRECT_URL`.
+
+Para Supabase: use `postgresql+psycopg2://` (nao `postgresql://`). Senhas com `@` ou `&` precisam ser URL-encoded (`@` -> `%40`, `&` -> `%26`). Exemplo:
+```
+DATABASE_URL=postgresql+psycopg2://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+DIRECT_URL=postgresql+psycopg2://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+```
+Obtenha as strings em Supabase Dashboard > Settings > Database > Connection string.
 
 ## 2) Uvicorn nao encontrado
 **Sintoma:** `No module named uvicorn`
@@ -82,7 +89,16 @@ Remove-Item -Recurse -Force frontend/node_modules
 **Sintoma:** erro de conexao no pytest.
 **Solucao:** exporte `TESTING=true` ou configure `DATABASE_URL` para um banco de teste.
 
-## 15) backup_export_migracao falha (credenciais ou tooling)
+## 15) Validar runtime com Supabase
+**Objetivo:** confirmar que o backend usa o Supabase como banco (nao PostgreSQL local).
+**Passos:**
+1. Configure `DATABASE_URL` e `DIRECT_URL` no `backend/.env` apontando para o Supabase.
+2. Inicie o backend: `./scripts/dev_backend.sh` (a partir da raiz do repo).
+3. Valide: `curl -sf http://127.0.0.1:8000/health` deve retornar `{"status":"ok"}`.
+4. Valide endpoint com banco: `curl -sf http://127.0.0.1:8000/eventos/1/landing` deve retornar JSON com dados do evento.
+Se `DATABASE_URL` apontar para `127.0.0.1` ou `localhost`, o runtime usara o PostgreSQL local e nao o Supabase.
+
+## 16) backup_export_migracao falha (credenciais ou tooling)
 **Sintoma:** `ERRO: LOCAL_DIRECT_URL nao configurado`, `pg_dump nao encontrado no PATH` ou `pg_restore nao encontrado no PATH`.
 **Solucao:**
 - Configure no `backend/.env`: `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` (ver `.env.example`).

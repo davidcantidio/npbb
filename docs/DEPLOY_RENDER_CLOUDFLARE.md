@@ -46,6 +46,13 @@ Crie um Web Service no Render com:
 - `GET https://npbb-api.onrender.com/health` deve retornar `{"status":"ok"}`
 - `GET https://npbb-api.onrender.com/docs` deve responder `200`
 
+### Estado operacional validado (F3)
+
+O runtime do backend foi validado contra o Supabase como banco unico (ISSUE-F3-01-001):
+- Boot com `DATABASE_URL` do Supabase (conexao direta ou pooler)
+- Endpoint `/health` responde `{"status":"ok"}`
+- Endpoints que consultam o banco (ex.: `/eventos/{id}/landing`) retornam dados do Supabase
+
 ## 2) Frontend no Cloudflare Pages
 
 Crie um projeto Pages com:

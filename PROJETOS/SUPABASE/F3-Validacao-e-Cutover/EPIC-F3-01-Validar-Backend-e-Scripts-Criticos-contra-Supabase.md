@@ -36,8 +36,8 @@ contrato atual de conexao.
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-01-001 | Validar runtime do backend com Supabase | Comprovar que a API sobe e responde com o Supabase como banco de runtime | 3 | done | [ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md](./issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase.md) |
-| ISSUE-F3-01-002 | Validar scripts criticos e invariantes de teste | Confirmar os contratos de scripts sensiveis e do fallback SQLite em testes | 2 | todo | [ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste.md](./issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste.md) |
+| ISSUE-F3-01-001 | Validar runtime do backend com Supabase | Comprovar que a API sobe e responde com o Supabase como banco de runtime | 3 | done | [ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase](./issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase/) |
+| ISSUE-F3-01-002 | Validar scripts criticos e invariantes de teste | Confirmar os contratos de scripts sensiveis e do fallback SQLite em testes | 2 | todo | [ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste](./issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste/) |
 
 ## Artifact Minimo do Epico
 

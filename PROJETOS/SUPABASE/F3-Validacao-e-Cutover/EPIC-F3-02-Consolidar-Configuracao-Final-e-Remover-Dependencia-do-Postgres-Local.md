@@ -35,7 +35,7 @@ em SQLite e eliminando o PostgreSQL local como requisito operacional padrao.
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-02-001 | Atualizar configuracao e documentacao para Supabase como banco unico | Consolidar o estado final de setup, troubleshooting e deploy apos a migracao | 3 | todo | [ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico.md](./issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico.md) |
+| ISSUE-F3-02-001 | Atualizar configuracao e documentacao para Supabase como banco unico | Consolidar o estado final de setup, troubleshooting e deploy apos a migracao | 3 | todo | [ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico](./issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico/) |
 
 ## Artifact Minimo do Epico
 

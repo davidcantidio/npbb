@@ -11,13 +11,13 @@ last_updated: "2026-03-16"
 ## Parametros obrigatorios
 
 ```
-PROJETO:      <nome do projeto>
-FASE:         <F<N>-NOME>
-ISSUE_ID:     <ISSUE-F<N>-<NN>-<MMM>>
-ISSUE_PATH:   <caminho completo do arquivo de issue>
-BASE_COMMIT:  <sha, "worktree" ou "nao_informado">
-EVIDENCIA:    <diff, PR, logs, testes, links ou "nao_informado">
-OBSERVACOES:  <restricoes adicionais ou "nenhuma">
+PROJETO:      SUPABASE
+FASE:         F1
+ISSUE_ID:     F1-01-001
+ISSUE_PATH: /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/F1-Schema-no-Supabase/issues/ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md
+BASE_COMMIT:  worktree
+EVIDENCIA:   diff, testes
+OBSERVACOES:  nenhuma
 ```
 
 ## Prompt

@@ -1,7 +1,7 @@
 ---
 doc_id: "TASK-N.md"
 issue_id: "ISSUE-F<N>-<NN>-<MMM>-<slug>"
-task_id: "TN"
+task_id: "T<N>"
 version: "1.0"
 status: "todo"
 owner: "PM"

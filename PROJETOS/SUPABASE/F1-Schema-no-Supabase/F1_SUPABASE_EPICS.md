@@ -1,7 +1,7 @@
 ---
 doc_id: "F1_SUPABASE_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 audit_gate: "not_ready"

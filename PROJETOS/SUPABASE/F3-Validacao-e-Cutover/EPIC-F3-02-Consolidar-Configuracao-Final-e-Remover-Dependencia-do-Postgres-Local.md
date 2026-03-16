@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F3-02-Consolidar-Configuracao-Final-e-Remover-Dependencia-do-Postgres-Local.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -27,15 +27,15 @@ em SQLite e eliminando o PostgreSQL local como requisito operacional padrao.
 - `docs/render.yaml` representa a configuracao de deploy do backend em producao
 
 ## Definition of Done do Epico
-- [ ] configuracao e documentacao alinhadas ao Supabase como banco unico
-- [ ] PostgreSQL local removido como requisito operacional padrao
-- [ ] fallback SQLite de testes e contrato de deploy preservados
+- [x] configuracao e documentacao alinhadas ao Supabase como banco unico
+- [x] PostgreSQL local removido como requisito operacional padrao
+- [x] fallback SQLite de testes e contrato de deploy preservados
 
 ## Issues do Epico
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F3-02-001 | Atualizar configuracao e documentacao para Supabase como banco unico | Consolidar o estado final de setup, troubleshooting e deploy apos a migracao | 3 | todo | [ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico](./issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico/) |
+| ISSUE-F3-02-001 | Atualizar configuracao e documentacao para Supabase como banco unico | Consolidar o estado final de setup, troubleshooting e deploy apos a migracao | 3 | done | [ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico](./issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico/) |
 
 ## Artifact Minimo do Epico
 

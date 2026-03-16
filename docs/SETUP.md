@@ -137,7 +137,7 @@ Para gerar backup do Supabase e export do PostgreSQL local antes da recarga:
 ```bash
 cd backend && python -m scripts.backup_export_migracao
 ```
-Configure `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` no `.env`. Ver [RUNBOOK-MIGRACAO-SUPABASE.md](RUNBOOK-MIGRACAO-SUPABASE.md).
+Configure `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` no `.env`. O script exige `pg_dump` e `pg_restore` no PATH (o segundo é usado para validar os dumps antes de declarar sucesso). Ver [RUNBOOK-MIGRACAO-SUPABASE.md](RUNBOOK-MIGRACAO-SUPABASE.md).
 
 ## Frontend
 ### 1) Instalar deps

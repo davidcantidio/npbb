@@ -82,9 +82,9 @@ Remove-Item -Recurse -Force frontend/node_modules
 **Sintoma:** erro de conexao no pytest.
 **Solucao:** exporte `TESTING=true` ou configure `DATABASE_URL` para um banco de teste.
 
-## 15) backup_export_migracao falha (credenciais ou pg_dump)
-**Sintoma:** `ERRO: LOCAL_DIRECT_URL nao configurado` ou `pg_dump nao encontrado no PATH`.
+## 15) backup_export_migracao falha (credenciais ou tooling)
+**Sintoma:** `ERRO: LOCAL_DIRECT_URL nao configurado`, `pg_dump nao encontrado no PATH` ou `pg_restore nao encontrado no PATH`.
 **Solucao:**
 - Configure no `backend/.env`: `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` (ver `.env.example`).
-- Instale o cliente PostgreSQL (`brew install postgresql@16`) e garanta que `pg_dump` esteja no PATH.
-- O script nao executa nenhum passo destrutivo no Supabase; falha antes de qualquer efeito colateral.
+- Instale o cliente PostgreSQL (`brew install postgresql@16`) e garanta que `pg_dump` e `pg_restore` estejam no PATH.
+- O script valida os dumps gerados com `pg_restore --list` antes de declarar prontidao; nao executa nenhum passo destrutivo no Supabase.

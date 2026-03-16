@@ -243,8 +243,9 @@ def _normalize_db_target(url: str) -> tuple[str, str]:
 def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) -> None:
     """
     T4: Consolida o estado final da recarga para a etapa de validação.
-    ISSUE-F2-02-003: Valida contrato de manutenção (DIRECT_URL) e contrato de runtime (DATABASE_URL).
-    Só libera para ISSUE-F2-02-002 quando DATABASE_URL estiver apta para Supabase.
+    Valida contrato de manutenção (DIRECT_URL) e contrato de runtime (DATABASE_URL).
+    Só libera para ISSUE-F2-02-002 quando DATABASE_URL estiver alinhada ao mesmo
+    Supabase alvo da recarga (ISSUE-F2-02-004: conectividade remota isolada não basta).
     """
     # 1. Validar conexão direta (manutenção) - já usada na limpeza/import
     engine_direct = create_engine(supabase_url)
@@ -300,7 +301,7 @@ def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) ->
     print(f"Backup Supabase preservado: {backup_path}")
     print(f"Export local utilizado: {export_path}")
     print("Resultado: recarga concluida com sucesso")
-    print("Contratos validados: DIRECT_URL (manutencao) e DATABASE_URL (runtime) aptos para Supabase.")
+    print("Contratos validados: DIRECT_URL (manutencao) e DATABASE_URL (runtime) alinhados ao Supabase alvo da recarga.")
     print("\nBackup do Supabase preservado ate o encerramento da validacao da F3.")
     print("Ambiente pronto para validacao pos-carga (ISSUE-F2-02-002).")
 

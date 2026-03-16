@@ -51,7 +51,7 @@ liberar a fase de migracao de dados.
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Compatibilizar e validar migrations Alembic no Supabase | Alinhar a execucao de migrations e provar que o schema local sobe no Supabase | nenhuma | todo | [EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md](./EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md) |
+| EPIC-F1-01 | Compatibilizar e validar migrations Alembic no Supabase | Alinhar a execucao de migrations e provar que o schema local sobe no Supabase | nenhuma | active | [EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md](./EPIC-F1-01-Compatibilizar-e-Validar-Migrations-Alembic-no-Supabase.md) |
 
 ## Dependencias entre Epicos
 

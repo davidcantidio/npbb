@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -35,14 +35,14 @@ fallback controlado para `DATABASE_URL`, sem regressao no fallback SQLite de
 - Given ambiente de teste com SQLite, When as validacoes minimas do backend rodam, Then o comportamento de testes nao regride
 
 ## Definition of Done da Issue
-- [ ] entrypoints de migrations alinhados ao contrato do Supabase
-- [ ] mensagens de erro e fallback coerentes com `DIRECT_URL` e `DATABASE_URL`
-- [ ] validacao minima sem regressao no fluxo de testes
+- [x] entrypoints de migrations alinhados ao contrato do Supabase
+- [x] mensagens de erro e fallback coerentes com `DIRECT_URL` e `DATABASE_URL`
+- [x] validacao minima sem regressao no fluxo de testes
 
 ## Tasks Decupadas
-- [ ] T1: mapear a resolucao atual de URLs no fluxo Alembic e seus pontos de divergencia
-- [ ] T2: ajustar os entrypoints de migrations para refletir `DIRECT_URL` primeiro e `DATABASE_URL` como fallback
-- [ ] T3: validar mensagens de erro e cobertura minima sem regressao de testes
+- [x] T1: mapear a resolucao atual de URLs no fluxo Alembic e seus pontos de divergencia
+- [x] T2: ajustar os entrypoints de migrations para refletir `DIRECT_URL` primeiro e `DATABASE_URL` como fallback
+- [x] T3: validar mensagens de erro e cobertura minima sem regressao de testes
 
 ## Instructions por Task
 

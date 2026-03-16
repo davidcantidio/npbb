@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F1-01.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -22,7 +22,7 @@ que o schema atual sobe ate o head no ambiente alvo.
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-01-001 | Adequar execucao de migrations ao Supabase | 3 | todo | [ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md](../issues/ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md) |
+| ISSUE-F1-01-001 | Adequar execucao de migrations ao Supabase | 3 | done | [ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md](../issues/ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md) |
 | ISSUE-F1-01-002 | Validar schema do Supabase com Alembic upgrade head | 5 | todo | [ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md](../issues/ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md) |
 
 ## Riscos e Bloqueios

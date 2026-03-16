@@ -37,6 +37,7 @@ acao destrutiva na base alvo.
 |---|---|---|---|---|---|
 | ISSUE-F2-01-001 | Formalizar runbook de backup, export, import e rollback | Fechar a sequencia operacional da migracao sem improviso | 2 | done | [ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md](./issues/ISSUE-F2-01-001-Formalizar-Runbook-de-Backup-Export-Import-e-Rollback.md) |
 | ISSUE-F2-01-002 | Automatizar backup do Supabase e export do PostgreSQL local | Gerar artefatos de seguranca e export com comandos reproduziveis | 3 | done | [ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md](./issues/ISSUE-F2-01-002-Automatizar-Backup-do-Supabase-e-Export-do-PostgreSQL-Local.md) |
+| ISSUE-F2-01-003 | Validar artefatos e cobrir a automacao de backup/export | Garantir validacao objetiva dos dumps e cobertura automatizada dos cenarios criticos | 2 | done | [ISSUE-F2-01-003-Validar-Artefatos-e-Cobrir-a-Automacao-de-Backup-Export.md](./issues/ISSUE-F2-01-003-Validar-Artefatos-e-Cobrir-a-Automacao-de-Backup-Export.md) |
 
 ## Artifact Minimo do Epico
 

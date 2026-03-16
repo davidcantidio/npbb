@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 # Garante que o pacote app seja encontrado
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -69,6 +70,17 @@ def _check_pg_restore() -> str:
     return path
 
 
+def _sqlalchemy_to_libpq(url: str) -> str:
+    """Converte URL SQLAlchemy (postgresql+psycopg2://...) para formato libpq (postgresql://...)."""
+    if not url:
+        return ""
+    if url.startswith("postgresql+psycopg2://"):
+        return url.replace("postgresql+psycopg2://", "postgresql://", 1)
+    if url.startswith("postgresql://"):
+        return url
+    return url
+
+
 def _find_latest_artifact(prefix: str) -> Path | None:
     """Retorna o artefato mais recente com o prefixo dado."""
     if not ARTIFACTS_DIR.exists():
@@ -110,6 +122,47 @@ def validate_preconditions() -> tuple[str, str, Path, Path]:
     return pg_restore_path, supabase_url, backup_path, export_path
 
 
+def run_limpeza_controlada(supabase_url: str) -> None:
+    """
+    T2: Executa limpeza controlada do Supabase na ordem segura (TRUNCATE CASCADE).
+    Interrompe imediatamente em erro de FK ou transacional.
+    """
+    engine = create_engine(supabase_url)
+
+    with engine.connect() as conn:
+        # Obter tabelas do schema public (excluindo alembic_version)
+        result = conn.execute(
+            text("""
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_type = 'BASE TABLE'
+                  AND table_name != 'alembic_version'
+                ORDER BY table_name
+            """)
+        )
+        tables = [row[0] for row in result]
+
+    if not tables:
+        raise SystemExit("ERRO: Nenhuma tabela encontrada no schema public.")
+
+    # TRUNCATE ... CASCADE: PostgreSQL resolve dependências de FK automaticamente
+    tables_quoted = ", ".join(f'"{t}"' for t in tables)
+    truncate_sql = f"TRUNCATE TABLE {tables_quoted} CASCADE"
+
+    print("Executando limpeza controlada (TRUNCATE CASCADE)...")
+    with engine.begin() as conn:
+        try:
+            conn.execute(text(truncate_sql))
+        except Exception as e:
+            raise SystemExit(
+                f"ERRO: Limpeza falhou. Ordem segura nao garantida ou risco nao previsto.\n"
+                f"Detalhe: {e}\n"
+                "Nao prossiga. Verifique o runbook e o backup do Supabase."
+            ) from e
+
+    print("Limpeza concluida. Ambiente alvo pronto para importacao.")
+
+
 def main() -> None:
     """Ordem: 1) validar precondições, 2) limpar, 3) importar, 4) consolidar."""
     print("=== Recarga Controlada - Migracao F2 (Supabase) ===\n")
@@ -121,9 +174,9 @@ def main() -> None:
     print(f"  - Export local: {export_path}")
     print(f"  - Supabase DIRECT_URL configurada\n")
 
-    print("Recarga autorizada. Próximos passos (T2-T4) serão implementados.")
+    # T2: Limpeza controlada
+    run_limpeza_controlada(supabase_url)
 
-    # TODO T2: limpeza controlada
     # TODO T3: importação
     # TODO T4: consolidação
 

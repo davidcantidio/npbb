@@ -8,9 +8,16 @@ Referência: docs/RUNBOOK-MIGRACAO-SUPABASE.md
 
 Interface:
 - Inputs: SUPABASE_DIRECT_URL (backup), LOCAL_DIRECT_URL (export)
-- Precondições: pg_dump no PATH; credenciais válidas; F1 concluída
+- Precondições: pg_dump e pg_restore no PATH; credenciais válidas; F1 concluída
 - Saídas: backup_supabase_*.dump, export_local_*.dump
 - Nenhum passo destrutivo no Supabase.
+
+Contrato de validação final (ISSUE-F2-01-003):
+- A automação só anuncia sucesso para F2-02 após validar objetivamente os dumps.
+- Validação mínima obrigatória: (1) arquivo existe e tem tamanho > 0;
+  (2) pg_restore --list executa sem erro (confirma formato custom legível).
+- Se qualquer validação falhar, o fluxo termina com SystemExit sem imprimir
+  a mensagem de prontidao. Ordem: backup -> export -> validação final -> sucesso.
 
 Uso:
   cd backend && python -m scripts.backup_export_migracao

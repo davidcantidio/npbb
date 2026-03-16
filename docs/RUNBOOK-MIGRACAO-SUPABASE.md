@@ -29,7 +29,8 @@ Este runbook define a sequência operacional para migrar dados do PostgreSQL loc
 
 ### 1.3 Ferramentas e acesso
 
-- `pg_dump` disponível no PATH
+- `pg_dump` disponível no PATH (backup e export)
+- `pg_restore` disponível no PATH (validação dos dumps custom e import)
 - `psql` ou `pg_restore` disponíveis para import
 - Credenciais válidas para Supabase (`DATABASE_URL`, `DIRECT_URL`)
 - Acesso ao PostgreSQL local para export
@@ -43,7 +44,7 @@ Este runbook define a sequência operacional para migrar dados do PostgreSQL loc
 ### 1.5 Critérios de parada (antes de qualquer passo destrutivo)
 
 - **Parar** se backup do Supabase não existir antes de limpeza/import
-- **Parar** se `pg_dump` não estiver disponível
+- **Parar** se `pg_dump` ou `pg_restore` não estiverem disponíveis
 - **Parar** se credenciais Supabase ou local forem inválidas
 - **Parar** se F1 não estiver concluída (schema não validado no Supabase)
 
@@ -81,6 +82,10 @@ cd backend && python -m scripts.backup_export_migracao
 - `SUPABASE_DIRECT_URL` ou `DIRECT_URL` — conexão direct ao Supabase (backup)
 - `LOCAL_DIRECT_URL` — conexão ao PostgreSQL local (export)
 
+**Tooling obrigatório:** `pg_dump` e `pg_restore` no PATH (o segundo é usado para validar os dumps antes de declarar sucesso).
+
+**Validação final:** o script só imprime a mensagem de prontidao para F2-02 após validar objetivamente os dumps gerados (existência, tamanho > 0, `pg_restore --list` sem erro). Se a validação falhar, o fluxo termina com erro e não declara os artefatos prontos.
+
 Artefatos gerados em `artifacts_migracao/` (backup_supabase_*.dump, export_local_*.dump).
 
 ### 2.2.1 Automação (passos 3 e 4 — recarga)
@@ -110,7 +115,7 @@ O script valida precondições, executa limpeza controlada (TRUNCATE CASCADE), i
 
 - **Antes de limpeza**: confirmar que backup do Supabase existe e export local está disponível
 - **Antes de import**: confirmar que limpeza foi concluída sem erro
-- **Parar imediatamente** se `pg_dump` não estiver disponível ou credenciais forem inválidas
+- **Parar imediatamente** se `pg_dump`, `pg_restore` ou credenciais forem inválidos ou ausentes
 
 ---
 

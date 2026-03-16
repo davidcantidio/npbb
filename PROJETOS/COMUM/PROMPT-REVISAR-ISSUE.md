@@ -85,6 +85,12 @@ Heuristica obrigatoria do formato:
   multiplas tasks, tarefas decupadas ou `task_instruction_mode: required`
 - usar arquivo unico `ISSUE-*.md` apenas quando a correcao for simples, local e
   de task unica
+- no rascunho da issue local, manter manifesto completo com user story,
+  contexto tecnico, plano TDD, criterios, DoD, tasks, arquivos reais e artefato minimo
+- quando uma task do follow-up envolver codigo novo ou alteracao com cobertura
+  automatizavel, marcar `tdd_aplicavel: true` e preencher `testes_red` +
+  `passos_atomicos` na ordem red -> green -> refactor; quando nao envolver TDD,
+  manter `tdd_aplicavel: false` ou omitir conforme `SPEC-TASK-INSTRUCTIONS.md`
 
 ### Regra final
 

@@ -118,6 +118,8 @@ Regras obrigatorias do rascunho:
   correcao for simples, local e de task unica
 - se a issue for granularizada, usar `README.md` como manifesto e
   `PROJETOS/COMUM/TEMPLATE-TASK.md` para cada `TASK-N.md`
+- manter no manifesto da issue: user story, contexto tecnico, plano TDD,
+  criterios, DoD, tasks, arquivos reais e artefato minimo
 - criar `doc_id` coerente com o formato escolhido:
   - issue granularizada: `doc_id` do `README.md` igual ao identificador da issue
   - issue legada: `doc_id` no formato `ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md`
@@ -125,6 +127,10 @@ Regras obrigatorias do rascunho:
 - definir `task_instruction_mode` conforme `SPEC-TASK-INSTRUCTIONS.md`
 - usar `required` quando houver risco alto, multi-arquivo, ordem critica,
   regressao delicada ou handoff sensivel
+- quando uma task envolver codigo novo ou alteracao com cobertura automatizavel,
+  marcar `tdd_aplicavel: true` e preencher `testes_red` + `passos_atomicos`
+  na ordem red -> green -> refactor; quando nao envolver TDD, manter
+  `tdd_aplicavel: false` ou omitir conforme a spec
 - registrar no `Contexto Tecnico`:
   - issue de origem
   - evidencia usada na revisao

@@ -116,7 +116,11 @@
     apenas quando o follow-up for local, simples e de task unica.
   - `status: todo` no manifesto
   - `task_instruction_mode` definido conforme `SPEC-TASK-INSTRUCTIONS.md`
-  - user story, contexto tecnico, criterios, DoD e tasks derivados do follow-up
+  - user story, contexto tecnico, plano TDD, criterios, DoD e tasks derivados do follow-up
+  - quando uma task envolver codigo novo ou alteracao com cobertura automatizavel,
+    marcar `tdd_aplicavel: true` e preencher `testes_red` + `passos_atomicos`
+    na ordem red -> green -> refactor; quando nao envolver TDD, manter
+    `tdd_aplicavel: false` ou omitir conforme a spec
   - campo `Dependencias` com referencia ao relatorio de origem
 
   ```

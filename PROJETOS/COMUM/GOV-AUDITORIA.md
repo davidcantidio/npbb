@@ -122,6 +122,10 @@ Estados operacionais do gate dentro do manifesto da fase:
 - correcao local e contida pode abrir `issue-local` na mesma fase
 - `issue-local` pode ser uma pasta `ISSUE-*/` com `README.md` + `TASK-*.md` ou,
   por compatibilidade, um arquivo unico `ISSUE-*.md`
+- todo `issue-local` deve seguir `GOV-ISSUE-FIRST.md`; quando a issue usar
+  `task_instruction_mode: required` e uma task envolver codigo com cobertura
+  automatizavel, o plano TDD da issue deve descer para a task via
+  `tdd_aplicavel` e `testes_red`, conforme `SPEC-TASK-INSTRUCTIONS.md`
 - refatoracao estrutural ou correcao sistemica deve abrir `new-intake` com `intake_kind: audit-remediation`
 - um follow-up e estrutural/sistemico quando:
   - envolve arquitetura ou contratos amplos

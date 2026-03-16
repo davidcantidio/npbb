@@ -45,7 +45,9 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 8. diferencie follow-up `issue-local` de `new-intake` conforme o escopo da remediacao
 9. quando o follow-up for `issue-local`, prefira pasta `ISSUE-*/` com
    `README.md` + `TASK-*.md`; use arquivo `ISSUE-*.md` apenas para ajuste
-   simples de task unica
+   simples de task unica; se a remediacao virar issue `required` com task de
+   codigo, exija que o plano TDD da issue desca para a task via
+   `tdd_aplicavel` e `testes_red`, conforme `SPEC-TASK-INSTRUCTIONS.md`
 10. emita veredito `go`, `hold` ou `cancelled`
 
 ### Regras de julgamento

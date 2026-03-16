@@ -296,20 +296,9 @@ Como <papel>, quero <acao> para <resultado>.
 - precondicoes:
 - arquivos_a_ler_ou_tocar:
   - `frontend/...`
-- tdd_aplicavel: true
-- testes_red:
-  - testes_a_escrever_primeiro:
-    - ...
-  - comando_para_rodar:
-    - `npm run test -- --run`
-  - criterio_red:
-    - os testes devem falhar antes da implementacao
+- tdd_aplicavel: false
 - passos_atomicos:
-  1. escrever os testes listados em `testes_red`
-  2. rodar os testes e confirmar falha inicial
-  3. implementar o minimo necessario para passar
-  4. rodar os testes e confirmar green
-  5. refatorar se necessario mantendo green
+  1. ...
 - comandos_permitidos:
   - `npm run test -- --run`
 - resultado_esperado:
@@ -331,6 +320,10 @@ Como <papel>, quero <acao> para <resultado>.
 - [Fase](../F1_PROJETO_EPICS.md)
 - [PRD](../../PRD-PROJETO.md)
 ```
+
+> Quando TDD aplicar em issue legada, substituir `tdd_aplicavel` por `true` e
+> incluir `testes_red` imediatamente antes de `passos_atomicos`, conforme
+> `SPEC-TASK-INSTRUCTIONS.md`.
 
 ## Rastreabilidade de Follow-up de Review
 

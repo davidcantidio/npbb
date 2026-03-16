@@ -112,3 +112,10 @@ Se `DATABASE_URL` apontar para `127.0.0.1` ou `localhost`, o runtime usara o Pos
 - Confirme que `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `DATABASE_URL` apontam para o mesmo projeto Supabase; runtime remoto diferente nao e aceito.
 - Confirme `pg_restore` no PATH; o script usa `pg_restore --list` e `pg_restore --help` para validar a viabilidade do rollback.
 - Se a falha apontar tabela ausente ou inacessivel, nao libere F3; revise a recarga e preserve o backup para rollback.
+
+## 18) Checklist pos-cutover: scripts criticos e fallback de testes
+**Objetivo:** evidencias minimas de coerencia entre operacao (Supabase) e testes (SQLite) apos F3.
+**Scripts criticos:** `seed_common.py` prefere `DIRECT_URL`; `seed_domains.py` usa `get_engine_for_scripts`; `seed_sample.py` prefere `DIRECT_URL` depois `DATABASE_URL`. Nenhum assume PostgreSQL local como padrao.
+**Fallback de testes:** com `TESTING=true`, `database.py` retorna `sqlite:///./app.db` (sem `DATABASE_URL_TEST` ou `FORCE_DATABASE_URL_IN_TESTS`).
+**Validacao:** `cd backend && PYTHONPATH=.. TESTING=true .venv/bin/python -c "from app.db.database import _get_database_url; print(_get_database_url())"` deve imprimir `sqlite:///./app.db`.
+**Teste minimo:** `cd backend && PYTHONPATH=.. TESTING=true SECRET_KEY=ci-secret-key .venv/bin/python -m pytest -q tests/test_alembic_single_head.py` deve passar.

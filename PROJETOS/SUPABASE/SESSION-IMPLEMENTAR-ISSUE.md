@@ -11,10 +11,10 @@ last_updated: "2026-03-10"
 ## Parametros obrigatorios
 
 ```
-PROJETO:     <nome do projeto>
-FASE:        <F<N>-NOME>
-ISSUE_ID:    <ISSUE-F<N>-<NN>-<MMM>>
-ISSUE_PATH:  <caminho completo do arquivo de issue>
+PROJETO:     SUPABASE
+FASE:        F2
+ISSUE_ID:    F2-02-001
+ISSUE_PATH:  /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/F2-Migracao-de-Dados/issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md
 ```
 
 ## Prompt

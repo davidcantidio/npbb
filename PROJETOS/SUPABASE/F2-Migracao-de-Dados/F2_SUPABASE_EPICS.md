@@ -52,7 +52,7 @@ validada com rollback operacionalmente viavel.
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F2-01 | Preparar backup e export do PostgreSQL local | Fechar o runbook de migracao e gerar os artefatos de seguranca e export | F1 concluida | done | [EPIC-F2-01-Preparar-Backup-e-Export-do-PostgreSQL-Local.md](./EPIC-F2-01-Preparar-Backup-e-Export-do-PostgreSQL-Local.md) |
-| EPIC-F2-02 | Recarregar o Supabase com os dados locais | Executar a substituicao dos dados do Supabase e validar a integridade pos-carga | EPIC-F2-01 | todo | [EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md](./EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md) |
+| EPIC-F2-02 | Recarregar o Supabase com os dados locais | Executar a substituicao dos dados do Supabase e validar a integridade pos-carga | EPIC-F2-01 | active | [EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md](./EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md) |
 
 ## Dependencias entre Epicos
 

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -34,15 +34,15 @@ rodada somente quando a recarga estiver completa.
 - Given a recarga concluida, When a validacao pos-carga for iniciada, Then o Supabase ja esta pronto para as verificacoes de integridade
 
 ## Definition of Done da Issue
-- [ ] precondicoes de backup, export e ordem de recarga verificadas antes da execucao
-- [ ] limpeza e importacao executadas sem improviso no Supabase
-- [ ] resultado da recarga pronto para a validacao pos-carga
+- [x] precondicoes de backup, export e ordem de recarga verificadas antes da execucao
+- [x] limpeza e importacao executadas sem improviso no Supabase
+- [x] resultado da recarga pronto para a validacao pos-carga
 
 ## Tasks Decupadas
-- [ ] T1: validar precondicoes e selecionar o caminho de recarga aprovado no runbook
-- [ ] T2: preparar a limpeza controlada do Supabase na ordem segura
-- [ ] T3: executar a importacao dos dados locais no Supabase
-- [ ] T4: consolidar o estado final da recarga para a etapa de validacao
+- [x] T1: validar precondicoes e selecionar o caminho de recarga aprovado no runbook
+- [x] T2: preparar a limpeza controlada do Supabase na ordem segura
+- [x] T3: executar a importacao dos dados locais no Supabase
+- [x] T4: consolidar o estado final da recarga para a etapa de validacao
 
 ## Instructions por Task
 
@@ -143,6 +143,8 @@ rodada somente quando a recarga estiver completa.
 
 Rodada de recarga executada no Supabase com o dataset local pronta para a
 validacao de integridade.
+
+**Artifact gerado:** [backend/scripts/recarga_migracao.py](../../../../backend/scripts/recarga_migracao.py) — executa validacao, limpeza, import e consolidacao.
 
 ## Dependencias
 - [Intake](../../INTAKE-SUPABASE.md)

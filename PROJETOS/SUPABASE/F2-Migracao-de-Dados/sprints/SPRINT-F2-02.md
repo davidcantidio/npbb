@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F2-02.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -22,7 +22,7 @@ validacao de integridade e rollback da fase de dados.
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F2-02-001 | Implementar recarga controlada de dados no Supabase | 5 | todo | [ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md](../issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md) |
+| ISSUE-F2-02-001 | Implementar recarga controlada de dados no Supabase | 5 | done | [ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md](../issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md) |
 | ISSUE-F2-02-002 | Validar integridade pos-carga e procedimento de rollback | 3 | todo | [ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md](../issues/ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md) |
 
 ## Riscos e Bloqueios

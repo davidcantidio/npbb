@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
 ---
@@ -35,7 +35,7 @@ validacao pos-carga suficiente para liberar o cutover.
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F2-02-001 | Implementar recarga controlada de dados no Supabase | Executar limpeza e import com ordem segura e comandos reproduziveis | 5 | todo | [ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md](./issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md) |
+| ISSUE-F2-02-001 | Implementar recarga controlada de dados no Supabase | Executar limpeza e import com ordem segura e comandos reproduziveis | 5 | done | [ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md](./issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md) |
 | ISSUE-F2-02-002 | Validar integridade pos-carga e procedimento de rollback | Confirmar que o Supabase agora reflete os dados locais e que o retorno e viavel se necessario | 3 | todo | [ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md](./issues/ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md) |
 
 ## Artifact Minimo do Epico

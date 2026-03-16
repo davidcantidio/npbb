@@ -92,3 +92,12 @@ A rodada de migração segue esta ordem. **Nenhum passo destrutivo** (limpeza/tr
 - **Backup do Supabase** preservado até o fim da validação da F3
 - **Restore**: via Supabase Dashboard ou `pg_restore` em caso de falha
 - **Dump local**: manter como cópia de segurança até validação completa (PRD)
+
+---
+
+## 4. Referências
+
+- [PRD-SUPABASE.md](../PROJETOS/SUPABASE/PRD-SUPABASE.md) — fluxo principal e escopo
+- [docs/SETUP.md](SETUP.md) — contrato de conexão
+- [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md) — riscos operacionais (Supabase pooler vs direct)
+- [docs/DEPLOY_RENDER_CLOUDFLARE.md](DEPLOY_RENDER_CLOUDFLARE.md) — variáveis de produção (Render + Supabase)

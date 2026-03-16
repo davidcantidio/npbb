@@ -38,6 +38,7 @@ validacao pos-carga suficiente para liberar o cutover.
 | ISSUE-F2-02-001 | Implementar recarga controlada de dados no Supabase | Executar limpeza e import com ordem segura e comandos reproduziveis | 5 | done | [ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md](./issues/ISSUE-F2-02-001-Implementar-Recarga-Controlada-de-Dados-no-Supabase.md) |
 | ISSUE-F2-02-002 | Validar integridade pos-carga e procedimento de rollback | Confirmar que o Supabase agora reflete os dados locais e que o retorno e viavel se necessario | 3 | todo | [ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md](./issues/ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md) |
 | ISSUE-F2-02-003 | Endurecer contratos e atomicidade da recarga no Supabase | Corrigir dump incompativel, carga parcial e falso positivo de prontidao na automacao de recarga | 3 | done | [ISSUE-F2-02-003-Endurecer-Contratos-e-Atomicidade-da-Recarga-no-Supabase.md](./issues/ISSUE-F2-02-003-Endurecer-Contratos-e-Atomicidade-da-Recarga-no-Supabase.md) |
+| ISSUE-F2-02-004 | Bloquear prontidao quando DATABASE_URL nao for o Supabase alvo | Impedir falso positivo quando o runtime estiver remoto, conectavel e divergente do Supabase recarregado | 3 | done | [ISSUE-F2-02-004-Bloquear-Prontidao-Quando-DATABASE_URL-Nao-For-o-Supabase-Alvo.md](./issues/ISSUE-F2-02-004-Bloquear-Prontidao-Quando-DATABASE_URL-Nao-For-o-Supabase-Alvo.md) |
 
 ## Artifact Minimo do Epico
 

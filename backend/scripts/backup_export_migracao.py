@@ -25,85 +25,18 @@ Uso:
 
 from __future__ import annotations
 
-import os
-import shutil
 import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-# Garante que o pacote app seja encontrado
-BASE_DIR = Path(__file__).resolve().parents[1]
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
-
-# Diretório de artefatos (raiz do repo, para facilitar acesso)
-ARTIFACTS_DIR = BASE_DIR.parent / "artifacts_migracao"
-ARTIFACTS_DIR.mkdir(exist_ok=True)
-
-
-def _load_env() -> None:
-    """Carrega .env do backend."""
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        raise SystemExit(
-            "ERRO: backend/.env nao encontrado. Crie a partir de .env.example e configure "
-            "SUPABASE_DIRECT_URL e LOCAL_DIRECT_URL para a migracao."
-        )
-    load_dotenv(env_path)
-
-
-def _sqlalchemy_to_libpq(url: str) -> str:
-    """Converte URL SQLAlchemy (postgresql+psycopg2://...) para formato libpq (postgresql://...)."""
-    if not url:
-        return ""
-    if url.startswith("postgresql+psycopg2://"):
-        return url.replace("postgresql+psycopg2://", "postgresql://", 1)
-    if url.startswith("postgresql://"):
-        return url
-    return url
-
-
-def _check_pg_dump() -> str:
-    """Verifica se pg_dump está disponível."""
-    pg_dump = shutil.which("pg_dump")
-    if not pg_dump:
-        raise SystemExit(
-            "ERRO: pg_dump nao encontrado no PATH. Instale o cliente PostgreSQL "
-            "(ex.: brew install postgresql@16) e garanta que o binario esteja no PATH."
-        )
-    return pg_dump
-
-
-def _check_pg_restore() -> str:
-    """Verifica se pg_restore está disponível (necessário para validação dos dumps)."""
-    pg_restore = shutil.which("pg_restore")
-    if not pg_restore:
-        raise SystemExit(
-            "ERRO: pg_restore nao encontrado no PATH. Instale o cliente PostgreSQL "
-            "(ex.: brew install postgresql@16) e garanta que o binario esteja no PATH."
-        )
-    return pg_restore
-
-
-def _validate_dump(pg_restore: str, path: Path) -> None:
-    """
-    Valida que o dump existe, tem tamanho > 0 e é legível (pg_restore --list).
-    Levanta SystemExit se qualquer verificação falhar.
-    """
-    if not path.exists():
-        raise SystemExit(f"ERRO: artefato nao encontrado: {path}")
-    if path.stat().st_size == 0:
-        raise SystemExit(f"ERRO: artefato vazio (tamanho 0): {path}")
-    cmd = [pg_restore, "--list", str(path)]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise SystemExit(
-            f"ERRO: dump invalido ou ilegivel: {path}\n"
-            f"pg_restore --list falhou.\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        )
+from scripts.migracao_common import (
+    ARTIFACTS_DIR,
+    check_binary,
+    get_env_value,
+    load_backend_env,
+    sqlalchemy_to_libpq,
+    validate_dump_with_pg_restore,
+)
 
 
 def _validate_preconditions() -> tuple[str, str, str, str]:
@@ -111,33 +44,30 @@ def _validate_preconditions() -> tuple[str, str, str, str]:
     Valida precondições e retorna (pg_dump_path, pg_restore_path, supabase_url, local_url).
     Falha imediatamente se credencial ou ferramenta faltar.
     """
-    _load_env()
+    load_backend_env()
 
     # Interface: SUPABASE_DIRECT_URL (backup), LOCAL_DIRECT_URL (export), pg_dump e pg_restore no PATH
-    supabase_url = os.getenv("SUPABASE_DIRECT_URL") or os.getenv("DIRECT_URL")
-    local_url = os.getenv("LOCAL_DIRECT_URL")
+    supabase_url = get_env_value(
+        ("SUPABASE_DIRECT_URL", "DIRECT_URL"),
+        "ERRO: SUPABASE_DIRECT_URL ou DIRECT_URL nao configurado. "
+        "Configure no .env para backup do Supabase.",
+    )
+    local_url = get_env_value(
+        ("LOCAL_DIRECT_URL",),
+        "ERRO: LOCAL_DIRECT_URL nao configurado. "
+        "Configure no .env para export do PostgreSQL local.",
+    )
 
-    if not supabase_url or not supabase_url.strip():
-        raise SystemExit(
-            "ERRO: SUPABASE_DIRECT_URL ou DIRECT_URL nao configurado. "
-            "Configure no .env para backup do Supabase."
-        )
-    if not local_url or not local_url.strip():
-        raise SystemExit(
-            "ERRO: LOCAL_DIRECT_URL nao configurado. "
-            "Configure no .env para export do PostgreSQL local."
-        )
-
-    pg_dump_path = _check_pg_dump()
-    pg_restore_path = _check_pg_restore()
-    return pg_dump_path, pg_restore_path, supabase_url.strip(), local_url.strip()
+    pg_dump_path = check_binary("pg_dump")
+    pg_restore_path = check_binary("pg_restore")
+    return pg_dump_path, pg_restore_path, supabase_url, local_url
 
 
 def run_backup_supabase(pg_dump: str, supabase_url: str, out_dir: Path) -> Path:
     """Executa backup do Supabase e retorna o caminho do arquivo gerado."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_file = out_dir / f"backup_supabase_{timestamp}.dump"
-    libpq_url = _sqlalchemy_to_libpq(supabase_url)
+    libpq_url = sqlalchemy_to_libpq(supabase_url)
 
     cmd = [
         pg_dump,
@@ -161,7 +91,7 @@ def run_export_local(pg_dump: str, local_url: str, out_dir: Path) -> Path:
     """Executa export do PostgreSQL local (data-only) e retorna o caminho do arquivo gerado."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_file = out_dir / f"export_local_{timestamp}.dump"
-    libpq_url = _sqlalchemy_to_libpq(local_url)
+    libpq_url = sqlalchemy_to_libpq(local_url)
 
     # ISSUE-F2-02-003: excluir alembic_version do dump para compatibilidade com schema validado em F1
     cmd = [
@@ -198,8 +128,8 @@ def main() -> None:
     export_file = run_export_local(pg_dump, local_url, ARTIFACTS_DIR)
 
     # 3. Validação final dos artefatos (antes de declarar prontidao para F2-02)
-    _validate_dump(pg_restore, backup_file)
-    _validate_dump(pg_restore, export_file)
+    validate_dump_with_pg_restore(pg_restore, backup_file, "backup do Supabase")
+    validate_dump_with_pg_restore(pg_restore, export_file, "export local")
 
     print("\n=== Artefatos gerados ===")
     print(f"Backup Supabase: {backup_file}")

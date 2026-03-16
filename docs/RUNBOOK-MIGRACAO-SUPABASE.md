@@ -14,8 +14,9 @@ Este runbook define a sequência operacional para migrar dados do PostgreSQL loc
 2. **Backup do Supabase** — antes de qualquer ação destrutiva
 3. **Export do PostgreSQL local** — `pg_dump` ou equivalente
 4. **Recarga** — limpeza controlada e import no Supabase
-5. **Validação** — backend conectando ao Supabase; testes passando
-6. **Rollback** — caminho de retorno ao backup do Supabase até validação completa da F3
+5. **Validação pós-carga** — checklist operacional usando o Supabase recarregado
+6. **Validação** — backend conectando ao Supabase; testes passando
+7. **Rollback** — caminho de retorno ao backup do Supabase até validação completa da F3
 
 ### 1.2 Contrato de conexão (backend/.env.example, docs/SETUP.md)
 
@@ -60,8 +61,9 @@ A rodada de migração segue esta ordem. **Nenhum passo destrutivo** (limpeza/tr
 | 2 | Export PostgreSQL local | `pg_dump --data-only` (ou `--format=custom`) | conexão local | Backup do Supabase existe? |
 | 3 | Limpeza controlada do alvo | truncate em ordem reversa de FKs | `DIRECT_URL` | Backup e export existem? |
 | 4 | Import no Supabase | `psql` ou `pg_restore` | `DIRECT_URL` | Limpeza concluída sem erro? |
-| 5 | Validação pós-carga | backend + testes | `DATABASE_URL` (runtime) | Import concluído? |
-| 6 | Rollback (se falha) | Supabase Dashboard ou `pg_restore` | — | Backup preservado até F3 |
+| 5 | Validação pós-carga | `validacao_pos_carga_migracao.py` | `DIRECT_URL` + `DATABASE_URL` | Import concluído e runtime alinhado? |
+| 6 | Validação final de runtime | backend + testes | `DATABASE_URL` (runtime) | Checklist pós-carga concluído? |
+| 7 | Rollback (se falha) | Supabase Dashboard ou `pg_restore` | — | Backup preservado até F3 |
 
 ### 2.1 Comandos-base da rodada
 
@@ -102,6 +104,35 @@ cd backend && python -m scripts.recarga_migracao
 
 O script valida precondições (incluindo contrato do artefato, ISSUE-F2-02-003), executa limpeza controlada (TRUNCATE CASCADE), importa via `pg_restore --single-transaction` (atomicidade) e consolida o estado. A consolidação só declara prontidão quando `DATABASE_URL` estiver alinhada ao mesmo Supabase alvo da recarga (DIRECT_URL).
 
+### 2.2.2 Automação (passo 5 — validação pós-carga)
+
+O script `backend/scripts/validacao_pos_carga_migracao.py` executa o checklist
+não destrutivo da `ISSUE-F2-02-002`:
+
+```bash
+cd backend && python -m scripts.validacao_pos_carga_migracao
+```
+
+**Pré-requisitos:**
+- `backup_supabase_*.dump` e `export_local_*.dump` já gerados em `artifacts_migracao/`
+- `SUPABASE_DIRECT_URL` ou `DIRECT_URL` apontando para o Supabase recarregado
+- `DATABASE_URL` apontando para o mesmo projeto Supabase
+- `pg_restore` disponível no PATH
+
+**Checklist obrigatório do script:**
+- valida que backup e export permanecem legíveis via `pg_restore --list`
+- confirma que `pg_restore --help` segue disponível para eventual restore
+- valida conectividade em `DIRECT_URL` e `DATABASE_URL`
+- bloqueia quando runtime e manutenção apontam para alvos distintos
+- confirma que as tabelas listadas no export local existem no alvo recarregado
+- coleta um snapshot simples de contagem por tabela para anexar à evidência da rodada
+
+**Critérios de parada:**
+- parar se backup ou export estiverem ausentes/ilegíveis
+- parar se `DATABASE_URL` ainda apontar para localhost ou para outro alvo remoto
+- parar se o Supabase recarregado não expuser as tabelas listadas no export
+- parar se a conectividade ou as consultas mínimas falharem
+
 ### 2.3 Uso de DIRECT_URL vs DATABASE_URL
 
 | Operação | URL | Motivo |
@@ -125,6 +156,11 @@ O script valida precondições (incluindo contrato do artefato, ISSUE-F2-02-003)
 - **Backup do Supabase** preservado até o fim da validação da F3
 - **Restore**: via Supabase Dashboard ou `pg_restore` em caso de falha
 - **Dump local**: manter como cópia de segurança até validação completa (PRD)
+- **Gatilhos objetivos para rollback:**
+  - `DATABASE_URL` e `DIRECT_URL` deixam de apontar para o mesmo projeto Supabase
+  - backup do Supabase fica ilegível ou indisponível para `pg_restore`
+  - tabelas listadas no export local ficam ausentes ou inacessíveis no alvo recarregado
+  - checagens mínimas de conectividade ou contagem falham durante a validação final da F3
 
 ---
 

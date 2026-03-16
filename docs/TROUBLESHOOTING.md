@@ -104,3 +104,11 @@ Se `DATABASE_URL` apontar para `127.0.0.1` ou `localhost`, o runtime usara o Pos
 - Configure no `backend/.env`: `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` (ver `.env.example`).
 - Instale o cliente PostgreSQL (`brew install postgresql@16`) e garanta que `pg_dump` e `pg_restore` estejam no PATH.
 - O script valida os dumps gerados com `pg_restore --list` antes de declarar prontidao; nao executa nenhum passo destrutivo no Supabase.
+
+## 17) validacao_pos_carga_migracao falha
+**Sintoma:** `ERRO: Artefato backup_supabase nao encontrado`, `ERRO: DATABASE_URL aponta para alvo diferente...` ou falha ao consultar tabelas do Supabase.
+**Solucao:**
+- Gere ou regenere os dumps mais recentes com `cd backend && python -m scripts.backup_export_migracao`.
+- Confirme que `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `DATABASE_URL` apontam para o mesmo projeto Supabase; runtime remoto diferente nao e aceito.
+- Confirme `pg_restore` no PATH; o script usa `pg_restore --list` e `pg_restore --help` para validar a viabilidade do rollback.
+- Se a falha apontar tabela ausente ou inacessivel, nao libere F3; revise a recarga e preserve o backup para rollback.

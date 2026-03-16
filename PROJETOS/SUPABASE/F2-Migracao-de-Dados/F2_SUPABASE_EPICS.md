@@ -1,10 +1,10 @@
 ---
 doc_id: "F2_SUPABASE_EPICS.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
-audit_gate: "not_ready"
+audit_gate: "pending"
 ---
 
 # Epicos - SUPABASE / F2 - Migracao de Dados
@@ -23,7 +23,7 @@ validada com rollback operacionalmente viavel.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -31,9 +31,9 @@ validada com rollback operacionalmente viavel.
 > A semantica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F2-R<NN>.md`
@@ -52,7 +52,7 @@ validada com rollback operacionalmente viavel.
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F2-01 | Preparar backup e export do PostgreSQL local | Fechar o runbook de migracao e gerar os artefatos de seguranca e export | F1 concluida | done | [EPIC-F2-01-Preparar-Backup-e-Export-do-PostgreSQL-Local.md](./EPIC-F2-01-Preparar-Backup-e-Export-do-PostgreSQL-Local.md) |
-| EPIC-F2-02 | Recarregar o Supabase com os dados locais | Executar a substituicao dos dados do Supabase e validar a integridade pos-carga | EPIC-F2-01 | active | [EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md](./EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md) |
+| EPIC-F2-02 | Recarregar o Supabase com os dados locais | Executar a substituicao dos dados do Supabase e validar a integridade pos-carga | EPIC-F2-01 | done | [EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md](./EPIC-F2-02-Recarregar-o-Supabase-com-os-Dados-Locais.md) |
 
 ## Dependencias entre Epicos
 
@@ -73,6 +73,6 @@ validada com rollback operacionalmente viavel.
 - redefinir o modelo de dados do backend
 
 ## Definition of Done da Fase
-- [ ] `EPIC-F2-01` e `EPIC-F2-02` concluidos com issues filhas `done`
-- [ ] backup, export, recarga e validacao pos-carga executados conforme runbook
-- [ ] a fase libera F3 com o Supabase refletindo o estado atual dos dados locais
+- [x] `EPIC-F2-01` e `EPIC-F2-02` concluidos com issues filhas `done`
+- [x] backup, export, recarga e validacao pos-carga executados conforme runbook
+- [x] a fase libera F3 com o Supabase refletindo o estado atual dos dados locais

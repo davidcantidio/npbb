@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-02-002-Validar-Integridade-Pos-Carga-e-Procedimento-de-Rollback.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -33,14 +33,14 @@ que o backup do Supabase continua utilizavel caso a rodada precise ser desfeita.
 - Given a validacao pos-carga concluida, When F3 iniciar, Then o ambiente esta apto para validacao de runtime e cutover
 
 ## Definition of Done da Issue
-- [ ] checklist de integridade pos-carga executado
-- [ ] backup e procedimento de rollback ainda viaveis
-- [ ] fase F2 pronta para liberar a validacao e o cutover
+- [x] checklist de integridade pos-carga executado
+- [x] backup e procedimento de rollback ainda viaveis
+- [x] fase F2 pronta para liberar a validacao e o cutover
 
 ## Tasks Decupadas
-- [ ] T1: definir e executar o checklist minimo de integridade pos-carga
-- [ ] T2: revisar a viabilidade do rollback a partir do backup preservado
-- [ ] T3: consolidar o veredito da fase de dados para liberar F3
+- [x] T1: definir e executar o checklist minimo de integridade pos-carga
+- [x] T2: revisar a viabilidade do rollback a partir do backup preservado
+- [x] T3: consolidar o veredito da fase de dados para liberar F3
 
 ## Instructions por Task
 
@@ -117,6 +117,10 @@ que o backup do Supabase continua utilizavel caso a rodada precise ser desfeita.
 
 Checklist de integridade pos-carga concluido e viabilidade do rollback
 confirmada para liberar F3.
+
+## Evidencia de Execucao
+
+- [EVIDENCIA-F2-02-002-Validacao-Pos-Carga.md](../EVIDENCIA-F2-02-002-Validacao-Pos-Carga.md)
 
 ## Dependencias
 - [Intake](../../INTAKE-SUPABASE.md)

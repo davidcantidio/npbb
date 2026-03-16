@@ -139,6 +139,13 @@ cd backend && python -m scripts.backup_export_migracao
 ```
 Configure `SUPABASE_DIRECT_URL` (ou `DIRECT_URL`) e `LOCAL_DIRECT_URL` no `.env`. O script exige `pg_dump` e `pg_restore` no PATH (o segundo é usado para validar os dumps antes de declarar sucesso). Ver [RUNBOOK-MIGRACAO-SUPABASE.md](RUNBOOK-MIGRACAO-SUPABASE.md).
 
+### 7) Migracao F2 (validacao pos-carga)
+Depois da recarga no Supabase, execute o checklist nao destrutivo da F2-02-002:
+```bash
+cd backend && python -m scripts.validacao_pos_carga_migracao
+```
+Configure `DATABASE_URL` e `DIRECT_URL`/`SUPABASE_DIRECT_URL` para o mesmo projeto Supabase. O script exige `pg_restore` no PATH, reutiliza os dumps mais recentes em `artifacts_migracao/` e bloqueia a liberacao para F3 quando backup/export estiverem ilegiveis, quando runtime e manutencao divergirem ou quando as tabelas exportadas nao existirem no alvo recarregado.
+
 ## Frontend
 ### 1) Instalar deps
 ```bash

@@ -18,97 +18,23 @@ Uso:
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
-
-# Garante que o pacote app seja encontrado
-BASE_DIR = Path(__file__).resolve().parents[1]
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
-
-ARTIFACTS_DIR = BASE_DIR.parent / "artifacts_migracao"
+from scripts.migracao_common import (
+    check_binary,
+    get_env_value,
+    is_local_runtime,
+    load_backend_env,
+    normalize_db_target,
+    require_latest_artifact,
+    sqlalchemy_to_libpq,
+    validate_export_contract,
+)
 
 # Caminho de recarga: pg_restore (export usa --format=custom)
 RECARGA_PATH = "pg_restore"
-
-
-def _load_env() -> None:
-    """Carrega .env do backend."""
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        raise SystemExit(
-            "ERRO: backend/.env nao encontrado. Crie a partir de .env.example e configure "
-            "SUPABASE_DIRECT_URL (ou DIRECT_URL) para a recarga."
-        )
-    load_dotenv(env_path)
-
-
-def _get_supabase_url() -> str:
-    """Retorna a URL direta do Supabase."""
-    url = os.getenv("SUPABASE_DIRECT_URL") or os.getenv("DIRECT_URL")
-    if not url or not url.strip():
-        raise SystemExit(
-            "ERRO: SUPABASE_DIRECT_URL ou DIRECT_URL nao configurado. "
-            "Configure no .env para recarga no Supabase."
-        )
-    return url.strip()
-
-
-def _check_pg_restore() -> str:
-    """Verifica se pg_restore está disponível."""
-    path = shutil.which("pg_restore")
-    if not path:
-        raise SystemExit(
-            "ERRO: pg_restore nao encontrado no PATH. Instale o cliente PostgreSQL "
-            "(ex.: brew install postgresql@16) e garanta que o binario esteja no PATH."
-        )
-    return path
-
-
-def _sqlalchemy_to_libpq(url: str) -> str:
-    """Converte URL SQLAlchemy (postgresql+psycopg2://...) para formato libpq (postgresql://...)."""
-    if not url:
-        return ""
-    if url.startswith("postgresql+psycopg2://"):
-        return url.replace("postgresql+psycopg2://", "postgresql://", 1)
-    if url.startswith("postgresql://"):
-        return url
-    return url
-
-
-def _find_latest_artifact(prefix: str) -> Path | None:
-    """Retorna o artefato mais recente com o prefixo dado."""
-    if not ARTIFACTS_DIR.exists():
-        return None
-    matches = sorted(ARTIFACTS_DIR.glob(f"{prefix}_*.dump"), reverse=True)
-    return matches[0] if matches else None
-
-
-def _validate_artifact_contract(pg_restore_path: str, export_path: Path) -> None:
-    """
-    ISSUE-F2-02-003: Pre-valida o artefato de export antes de qualquer passo destrutivo.
-    Bloqueia a recarga se o dump contiver dados de alembic_version (contrato incompatível com F1).
-    """
-    cmd = [pg_restore_path, "--list", str(export_path)]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise SystemExit(
-            f"ERRO: Artefato ilegivel para pre-validacao: {export_path}\n"
-            f"pg_restore --list falhou.\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        )
-    combined = (result.stdout or "") + (result.stderr or "")
-    if "alembic_version" in combined:
-        raise SystemExit(
-            f"ERRO: Artefato incompativel com schema validado em F1: {export_path}\n"
-            "O dump contem dados de alembic_version. Execute novamente o backup_export_migracao "
-            "com a versao corrigida do script (--exclude-table-data=public.alembic_version)."
-        )
 
 
 def validate_preconditions() -> tuple[str, str, Path, Path]:
@@ -116,33 +42,30 @@ def validate_preconditions() -> tuple[str, str, Path, Path]:
     T1: Valida precondições e retorna (pg_restore_path, supabase_url, backup_path, export_path).
     Bloqueia execução se backup, export ou credenciais faltarem.
     """
-    _load_env()
+    load_backend_env()
 
     # 1. Confirmar caminho de recarga (pg_restore)
-    pg_restore_path = _check_pg_restore()
+    pg_restore_path = check_binary("pg_restore")
 
     # 2. Confirmar backup do Supabase e export local
-    backup_path = _find_latest_artifact("backup_supabase")
-    export_path = _find_latest_artifact("export_local")
-
-    if not backup_path or not backup_path.exists():
-        raise SystemExit(
-            "ERRO: Backup do Supabase nao encontrado. Execute primeiro:\n"
-            "  cd backend && python -m scripts.backup_export_migracao\n"
-            f"Artefatos esperados em: {ARTIFACTS_DIR}"
-        )
-    if not export_path or not export_path.exists():
-        raise SystemExit(
-            "ERRO: Export local nao encontrado. Execute primeiro:\n"
-            "  cd backend && python -m scripts.backup_export_migracao\n"
-            f"Artefatos esperados em: {ARTIFACTS_DIR}"
-        )
+    backup_path = require_latest_artifact(
+        "backup_supabase",
+        "Execute primeiro:\n  cd backend && python -m scripts.backup_export_migracao",
+    )
+    export_path = require_latest_artifact(
+        "export_local",
+        "Execute primeiro:\n  cd backend && python -m scripts.backup_export_migracao",
+    )
 
     # 3. Conferir DIRECT_URL do Supabase
-    supabase_url = _get_supabase_url()
+    supabase_url = get_env_value(
+        ("SUPABASE_DIRECT_URL", "DIRECT_URL"),
+        "ERRO: SUPABASE_DIRECT_URL ou DIRECT_URL nao configurado. "
+        "Configure no .env para recarga no Supabase.",
+    )
 
     # 4. ISSUE-F2-02-003: Pre-validar contrato do artefato (antes de qualquer passo destrutivo)
-    _validate_artifact_contract(pg_restore_path, export_path)
+    validate_export_contract(pg_restore_path, export_path)
 
     return pg_restore_path, supabase_url, backup_path, export_path
 
@@ -194,7 +117,7 @@ def run_importacao(pg_restore_path: str, supabase_url: str, export_path: Path) -
     ISSUE-F2-02-003: --single-transaction garante atomicidade; qualquer erro faz rollback.
     Interrompe imediatamente em retorno nao zero (fail-fast).
     """
-    libpq_url = _sqlalchemy_to_libpq(supabase_url)
+    libpq_url = sqlalchemy_to_libpq(supabase_url)
 
     cmd = [
         pg_restore_path,
@@ -219,25 +142,6 @@ def _get_runtime_url() -> str | None:
     """Retorna DATABASE_URL (contrato de runtime) ou None se ausente."""
     url = os.getenv("DATABASE_URL")
     return url.strip() if url and url.strip() else None
-
-
-def _is_local_runtime(url: str) -> bool:
-    """True se a URL aponta para PostgreSQL local (127.0.0.1, localhost)."""
-    lower = url.lower()
-    return "127.0.0.1" in lower or "localhost" in lower
-
-
-def _normalize_db_target(url: str) -> tuple[str, str]:
-    """
-    ISSUE-F2-02-004: Retorna (host_normalizado, database) para comparacao de alvo.
-    Para Supabase, pooler e direct do mesmo projeto compartilham o host apos remover -pooler.
-    """
-    parsed = make_url(url)
-    host = (parsed.host or "").lower()
-    database = (parsed.database or "postgres").lower()
-    if ".supabase.co" in host and "-pooler" in host:
-        host = host.replace("-pooler", "")
-    return (host, database)
 
 
 def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) -> None:
@@ -266,7 +170,7 @@ def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) ->
             "quando o contrato de runtime (DATABASE_URL) estiver configurado para o Supabase. "
             "Configure DATABASE_URL no .env apontando para o pooler do Supabase (porta 6543)."
         )
-    if _is_local_runtime(runtime_url):
+    if is_local_runtime(runtime_url):
         raise SystemExit(
             "ERRO: DATABASE_URL aponta para PostgreSQL local (127.0.0.1/localhost). "
             "A consolidacao so libera para ISSUE-F2-02-002 quando DATABASE_URL estiver "
@@ -286,8 +190,8 @@ def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) ->
         ) from e
 
     # 4. ISSUE-F2-02-004: Validar alinhamento entre runtime e alvo recarregado
-    target_supabase = _normalize_db_target(supabase_url)
-    target_runtime = _normalize_db_target(runtime_url)
+    target_supabase = normalize_db_target(supabase_url)
+    target_runtime = normalize_db_target(runtime_url)
     if target_supabase != target_runtime:
         raise SystemExit(
             "ERRO: DATABASE_URL aponta para alvo diferente do Supabase recarregado. "
@@ -304,6 +208,7 @@ def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) ->
     print("Contratos validados: DIRECT_URL (manutencao) e DATABASE_URL (runtime) alinhados ao Supabase alvo da recarga.")
     print("\nBackup do Supabase preservado ate o encerramento da validacao da F3.")
     print("Ambiente pronto para validacao pos-carga (ISSUE-F2-02-002).")
+    print("Proximo passo: cd backend && python -m scripts.validacao_pos_carga_migracao")
 
 
 def main() -> None:

@@ -100,6 +100,7 @@ def _load_alembic_env_module(monkeypatch: pytest.MonkeyPatch) -> tuple[object, F
     monkeypatch.setenv("TESTING", "true")
     monkeypatch.delenv("DIRECT_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("ALEMBIC_STRICT_DIRECT_URL", raising=False)
 
     module_name = f"test_alembic_env_{uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, ALEMBIC_ENV_PATH)
@@ -214,4 +215,40 @@ def test_get_urls_requires_explicit_urls_outside_test_fallback(
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     with pytest.raises(RuntimeError, match="DIRECT_URL ou DATABASE_URL precisam estar configuradas"):
+        module.get_urls()
+
+
+def test_strict_mode_exposes_only_direct_url_ignores_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module, fake_context = _load_alembic_env_module(monkeypatch)
+    attempted_urls: list[str] = []
+
+    monkeypatch.setenv("ALEMBIC_STRICT_DIRECT_URL", "true")
+    monkeypatch.setenv("DIRECT_URL", "postgresql://direct")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://database")
+
+    def fake_open(_configuration: dict[str, str], url: str) -> tuple[FakeConnectable, FakeConnection]:
+        attempted_urls.append(url)
+        return FakeConnectable(), FakeConnection()
+
+    monkeypatch.setattr(module, "_open_connection", fake_open)
+
+    module.run_migrations_online()
+
+    assert attempted_urls == ["postgresql://direct"]
+    assert fake_context.run_calls == 1
+    assert module.get_urls() == ["postgresql://direct"]
+
+
+def test_strict_mode_fails_early_when_direct_url_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module, _ = _load_alembic_env_module(monkeypatch)
+
+    monkeypatch.setenv("ALEMBIC_STRICT_DIRECT_URL", "true")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://database")
+    monkeypatch.delenv("DIRECT_URL", raising=False)
+
+    with pytest.raises(RuntimeError, match="ALEMBIC_STRICT_DIRECT_URL=true exige DIRECT_URL"):
         module.get_urls()

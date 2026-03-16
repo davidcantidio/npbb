@@ -4,21 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "a0b458bb4ee39acc",
+        "id": "e9b9f57f0bd1fbd7",
         "type": "tabs",
         "children": [
           {
-            "id": "58610ee488185605",
+            "id": "d387956fd7ef378b",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "COMUM/SESSION-CRIAR-PRD.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "SESSION-CRIAR-PRD"
+              "title": "Nova aba"
             }
           }
         ]
@@ -183,15 +179,17 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "58610ee488185605",
+  "active": "d387956fd7ef378b",
   "lastOpenFiles": [
+    "SUPABASE/SESSION-PLANEJAR-PROJETO.md",
+    "COMUM/SESSION-CRIAR-PRD.md",
+    "SUPABASE/PRD-SUPABASE.md",
     "SUPABASE/AUDIT-LOG.md",
     "SUPABASE/INTAKE-SUPABASE.md",
     "SUPABASE/SESSION-AUDITAR-FASE.md",
     "SUPABASE/SESSION-IMPLEMENTAR-ISSUE.md",
     "SUPABASE/SESSION-REMEDIAR-HOLD.md",
     "SUPABASE/SESSION-REFATORAR-MONOLITO.md",
-    "SUPABASE/SESSION-PLANEJAR-PROJETO.md",
     "SUPABASE/SESSION-MAPA.md",
     "SUPABASE/SESSION-CRIAR-PRD.md",
     "SUPABASE/SESSION-CRIAR-INTAKE.md",
@@ -218,9 +216,7 @@
     "UX/F2-Implementacao/issues/ISSUE-F2-02-002-Implementar-Campos-Drag-and-Drop.md",
     "UX/F2-Implementacao/issues/ISSUE-F2-02-001-Remover-Redundancias-Aplicar-Preview-Mobile.md",
     "UX/F2-Implementacao/issues/ISSUE-F2-01-002-Implementar-Breakpoint-Viewports-Menores.md",
-    "UX/F2-Implementacao/issues/ISSUE-F2-01-001-Converter-Layout-Duas-Colunas.md",
     "UX/F2-Implementacao/issues",
-    "UX/F2-Implementacao/EPIC-F2-02-Formulario-Lead-Drag-and-Drop-Limpeza.md",
     "Sem título 1.canvas",
     "Sem título 2.canvas",
     "Sem título.canvas"

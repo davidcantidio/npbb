@@ -127,7 +127,15 @@ flowchart TD
 
 ---
 
-## 9. Riscos e Mitigação
+## 9. Restrições
+
+- Preservar compatibilidade com Alembic
+- Não quebrar testes com SQLite (`TESTING=true`)
+- Manter auth própria do backend (JWT/SECRET_KEY); não integrar Supabase Auth
+
+---
+
+## 10. Riscos e Mitigação
 
 | Risco | Mitigação |
 |-------|-----------|
@@ -137,7 +145,7 @@ flowchart TD
 
 ---
 
-## 10. Rollback
+## 11. Rollback
 
 - Backup do Supabase (Dashboard ou `pg_dump`) antes da migração
 - Restore via Supabase Dashboard ou `pg_restore` em caso de falha
@@ -145,7 +153,7 @@ flowchart TD
 
 ---
 
-## 11. Definition of Done
+## 12. Definition of Done
 
 - [ ] Schema aplicado no Supabase via Alembic
 - [ ] Dados locais importados no Supabase
@@ -156,7 +164,7 @@ flowchart TD
 
 ---
 
-## 12. Não-Objetivos
+## 13. Não-Objetivos
 
 - Integrar Supabase Auth
 - Refatorar modelos de dados
@@ -165,7 +173,7 @@ flowchart TD
 
 ---
 
-## 13. Hipóteses Declaradas
+## 14. Hipóteses Declaradas
 
 1. **Estratégia de dados**: `pg_dump --data-only` + import via `psql` ou `pg_restore` — detalhes de ordem de tabelas e FKs serão especificados na fase F2
 2. **Ordem**: schema primeiro (Alembic), depois dados
@@ -173,7 +181,7 @@ flowchart TD
 
 ---
 
-## 14. Referências
+## 15. Referências
 
 - **Intake:** [INTAKE-SUPABASE.md](./INTAKE-SUPABASE.md)
 - **Código:** `backend/alembic/`, `backend/app/db/database.py`

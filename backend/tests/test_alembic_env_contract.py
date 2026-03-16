@@ -252,3 +252,27 @@ def test_strict_mode_fails_early_when_direct_url_absent(
 
     with pytest.raises(RuntimeError, match="ALEMBIC_STRICT_DIRECT_URL=true exige DIRECT_URL"):
         module.get_urls()
+
+
+def test_strict_mode_fails_without_fallback_when_direct_url_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regressao: DIRECT_URL invalida em modo estrito nao faz fallback para DATABASE_URL."""
+    module, _ = _load_alembic_env_module(monkeypatch)
+    attempted_urls: list[str] = []
+
+    monkeypatch.setenv("ALEMBIC_STRICT_DIRECT_URL", "true")
+    monkeypatch.setenv("DIRECT_URL", "postgresql://invalid")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://database")
+
+    def fake_open(_configuration: dict[str, str], url: str) -> tuple[FakeConnectable, FakeConnection]:
+        attempted_urls.append(url)
+        raise ArgumentError("invalid direct url")
+
+    monkeypatch.setattr(module, "_open_connection", fake_open)
+
+    with pytest.raises(RuntimeError, match="Nenhuma URL valida para rodar migrations") as excinfo:
+        module.run_migrations_online()
+
+    assert attempted_urls == ["postgresql://invalid"]
+    assert isinstance(excinfo.value.__cause__, ArgumentError)

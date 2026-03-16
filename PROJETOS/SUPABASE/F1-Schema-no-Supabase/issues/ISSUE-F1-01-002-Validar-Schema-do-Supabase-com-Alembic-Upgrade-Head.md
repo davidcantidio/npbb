@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -34,15 +34,15 @@ Supabase usando `DIRECT_URL`, com evidencia suficiente para liberar F2.
 - Given a validacao encerrada, When F2 for iniciada, Then existe evidencia tecnica objetiva do schema aplicado no Supabase
 
 ## Definition of Done da Issue
-- [ ] pre-condicoes de migrations revisadas antes da execucao no Supabase
-- [ ] `alembic upgrade head` executado com sucesso no ambiente alvo
-- [ ] evidencia tecnica consolidada para liberar a fase F2
+- [x] pre-condicoes de migrations revisadas antes da execucao no Supabase
+- [x] `alembic upgrade head` executado com sucesso no ambiente alvo
+- [x] evidencia tecnica consolidada para liberar a fase F2
 
 ## Tasks Decupadas
-- [ ] T1: revisar pre-condicoes do historico Alembic e do ambiente alvo
-- [ ] T2: executar `alembic upgrade head` no Supabase com as URLs corretas
-- [ ] T3: validar o estado final do schema e do historico Alembic
-- [ ] T4: consolidar a evidencia minima e registrar bloqueios objetivos, se houver
+- [x] T1: revisar pre-condicoes do historico Alembic e do ambiente alvo
+- [x] T2: executar `alembic upgrade head` no Supabase com as URLs corretas
+- [x] T3: validar o estado final do schema e do historico Alembic
+- [x] T4: consolidar a evidencia minima e registrar bloqueios objetivos, se houver
 
 ## Instructions por Task
 

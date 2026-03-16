@@ -77,14 +77,43 @@ def _check_pg_dump() -> str:
     return pg_dump
 
 
-def _validate_preconditions() -> tuple[str, str, str]:
+def _check_pg_restore() -> str:
+    """Verifica se pg_restore está disponível (necessário para validação dos dumps)."""
+    pg_restore = shutil.which("pg_restore")
+    if not pg_restore:
+        raise SystemExit(
+            "ERRO: pg_restore nao encontrado no PATH. Instale o cliente PostgreSQL "
+            "(ex.: brew install postgresql@16) e garanta que o binario esteja no PATH."
+        )
+    return pg_restore
+
+
+def _validate_dump(pg_restore: str, path: Path) -> None:
     """
-    Valida precondições e retorna (pg_dump_path, supabase_url, local_url).
+    Valida que o dump existe, tem tamanho > 0 e é legível (pg_restore --list).
+    Levanta SystemExit se qualquer verificação falhar.
+    """
+    if not path.exists():
+        raise SystemExit(f"ERRO: artefato nao encontrado: {path}")
+    if path.stat().st_size == 0:
+        raise SystemExit(f"ERRO: artefato vazio (tamanho 0): {path}")
+    cmd = [pg_restore, "--list", str(path)]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise SystemExit(
+            f"ERRO: dump invalido ou ilegivel: {path}\n"
+            f"pg_restore --list falhou.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+
+def _validate_preconditions() -> tuple[str, str, str, str]:
+    """
+    Valida precondições e retorna (pg_dump_path, pg_restore_path, supabase_url, local_url).
     Falha imediatamente se credencial ou ferramenta faltar.
     """
     _load_env()
 
-    # Interface: SUPABASE_DIRECT_URL (backup), LOCAL_DIRECT_URL (export), pg_dump no PATH
+    # Interface: SUPABASE_DIRECT_URL (backup), LOCAL_DIRECT_URL (export), pg_dump e pg_restore no PATH
     supabase_url = os.getenv("SUPABASE_DIRECT_URL") or os.getenv("DIRECT_URL")
     local_url = os.getenv("LOCAL_DIRECT_URL")
 
@@ -100,7 +129,8 @@ def _validate_preconditions() -> tuple[str, str, str]:
         )
 
     pg_dump_path = _check_pg_dump()
-    return pg_dump_path, supabase_url.strip(), local_url.strip()
+    pg_restore_path = _check_pg_restore()
+    return pg_dump_path, pg_restore_path, supabase_url.strip(), local_url.strip()
 
 
 def run_backup_supabase(pg_dump: str, supabase_url: str, out_dir: Path) -> Path:
@@ -153,17 +183,21 @@ def run_export_local(pg_dump: str, local_url: str, out_dir: Path) -> Path:
 
 
 def main() -> None:
-    """Ordem: 1) backup Supabase, 2) export local. Nenhum passo destrutivo."""
+    """Ordem: 1) backup Supabase, 2) export local, 3) validação final. Nenhum passo destrutivo."""
     print("=== Backup e Export - Migracao F2 (Supabase) ===\n")
 
-    pg_dump, supabase_url, local_url = _validate_preconditions()
-    print("Precondicoes OK: pg_dump disponivel, credenciais configuradas.\n")
+    pg_dump, pg_restore, supabase_url, local_url = _validate_preconditions()
+    print("Precondicoes OK: pg_dump, pg_restore disponiveis, credenciais configuradas.\n")
 
     # 1. Backup do Supabase (antes de qualquer acao destrutiva)
     backup_file = run_backup_supabase(pg_dump, supabase_url, ARTIFACTS_DIR)
 
     # 2. Export do PostgreSQL local
     export_file = run_export_local(pg_dump, local_url, ARTIFACTS_DIR)
+
+    # 3. Validação final dos artefatos (antes de declarar prontidao para F2-02)
+    _validate_dump(pg_restore, backup_file)
+    _validate_dump(pg_restore, export_file)
 
     print("\n=== Artefatos gerados ===")
     print(f"Backup Supabase: {backup_file}")

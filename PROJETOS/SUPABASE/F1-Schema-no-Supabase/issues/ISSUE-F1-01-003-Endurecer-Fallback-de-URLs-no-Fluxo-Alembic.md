@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-003-Endurecer-Fallback-de-URLs-no-Fluxo-Alembic.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -67,16 +67,16 @@ Risco de nao corrigir:
 
 ## Definition of Done da Issue
 
-- [ ] fallback do Alembic cobre falhas de preparacao/conexao da `DIRECT_URL`
-- [ ] erro de migration apos conexao aberta nao dispara fallback indevido
-- [ ] cobertura automatizada protege prioridade, fallback e erro sem URLs
-- [ ] contrato do runtime e do fallback SQLite de testes permanece inalterado
+- [x] fallback do Alembic cobre falhas de preparacao/conexao da `DIRECT_URL`
+- [x] erro de migration apos conexao aberta nao dispara fallback indevido
+- [x] cobertura automatizada protege prioridade, fallback e erro sem URLs
+- [x] contrato do runtime e do fallback SQLite de testes permanece inalterado
 
 ## Tasks Decupadas
 
-- [ ] T1: delimitar o contrato de fallback e os pontos exatos em que ele pode ocorrer
-- [ ] T2: endurecer a abertura de conexao do Alembic sem mascarar erro real de migration
-- [ ] T3: adicionar cobertura de regressao para prioridade, fallback e mensagens de erro
+- [x] T1: delimitar o contrato de fallback e os pontos exatos em que ele pode ocorrer
+- [x] T2: endurecer a abertura de conexao do Alembic sem mascarar erro real de migration
+- [x] T3: adicionar cobertura de regressao para prioridade, fallback e mensagens de erro
 
 ## Instructions por Task
 

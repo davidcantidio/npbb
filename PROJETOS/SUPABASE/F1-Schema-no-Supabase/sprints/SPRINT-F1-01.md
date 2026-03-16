@@ -14,8 +14,8 @@ Fechar a compatibilizacao de migrations com o contrato do Supabase e comprovar
 que o schema atual sobe ate o head no ambiente alvo.
 
 ## Capacidade
-- story_points_planejados: 8
-- issues_planejadas: 2
+- story_points_planejados: 11
+- issues_planejadas: 3
 - override: nenhum
 
 ## Issues Selecionadas
@@ -23,6 +23,7 @@ que o schema atual sobe ate o head no ambiente alvo.
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
 | ISSUE-F1-01-001 | Adequar execucao de migrations ao Supabase | 3 | done | [ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md](../issues/ISSUE-F1-01-001-Adequar-Execucao-de-Migrations-ao-Supabase.md) |
+| ISSUE-F1-01-003 | Endurecer fallback de URLs no fluxo Alembic | 3 | done | [ISSUE-F1-01-003-Endurecer-Fallback-de-URLs-no-Fluxo-Alembic.md](../issues/ISSUE-F1-01-003-Endurecer-Fallback-de-URLs-no-Fluxo-Alembic.md) |
 | ISSUE-F1-01-002 | Validar schema do Supabase com Alembic upgrade head | 5 | done | [ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md](../issues/ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md) |
 
 ## Riscos e Bloqueios

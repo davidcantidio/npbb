@@ -3,7 +3,7 @@ doc_id: "TASK-4.md"
 issue_id: "ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico"
 task_id: "T4"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 tdd_aplicavel: false

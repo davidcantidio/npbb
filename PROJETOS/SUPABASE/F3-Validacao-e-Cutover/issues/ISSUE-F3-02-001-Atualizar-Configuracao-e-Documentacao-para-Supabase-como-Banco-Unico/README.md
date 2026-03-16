@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-16"
 task_instruction_mode: "required"
@@ -35,16 +35,16 @@ do caminho principal e SQLite preservado apenas para testes.
 - Given `docs/DEPLOY_RENDER_CLOUDFLARE.md` e `docs/render.yaml`, When o deploy for revisado, Then o contrato final do banco permanece coerente com o ambiente Render + Supabase
 
 ## Definition of Done da Issue
-- [ ] `.env.example` alinhado ao estado final do banco unico
-- [ ] setup e troubleshooting atualizados para Supabase como caminho principal
-- [ ] deploy documentado sem contradicao com o estado final validado em F3
+- [x] `.env.example` alinhado ao estado final do banco unico
+- [x] setup e troubleshooting atualizados para Supabase como caminho principal
+- [x] deploy documentado sem contradicao com o estado final validado em F3
 
 ## Tasks
 
 - [x] [T1: Mapear pontos de drift documental e de configuracao](./TASK-1.md) — [INVENTARIO-DRIFT.md](./INVENTARIO-DRIFT.md)
 - [x] [T2: Atualizar configuracao e setup para Supabase como banco unico](./TASK-2.md)
 - [x] [T3: Alinhar troubleshooting e deploy ao estado final validado](./TASK-3.md)
-- [T4: Revisao final de consistencia entre arquivos atualizados](./TASK-4.md)
+- [x] [T4: Revisao final de consistencia entre arquivos atualizados](./TASK-4.md)
 
 ## Arquivos Reais Envolvidos
 

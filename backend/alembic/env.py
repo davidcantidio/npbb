@@ -46,6 +46,9 @@ MISSING_MIGRATION_URL_ERROR = (
 INVALID_MIGRATION_URL_ERROR = (
     "Nenhuma URL valida para rodar migrations. Verifique DIRECT_URL e DATABASE_URL."
 )
+# Modo estrito (ALEMBIC_STRICT_DIRECT_URL=true): revalidacao Supabase usa somente
+# DIRECT_URL; falha cedo se ausente. Ativado exclusivamente para provar rota usada.
+# Comportamento padrao (flag ausente): prioridade DIRECT_URL -> DATABASE_URL (ISSUE-F1-01-003).
 
 
 def get_url() -> str:

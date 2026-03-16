@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-ISSUE-FIRST.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 ---
 
 # GOV-ISSUE-FIRST
@@ -215,8 +215,6 @@ Como <papel>, quero <acao> para <resultado>.
 - [Fase](../F1_PROJETO_EPICS.md)
 - [PRD](../../PRD-PROJETO.md)
 ```
-
-## Template de `sprints/SPRINT-*.md`
 
 ## Rastreabilidade de Follow-up de Review
 

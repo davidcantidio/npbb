@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-SCRUM.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-16"
 ---
 
 # GOV-SCRUM

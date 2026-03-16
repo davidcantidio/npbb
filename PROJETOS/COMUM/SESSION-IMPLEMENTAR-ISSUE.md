@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-ISSUE.md"
-version: "1.2"
+version: "1.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-16"
 ---
 
 # SESSION-IMPLEMENTAR-ISSUE - Execucao de Issue em Sessao de Chat

@@ -1,9 +1,9 @@
 ---
 doc_id: "SPEC-TASK-INSTRUCTIONS.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 ---
 
 # SPEC-TASK-INSTRUCTIONS

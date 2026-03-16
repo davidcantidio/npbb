@@ -41,6 +41,7 @@ ate o head sem erro no ambiente alvo.
 | ISSUE-F1-01-002 | Validar schema do Supabase com Alembic upgrade head | Executar e comprovar a subida do schema ate o head no ambiente alvo | 5 | done | [ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md](./issues/ISSUE-F1-01-002-Validar-Schema-do-Supabase-com-Alembic-Upgrade-Head.md) |
 | ISSUE-F1-01-004 | Revalidar upgrade head no Supabase com evidencia rastreavel | Reexecutar a validacao no Supabase com prova objetiva do uso de `DIRECT_URL` e da revision final aplicada | 3 | done | [ISSUE-F1-01-004-Revalidar-Upgrade-Head-no-Supabase-com-Evidencia-Rastreavel.md](./issues/ISSUE-F1-01-004-Revalidar-Upgrade-Head-no-Supabase-com-Evidencia-Rastreavel.md) |
 | ISSUE-F1-01-005 | Endurecer revalidacao head no Supabase sem fallback ambiguo | Modo estrito ALEMBIC_STRICT_DIRECT_URL que aceite apenas DIRECT_URL e gere evidencia bruta para liberar F2 | 3 | done | [ISSUE-F1-01-005-Endurecer-Revalidacao-Head-no-Supabase-sem-Fallback-Ambiguo.md](./issues/ISSUE-F1-01-005-Endurecer-Revalidacao-Head-no-Supabase-sem-Fallback-Ambiguo.md) |
+| ISSUE-F1-01-006 | Fechar cobertura do modo estrito e alinhar gate da fase | Fechar lacuna de regressao do modo estrito e alinhar estado documental do gate | - | done | [ISSUE-F1-01-006-Fechar-Cobertura-do-Modo-Estrito-e-Alinhar-Gate-da-Fase.md](./issues/ISSUE-F1-01-006-Fechar-Cobertura-do-Modo-Estrito-e-Alinhar-Gate-da-Fase.md) |
 
 ## Artifact Minimo do Epico
 

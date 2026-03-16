@@ -6,7 +6,8 @@ from pathlib import Path
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 
 from alembic import context
@@ -71,6 +72,21 @@ def get_urls() -> list[str]:
     raise RuntimeError("DIRECT_URL ou DATABASE_URL precisam estar configuradas para rodar migrations.")
 
 
+def _open_connection(configuration: dict[str, str], url: str) -> tuple[Engine, Connection]:
+    configuration["sqlalchemy.url"] = url
+    connectable = engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+    try:
+        connection = connectable.connect()
+    except Exception:
+        connectable.dispose()
+        raise
+    return connectable, connection
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = get_url()
@@ -90,14 +106,13 @@ def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     last_error: Exception | None = None
     for url in get_urls():
-        configuration["sqlalchemy.url"] = url
-        connectable = engine_from_config(
-            configuration,
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
-        )
         try:
-            with connectable.connect() as connection:
+            connectable, connection = _open_connection(configuration, url)
+        except (ImportError, SQLAlchemyError) as e:
+            last_error = e
+            continue
+        try:
+            with connection:
                 context.configure(
                     connection=connection,
                     target_metadata=target_metadata,
@@ -107,9 +122,8 @@ def run_migrations_online() -> None:
                 with context.begin_transaction():
                     context.run_migrations()
             return
-        except OperationalError as e:
-            last_error = e
-            continue
+        finally:
+            connectable.dispose()
 
     if last_error:
         raise last_error

@@ -49,9 +49,21 @@ INVALID_MIGRATION_URL_ERROR = (
 # Modo estrito (ALEMBIC_STRICT_DIRECT_URL=true): revalidacao Supabase usa somente
 # DIRECT_URL; falha cedo se ausente. Ativado exclusivamente para provar rota usada.
 # Comportamento padrao (flag ausente): prioridade DIRECT_URL -> DATABASE_URL (ISSUE-F1-01-003).
+STRICT_DIRECT_URL_MISSING_ERROR = (
+    "ALEMBIC_STRICT_DIRECT_URL=true exige DIRECT_URL. Configure DIRECT_URL."
+)
+
+
+def _is_strict_direct_url_mode() -> bool:
+    return os.getenv("ALEMBIC_STRICT_DIRECT_URL", "").lower() in ("true", "1", "yes")
 
 
 def get_url() -> str:
+    if _is_strict_direct_url_mode():
+        direct_url = os.getenv("DIRECT_URL")
+        if not direct_url or not direct_url.strip():
+            raise RuntimeError(STRICT_DIRECT_URL_MISSING_ERROR)
+        return direct_url
     # Em Supabase, migrations/DDL devem usar conexao direta (DIRECT_URL),
     # pois o pooler pode bloquear/timeoutar em alguns ambientes.
     direct_url = os.getenv("DIRECT_URL")
@@ -67,6 +79,11 @@ def get_url() -> str:
 
 
 def get_urls() -> list[str]:
+    if _is_strict_direct_url_mode():
+        direct_url = os.getenv("DIRECT_URL")
+        if not direct_url or not direct_url.strip():
+            raise RuntimeError(STRICT_DIRECT_URL_MISSING_ERROR)
+        return [direct_url]
     urls: list[str] = []
     direct_url = os.getenv("DIRECT_URL")
     database_url = os.getenv("DATABASE_URL")

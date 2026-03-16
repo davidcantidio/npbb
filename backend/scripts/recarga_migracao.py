@@ -190,7 +190,8 @@ def run_limpeza_controlada(supabase_url: str) -> None:
 def run_importacao(pg_restore_path: str, supabase_url: str, export_path: Path) -> None:
     """
     T3: Importa no Supabase o dataset do PostgreSQL local via pg_restore.
-    Interrompe se houver falha estrutural durante a carga.
+    ISSUE-F2-02-003: --single-transaction garante atomicidade; qualquer erro faz rollback.
+    Interrompe imediatamente em retorno nao zero (fail-fast).
     """
     libpq_url = _sqlalchemy_to_libpq(supabase_url)
 
@@ -199,6 +200,7 @@ def run_importacao(pg_restore_path: str, supabase_url: str, export_path: Path) -
         "--data-only",
         "--no-owner",
         "--no-acl",
+        "--single-transaction",
         "-d", libpq_url,
         str(export_path),
     ]

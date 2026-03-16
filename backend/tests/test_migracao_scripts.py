@@ -79,3 +79,47 @@ def test_validate_artifact_contract_passes_when_dump_excludes_alembic_version(
 
     recarga_migracao._validate_artifact_contract("/usr/bin/pg_restore", dump)
     # nao levanta
+
+
+# --- T2: Atomicidade do pg_restore ---
+
+
+def test_run_importacao_uses_single_transaction(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Importacao usa --single-transaction para atomicidade (fail-fast)."""
+    dump = tmp_path / "export_local.dump"
+    dump.write_bytes(b"PGDMP")
+    captured_cmd: list[list[str]] = []
+
+    def capture_run(cmd: list[str], *a: object, **k: object) -> MagicMock:
+        captured_cmd.append(list(cmd))
+        return MagicMock(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("subprocess.run", capture_run)
+
+    recarga_migracao.run_importacao(
+        pg_restore_path="/usr/bin/pg_restore",
+        supabase_url="postgresql://u:p@h:5432/db",
+        export_path=dump,
+    )
+
+    assert len(captured_cmd) == 1
+    cmd = captured_cmd[0]
+    assert "--single-transaction" in cmd
+
+
+def test_run_importacao_raises_on_nonzero_return(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Importacao interrompe imediatamente quando pg_restore retorna nao zero."""
+    dump = tmp_path / "export_local.dump"
+    dump.write_bytes(b"PGDMP")
+
+    def mock_run(cmd: list[str], *a: object, **k: object) -> MagicMock:
+        return MagicMock(returncode=1, stdout="", stderr="ERROR: constraint violation")
+
+    monkeypatch.setattr("subprocess.run", mock_run)
+
+    with pytest.raises(SystemExit, match="Importacao falhou|stderr"):
+        recarga_migracao.run_importacao(
+            pg_restore_path="/usr/bin/pg_restore",
+            supabase_url="postgresql://u:p@h:5432/db",
+            export_path=dump,
+        )

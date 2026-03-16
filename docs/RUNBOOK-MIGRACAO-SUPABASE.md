@@ -99,7 +99,7 @@ cd backend && python -m scripts.recarga_migracao
 **Pré-requisitos:** execute primeiro `backup_export_migracao.py`; configure no `.env`:
 - `SUPABASE_DIRECT_URL` ou `DIRECT_URL` — conexão direct ao Supabase
 
-O script valida precondições, executa limpeza controlada (TRUNCATE CASCADE), importa via `pg_restore` e consolida o estado para a validação pós-carga.
+O script valida precondições (incluindo contrato do artefato, ISSUE-F2-02-003), executa limpeza controlada (TRUNCATE CASCADE), importa via `pg_restore --single-transaction` (atomicidade) e consolida o estado para a validação pós-carga.
 
 ### 2.3 Uso de DIRECT_URL vs DATABASE_URL
 

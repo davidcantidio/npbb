@@ -40,6 +40,12 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 target_metadata = SQLModel.metadata
+MISSING_MIGRATION_URL_ERROR = (
+    "DIRECT_URL ou DATABASE_URL precisam estar configuradas para rodar migrations."
+)
+INVALID_MIGRATION_URL_ERROR = (
+    "Nenhuma URL valida para rodar migrations. Verifique DIRECT_URL e DATABASE_URL."
+)
 
 
 def get_url() -> str:
@@ -54,7 +60,7 @@ def get_url() -> str:
     # Permite SQLite apenas em testes/override explicito
     if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
         return "sqlite:///./app.db"
-    raise RuntimeError("DIRECT_URL ou DATABASE_URL precisam estar configuradas para rodar migrations.")
+    raise RuntimeError(MISSING_MIGRATION_URL_ERROR)
 
 
 def get_urls() -> list[str]:
@@ -69,7 +75,7 @@ def get_urls() -> list[str]:
         return urls
     if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING", "").lower() == "true":
         return ["sqlite:///./app.db"]
-    raise RuntimeError("DIRECT_URL ou DATABASE_URL precisam estar configuradas para rodar migrations.")
+    raise RuntimeError(MISSING_MIGRATION_URL_ERROR)
 
 
 def _open_connection(configuration: dict[str, str], url: str) -> tuple[Engine, Connection]:
@@ -126,7 +132,7 @@ def run_migrations_online() -> None:
             connectable.dispose()
 
     if last_error:
-        raise last_error
+        raise RuntimeError(INVALID_MIGRATION_URL_ERROR) from last_error
 
 
 if context.is_offline_mode():

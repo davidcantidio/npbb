@@ -33,7 +33,7 @@ liberar a fase de migracao de dados.
 ### `not_ready -> pending`
 - [x] todos os epicos estao `done`
 - [x] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F1-R<NN>.md`

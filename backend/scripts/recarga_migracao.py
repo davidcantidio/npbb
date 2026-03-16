@@ -214,19 +214,60 @@ def run_importacao(pg_restore_path: str, supabase_url: str, export_path: Path) -
     print("Importacao concluida. Dados locais carregados no Supabase.")
 
 
+def _get_runtime_url() -> str | None:
+    """Retorna DATABASE_URL (contrato de runtime) ou None se ausente."""
+    url = os.getenv("DATABASE_URL")
+    return url.strip() if url and url.strip() else None
+
+
+def _is_local_runtime(url: str) -> bool:
+    """True se a URL aponta para PostgreSQL local (127.0.0.1, localhost)."""
+    lower = url.lower()
+    return "127.0.0.1" in lower or "localhost" in lower
+
+
 def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) -> None:
     """
     T4: Consolida o estado final da recarga para a etapa de validação.
-    Confirma acessibilidade do Supabase e registra resultado da rodada.
+    ISSUE-F2-02-003: Valida contrato de manutenção (DIRECT_URL) e contrato de runtime (DATABASE_URL).
+    Só libera para ISSUE-F2-02-002 quando DATABASE_URL estiver apta para Supabase.
     """
-    engine = create_engine(supabase_url)
+    # 1. Validar conexão direta (manutenção) - já usada na limpeza/import
+    engine_direct = create_engine(supabase_url)
     try:
-        with engine.connect() as conn:
+        with engine_direct.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception as e:
         raise SystemExit(
-            f"ERRO: Supabase recarregado nao acessivel. Ambiente nao apto para validacao pos-carga.\n"
+            f"ERRO: Supabase recarregado nao acessivel via DIRECT_URL. Ambiente nao apto para validacao pos-carga.\n"
             f"Detalhe: {e}"
+        ) from e
+
+    # 2. ISSUE-F2-02-003: Validar contrato de runtime (DATABASE_URL) para liberar F2-02-002
+    runtime_url = _get_runtime_url()
+    if not runtime_url:
+        raise SystemExit(
+            "ERRO: DATABASE_URL nao configurada. A consolidacao so libera para ISSUE-F2-02-002 "
+            "quando o contrato de runtime (DATABASE_URL) estiver configurado para o Supabase. "
+            "Configure DATABASE_URL no .env apontando para o pooler do Supabase (porta 6543)."
+        )
+    if _is_local_runtime(runtime_url):
+        raise SystemExit(
+            "ERRO: DATABASE_URL aponta para PostgreSQL local (127.0.0.1/localhost). "
+            "A consolidacao so libera para ISSUE-F2-02-002 quando DATABASE_URL estiver "
+            "configurada para o Supabase (pooler ou direct). Ajuste o .env e execute novamente."
+        )
+
+    # 3. Validar que o runtime (DATABASE_URL) conecta ao Supabase
+    engine_runtime = create_engine(runtime_url)
+    try:
+        with engine_runtime.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        raise SystemExit(
+            f"ERRO: DATABASE_URL (runtime) nao conecta ao Supabase. Ambiente nao apto para validacao pos-carga.\n"
+            f"Detalhe: {e}\n"
+            "Verifique se DATABASE_URL aponta para o pooler/direct do Supabase e se as credenciais estao corretas."
         ) from e
 
     print("\n=== Consolidacao da rodada ===")
@@ -234,6 +275,7 @@ def run_consolidacao(supabase_url: str, backup_path: Path, export_path: Path) ->
     print(f"Backup Supabase preservado: {backup_path}")
     print(f"Export local utilizado: {export_path}")
     print("Resultado: recarga concluida com sucesso")
+    print("Contratos validados: DIRECT_URL (manutencao) e DATABASE_URL (runtime) aptos para Supabase.")
     print("\nBackup do Supabase preservado ate o encerramento da validacao da F3.")
     print("Ambiente pronto para validacao pos-carga (ISSUE-F2-02-002).")
 

@@ -123,3 +123,84 @@ def test_run_importacao_raises_on_nonzero_return(monkeypatch: pytest.MonkeyPatch
             supabase_url="postgresql://u:p@h:5432/db",
             export_path=dump,
         )
+
+
+# --- T3: Prontidao de runtime ---
+
+
+def test_run_consolidacao_blocks_when_database_url_absent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Consolidacao bloqueia quando DATABASE_URL nao configurada."""
+    def getenv(k: str, d: str | None = None) -> str | None:
+        if k == "DIRECT_URL":
+            return "postgresql://u:p@db.supabase.co:5432/db"
+        return "" if k == "DATABASE_URL" else d
+
+    monkeypatch.setattr("os.getenv", getenv)
+
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__ = lambda self: mock_conn
+    mock_engine.connect.return_value.__exit__ = lambda *a: None
+    monkeypatch.setattr(recarga_migracao, "create_engine", lambda url: mock_engine)
+
+    with pytest.raises(SystemExit, match="DATABASE_URL nao configurada"):
+        recarga_migracao.run_consolidacao(
+            supabase_url="postgresql://u:p@db.supabase.co:5432/db",
+            backup_path=tmp_path / "backup.dump",
+            export_path=tmp_path / "export.dump",
+        )
+
+
+def test_run_consolidacao_blocks_when_database_url_points_to_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Consolidacao bloqueia quando DATABASE_URL aponta para PostgreSQL local."""
+    def getenv(k: str, d: str | None = None) -> str | None:
+        if k == "DATABASE_URL":
+            return "postgresql://u:p@127.0.0.1:5432/npbb"
+        return "postgresql://u:p@db.supabase.co:5432/db" if k == "DIRECT_URL" else d
+
+    monkeypatch.setattr("os.getenv", getenv)
+
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__ = lambda self: mock_conn
+    mock_engine.connect.return_value.__exit__ = lambda *a: None
+    monkeypatch.setattr(recarga_migracao, "create_engine", lambda url: mock_engine)
+
+    with pytest.raises(SystemExit, match="127.0.0.1|localhost"):
+        recarga_migracao.run_consolidacao(
+            supabase_url="postgresql://u:p@db.supabase.co:5432/db",
+            backup_path=tmp_path / "backup.dump",
+            export_path=tmp_path / "export.dump",
+        )
+
+
+def test_run_consolidacao_succeeds_when_database_url_apt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Consolidacao libera quando DATABASE_URL apta para Supabase."""
+    def getenv(k: str, d: str | None = None) -> str | None:
+        if k == "DATABASE_URL":
+            return "postgresql://u:p@aws-0-xx.supabase.co:6543/postgres"
+        return "postgresql://u:p@db.supabase.co:5432/db" if k == "DIRECT_URL" else d
+
+    monkeypatch.setattr("os.getenv", getenv)
+
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__ = lambda self: mock_conn
+    mock_engine.connect.return_value.__exit__ = lambda *a: None
+    monkeypatch.setattr(recarga_migracao, "create_engine", lambda url: mock_engine)
+
+    recarga_migracao.run_consolidacao(
+        supabase_url="postgresql://u:p@db.supabase.co:5432/db",
+        backup_path=tmp_path / "backup.dump",
+        export_path=tmp_path / "export.dump",
+    )
+
+    out = capsys.readouterr().out
+    assert "Ambiente pronto para validacao pos-carga (ISSUE-F2-02-002)" in out
+    assert "DATABASE_URL" in out or "runtime" in out

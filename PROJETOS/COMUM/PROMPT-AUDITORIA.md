@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-AUDITORIA.md"
-version: "2.2"
+version: "2.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-16"
 ---
 
 # Prompt Canonico - Auditoria de Fase
@@ -25,7 +25,9 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 
 1. siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3
 2. leia o manifesto da fase auditada
-3. leia epicos e issues da fase
+3. leia epicos e issues da fase:
+   - para issue granularizada, leia o `README.md` e os `TASK-*.md`
+   - para issue legada, leia a `ISSUE-*.md`
 4. leia o ultimo relatorio da fase, se existir
 5. use `PROJETOS/COMUM/GOV-AUDITORIA.md`, `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md` e `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md` como referencias normativas adicionais; para `monolithic-file` e `monolithic-function`, trate o spec como fonte unica de thresholds
 
@@ -41,7 +43,10 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 6. inspecione bugs provaveis, regressoes, code smells, arquivos monoliticos, funcoes monoliticas, gaps de testes e ausencia de docstrings em codigo compartilhado, publico ou complexo, usando `SPEC-ANTI-MONOLITO.md` como criterio normativo para achados estruturais
 7. classifique cada achado com categoria e severidade
 8. diferencie follow-up `issue-local` de `new-intake` conforme o escopo da remediacao
-9. emita veredito `go`, `hold` ou `cancelled`
+9. quando o follow-up for `issue-local`, prefira pasta `ISSUE-*/` com
+   `README.md` + `TASK-*.md`; use arquivo `ISSUE-*.md` apenas para ajuste
+   simples de task unica
+10. emita veredito `go`, `hold` ou `cancelled`
 
 ### Regras de julgamento
 

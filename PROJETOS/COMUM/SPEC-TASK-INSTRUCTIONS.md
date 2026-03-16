@@ -1,6 +1,6 @@
 ---
 doc_id: "SPEC-TASK-INSTRUCTIONS.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -21,8 +21,10 @@ Definir como `instructions` atomicas devem viver dentro de `tasks` no padrao `is
 Regra canonica:
 
 - `instruction` nunca vira arquivo independente
-- `instruction` vive inline na issue, na secao `## Instructions por Task`
-- `task` continua sendo checklist curto; `instruction` operacionaliza o como executar
+- `instruction` vive inline na issue, na secao `## Instructions por Task`, ou no corpo de
+  `TASK-N.md` quando a issue for granularizada
+- `task` pode ser checklist curto (issue legada) ou arquivo `TASK-N.md` (issue granularizada);
+  `instruction` operacionaliza o como executar
 
 ## Campo Canonico da Issue
 
@@ -50,13 +52,14 @@ Use `task_instruction_mode: required` quando a issue contiver qualquer um destes
 
 Se nenhum desses fatores existir, `optional` e o default recomendado.
 
-## Estrutura Minima de `Instructions por Task`
+## Estrutura Minima do Detalhamento por Task
 
 Quando `task_instruction_mode: required`, a issue precisa ter:
 
-- secao `## Tarefas Decupadas` com IDs `T1`, `T2`, `T3`...
-- secao `## Instructions por Task`
-- um bloco por task, com o mesmo ID
+- tasks identificadas de forma rastreavel (`T1`, `T2`, `T3`...)
+- um detalhamento vinculante por task no formato escolhido:
+  - issue granularizada: um arquivo `TASK-N.md` por task
+  - issue legada: secao `## Instructions por Task` com um bloco por task
 
 Campos minimos por task:
 
@@ -88,9 +91,9 @@ Uma instruction ruim costuma:
 
 ## Regra de Elegibilidade
 
-- issue com `task_instruction_mode: required` sem secao `## Instructions por Task` completa nao e elegivel para execucao
+- issue com `task_instruction_mode: required` sem detalhamento completo por task no formato escolhido nao e elegivel para execucao
 - o agente executor deve responder `BLOQUEADO` em vez de improvisar
-- o bloqueio vale tambem quando houver task sem bloco correspondente ou bloco sem campos minimos
+- o bloqueio vale tambem quando houver task sem `TASK-N.md` correspondente, sem bloco correspondente em `## Instructions por Task`, ou com campos minimos ausentes
 
 ## Compatibilidade de Rollout
 
@@ -98,7 +101,46 @@ Uma instruction ruim costuma:
 - nao ha retrofit em massa obrigatorio neste rollout
 - qualquer issue nova de alto risco deve nascer com `task_instruction_mode: required`
 
-## Exemplo Canonico - Backend Critico
+## Issue Granularizada (Pasta com TASK-N.md)
+
+Quando a issue for uma pasta `issues/ISSUE-*/` com `README.md` e `TASK-*.md`:
+
+- cada task vive em arquivo proprio `TASK-N.md`; usar `TEMPLATE-TASK.md` como base
+- o `README.md` contem o manifesto (User Story, Contexto, DoD, Dependencias) e lista de links
+  para as tasks
+- issues legadas (arquivo unico `ISSUE-*.md`) continuam validas; o executor detecta o formato
+  e aplica o fluxo correto
+
+## Exemplo Canonico - Issue Granularizada Required
+
+```markdown
+issues/ISSUE-F1-01-007-EXEMPLO/
+├── README.md
+├── TASK-1.md
+└── TASK-2.md
+```
+
+`README.md`
+
+```markdown
+---
+doc_id: "ISSUE-F1-01-007-EXEMPLO"
+version: "1.0"
+status: "todo"
+owner: "PM"
+last_updated: "YYYY-MM-DD"
+task_instruction_mode: "required"
+---
+
+## Tasks
+- [TASK-1.md](./TASK-1.md)
+- [TASK-2.md](./TASK-2.md)
+```
+
+Cada `TASK-N.md` deve seguir `TEMPLATE-TASK.md` e conter todos os campos minimos
+listados nesta spec.
+
+## Exemplo de Compatibilidade - Issue Legada Required
 
 ```markdown
 ---
@@ -166,8 +208,8 @@ task_instruction_mode: "optional"
 Antes de marcar uma issue `required` como pronta para execucao, confirme:
 
 - [ ] `task_instruction_mode: required` esta no frontmatter
-- [ ] toda task possui bloco correspondente em `## Instructions por Task`
-- [ ] todos os blocos tem os campos minimos
+- [ ] toda task possui detalhamento vinculante no formato escolhido (`TASK-N.md` ou bloco correspondente em `## Instructions por Task`)
+- [ ] todo detalhamento por task tem os campos minimos
 - [ ] os passos atomicos estao em ordem e sem branching pesado
 - [ ] os testes obrigatorios estao declarados
 - [ ] existe ao menos uma `stop_condition` objetiva por task

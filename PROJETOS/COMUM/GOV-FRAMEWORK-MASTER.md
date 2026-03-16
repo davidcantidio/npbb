@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-FRAMEWORK-MASTER.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 ---
 
 # GOV-FRAMEWORK-MASTER
@@ -40,7 +40,11 @@ PROJETOS/
     F<N>-<NOME>/
       F<N>_<PROJETO>_EPICS.md
       EPIC-F<N>-<NN>-<NOME>.md
-      issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md
+      issues/
+        ISSUE-F<N>-<NN>-<MMM>-<NOME>/
+          README.md
+          TASK-1.md
+        ISSUE-F<N>-<NN>-<MMM>-<NOME>.md   (legado)
       sprints/SPRINT-F<N>-<NN>.md
       auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md
 ```
@@ -80,7 +84,9 @@ A cadeia operacional do framework vive em `GOV-SCRUM.md`.
 | log de auditoria | `AUDIT-LOG.md` |
 | manifesto da fase | `F<N>_<PROJETO>_EPICS.md` |
 | manifesto do epico | `EPIC-F<N>-<NN>-<NOME>.md` |
-| issue | `ISSUE-F<N>-<NN>-<MMM>-<NOME>.md` |
+| issue canonica | `ISSUE-F<N>-<NN>-<MMM>-<NOME>/README.md` |
+| task canonica | `ISSUE-F<N>-<NN>-<MMM>-<NOME>/TASK-<N>.md` |
+| issue legada | `ISSUE-F<N>-<NN>-<MMM>-<NOME>.md` |
 | sprint | `SPRINT-F<N>-<NN>.md` |
 | relatorio de auditoria | `RELATORIO-AUDITORIA-F<N>-R<NN>.md` |
 

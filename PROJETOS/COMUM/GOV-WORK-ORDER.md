@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-WORK-ORDER.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 ---
 
 # GOV-WORK-ORDER
@@ -27,7 +27,7 @@ work_order:
   scope:
     unit: "issue"
     issue_id: "ISSUE-F1-01-001"
-    issue_path: "PROJETOS/MEU-PROJETO/F1-MINHA-FASE/issues/ISSUE-F1-01-001-NOME.md"
+    issue_path: "PROJETOS/MEU-PROJETO/F1-MINHA-FASE/issues/ISSUE-F1-01-001-NOME/"
     task_instruction_mode: "required"
     epic_path: "PROJETOS/MEU-PROJETO/F1-MINHA-FASE/EPIC-F1-01-NOME.md"
     phase_path: "PROJETOS/MEU-PROJETO/F1-MINHA-FASE/F1_MEU_PROJETO_EPICS.md"
@@ -66,9 +66,16 @@ work_order:
 - `epico` continua valido para planejamento
 - `fase` continua valida para review e gate
 - todo work order de execucao precisa nomear `issue_id` e `issue_path`
-- quando a issue usar `task_instruction_mode: required`, o bloco `Instructions por Task` vira contrato de execucao vinculante
+- `issue_path` pode apontar para pasta `ISSUE-*/` com `README.md` e `TASK-*.md`
+  ou para arquivo legado `ISSUE-*.md`
+- quando a issue usar `task_instruction_mode: required`, o contrato de
+  execucao vinculante vive em `TASK-N.md` (issue granularizada) ou em
+  `## Instructions por Task` (issue legada)
 - todo work order de auditoria precisa nomear `phase_path`, `audit_log_path`, `report_path` e `base_commit`
-- o arquivo da issue e a fonte primaria do escopo executavel
+- o manifesto da issue (`README.md` da pasta ou arquivo legado) e a fonte
+  primaria do escopo executavel
+- quando a issue for granularizada, a task selecionada em `TASK-N.md` completa
+  o escopo operacional da work order
 - o arquivo da auditoria e a fonte primaria do veredito de gate
 - `epic_path` serve para contexto e consolidacao, nao substitui `issue_path`
 - auditoria formal com worktree sujo deve ser registrada como `provisional` e nao pode emitir `go`

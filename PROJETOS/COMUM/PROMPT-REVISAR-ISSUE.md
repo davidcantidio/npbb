@@ -1,6 +1,6 @@
 ---
 doc_id: "PROMPT-REVISAR-ISSUE.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -15,7 +15,7 @@ Cole este prompt em uma sessao com acesso ao repositorio e informe:
 - projeto
 - fase
 - issue revisada
-- caminho da issue
+- caminho da issue (`ISSUE-*.md` ou pasta `ISSUE-*/` com `README.md`)
 - `base_commit`, diff, PR, logs, testes ou outra evidencia disponivel
 
 ## Prompt
@@ -26,7 +26,9 @@ no padrao `issue-first`.
 ### Leitura obrigatoria
 
 1. siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3
-2. leia a `ISSUE-*.md` alvo da revisao
+2. leia a issue alvo da revisao:
+   - se for pasta, leia `README.md` e os `TASK-*.md`
+   - se for arquivo, leia a `ISSUE-*.md` legada
 3. leia o epico e o manifesto da fase referenciados pela issue
 4. leia `decision_refs`, quando existirem
 5. leia apenas os arquivos de codigo citados pela issue e os artefatos
@@ -41,8 +43,8 @@ no padrao `issue-first`.
 3. valide aderencia ao objetivo, criterios de aceitacao, DoD e `decision_refs`
 4. procure bugs provaveis, regressoes, gaps de teste, drift de escopo e risco
    estrutural local causado pela implementacao
-5. diferencie correcao local elegivel para nova `ISSUE-*.md` de problema
-   estrutural ou sistemico que exige `new-intake`
+5. diferencie correcao local elegivel para nova issue local (`ISSUE-*/` ou
+   `ISSUE-*.md`) de problema estrutural ou sistemico que exige `new-intake`
 6. se a correcao local exigir alto cuidado operacional, multi-arquivo,
    ordem critica ou regressao delicada, marque a nova issue como
    `task_instruction_mode: required` conforme `SPEC-TASK-INSTRUCTIONS.md`
@@ -73,9 +75,16 @@ Apresente:
 - destino sugerido: `nenhum`, `issue-local` ou `new-intake`
 - proximo passo recomendado
 
-Se o destino sugerido for `issue-local`, gere rascunho completo de nova
-`ISSUE-*.md` no mesmo epico/fase, preservando rastreabilidade explicita para a
-issue de origem no `Contexto Tecnico` e em `Dependencias`.
+Se o destino sugerido for `issue-local`, gere rascunho completo no mesmo
+epico/fase, preservando rastreabilidade explicita para a issue de origem no
+`Contexto Tecnico` e em `Dependencias`.
+
+Heuristica obrigatoria do formato:
+
+- usar pasta `ISSUE-*/` com `README.md` + `TASK-*.md` como padrao quando houver
+  multiplas tasks, tarefas decupadas ou `task_instruction_mode: required`
+- usar arquivo unico `ISSUE-*.md` apenas quando a correcao for simples, local e
+  de task unica
 
 ### Regra final
 

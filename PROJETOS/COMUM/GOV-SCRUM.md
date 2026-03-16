@@ -1,6 +1,6 @@
 ---
 doc_id: "GOV-SCRUM.md"
-version: "2.2"
+version: "2.4"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -14,8 +14,10 @@ last_updated: "2026-03-16"
 
 ## Unidade Operacional Canonica
 
-- `issue` e a menor unidade documental completa para execucao
-- `task` e o menor item executavel dentro da issue
+- `issue` e a menor unidade documental completa para execucao; pode ser pasta
+  `issues/ISSUE-*/` (README + TASK-*.md) ou arquivo unico `ISSUE-*.md` (legado)
+- `task` e o menor item executavel dentro da issue; pode ser arquivo `TASK-N.md` ou checklist
+  no corpo da issue (legado)
 - `instruction` e a menor unidade atomica dentro da task quando `task_instruction_mode` exigir detalhamento
 - `EPIC-*.md` funciona como manifesto do epico e indice das issues
 - `SPRINT-*.md` existe apenas para selecao operacional e capacidade
@@ -51,18 +53,21 @@ last_updated: "2026-03-16"
 
 ### Issue
 
-- documento proprio com frontmatter padronizado
+- documento proprio com frontmatter padronizado no `README.md` da pasta da
+  issue ou no arquivo legado
 - `task_instruction_mode` definido como `optional` ou `required`
 - user story, contexto tecnico, plano `Red/Green/Refactor`, criterios e DoD declarados
 - tasks decupadas e artefato minimo declarados
 - `decision_refs` opcional quando houver decisao R2/R3 relevante
-- quando `task_instruction_mode = required`, existe um bloco `Instructions por Task` completo e consistente
+- quando `task_instruction_mode = required`, existe detalhamento completo e
+  consistente por task: inline na issue legada ou em `TASK-N.md`
 
 ### Sprint
 
 - respeita `GOV-SPRINT-LIMITES.md`
 - nao substitui fase, epico ou issue como fonte de verdade
-- referencia `issues/ISSUE-*.md` por ID e documento
+- referencia a issue por ID e documento, apontando para a pasta `issues/ISSUE-*/`
+  ou para o arquivo legado `issues/ISSUE-*.md`
 - status deriva do estado das issues selecionadas
 
 ### Auditoria
@@ -100,9 +105,12 @@ O significado operacional e os criterios de auditoria vivem em `GOV-AUDITORIA.md
 
 ## Task Instructions
 
-- `instruction` nao e documento independente; vive inline na issue
+- `instruction` nao e documento independente; vive inline na issue legada ou
+  no corpo de `TASK-N.md` quando a issue for granularizada
 - os criterios de quando `required` e obrigatorio vivem exclusivamente em `SPEC-TASK-INSTRUCTIONS.md`
-- issue `required` sem bloco completo de `Instructions por Task` nao e elegivel para execucao
+- issue `required` sem detalhamento completo por task no formato escolhido
+  (`TASK-N.md` na issue granularizada ou `## Instructions por Task` na issue
+  legada) nao e elegivel para execucao
 
 ## Commit por Task
 
@@ -117,7 +125,8 @@ Ao concluir uma issue, a cascata de fechamento deve ser executada em ordem.
 Pular um passo deixa backlog, fase e sprint incoerentes para a proxima leitura.
 
 1. Fechar a issue: marcar `status: done`, atualizar `last_updated` e confirmar
-   que todos os itens do DoD estao marcados.
+   que todos os itens do DoD estao marcados. Para issue granularizada (pasta),
+   verificar que todas as tasks estao `done` e atualizar o `README.md` da issue.
 2. Atualizar o epico pai: ajustar a linha da issue na tabela `Issues do Epico`;
    se todas as issues estiverem encerradas, marcar o epico como `done`,
    senao manter `active` quando ja houver entrega parcial.
@@ -149,12 +158,12 @@ Regras de aplicacao:
 - vereditos canonicos da review: `aprovada`, `correcao_requerida`, `cancelled`
 - `aprovada`: encerra a review sem gerar artefato novo
 - `correcao_requerida`: gera follow-up rastreavel; se a remediacao for local e
-  contida, abrir nova `ISSUE-*.md` no mesmo epico e fase; se for estrutural ou
-  sistemica, abrir `INTAKE-*.md`
+  contida, abrir nova issue local (`ISSUE-*/` ou `ISSUE-*.md`) no mesmo epico
+  e fase; se for estrutural ou sistemica, abrir `INTAKE-*.md`
 - issue gerada por review deve citar a issue de origem no `Contexto Tecnico` e
   em `Dependencias`
 - review pos-issue nao gera relatorio persistido; o unico artefato novo
-  permitido em v1 e a `ISSUE-*.md` local quando houver follow-up elegivel
+  permitido em v1 e a issue local quando houver follow-up elegivel
 - quando a review gerar nova issue local, a sincronizacao documental minima e:
   - adicionar a issue ao `EPIC-*.md` pai
   - manter ou retornar o epico para `active`, se necessario

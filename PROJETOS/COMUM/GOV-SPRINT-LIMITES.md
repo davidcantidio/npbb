@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-SPRINT-LIMITES.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 ---
 
 # GOV-SPRINT-LIMITES
@@ -34,7 +34,8 @@ max_itens_criticos_paralelos: "2 por escritorio"
 - issue acima do tamanho maximo deve ser quebrada antes de entrar na sprint
 - task acima do tamanho maximo deve ser quebrada antes de receber `instructions`
 - `instructions` obrigatorias devem permanecer atomicas, sequenciais e sem branching pesado
-- sprint deve apontar para `issues/ISSUE-*.md` como fonte canonica do escopo
+- sprint deve apontar para o recurso canonico da issue: pasta `issues/ISSUE-*/`
+  ou, por compatibilidade, arquivo `issues/ISSUE-*.md`
 - `SPRINT-*.md` nao deve duplicar criterios, DoD ou tarefas da issue
 
 ## Manifesto Canonico de Sprint

@@ -1,6 +1,6 @@
 ---
 doc_id: "GOV-ISSUE-FIRST.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -11,9 +11,9 @@ last_updated: "2026-03-16"
 ## Objetivo
 
 Definir a estrutura canonica para projetos ativos em `PROJETOS/`, em que o
-trabalho detalhado vive em arquivos proprios de issue, a sprint permanece
-apenas como manifesto de selecao, o intake antecede o PRD e a auditoria fecha
-a fase.
+trabalho detalhado vive em manifestos proprios de issue e, quando necessario,
+em arquivos proprios de task; a sprint permanece apenas como manifesto de
+selecao, o intake antecede o PRD e a auditoria fecha a fase.
 
 ## Estrutura Canonica
 
@@ -28,7 +28,10 @@ PROJETOS/<PROJETO>/
     F1_<PROJETO>_EPICS.md
     EPIC-F1-01-<NOME>.md
     issues/
-      ISSUE-F1-01-001-<NOME>.md
+      ISSUE-F1-01-001-<NOME>/     (pasta) ou ISSUE-F1-01-001-<NOME>.md (legado)
+        README.md                 manifesto da issue
+        TASK-1.md
+        TASK-2.md
     sprints/
       SPRINT-F1-01.md
     auditorias/
@@ -37,6 +40,18 @@ PROJETOS/<PROJETO>/
 
 Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PROJETO>-<SLUG>.md`.
 
+## Formato de Issue: Pasta vs Arquivo
+
+- **Issue granularizada (pasta)**: `issues/ISSUE-F<N>-<NN>-<MMM>-<slug>/` contem `README.md`
+  (manifesto) e `TASK-*.md` (uma task por arquivo). Este e o formato canonico
+  para novas issues com tasks decupadas, multiplas tasks ou
+  `task_instruction_mode: required`.
+- **Issue legada (arquivo)**: `issues/ISSUE-F<N>-<NN>-<MMM>-<slug>.md` — formato anterior, ainda
+  suportado por compatibilidade. Reservar para issue simples, local e de task
+  unica, ou para preservar historico sem retrofit.
+- Cada `TASK-N.md` deve seguir `PROJETOS/COMUM/TEMPLATE-TASK.md`.
+- Links em epics e sprints: para issue granularizada, apontar para a pasta ou `README.md`.
+
 ## Responsabilidades por Documento
 
 - `INTAKE-*.md`: usar `TEMPLATE-INTAKE.md`
@@ -44,7 +59,10 @@ Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PRO
 - `AUDIT-LOG.md`: usar `TEMPLATE-AUDITORIA-LOG.md`
 - `F<N>_<PROJETO>_EPICS.md`: objetivo da fase, gate, tabela de epicos, dependencias e checklist de transicao do gate
 - `EPIC-*.md`: manifesto do epico, DoD do epico, dependencias, artefato minimo e indice das issues
-- `issues/ISSUE-*.md`: user story, plano TDD, criterios `Given/When/Then`, DoD, tasks, `decision_refs` e instructions por task quando exigidas; follow-up de review pos-issue deve preservar rastreabilidade explicita para a issue de origem
+- `issues/ISSUE-*/` (pasta) ou `issues/ISSUE-*.md` (legado): user story, plano TDD, criterios
+  `Given/When/Then`, DoD; quando granularizada, tasks em `TASK-*.md`; `decision_refs` e instructions
+  por task quando exigidas; follow-up de review pos-issue deve preservar rastreabilidade explicita
+  para a issue de origem
 - `sprints/SPRINT-*.md`: selecao de issues, capacidade, riscos e consolidacao de status
 - `auditorias/RELATORIO-AUDITORIA-*.md`: usar `TEMPLATE-AUDITORIA-RELATORIO.md`
 
@@ -140,7 +158,7 @@ last_updated: "YYYY-MM-DD"
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Nome da issue | Resultado tecnico unico | 3 | todo | [ISSUE-F1-01-001-NOME.md](./issues/ISSUE-F1-01-001-NOME.md) |
+| ISSUE-F1-01-001 | Nome da issue | Resultado tecnico unico | 3 | todo | [ISSUE-F1-01-001-NOME](./issues/ISSUE-F1-01-001-NOME/) |
 
 ## Artifact Minimo do Epico
 
@@ -150,7 +168,67 @@ last_updated: "YYYY-MM-DD"
 - [Fase](./F1_PROJETO_EPICS.md)
 ```
 
-## Template de `issues/ISSUE-*.md`
+## Template de `issues/ISSUE-*/README.md` (Canonico)
+
+```markdown
+---
+doc_id: "ISSUE-F1-01-001-NOME"
+version: "1.0"
+status: "todo"
+owner: "PM"
+last_updated: "YYYY-MM-DD"
+task_instruction_mode: "optional"
+decision_refs: []
+---
+
+# ISSUE-F1-01-001 - Nome da Issue
+
+## User Story
+Como <papel>, quero <acao> para <resultado>.
+
+## Contexto Tecnico
+
+## Plano TDD
+- Red:
+- Green:
+- Refactor:
+
+## Criterios de Aceitacao
+- Given ..., When ..., Then ...
+
+## Definition of Done da Issue
+- [ ]
+
+## Tasks
+- [T1 - Nome da task](./TASK-1.md)
+- [T2 - Nome da task](./TASK-2.md)
+
+## Arquivos Reais Envolvidos
+- `backend/...`
+- `frontend/...`
+
+## Artifact Minimo
+- `artifacts/...`
+
+## Dependencias
+- [Intake](../../INTAKE-PROJETO.md)
+- [Epic](../EPIC-F1-01-NOME-DO-EPICO.md)
+- [Fase](../F1_PROJETO_EPICS.md)
+- [PRD](../../PRD-PROJETO.md)
+```
+
+Notas obrigatorias:
+
+- o `README.md` concentra apenas o manifesto da issue
+- o detalhamento operacional de cada task vive em `TASK-N.md`
+- quando `task_instruction_mode: required`, os campos obrigatorios aparecem no
+  corpo de cada `TASK-N.md`, nunca como bloco inline no `README.md`
+- o status do `README.md` e agregado das tasks
+
+## Template de Compatibilidade Legada: `issues/ISSUE-*.md`
+
+Usar apenas para issue simples, de task unica, ou para preservar artefato
+historico sem migracao imediata.
 
 ```markdown
 ---
@@ -255,7 +333,7 @@ last_updated: "YYYY-MM-DD"
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F1-01-001 | Nome da issue | 3 | todo | [ISSUE-F1-01-001-NOME.md](../issues/ISSUE-F1-01-001-NOME.md) |
+| ISSUE-F1-01-001 | Nome da issue | 3 | todo | [ISSUE-F1-01-001-NOME](../issues/ISSUE-F1-01-001-NOME/) |
 
 ## Riscos e Bloqueios
 
@@ -267,8 +345,18 @@ last_updated: "YYYY-MM-DD"
 ## Regras de `task_instruction_mode`
 
 - `optional`: tasks podem permanecer como checklist curto
-- `required`: cada task precisa de bloco proprio em `## Instructions por Task`
+- `required`: cada task precisa de bloco proprio em `## Instructions por Task` ou arquivo
+  `TASK-N.md` quando a issue for granularizada
 - usar `required` conforme `SPEC-TASK-INSTRUCTIONS.md`
+
+## Status Agregado (Issue Granularizada)
+
+Quando a issue for pasta com `TASK-*.md`, o status no `README.md` e derivado das tasks:
+
+- `done`: todas as tasks `done`
+- `active`: pelo menos uma task `active` ou `done`, mas nem todas `done`
+- `todo`: todas as tasks `todo`
+- `cancelled`: cancelamento explicito da issue
 
 ## Convencao de Links
 

@@ -22,7 +22,11 @@ O padrao canonico deste repositorio e `issue-first`, com a cadeia:
 Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias
 ```
 
-Cada entrega executavel vive em um arquivo proprio em `issues/ISSUE-*.md`.
+A entrega executavel vive em um recurso proprio dentro de `issues/`:
+
+- preferencialmente uma pasta `ISSUE-*/` com `README.md` e `TASK-*.md`
+- por compatibilidade, um arquivo unico `ISSUE-*.md`
+
 A auditoria de fase vive em `auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md`
 e registra sua trilha em `AUDIT-LOG.md`.
 
@@ -115,20 +119,35 @@ antes de prosseguir.
 Leia apenas a proxima issue elegivel:
 
 ```
+PROJETOS/<PROJETO>/F<N>-<NOME>/issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>/
+ou
 PROJETOS/<PROJETO>/F<N>-<NOME>/issues/ISSUE-F<N>-<NN>-<MMM>-<NOME>.md
 ```
 
 Selecione a primeira issue cujo status esteja `todo` ou `active` e cujas
 dependencias estejam satisfeitas.
 
-Antes de implementar, leia `task_instruction_mode` no frontmatter da issue.
+Resolva o formato da issue antes de executar:
+
+- se existir a pasta `ISSUE-*/`, trate a issue como granularizada: leia
+  `README.md` e todos os `TASK-*.md`
+- se existir apenas o arquivo `ISSUE-*.md`, trate a issue como legada
+
+Antes de implementar, leia `task_instruction_mode` no frontmatter do
+`README.md` ou do arquivo da issue.
 
 - se `task_instruction_mode` estiver ausente, assuma `optional` por compatibilidade
-- se `task_instruction_mode` for `required`, valide a secao `## Instructions por Task`
-- se a issue marcada como `required` nao tiver um bloco por task com campos minimos completos, reporte `BLOQUEADO` e pare
+- se a issue for granularizada, use o `README.md` como manifesto e selecione a
+  primeira `TASK-N.md` com `status: todo` ou `active`; execute apenas essa task
+- se `task_instruction_mode` for `required` em issue granularizada, valide que
+  cada `TASK-N.md` tem os campos minimos de `TEMPLATE-TASK.md`
+- se `task_instruction_mode` for `required` em issue legada, valide a secao
+  `## Instructions por Task`
+- se faltar o detalhamento obrigatorio do formato escolhido, reporte
+  `BLOQUEADO` e pare
 
 Antes de implementar, leia tambem os arquivos de codigo explicitamente citados
-na issue.
+no manifesto da issue e na task selecionada.
 
 #### Modo AUDITORIA
 
@@ -154,6 +173,7 @@ PROJETO:           <nome>
 FASE ALVO:         F<N> - <nome>
 EPICO ALVO:        EPIC-F<N>-<NN> - <nome> / n-a
 UNIDADE ELEGIVEL:  ISSUE-F<N>-<NN>-<MMM> - <nome> / AUDITORIA-F<N>-R<NN>
+TASK ALVO:         T<N> / n-a
 TASK_INSTR_MODE:   optional / required / n-a
 SP:                <valor> / n-a
 DEPENDENCIAS:      <satisfeitas / bloqueadas>
@@ -179,9 +199,14 @@ Principios obrigatorios:
 ### Sequencia minima para ISSUE
 
 1. Confirmar entendimento do escopo
-2. Se `task_instruction_mode: required`, executar cada task seguindo sua instrucao atomica correspondente
-3. **Apos cada task concluida**, fazer commit com mensagem descritiva conforme `GOV-COMMIT-POR-TASK.md` (PROJETO, ISSUE_ID, TASK_ID, descricao breve)
-4. Executar `Red`, `Green` e `Refactor` conforme o arquivo da issue
+2. Se a issue for granularizada, executar apenas a proxima `TASK-N.md`; se for
+   legada com `task_instruction_mode: required`, executar cada task seguindo
+   sua instrucao atomica inline
+3. **Apos cada task concluida**, atualizar o status da task correspondente e o
+   status agregado da issue, depois fazer commit com mensagem descritiva conforme
+   `GOV-COMMIT-POR-TASK.md` (PROJETO, ISSUE_ID, TASK_ID, descricao breve)
+4. Executar `Red`, `Green` e `Refactor` conforme o `README.md` da issue ou o
+   arquivo legado
 5. Rodar os testes diretamente relacionados
 6. Registrar desvios como proposta de decisao quando necessario
 
@@ -210,8 +235,11 @@ Migrations     : alembic upgrade head deve passar sem erro
 
 ### Ao concluir uma ISSUE
 
-1. Atualize o status da issue no arquivo `issues/ISSUE-*.md`
-2. Marque o `Definition of Done` da issue
+1. Se a issue for granularizada, atualize o `TASK-N.md` executado e recalcule o
+   `README.md` com o status agregado (`active` quando ainda houver task aberta;
+   `done` quando todas as tasks estiverem `done`); se for legada, atualize o
+   arquivo `ISSUE-*.md`
+2. Marque o `Definition of Done` no `README.md` da issue ou no arquivo legado
 3. Atualize a tabela de issues do `EPIC-*.md`
 4. Recalcule o status do epico e mantenha a fase `active` ate o fechamento do gate de auditoria
 5. Se todos os epicos da fase estiverem `done`, atualize o gate de auditoria da fase para `pending`

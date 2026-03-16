@@ -1,6 +1,6 @@
 ---
 doc_id: "RELATORIO-AUDITORIA-F<N>-R<NN>.md"
-version: "2.1"
+version: "2.2"
 status: "planned"
 verdict: "hold"
 scope_type: "phase"
@@ -42,9 +42,12 @@ last_updated: "YYYY-MM-DD"
 
 | Follow-up | Tipo | Destino Final | Status verificado | Arquivo ou registro | Observacoes |
 |---|---|---|---|---|---|
-| B1 | bloqueante | issue-local | done | [ISSUE-*.md](./issues/ISSUE-*.md) | encerrado |
+| B1 | bloqueante | issue-local | done | [ISSUE-*](../issues/ISSUE-*/) ou [ISSUE-*.md](../issues/ISSUE-*.md) | encerrado |
 | N1 | nao bloqueante | new-intake | criado | [INTAKE-*.md](../../INTAKE-*.md) | nao bloqueia |
 | C1 | bloqueante | cancelled | registrado no log | `AUDIT-LOG.md` | justificativa registrada |
+
+> Para `issue-local`, apontar para a pasta `ISSUE-*/` ou para `README.md`
+> quando a issue for granularizada; usar `ISSUE-*.md` apenas para legado.
 
 Resultado da prestacao de contas: `completa` / `parcial — ver observacoes`
 

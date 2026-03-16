@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-AUDITAR-FASE.md"
-version: "1.3"
+version: "1.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-16"
 ---
 
 # SESSION-AUDITAR-FASE - Auditoria de Fase em Sessao de Chat
@@ -23,7 +23,8 @@ AUDIT_LOG:     <caminho completo do AUDIT-LOG.md>
 Voce e um engenheiro senior operando em sessao de chat interativa.
 
 Siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia o manifesto da fase,
-os epicos e issues da fase, o ultimo relatorio da fase e use:
+os epicos e issues da fase (para issue granularizada, ler `README.md` e
+`TASK-*.md`; para issue legada, ler `ISSUE-*.md`), o ultimo relatorio da fase e use:
 
 - `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
 - `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md`
@@ -58,7 +59,7 @@ Para cada follow-up dessa rodada, determine a situação pelo tipo:
 
 | Tipo | Como verificar | Elegível para encerrar? |
 |---|---|---|
-| `ISSUE-*.md` | ler o `status` no frontmatter do arquivo | `done` ou `cancelled` |
+| `ISSUE-*` | ler o `status` no frontmatter do arquivo ou do `README.md` da pasta | `done` ou `cancelled` |
 | `INTAKE-*.md` | verificar se o arquivo existe e tem intake_kind registrado | sempre elegível — intake aberto não bloqueia nova rodada |
 | `cancelled` (sem arquivo) | a linha no log já registra o destino como `cancelled` | sempre elegível |
 
@@ -73,7 +74,7 @@ Gate atual da fase:        <hold>
 Follow-ups bloqueantes dessa rodada:
 | Ref | Tipo | Destino | Status atual | Elegível? |
 |---|---|---|---|---|
-| ISSUE-*.md | bloqueante | issue-local | todo/active/done/cancelled | sim/nao |
+| ISSUE-* | bloqueante | issue-local | todo/active/done/cancelled | sim/nao |
 
 Follow-ups nao bloqueantes dessa rodada:
 | Ref | Tipo | Destino | Status atual |
@@ -86,7 +87,7 @@ Resultado: <ELEGÍVEL | BLOQUEADO>
 ```
 
 **Regra de elegibilidade:** a nova rodada só pode prosseguir se todas as
-`ISSUE-*.md` de follow-ups **bloqueantes** da rodada hold imediatamente anterior
+`ISSUE-*` de follow-ups **bloqueantes** da rodada hold imediatamente anterior
 estiverem `done` ou `cancelled`. `INTAKE-*.md` e entradas `cancelled` nunca
 bloqueiam nova rodada.
 
@@ -97,7 +98,7 @@ Se o resultado for `BLOQUEADO`:
 
 ```text
 BLOQUEADO — issues de follow-up bloqueantes ainda abertas:
-- <ISSUE-*.md> (status: todo/active)
+- <ISSUE-*> (status: todo/active)
 ...
 A nova rodada não pode iniciar até que essas issues sejam encerradas.
 → Use SESSION-IMPLEMENTAR-ISSUE.md para cada issue pendente.

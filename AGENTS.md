@@ -23,6 +23,7 @@ NPBB is an event management and marketing analytics platform with a **Python/Fas
 - **Ruff lint** has pre-existing warnings (19 unused-import errors in test files). This is a known state of the repo.
 - **3 pytest failures** in `test_leads_import_etl_usecases.py` are pre-existing (a `strict` keyword argument mismatch).
 - **PostgreSQL auth**: on fresh setup, you need to configure `pg_hba.conf` to use `md5` auth (default Ubuntu installs use `peer`).
+- **"Validação executável falhou por ambiente"**: o Cursor valida comandos antes de executar. Se o shell não tiver `python` no PATH (comum no macOS, que tem só `python3`), a validação falha. **Mitigação**: (1) selecione o interpretador correto em Cmd+Shift+P → "Python: Select Interpreter" → `backend/.venv/bin/python`; (2) ou use `backend/.venv/bin/python` explicitamente nos comandos; (3) ou ative o venv antes: `source backend/.venv/bin/activate`. O `.vscode/settings.json` já aponta para `backend/.venv/bin/python` (macOS/Linux); no Windows use `backend/.venv/Scripts/python.exe`.
 
 ### Quick commands reference
 

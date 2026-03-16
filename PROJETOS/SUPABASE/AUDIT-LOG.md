@@ -22,7 +22,7 @@ last_updated: "2026-03-16"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| nenhum | - | - | - | - |
+| F1-Schema-no-Supabase | hold | F1-R01 | [RELATORIO-AUDITORIA-F1-R01.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | provisional — worktree sujo |
 
 ## Resolucoes de Follow-ups
 
@@ -34,4 +34,4 @@ last_updated: "2026-03-16"
 
 | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| nenhum | - | - | - | - | - | - | - | - | - | - | - | - |
+| F1-R01 | F1-Schema-no-Supabase | 2026-03-16 | cursor-composer | 2828545052e3018f581e0d83130bccdeba960fea | - | hold | provisional | [RELATORIO-AUDITORIA-F1-R01.md](./F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | worktree sujo | issue-local | B1 pendente | - |

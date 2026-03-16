@@ -1,6 +1,6 @@
 ---
 doc_id: "AUDIT-LOG.md"
-version: "1.3"
+version: "1.4"
 status: "active"
 owner: "PM"
 last_updated: "YYYY-MM-DD"
@@ -28,7 +28,11 @@ last_updated: "YYYY-MM-DD"
 
 | Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
 |---|---|---|---|---|---|---|---|
-| YYYY-MM-DD | F1-R01 | F1 - NOME-DA-FASE | B1 | issue-local | resumo curto | ISSUE-F1-01-001-EXEMPLO.md | bloqueante |
+| YYYY-MM-DD | F1-R01 | F1 - NOME-DA-FASE | B1 | issue-local | resumo curto | ISSUE-F1-01-001-EXEMPLO/ | bloqueante |
+
+> Em `Ref`, para `issue-local`, apontar para a pasta `ISSUE-*/` ou para
+> `README.md` quando a issue for granularizada; usar `ISSUE-*.md` apenas para
+> legado.
 
 ## Rodadas
 

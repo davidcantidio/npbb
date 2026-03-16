@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-AUDITORIA.md"
-version: "2.3"
+version: "2.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-11"
+last_updated: "2026-03-16"
 ---
 
 # GOV-AUDITORIA
@@ -38,7 +38,9 @@ Formalizar a etapa `Tasks -> Auditorias` como gate final de governanca de cada f
 - `auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md`
 - nova entrada em `AUDIT-LOG.md`
 - atualizacao do gate de auditoria no manifesto da fase
-- follow-ups classificados por destino e transformados em `issue-local`, `new-intake` ou `cancelled` (com justificativa) quando houver `hold`
+- follow-ups classificados por destino e transformados em `issue-local`
+  (`ISSUE-*/` ou `ISSUE-*.md`), `new-intake` ou `cancelled` (com justificativa)
+  quando houver `hold`
 - quando a rodada suceder um `hold`: secao "Prestacao de Contas dos Follow-ups
   Anteriores" listando cada follow-up gerado pelo hold anterior com seu status
   final verificado; esta secao e obrigatoria e nao pode ser substituida por
@@ -118,6 +120,8 @@ Estados operacionais do gate dentro do manifesto da fase:
 ## Follow-ups
 
 - correcao local e contida pode abrir `issue-local` na mesma fase
+- `issue-local` pode ser uma pasta `ISSUE-*/` com `README.md` + `TASK-*.md` ou,
+  por compatibilidade, um arquivo unico `ISSUE-*.md`
 - refatoracao estrutural ou correcao sistemica deve abrir `new-intake` com `intake_kind: audit-remediation`
 - um follow-up e estrutural/sistemico quando:
   - envolve arquitetura ou contratos amplos
@@ -141,7 +145,9 @@ algoritmo antes de retomar o desenvolvimento:
 Para cada follow-up bloqueante no relatório:
   │
   ├─ followup_destination = issue-local
-  │     └─→ criar ISSUE-*.md na fase atual
+  │     └─→ criar recurso de issue local na fase atual
+  │          → preferir pasta `ISSUE-*/` com `README.md` + `TASK-*.md`
+  │          → usar `ISSUE-*.md` apenas para follow-up simples
   │          → ciclo normal: SESSION-IMPLEMENTAR-ISSUE
   │
   ├─ followup_destination = new-intake

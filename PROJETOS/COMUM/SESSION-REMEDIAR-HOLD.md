@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-REMEDIAR-HOLD.md"
-version: "1.1"
+version: "1.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-16"
 ---
 
 # SESSION-REMEDIAR-HOLD — Roteamento de Remediação Pós-Auditoria
@@ -104,24 +104,28 @@ Follow-ups Não Bloqueantes:
 
 Execute somente se houver follow-ups classificados como `issue-local`.
 
-Para cada um, gere rascunho completo de `ISSUE-*.md` seguindo o template de
-`GOV-ISSUE-FIRST.md`:
+Para cada um, gere rascunho seguindo o template de `GOV-ISSUE-FIRST.md`:
 
-- `doc_id` no formato `ISSUE-F<N>-<EPIC_NN>-<MMM>-<SLUG>.md`
-- `status: todo`
+- **Issue granularizada (padrao):** criar pasta `ISSUE-F<N>-<NN>-<MMM>-<SLUG>/`
+  com `README.md` (manifesto) e `TASK-*.md` (uma task por arquivo); usar
+  `TEMPLATE-TASK.md` para cada task. Escolher este formato sempre que houver
+  multiplas tasks, tarefas decupadas ou `task_instruction_mode: required`.
+- **Issue simples:** criar arquivo unico `ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md`
+  apenas quando o follow-up for local, simples e de task unica.
+- `status: todo` no manifesto
 - `task_instruction_mode` definido conforme `SPEC-TASK-INSTRUCTIONS.md`
-- user story, contexto técnico, critérios, DoD e tasks derivados do follow-up
-- campo `Dependências` com referência ao relatório de origem
+- user story, contexto tecnico, criterios, DoD e tasks derivados do follow-up
+- campo `Dependencias` com referencia ao relatorio de origem
 
 ```
-RASCUNHO: ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md
+RASCUNHO: ISSUE-F<N>-<NN>-<MMM>-<SLUG>/ (pasta) ou ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md (arquivo)
 ─────────────────────────────────────────
-<conteúdo completo>
+<conteudo completo>
 ─────────────────────────────────────────
 Destino: PROJETOS/{{PROJETO}}/{{FASE}}-.../issues/
 → "aprovar" para gravar
-→ "ajustar [instrução]" para revisar antes de gravar
-→ "pular" para não gravar esta issue
+→ "ajustar [instrucao]" para revisar antes de gravar
+→ "pular" para nao gravar esta issue
 ```
 
 **Pare após cada rascunho. Aguarde resposta do PM.**
@@ -188,7 +192,7 @@ Após todos os passos anteriores, atualize `{{AUDIT_LOG_PATH}}`:
 - preencha `Audit ID de Origem` com o identificador derivado de
   `{{RELATORIO_PATH}}`
 - preencha `Fase` com a fase auditada
-- para `issue-local`, `Ref` aponta para a `ISSUE-*.md` gerada
+- para `issue-local`, `Ref` aponta para a pasta `ISSUE-*/` ou arquivo `ISSUE-*.md` gerado
 - para `new-intake`, `Ref` aponta para o `INTAKE-*.md` gerado
 - para `cancelled`, use `n/a` em `Ref` e registre a justificativa em
   `Observacoes`

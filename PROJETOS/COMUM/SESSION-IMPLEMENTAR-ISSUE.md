@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-ISSUE.md"
-version: "1.3"
+version: "1.4"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -14,7 +14,7 @@ last_updated: "2026-03-16"
 PROJETO:     <nome do projeto>
 FASE:        <F<N>-NOME>
 ISSUE_ID:    <ISSUE-F<N>-<NN>-<MMM>>
-ISSUE_PATH:  <caminho completo do arquivo de issue>
+ISSUE_PATH:  <caminho completo: arquivo ISSUE-*.md ou pasta ISSUE-*/ com README.md>
 ```
 
 ## Prompt
@@ -28,6 +28,10 @@ Siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia apenas:
 - os arquivos de codigo explicitamente citados pela issue
 
 Nao execute descoberta autonoma de fase ou issue.
+
+**Deteccao de formato:** Se `ISSUE_PATH` apontar para uma pasta (termina em `/` ou e um
+diretorio), a issue e granularizada: leia `README.md` e liste `TASK-*.md`. Se apontar para
+arquivo `.md`, a issue e legada: leia o arquivo e as tasks estao no corpo.
 
 ### Passo 0 - Confirmacao de escopo
 
@@ -86,7 +90,13 @@ Nao e possivel determinar automaticamente qual situacao se aplica.
 
 ### Passo 1 - Plano de execucao
 
-Liste as tasks em ordem e identifique quais acoes vao alterar arquivo, rodar teste ou atualizar documento.
+- **Issue granularizada (pasta):** Liste os `TASK-*.md` em ordem; identifique a proxima task
+  com `status: todo` ou `active`; execute apenas essa task; ao concluir, atualize `status: done`
+  no `TASK-N.md`, recalcule o status agregado no `README.md` (`active` se ainda houver task
+  aberta; `done` apenas quando todas estiverem encerradas), e faca commit; se todas as tasks
+  estiverem done, execute a cascata de fechamento.
+- **Issue legada (arquivo):** Liste as tasks em ordem e identifique quais acoes vao alterar
+  arquivo, rodar teste ou atualizar documento.
 
 ### Passo 2 - Execucao com HITL
 
@@ -98,7 +108,15 @@ EXECUTANDO: <Tn ou acao>
 ```
 
 **Apos cada task concluida**, antes de prosseguir para a proxima task ou para o
-fechamento, faca commit com mensagem descritiva conforme `GOV-COMMIT-POR-TASK.md`:
+fechamento, sincronize os status documentais e faca commit com mensagem
+descritiva conforme `GOV-COMMIT-POR-TASK.md`:
+
+- issue granularizada:
+  - atualizar o `TASK-N.md` para `done`
+  - atualizar o `README.md` para `active` quando ainda restar task `todo` ou `active`
+  - atualizar o `README.md` para `done` apenas quando todas as tasks estiverem `done`
+- issue legada:
+  - atualizar o checklist/task correspondente no proprio arquivo
 
 ```text
 COMMIT: <PROJETO> <ISSUE_ID> <TASK_ID>: <descricao breve>
@@ -116,11 +134,15 @@ arquivo antes de gravar:
 
 **3.1 — Fechar a issue**
 
+- **Issue granularizada:** atualizar `README.md` da pasta com `status: done` e `last_updated`.
+- **Issue legada:** atualizar o arquivo da issue.
+
 ```text
-FECHANDO: {{ISSUE_PATH}}
-  status: todo → done
+FECHANDO: {{ISSUE_PATH}} (ou README.md da pasta)
+  status: <todo|active> → done
   last_updated: <data>
   DoD: todos os itens marcados? <sim/nao>
+  (granularizada: todas as tasks done? <sim/nao>)
 ─────────────────────────────────────────
 → "sim" para gravar
 → "ajustar [instrucao]"

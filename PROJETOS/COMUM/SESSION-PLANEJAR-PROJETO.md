@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-PLANEJAR-PROJETO.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-16"
 ---
 
 # SESSION-PLANEJAR-PROJETO - Planejamento de Projeto em Sessao de Chat
@@ -70,4 +70,6 @@ GERANDO: <caminho completo do arquivo>
 - Nunca inventar requisito, dependência ou restrição ausente no PRD
 - Sinalizar lacunas do PRD que impeçam uma issue bem formada e aguardar instrução
 - Emitir `BLOQUEADO` se uma issue `required` não tiver insumo suficiente para
-  montar o bloco `Instructions por Task`
+  montar o detalhamento executável por task no formato canônico
+  (`TASK-N.md` em issue granularizada ou `## Instructions por Task` em issue
+  legada)

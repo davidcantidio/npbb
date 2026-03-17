@@ -3,7 +3,7 @@ doc_id: "TASK-1.md"
 issue_id: "ISSUE-F1-02-002-COBRIR-DUPLICATA-DE-CONVERSAO-E-INVARIANTES-DO-SUBMIT"
 task_id: "T1"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-17"
 tdd_aplicavel: true

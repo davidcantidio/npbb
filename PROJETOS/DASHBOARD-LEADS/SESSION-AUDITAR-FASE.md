@@ -3,7 +3,7 @@ doc_id: "SESSION-AUDITAR-FASE.md"
 version: "1.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-17"
+last_updated: "2026-03-16"
 ---
 
 # SESSION-AUDITAR-FASE - Auditoria de Fase em Sessao de Chat
@@ -11,22 +11,19 @@ last_updated: "2026-03-17"
 ## Parametros obrigatorios
 
 ```
-PROJETO:       SUPABASE
-FASE:          F3-Validacao-e-Cutover
-RODADA:        R-01
-BASE_COMMIT:   worktree
-AUDIT_LOG:     /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/AUDIT-LOG.md
+PROJETO:       <nome do projeto>
+FASE:          <F<N>-NOME>
+RODADA:        <R<NN>>
+BASE_COMMIT:   <sha ou "worktree">
+AUDIT_LOG:     <caminho completo do AUDIT-LOG.md>
 ```
-
-> **Pre-requisito**: a fase F3 so esta elegivel para auditoria quando todas as
-> issues estiverem `done`. Verifique ISSUE-F3-01-003 antes de iniciar.
 
 ## Prompt
 
 Voce e um engenheiro senior operando em sessao de chat interativa.
 
 Siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia o manifesto da fase,
-os epicos e issues da fase (para issue granularizada, ler `README.md` e os
+os epicos e issues da fase (para issue granularizada, ler `README.md` e
 `TASK-*.md`; para issue legada, ler `ISSUE-*.md`), o ultimo relatorio da fase e use:
 
 - `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
@@ -77,7 +74,7 @@ Gate atual da fase:        <hold>
 Follow-ups bloqueantes dessa rodada:
 | Ref | Tipo | Destino | Status atual | Elegível? |
 |---|---|---|---|---|
-| ISSUE-*.md | bloqueante | issue-local | todo/active/done/cancelled | sim/nao |
+| ISSUE-* | bloqueante | issue-local | todo/active/done/cancelled | sim/nao |
 
 Follow-ups nao bloqueantes dessa rodada:
 | Ref | Tipo | Destino | Status atual |

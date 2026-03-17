@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-REVISAR-ISSUE.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-16"
@@ -11,15 +11,13 @@ last_updated: "2026-03-16"
 ## Parametros obrigatorios
 
 ```
-PROJETO:     SUPABASE
-FASE:        F3-Validacao-e-Cutover
-ISSUE_ID:    ISSUE-F3-02-001
-ISSUE_PATH:  /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico
-TASK_ID:     T4
-```
-BASE_COMMIT:  worktree
-EVIDENCIA:   diff, testes
-OBSERVACOES:  nenhuma
+PROJETO:      <nome do projeto>
+FASE:         <F<N>-NOME>
+ISSUE_ID:     <ISSUE-F<N>-<NN>-<MMM>>
+ISSUE_PATH:   <caminho completo: arquivo ISSUE-*.md ou pasta ISSUE-*/ com README.md>
+BASE_COMMIT:  <sha, "worktree" ou "nao_informado">
+EVIDENCIA:    <diff, PR, logs, testes, links ou "nao_informado">
+OBSERVACOES:  <restricoes adicionais ou "nenhuma">
 ```
 
 ## Prompt
@@ -28,7 +26,7 @@ Voce e um engenheiro senior operando em sessao de chat interativa.
 
 Siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia:
 
-- a issue informada
+- a issue informada (se for pasta, leia `README.md` e os `TASK-*.md` para revisao)
 - o epico e a fase referenciados pela issue
 - `decision_refs`, quando existirem
 - apenas os arquivos de codigo citados pela issue e pela evidencia recebida
@@ -91,7 +89,7 @@ VEREDITO PROPOSTO
 veredito: <aprovada | correcao_requerida | cancelled>
 destino_proposto: <nenhum | issue-local | new-intake>
 reabrir issue original: nao
-saida persistida: <nenhuma | nova ISSUE-*.md | nenhum artefato; abrir intake fora desta sessao>
+saida persistida: <nenhuma | nova ISSUE-*/ com README.md + TASK-*.md | nova ISSUE-*.md | nenhum artefato; abrir intake fora desta sessao>
 ─────────────────────────────────────────
 → "aprovar" para encerrar ou seguir para o proximo passo
 → "ajustar [instrucao]" para revisar
@@ -108,16 +106,31 @@ Regras deste passo:
 
 ### Passo 3 - Rascunho da issue de correcao
 
-Gere rascunho completo de nova `ISSUE-*.md` no mesmo epico e fase, seguindo
-`GOV-ISSUE-FIRST.md`.
+Gere rascunho completo de novo recurso de issue local no mesmo epico e fase,
+seguindo `GOV-ISSUE-FIRST.md`.
 
 Regras obrigatorias do rascunho:
 
-- criar novo `doc_id` no formato `ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md`
+- usar issue granularizada como padrao: criar pasta
+  `ISSUE-F<N>-<NN>-<MMM>-<SLUG>/` com `README.md` e `TASK-*.md` quando houver
+  multiplas tasks, tarefas decupadas ou `task_instruction_mode: required`
+- usar arquivo unico `ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md` apenas quando a
+  correcao for simples, local e de task unica
+- se a issue for granularizada, usar `README.md` como manifesto e
+  `PROJETOS/COMUM/TEMPLATE-TASK.md` para cada `TASK-N.md`
+- manter no manifesto da issue: user story, contexto tecnico, plano TDD,
+  criterios, DoD, tasks, arquivos reais e artefato minimo
+- criar `doc_id` coerente com o formato escolhido:
+  - issue granularizada: `doc_id` do `README.md` igual ao identificador da issue
+  - issue legada: `doc_id` no formato `ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md`
 - manter `status: todo`
 - definir `task_instruction_mode` conforme `SPEC-TASK-INSTRUCTIONS.md`
 - usar `required` quando houver risco alto, multi-arquivo, ordem critica,
   regressao delicada ou handoff sensivel
+- quando uma task envolver codigo novo ou alteracao com cobertura automatizavel,
+  marcar `tdd_aplicavel: true` e preencher `testes_red` + `passos_atomicos`
+  na ordem red -> green -> refactor; quando nao envolver TDD, manter
+  `tdd_aplicavel: false` ou omitir conforme a spec
 - registrar no `Contexto Tecnico`:
   - issue de origem
   - evidencia usada na revisao
@@ -128,7 +141,7 @@ Regras obrigatorias do rascunho:
 Apresente:
 
 ```text
-RASCUNHO: ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md
+RASCUNHO: ISSUE-F<N>-<NN>-<MMM>-<SLUG>/ (pasta) ou ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md (arquivo legado)
 ─────────────────────────────────────────
 <conteudo completo>
 ─────────────────────────────────────────
@@ -158,6 +171,8 @@ Atualizacoes obrigatorias:
 
 1. `EPIC-*.md` pai:
    - adicionar a nova issue a tabela `Issues do Epico`
+   - apontar o campo `Documento` para a pasta `./issues/ISSUE-.../` ou para o
+     arquivo legado correspondente
    - se o epico estiver `done`, retornar para `active`
 2. manifesto da fase:
    - manter ou retornar o epico para `active`, se necessario

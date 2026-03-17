@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from statistics import median
 
+from sqlalchemy import func as sa_func
 from sqlmodel import Session, select
 
+from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
 from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, Usuario, UsuarioTipo, now_utc
 from app.schemas.dashboard import (
     AgeAnalysisQuery,
@@ -120,6 +122,17 @@ def _from_clause():
     )
 
 
+def _from_clause_batch():
+    """Lead via pipeline (LeadBatch) -> Evento. Usado para leads importados sem AtivacaoLead."""
+    return (
+        Lead.__table__.join(LeadBatch, Lead.batch_id == LeadBatch.id)
+        .join(Evento, Evento.id == LeadBatch.evento_id)
+    )
+
+
+_GOLD_PIPELINE_STATUSES = {PipelineStatus.PASS, PipelineStatus.PASS_WITH_WARNINGS}
+
+
 def _load_lead_event_facts(session: Session, filters: list) -> list[LeadEventFact]:
     rows = session.exec(
         select(
@@ -159,6 +172,129 @@ def _load_lead_event_facts(session: Session, filters: list) -> list[LeadEventFac
             )
         )
     return facts
+
+
+def _load_lead_event_facts_via_batch(
+    session: Session, filters: list
+) -> list[LeadEventFact]:
+    """Carrega leads vinculados a eventos via LeadBatch (importacao pipeline)."""
+    batch_filters = list(filters)
+    batch_filters.append(Lead.batch_id.is_not(None))
+    batch_filters.append(LeadBatch.evento_id.is_not(None))
+    batch_filters.append(LeadBatch.stage == BatchStage.GOLD)
+    batch_filters.append(LeadBatch.pipeline_status.in_(_GOLD_PIPELINE_STATUSES))
+
+    rows = session.exec(
+        select(
+            Evento.id,
+            Evento.nome,
+            Evento.cidade,
+            Evento.estado,
+            Lead.id,
+            Lead.data_nascimento,
+            Lead.is_cliente_bb,
+        )
+        .select_from(_from_clause_batch())
+        .where(*batch_filters)
+        .distinct()
+    ).all()
+
+    facts: list[LeadEventFact] = []
+    for row in rows:
+        (
+            evento_id,
+            evento_nome,
+            cidade,
+            estado,
+            lead_id,
+            data_nascimento,
+            is_cliente_bb,
+        ) = row
+        facts.append(
+            LeadEventFact(
+                evento_id=int(evento_id),
+                evento_nome=_safe_text(evento_nome),
+                cidade=_safe_text(cidade),
+                estado=_safe_text(estado),
+                lead_id=int(lead_id),
+                data_nascimento=data_nascimento,
+                is_cliente_bb=is_cliente_bb,
+            )
+        )
+    return facts
+
+
+def _from_clause_evento_nome():
+    """Lead via evento_nome match (ETL import). Usado quando Lead.evento_nome = Evento.nome."""
+    return Lead.__table__.join(
+        Evento,
+        sa_func.lower(sa_func.trim(Lead.evento_nome)) == sa_func.lower(sa_func.trim(Evento.nome)),
+    )
+
+
+def _load_lead_event_facts_via_evento_nome(
+    session: Session, filters: list
+) -> list[LeadEventFact]:
+    """Carrega leads vinculados a eventos via Lead.evento_nome = Evento.nome (import ETL)."""
+    nome_filters = list(filters)
+    nome_filters.append(Lead.evento_nome.is_not(None))
+    nome_filters.append(sa_func.trim(Lead.evento_nome) != "")
+
+    rows = session.exec(
+        select(
+            Evento.id,
+            Evento.nome,
+            Evento.cidade,
+            Evento.estado,
+            Lead.id,
+            Lead.data_nascimento,
+            Lead.is_cliente_bb,
+        )
+        .select_from(_from_clause_evento_nome())
+        .where(*nome_filters)
+        .distinct()
+    ).all()
+
+    facts: list[LeadEventFact] = []
+    for row in rows:
+        (
+            evento_id,
+            evento_nome,
+            cidade,
+            estado,
+            lead_id,
+            data_nascimento,
+            is_cliente_bb,
+        ) = row
+        facts.append(
+            LeadEventFact(
+                evento_id=int(evento_id),
+                evento_nome=_safe_text(evento_nome),
+                cidade=_safe_text(cidade),
+                estado=_safe_text(estado),
+                lead_id=int(lead_id),
+                data_nascimento=data_nascimento,
+                is_cliente_bb=is_cliente_bb,
+            )
+        )
+    return facts
+
+
+def _merge_and_dedupe_facts(
+    facts_ativacao: list[LeadEventFact],
+    facts_batch: list[LeadEventFact],
+    facts_evento_nome: list[LeadEventFact],
+) -> list[LeadEventFact]:
+    """Uniao de facts deduplicando por (lead_id, evento_id)."""
+    seen: set[tuple[int, int]] = set()
+    result: list[LeadEventFact] = []
+    for fact in facts_ativacao + facts_batch + facts_evento_nome:
+        key = (fact.lead_id, fact.evento_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(fact)
+    return result
 
 
 def _day_window_bounds(value: date) -> tuple[datetime, datetime]:
@@ -331,7 +467,10 @@ def build_age_analysis(
     current_user: Usuario,
 ) -> AgeAnalysisResponse:
     filters = _build_filters(params, current_user)
-    link_facts = _load_lead_event_facts(session, filters)
+    facts_ativacao = _load_lead_event_facts(session, filters)
+    facts_batch = _load_lead_event_facts_via_batch(session, filters)
+    facts_evento_nome = _load_lead_event_facts_via_evento_nome(session, filters)
+    link_facts = _merge_and_dedupe_facts(facts_ativacao, facts_batch, facts_evento_nome)
     reference_date = date.today()
     bb_coverage_threshold_pct = _read_bb_coverage_threshold_pct()
 

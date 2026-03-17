@@ -1,22 +1,21 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-ISSUE.md"
-version: "1.2"
+version: "1.6"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-16"
 ---
 
 # SESSION-IMPLEMENTAR-ISSUE - Execucao de Issue em Sessao de Chat
 
-## Parametros obrigatorios
+## Parametros de entrada
 
 ```
-PROJETO:     SUPABASE
-FASE:        F3-Validacao-e-Cutover
-ISSUE_ID:    ISSUE-F3-02-001
-ISSUE_PATH:  /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico
-TASK_ID:     T4
-
+PROJETO:     <nome do projeto>
+FASE:        <F<N>-NOME>
+ISSUE_ID:    <ISSUE-F<N>-<NN>-<MMM>>
+ISSUE_PATH:  <caminho completo: arquivo ISSUE-*.md ou pasta ISSUE-*/ com README.md>
+TASK_ID:     <opcional: T<N> ou "auto">
 ```
 
 ## Prompt
@@ -31,6 +30,14 @@ Siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia apenas:
 
 Nao execute descoberta autonoma de fase ou issue.
 
+**Deteccao de formato:** Se `ISSUE_PATH` apontar para uma pasta (termina em `/` ou e um
+diretorio), a issue e granularizada: leia `README.md` e liste `TASK-*.md`. Se apontar para
+arquivo `.md`, a issue e legada: leia o arquivo e as tasks estao no corpo.
+
+Se `TASK_ID` for informado, a execucao fica restrita a essa task especifica. Se
+`TASK_ID: auto` ou o parametro estiver ausente, selecione a proxima task
+elegivel normalmente.
+
 ### Passo 0 - Confirmacao de escopo
 
 Apresente:
@@ -39,6 +46,7 @@ Apresente:
 ESCOPO DA ISSUE
 ─────────────────────────────────────────
 Issue:
+Task alvo:
 Objetivo:
 Dependencias:
 task_instruction_mode:
@@ -88,7 +96,21 @@ Nao e possivel determinar automaticamente qual situacao se aplica.
 
 ### Passo 1 - Plano de execucao
 
-Liste as tasks em ordem e identifique quais acoes vao alterar arquivo, rodar teste ou atualizar documento.
+- **Issue granularizada (pasta):** Liste os `TASK-*.md` em ordem. Se `TASK_ID` foi informado,
+  valide que o `TASK-N.md` correspondente existe e esta `todo` ou `active`; se nao estiver,
+  responda `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task com `status: todo` ou
+  `active`. Execute apenas essa task; ao concluir, atualize `status: done` no `TASK-N.md`,
+  recalcule o status agregado no `README.md` (`active` se ainda houver task aberta; `done`
+  apenas quando todas estiverem encerradas), e faca commit; se todas as tasks estiverem done,
+  execute a cascata de fechamento. Se a task alvo tiver `tdd_aplicavel: true`, o plano de
+  execucao deve explicitar as subfases `red`, `green` e `refactor` antes de qualquer mudanca de
+  codigo.
+- **Issue legada (arquivo):** Liste as tasks em ordem. Se `TASK_ID` foi informado, valide que
+  existe bloco correspondente e que a task nao esta encerrada; se nao existir, responda
+  `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task elegivel. Em ambos os casos, execute
+  apenas uma task por vez e identifique quais acoes vao alterar arquivo, rodar teste ou
+  atualizar documento. Se a task alvo tiver `tdd_aplicavel: true`, o plano de execucao deve
+  explicitar as subfases `red`, `green` e `refactor`.
 
 ### Passo 2 - Execucao com HITL
 
@@ -99,8 +121,24 @@ EXECUTANDO: <Tn ou acao>
 → "sim" / "pular" / "ajustar [instrucao]"
 ```
 
+Quando a task tiver `tdd_aplicavel: true`, siga obrigatoriamente esta ordem antes de implementar:
+
+1. escrever os testes descritos em `testes_red`
+2. rodar o comando de `testes_red` e confirmar falha real ligada ao gap da task
+3. se os testes nao falharem, parar e reportar bloqueio ou inconsistência de task
+4. so depois da falha confirmada implementar o codigo minimo para fazer a suite passar
+5. rodar novamente a suite alvo, confirmar green e so entao refatorar se necessario
+
 **Apos cada task concluida**, antes de prosseguir para a proxima task ou para o
-fechamento, faca commit com mensagem descritiva conforme `GOV-COMMIT-POR-TASK.md`:
+fechamento, sincronize os status documentais e faca commit com mensagem
+descritiva conforme `GOV-COMMIT-POR-TASK.md`:
+
+- issue granularizada:
+  - atualizar o `TASK-N.md` para `done`
+  - atualizar o `README.md` para `active` quando ainda restar task `todo` ou `active`
+  - atualizar o `README.md` para `done` apenas quando todas as tasks estiverem `done`
+- issue legada:
+  - atualizar o checklist/task correspondente no proprio arquivo
 
 ```text
 COMMIT: <PROJETO> <ISSUE_ID> <TASK_ID>: <descricao breve>
@@ -118,11 +156,15 @@ arquivo antes de gravar:
 
 **3.1 — Fechar a issue**
 
+- **Issue granularizada:** atualizar `README.md` da pasta com `status: done` e `last_updated`.
+- **Issue legada:** atualizar o arquivo da issue.
+
 ```text
-FECHANDO: {{ISSUE_PATH}}
-  status: todo → done
+FECHANDO: {{ISSUE_PATH}} (ou README.md da pasta)
+  status: <todo|active> → done
   last_updated: <data>
   DoD: todos os itens marcados? <sim/nao>
+  (granularizada: todas as tasks done? <sim/nao>)
 ─────────────────────────────────────────
 → "sim" para gravar
 → "ajustar [instrucao]"
@@ -178,7 +220,9 @@ ATUALIZANDO: <caminho do SPRINT-*.md>
 → "ajustar [instrucao]"
 ```
 
-**USE SEMPRE mcp do Supabase quando for possível**
-
 **Não pule nenhum dos quatro passos.** Status inconsistente no épico ou no
 manifesto da fase bloqueia a leitura correta pelo próximo agente ou sessão.
+
+> Se o PM quiser uma segunda leitura apos a execucao desta issue, use
+> `SESSION-REVISAR-ISSUE.md`. Essa revisao e opcional, nao substitui a
+> auditoria de fase e nao reabre automaticamente a issue original.

@@ -6,13 +6,14 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.db.database import get_session
-from app.main import app
 from app.models.models import (
     Agencia,
     Ativacao,
     AtivacaoLead,
     Evento,
     Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
     StatusEvento,
     Usuario,
 )
@@ -37,6 +38,8 @@ def engine(monkeypatch):
 
 @pytest.fixture
 def client(engine):
+    from app.main import app
+
     def override_get_session():
         with Session(engine) as session:
             yield session
@@ -45,6 +48,11 @@ def client(engine):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+def test_models_aggregate_exports_lead_event_symbols():
+    assert LeadEvento.__name__ == "LeadEvento"
+    assert LeadEventoSourceKind.EVENT_DIRECT.value == "event_id_direct"
 
 
 def seed_user(session: Session, email="user@npbb.com.br", password="senha123") -> Usuario:

@@ -13,12 +13,12 @@ last_updated: "2026-03-16"
 Preencha e cole junto com este prompt:
 
 ```
-PROJETO:       <nome do projeto, ex: FRAMEWORK-GOV>
-PRD_PATH:      <caminho do PRD, ex: PROJETOS/FRAMEWORK-GOV/PRD-FRAMEWORK-GOV-v1.0.md>
-ESCOPO:        <"projeto completo" | "apenas F<N>" | "apenas EPIC-F<N>-<NN>">
-PROFUNDIDADE:  <"fases" | "fases+epicos" | "fases+epicos+issues" | "completo">
-TASK_MODE:     <"optional" | "required" | "por issue">
-OBSERVACOES:   <restrições adicionais ou "nenhuma">
+PROJETO:       DASHBOARD-LEADS
+PRD_PATH:      /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/DASHBOARD-LEADS/PRD-DASHBOARD-LEADS.MD
+ESCOPO:       projeto completo
+PROFUNDIDADE:  completo
+TASK_MODE:     required
+OBSERVACOES:   nenhuma
 ```
 
 ---

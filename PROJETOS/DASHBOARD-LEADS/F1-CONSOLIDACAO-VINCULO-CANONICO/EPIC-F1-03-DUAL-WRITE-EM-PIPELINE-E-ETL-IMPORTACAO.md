@@ -32,7 +32,7 @@ Os writers de lote passam a materializar a fonte canonica sem inferencia silenci
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-03-001 | Garantir LeadEvento no pipeline Gold | Fechar o caminho `LeadBatch.evento_id -> LeadEvento` no pipeline Gold com idempotencia clara. | 1 | todo | [README](./issues/ISSUE-F1-03-001-GARANTIR-LEAD-EVENTO-NO-PIPELINE-GOLD/README.md) |
+| ISSUE-F1-03-001 | Garantir LeadEvento no pipeline Gold | Fechar o caminho `LeadBatch.evento_id -> LeadEvento` no pipeline Gold com idempotencia clara. | 1 | done | [README](./issues/ISSUE-F1-03-001-GARANTIR-LEAD-EVENTO-NO-PIPELINE-GOLD/README.md) |
 | ISSUE-F1-03-002 | Garantir LeadEvento no ETL por evento_nome | Consolidar resolucao unica por `evento_nome` no ETL/import, sem criar vinculo em matches ambiguos ou ausentes. | 2 | todo | [README](./issues/ISSUE-F1-03-002-GARANTIR-LEAD-EVENTO-NO-ETL-POR-EVENTO-NOME/README.md) |
 
 ## Artifact Minimo do Epico

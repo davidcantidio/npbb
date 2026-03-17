@@ -12,12 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
-from app.models.models import Evento, Lead, StatusEvento, Usuario
+from app.models.models import Evento, Lead, LeadEvento, LeadEventoSourceKind, StatusEvento, Usuario
+from sqlalchemy import select as sa_select
 from app.utils.security import hash_password
 
 
@@ -233,3 +234,64 @@ class TestExecutarPipeline:
         body = resp.json()
         assert body["batch_id"] == batch_id
         assert body["status"] == "queued"
+
+
+class TestLeadEventoInGoldPipeline:
+    """Testes red/green para ISSUE-F1-03-001 T1: Garantir LeadEvento no pipeline Gold."""
+
+    def test_promote_to_gold_creates_lead_evento(self, client, engine):
+        """Red test: deve falhar inicialmente se ensure_lead_event não for chamado corretamente."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        # Executa o pipeline real (não mockado)
+        with Session(engine) as s:
+            from app.services.lead_pipeline_service import executar_pipeline_gold
+            # Como é async, chamamos de forma síncrona para teste
+            import asyncio
+            asyncio.run(executar_pipeline_gold(batch_id))
+
+        # Verifica criação do LeadEvento
+        with Session(engine) as s:
+            leads = s.exec(sa_select(Lead).where(Lead.batch_id == batch_id)).all()
+            assert len(leads) > 0, "Deve ter criado pelo menos um Lead Gold"
+
+            for lead in leads:
+                lead_eventos = s.exec(
+                    sa_select(LeadEvento)
+                    .where(LeadEvento.lead_id == lead.id)
+                ).all()
+                assert len(lead_eventos) == 1, f"Lead {lead.id} deve ter exatamente 1 LeadEvento"
+                le = lead_eventos[0]
+                assert le.evento_id == evento.id
+                assert le.source_kind == LeadEventoSourceKind.LEAD_BATCH
+                assert le.source_ref_id == batch_id
+
+    def test_reprocess_does_not_duplicate_lead_evento(self, client, engine):
+        """Testa idempotência: reprocessar o mesmo batch não cria duplicatas."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        # Executa 2x
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+        import asyncio
+        asyncio.run(executar_pipeline_gold(batch_id))
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            leads = s.exec(sa_select(Lead).where(Lead.batch_id == batch_id)).all()
+            for lead in leads:
+                lead_eventos = s.exec(
+                    sa_select(LeadEvento)
+                    .where(LeadEvento.lead_id == lead.id)
+                    .where(LeadEvento.evento_id == evento.id)
+                ).all()
+                assert len(lead_eventos) == 1, "Não deve duplicar LeadEvento"

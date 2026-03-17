@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-03-001-GARANTIR-LEAD-EVENTO-NO-PIPELINE-GOLD.md"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-17"
 task_instruction_mode: "required"
@@ -35,9 +35,9 @@ Como mantenedor do modulo de leads e dashboards, quero garantir leadevento no pi
 
 ## Definition of Done da Issue
 
-- [ ] Leads promovidos a Gold asseguram `LeadEvento` quando o lote conhece `evento_id`.
-- [ ] validacao final obrigatoria executada ou preparada no comando alvo da issue
-- [ ] dependencias e links canonicos da issue mantidos coerentes com fase e epic
+- [x] Leads promovidos a Gold asseguram `LeadEvento` quando o lote conhece `evento_id`.
+- [x] validacao final obrigatoria executada ou preparada no comando alvo da issue
+- [x] dependencias e links canonicos da issue mantidos coerentes com fase e epic
 
 ## Tasks
 

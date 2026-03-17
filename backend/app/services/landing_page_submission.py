@@ -13,8 +13,10 @@ from app.models.models import (
     Evento,
     LandingAnalyticsEvent,
     Lead,
+    LeadEventoSourceKind,
 )
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
+from app.services.lead_event_service import ensure_lead_event
 from app.services.landing_page_templates import TEMPLATE_REGISTRY, get_template_config
 from app.services.reconhecimento import gerar_token
 
@@ -270,6 +272,14 @@ def submit_public_lead(
             .where(AtivacaoLead.ativacao_id == duplicate_conversao.ativacao_id)
             .where(AtivacaoLead.lead_id == duplicate_conversao.lead_id)
         ).first()
+        if evento.id is not None:
+            ensure_lead_event(
+                session,
+                lead_id=duplicate_conversao.lead_id,
+                evento_id=evento.id,
+                source_kind=LeadEventoSourceKind.ACTIVATION if ativacao is not None else LeadEventoSourceKind.EVENT_DIRECT,
+                source_ref_id=ativacao.id if ativacao else evento.id,
+            )
         token_reconhecimento: str | None = None
         if ativacao is not None and evento.id is not None:
             token_reconhecimento = gerar_token(
@@ -296,6 +306,14 @@ def submit_public_lead(
         payload=payload,
         email=email,
     )
+    if lead.id is not None and evento.id is not None:
+        ensure_lead_event(
+            session,
+            lead_id=lead.id,
+            evento_id=evento.id,
+            source_kind=LeadEventoSourceKind.ACTIVATION if ativacao is not None else LeadEventoSourceKind.EVENT_DIRECT,
+            source_ref_id=ativacao.id if ativacao else evento.id,
+        )
     ativacao_lead = ensure_ativacao_lead_link(
         session,
         ativacao=ativacao,

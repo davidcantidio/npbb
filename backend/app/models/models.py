@@ -272,6 +272,7 @@ class Evento(SQLModel, table=True):
         back_populates="evento"
     )
     landing_analytics_events: List["LandingAnalyticsEvent"] = Relationship(back_populates="evento")
+    lead_eventos: List["LeadEvento"] = Relationship(back_populates="evento")
 
 
 # =========================
@@ -325,6 +326,7 @@ from app.models.lead_public_models import (
     Lead,
     LeadAlias,
     LeadConversao,
+    LeadEvento,
     LeadImportEtlPreviewSession,
     PublicityImportStaging,
 )

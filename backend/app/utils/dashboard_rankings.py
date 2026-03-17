@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.models import Evento, Lead
+from app.models.models import Evento, LeadEvento
 from app.schemas.dashboard_leads import (
     DashboardLeadsRankCidade,
     DashboardLeadsRankEstado,
@@ -21,7 +21,7 @@ def get_dashboard_rankings(
     limit: int,
 ) -> DashboardLeadsRankings:
     """Retorna rankings agregados no banco (GROUP BY)."""
-    count_distinct_leads = func.count(func.distinct(Lead.id))
+    count_distinct_leads = func.count(func.distinct(LeadEvento.id))
 
     estados_rows = session.exec(
         select(

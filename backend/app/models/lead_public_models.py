@@ -1,6 +1,7 @@
 """Lead, publicidade e staging ligados ao fluxo transacional legado."""
 
 from datetime import date, datetime, time
+from enum import Enum
 from typing import List, Optional
 
 from sqlalchemy import Column, DateTime, Text, UniqueConstraint
@@ -8,6 +9,14 @@ from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
 from app.models.models import LeadAliasTipo, LeadConversaoTipo, now_utc
+
+
+class LeadEventoSourceKind(str, Enum):
+    ACTIVATION = "ativacao"
+    EVENT_DIRECT = "event_id_direct"
+    LEAD_BATCH = "lead_batch"
+    EVENT_NAME_BACKFILL = "evento_nome_backfill"
+    MANUAL_RECONCILED = "manual_reconciled"
 
 
 class Lead(SQLModel, table=True):
@@ -65,11 +74,32 @@ class Lead(SQLModel, table=True):
     batch_id: Optional[int] = Field(default=None, foreign_key="lead_batches.id", index=True)
 
     ativacoes: List["AtivacaoLead"] = Relationship(back_populates="lead")
+    lead_eventos: List["LeadEvento"] = Relationship(back_populates="lead")
     cupons: List["Cupom"] = Relationship(back_populates="lead")
     respostas_questionario: List["QuestionarioResposta"] = Relationship(back_populates="lead")
     conversoes: List["LeadConversao"] = Relationship(back_populates="lead")
     conversoes_ativacao: List["ConversaoAtivacao"] = Relationship(back_populates="lead")
     reconhecimento_tokens: List["LeadReconhecimentoToken"] = Relationship(back_populates="lead")
+
+
+class LeadEvento(SQLModel, table=True):
+    __tablename__ = "lead_evento"
+    __table_args__ = (
+        UniqueConstraint("lead_id", "evento_id", name="uq_lead_evento_lead_id_evento_id"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    lead_id: int = Field(foreign_key="lead.id", index=True)
+    evento_id: int = Field(foreign_key="evento.id", index=True)
+    source_kind: LeadEventoSourceKind = Field(index=True)
+    source_ref_id: Optional[int] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
+
+    lead: Optional["Lead"] = Relationship(back_populates="lead_eventos")
+    evento: Optional["Evento"] = Relationship(back_populates="lead_eventos")
 
 
 class LeadConversao(SQLModel, table=True):

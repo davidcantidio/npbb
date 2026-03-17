@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from app.core.auth import get_current_user
 from app.db.database import get_session
-from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, Usuario, UsuarioTipo, now_utc
+from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, LeadEvento, Usuario, UsuarioTipo, now_utc
 from app.schemas.dashboard_leads import (
     DashboardLeadsFilters,
     DashboardLeadsKpis,
@@ -78,9 +78,20 @@ def _resolve_granularity(params: DashboardLeadsQuery) -> str:
 
 def _from_clause():
     return (
-        Lead.__table__.join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
-        .join(Ativacao, Ativacao.id == AtivacaoLead.ativacao_id)
-        .join(Evento, Evento.id == Ativacao.evento_id)
+        LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
+        .join(Evento, Evento.id == LeadEvento.evento_id)
+    )
+
+
+def _from_clause_ativacoes():
+    return (
+        LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
+        .join(Evento, Evento.id == LeadEvento.evento_id)
+        .outerjoin(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
+        .outerjoin(
+            Ativacao,
+            (Ativacao.id == AtivacaoLead.ativacao_id) & (Ativacao.evento_id == Evento.id),
+        )
     )
 
 
@@ -110,13 +121,13 @@ def dashboard_leads(
     from_clause = _from_clause()
 
     leads_total = session.exec(
-        select(func.count(func.distinct(Lead.id))).select_from(from_clause).where(*filters)
+        select(func.count(func.distinct(LeadEvento.id))).select_from(from_clause).where(*filters)
     ).one()
     eventos_total = session.exec(
         select(func.count(func.distinct(Evento.id))).select_from(from_clause).where(*filters)
     ).one()
     ativacoes_total = session.exec(
-        select(func.count(func.distinct(Ativacao.id))).select_from(from_clause).where(*filters)
+        select(func.count(func.distinct(Ativacao.id))).select_from(_from_clause_ativacoes()).where(*filters)
     ).one()
 
     granularity = _resolve_granularity(params)
@@ -136,7 +147,7 @@ def dashboard_leads(
     series_rows = session.exec(
         select(
             period_expr.label("periodo"),
-            func.count(func.distinct(Lead.id)).label("total"),
+            func.count(func.distinct(LeadEvento.id)).label("total"),
         )
         .select_from(from_clause)
         .where(*filters)

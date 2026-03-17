@@ -11,7 +11,7 @@ from sqlalchemy import func as sa_func
 from sqlmodel import Session, select
 
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
-from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, Usuario, UsuarioTipo, now_utc
+from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, LeadEvento, Usuario, UsuarioTipo, now_utc
 from app.schemas.dashboard import (
     AgeAnalysisQuery,
     AgeAnalysisFilters,
@@ -116,9 +116,8 @@ def _build_filters(params: AgeAnalysisQuery, current_user: Usuario) -> list:
 
 def _from_clause():
     return (
-        Lead.__table__.join(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
-        .join(Ativacao, Ativacao.id == AtivacaoLead.ativacao_id)
-        .join(Evento, Evento.id == Ativacao.evento_id)
+        LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
+        .join(Evento, Evento.id == LeadEvento.evento_id)
     )
 
 
@@ -467,10 +466,7 @@ def build_age_analysis(
     current_user: Usuario,
 ) -> AgeAnalysisResponse:
     filters = _build_filters(params, current_user)
-    facts_ativacao = _load_lead_event_facts(session, filters)
-    facts_batch = _load_lead_event_facts_via_batch(session, filters)
-    facts_evento_nome = _load_lead_event_facts_via_evento_nome(session, filters)
-    link_facts = _merge_and_dedupe_facts(facts_ativacao, facts_batch, facts_evento_nome)
+    link_facts = _load_lead_event_facts(session, filters)
     reference_date = date.today()
     bb_coverage_threshold_pct = _read_bb_coverage_threshold_pct()
 

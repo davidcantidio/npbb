@@ -15,7 +15,8 @@ from sqlmodel import Session, select
 
 from lead_pipeline.pipeline import PipelineConfig, run_pipeline
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
-from app.models.models import Lead
+from app.models.models import Lead, LeadEventoSourceKind
+from app.services.lead_event_service import ensure_lead_event
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,15 @@ def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) 
             batch_id=batch.id,
         )
         db.add(lead)
+        db.flush()
+        if lead.id is not None and batch.evento_id is not None:
+            ensure_lead_event(
+                db,
+                lead_id=lead.id,
+                evento_id=batch.evento_id,
+                source_kind=LeadEventoSourceKind.LEAD_BATCH,
+                source_ref_id=batch.id,
+            )
         count += 1
 
     db.commit()

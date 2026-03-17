@@ -7,7 +7,7 @@ from datetime import date
 from sqlalchemy import Integer, case, cast, func
 from sqlmodel import Session, select
 
-from app.models.models import Evento, Lead, Usuario, UsuarioTipo, now_utc
+from app.models.models import Evento, Lead, LeadEvento, Usuario, UsuarioTipo, now_utc
 from app.schemas.dashboard_leads_report import (
     DashboardLeadsClientesBB,
     DashboardLeadsDistribuicaoItem,
@@ -64,6 +64,13 @@ def _reference_date(evento: Evento | None) -> date:
     return date.today()
 
 
+def _from_clause():
+    return (
+        LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
+        .join(Evento, Evento.id == LeadEvento.evento_id)
+    )
+
+
 def _age_expr(dialect: str, ref_date: date):
     if dialect == "sqlite":
         return cast(func.strftime("%Y", ref_date), Integer) - cast(
@@ -107,8 +114,11 @@ def build_dashboard_leads_report(
     )
 
     filtros: list = []
-    if evento_nome_norm:
-        filtros.append(func.lower(Lead.evento_nome) == evento_nome_norm)
+    from_clause = _from_clause()
+    if evento is not None:
+        filtros.append(Evento.id == evento.id)
+    elif evento_nome_norm:
+        filtros.append(Evento.id == -1)
 
     data_ref_expr = func.date(func.coalesce(Lead.data_compra, Lead.data_criacao))
     if params.data_inicio:
@@ -116,11 +126,17 @@ def build_dashboard_leads_report(
     if params.data_fim:
         filtros.append(data_ref_expr <= params.data_fim)
 
-    total_leads = session.exec(select(func.count(Lead.id)).where(*filtros)).one()
-    compras_count = session.exec(
-        select(func.count(Lead.id)).where(*filtros, Lead.data_compra.is_not(None))
+    total_leads = session.exec(
+        select(func.count(func.distinct(LeadEvento.id))).select_from(from_clause).where(*filtros)
     ).one()
-    ingressos_sum = session.exec(select(func.sum(Lead.ingresso_qtd)).where(*filtros)).one()
+    compras_count = session.exec(
+        select(func.count(func.distinct(LeadEvento.id)))
+        .select_from(from_clause)
+        .where(*filtros, Lead.data_compra.is_not(None))
+    ).one()
+    ingressos_sum = session.exec(
+        select(func.sum(Lead.ingresso_qtd)).select_from(from_clause).where(*filtros)
+    ).one()
 
     if compras_count and int(compras_count) > 0:
         total_compras = int(compras_count)
@@ -157,13 +173,16 @@ def build_dashboard_leads_report(
     age_bucket = _age_bucket_expr(age_expr)
 
     total_with_age = session.exec(
-        select(func.count(Lead.id)).where(*filtros, Lead.data_nascimento.is_not(None))
+        select(func.count(func.distinct(LeadEvento.id)))
+        .select_from(from_clause)
+        .where(*filtros, Lead.data_nascimento.is_not(None))
     ).one()
     idade_rows = session.exec(
-        select(age_bucket.label("faixa"), func.count(Lead.id).label("total"))
+        select(age_bucket.label("faixa"), func.count(func.distinct(LeadEvento.id)).label("total"))
+        .select_from(from_clause)
         .where(*filtros, Lead.data_nascimento.is_not(None))
         .group_by(age_bucket)
-        .order_by(func.count(Lead.id).desc(), age_bucket)
+        .order_by(func.count(func.distinct(LeadEvento.id)).desc(), age_bucket)
     ).all()
 
     distribuicao_idade = [
@@ -182,10 +201,11 @@ def build_dashboard_leads_report(
 
     gender_bucket = _gender_bucket_expr()
     genero_rows = session.exec(
-        select(gender_bucket.label("faixa"), func.count(Lead.id).label("total"))
+        select(gender_bucket.label("faixa"), func.count(func.distinct(LeadEvento.id)).label("total"))
+        .select_from(from_clause)
         .where(*filtros)
         .group_by(gender_bucket)
-        .order_by(func.count(Lead.id).desc(), gender_bucket)
+        .order_by(func.count(func.distinct(LeadEvento.id)).desc(), gender_bucket)
     ).all()
 
     total_sem_genero = 0
@@ -212,7 +232,7 @@ def build_dashboard_leads_report(
         evento_inicio = evento.data_inicio_realizada or evento.data_inicio_prevista
         janela_pre_venda = f"ate {evento_inicio.isoformat()}"
         volume_pre_venda = session.exec(
-            select(func.count(Lead.id)).where(
+            select(func.count(func.distinct(LeadEvento.id))).select_from(from_clause).where(
                 *filtros, Lead.data_compra.is_not(None), func.date(Lead.data_compra) < evento_inicio
             )
         ).one()

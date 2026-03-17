@@ -3,7 +3,7 @@ doc_id: "EPIC-F3-01-Validar-Backend-e-Scripts-Criticos-contra-Supabase.md"
 version: "1.0"
 status: "done"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-17"
 ---
 
 # EPIC-F3-01 - Validar backend e scripts criticos contra Supabase
@@ -38,6 +38,7 @@ contrato atual de conexao.
 |---|---|---|---|---|---|
 | ISSUE-F3-01-001 | Validar runtime do backend com Supabase | Comprovar que a API sobe e responde com o Supabase como banco de runtime | 3 | done | [ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase](./issues/ISSUE-F3-01-001-Validar-Runtime-do-Backend-com-Supabase/) |
 | ISSUE-F3-01-002 | Validar scripts criticos e invariantes de teste | Confirmar os contratos de scripts sensiveis e do fallback SQLite em testes | 2 | done | [ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste](./issues/ISSUE-F3-01-002-Validar-Scripts-Criticos-e-Invariantes-de-Teste/) |
+| ISSUE-F3-01-003 | Alinhar contrato documental de URLs do Supabase | Remover drift documental sobre `DATABASE_URL` e `DIRECT_URL` apos a validacao de runtime | 1 | done | [ISSUE-F3-01-003-Alinhar-Contrato-Documental-de-URLs-do-Supabase](./issues/ISSUE-F3-01-003-Alinhar-Contrato-Documental-de-URLs-do-Supabase/) |
 
 ## Artifact Minimo do Epico
 

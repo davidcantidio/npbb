@@ -3,7 +3,7 @@ doc_id: "F3_SUPABASE_EPICS.md"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-17"
 audit_gate: "pending"
 ---
 
@@ -23,7 +23,7 @@ PostgreSQL local como requisito operacional padrao.
 
 ## Estado do Gate de Auditoria
 
-- gate_atual: `not_ready`
+- gate_atual: `pending`
 - ultima_auditoria: `nao_aplicavel`
 
 ## Checklist de Transicao de Gate
@@ -31,9 +31,9 @@ PostgreSQL local como requisito operacional padrao.
 > A semantica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
 
 ### `not_ready -> pending`
-- [ ] todos os epicos estao `done`
-- [ ] todas as issues filhas estao `done`
-- [ ] DoD da fase foi revisado
+- [x] todos os epicos estao `done`
+- [x] todas as issues filhas estao `done`
+- [x] DoD da fase foi revisado
 
 ### `pending -> hold`
 - [ ] existe `RELATORIO-AUDITORIA-F3-R<NN>.md`
@@ -73,6 +73,6 @@ PostgreSQL local como requisito operacional padrao.
 - criar fases adicionais de deploy fora do escopo do PRD
 
 ## Definition of Done da Fase
-- [ ] `EPIC-F3-01` e `EPIC-F3-02` concluidos com issues filhas `done`
-- [ ] backend validado contra o Supabase como banco de runtime
-- [ ] documentacao e configuracao atualizadas para remover a dependencia operacional do PostgreSQL local
+- [x] `EPIC-F3-01` e `EPIC-F3-02` concluidos com issues filhas `done`
+- [x] backend validado contra o Supabase como banco de runtime
+- [x] documentacao e configuracao atualizadas para remover a dependencia operacional do PostgreSQL local

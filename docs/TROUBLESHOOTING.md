@@ -6,12 +6,12 @@ Banco padrao do projeto: Supabase. PostgreSQL local e opcional (dev) ou usado ap
 **Sintoma:** `RuntimeError: DATABASE_URL nao configurada ...`
 **Solucao:** crie `backend/.env` a partir de `.env.example` e configure `DATABASE_URL`/`DIRECT_URL`.
 
-Para Supabase: use `postgresql+psycopg2://` (nao `postgresql://`). Senhas com `@` ou `&` precisam ser URL-encoded (`@` -> `%40`, `&` -> `%26`). Exemplo:
+Para Supabase: use `postgresql+psycopg2://` (nao `postgresql://`). Senhas com `@` ou `&` precisam ser URL-encoded (`@` -> `%40`, `&` -> `%26`). No contrato atual da F3, `DATABASE_URL` e a conexao de runtime da API e `DIRECT_URL` fica reservada a migrations/seed. Exemplo:
 ```
-DATABASE_URL=postgresql+psycopg2://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+DATABASE_URL=postgresql+psycopg2://postgres.PROJECT_REF:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres
 DIRECT_URL=postgresql+psycopg2://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
 ```
-Obtenha as strings em Supabase Dashboard > Settings > Database > Connection string.
+Nao reutilize a URL direta (`:5432`) como `DATABASE_URL` no runtime do backend. Obtenha as strings em Supabase Dashboard > Settings > Database > Connection string.
 
 ## 2) Uvicorn nao encontrado
 **Sintoma:** `No module named uvicorn`
@@ -85,7 +85,7 @@ Remove-Item -Recurse -Force frontend/node_modules
 
 ## 13) Supabase: pooler vs conexao direta
 **Sintoma:** timeouts ou erro de migrations.
-**Solucao:** use `DIRECT_URL` (porta 5432) para migrations/seed e `DATABASE_URL` (pooler) para runtime.
+**Solucao:** no Supabase, use `DIRECT_URL` (porta 5432) para migrations/seed e `DATABASE_URL` (pooler, tipicamente `:6543`) para runtime da API.
 
 ## 14) Tests falham por conexao no pytest
 **Sintoma:** erro de conexao no pytest.
@@ -94,11 +94,11 @@ Remove-Item -Recurse -Force frontend/node_modules
 ## 15) Validar runtime com Supabase
 **Objetivo:** confirmar que o backend usa o Supabase como banco (nao PostgreSQL local).
 **Passos:**
-1. Configure `DATABASE_URL` e `DIRECT_URL` no `backend/.env` apontando para o Supabase.
+1. Configure `DATABASE_URL` com a URL de runtime da API no Supabase (pooler) e `DIRECT_URL` com a conexao direta reservada a migrations/seed.
 2. Inicie o backend: `./scripts/dev_backend.sh` (a partir da raiz do repo).
 3. Valide: `curl -sf http://127.0.0.1:8000/health` deve retornar `{"status":"ok"}`.
 4. Valide endpoint com banco: `curl -sf http://127.0.0.1:8000/eventos/1/landing` deve retornar JSON com dados do evento.
-Se `DATABASE_URL` apontar para `127.0.0.1` ou `localhost`, o runtime usara o PostgreSQL local e nao o Supabase.
+Se `DATABASE_URL` apontar para `127.0.0.1`, `localhost` ou para a URL direta `:5432` do Supabase, o contrato operacional da F3 fica incorreto para o runtime.
 
 ## 16) backup_export_migracao falha (credenciais ou tooling)
 **Contexto:** script de migracao F2 (backup Supabase + export local). PostgreSQL local nao e requisito para operacao normal.

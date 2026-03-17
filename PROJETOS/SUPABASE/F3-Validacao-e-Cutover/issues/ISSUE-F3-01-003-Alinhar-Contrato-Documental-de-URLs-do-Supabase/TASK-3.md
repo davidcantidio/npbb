@@ -3,9 +3,9 @@ doc_id: "TASK-3.md"
 issue_id: "ISSUE-F3-01-003-Alinhar-Contrato-Documental-de-URLs-do-Supabase"
 task_id: "T3"
 version: "1.0"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-17"
 tdd_aplicavel: false
 ---
 

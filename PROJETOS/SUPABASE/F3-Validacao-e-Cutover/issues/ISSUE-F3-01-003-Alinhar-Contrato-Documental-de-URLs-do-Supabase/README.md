@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F3-01-003-Alinhar-Contrato-Documental-de-URLs-do-Supabase.md"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-17"
 task_instruction_mode: "required"
@@ -36,7 +36,7 @@ configuracao ambigua apos o cutover para o Supabase.
 ## Definition of Done da Issue
 - [x] `docs/TROUBLESHOOTING.md` alinhado ao contrato atual de `DATABASE_URL` e `DIRECT_URL`
 - [x] `docs/DEPLOY_RENDER_CLOUDFLARE.md` corrigido sem ambiguidade sobre runtime vs conexao direta
-- [ ] validacao final de coerencia executada contra `backend/.env.example` e `backend/app/db/database.py`
+- [x] validacao final de coerencia executada contra `backend/.env.example` e `backend/app/db/database.py`
 
 ## Tasks
 

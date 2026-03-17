@@ -23,8 +23,8 @@ Crie um Web Service no Render com:
 
 ### Variaveis obrigatorias (Render)
 
-- `DATABASE_URL` (Supabase)
-- `DIRECT_URL` (Supabase)
+- `DATABASE_URL` (Supabase; conexao de runtime da API)
+- `DIRECT_URL` (Supabase; conexao direta reservada a migrations/seed)
 - `SECRET_KEY`
 - `PYTHONPATH` (obrigatorio para imports de `core/`): `/opt/render/project/src:/opt/render/project/src/backend`
 - `FRONTEND_ORIGIN=https://app.npbb.com.br`
@@ -49,7 +49,8 @@ Crie um Web Service no Render com:
 ### Estado operacional validado (F3)
 
 O runtime do backend foi validado contra o Supabase como banco unico (ISSUE-F3-01-001):
-- Boot com `DATABASE_URL` do Supabase (conexao direta ou pooler)
+- Boot local de referencia com `./scripts/dev_backend.sh`, usando `DATABASE_URL` do Supabase como conexao de runtime da API
+- `DIRECT_URL` permanece reservada a migrations/seed e nao substitui `DATABASE_URL` no runtime
 - Endpoint `/health` responde `{"status":"ok"}`
 - Endpoints que consultam o banco (ex.: `/eventos/{id}/landing`) retornam dados do Supabase
 

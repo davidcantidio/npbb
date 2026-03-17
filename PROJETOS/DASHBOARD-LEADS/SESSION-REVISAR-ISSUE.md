@@ -11,13 +11,14 @@ last_updated: "2026-03-16"
 ## Parametros obrigatorios
 
 ```
-PROJETO:      <nome do projeto>
-FASE:         <F<N>-NOME>
-ISSUE_ID:     <ISSUE-F<N>-<NN>-<MMM>>
-ISSUE_PATH:   <caminho completo: arquivo ISSUE-*.md ou pasta ISSUE-*/ com README.md>
-BASE_COMMIT:  <sha, "worktree" ou "nao_informado">
-EVIDENCIA:    <diff, PR, logs, testes, links ou "nao_informado">
-OBSERVACOES:  <restricoes adicionais ou "nenhuma">
+PROJETO: DASHBOARD-LEADS
+FASE: F1-CONSOLIDACAO-VINCULO-CANONICO
+ISSUE_ID: ISSUE-F1-01-001
+ISSUE_PATH: /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/DASHBOARD-LEADS/F1-CONSOLIDACAO-VINCULO-CANONICO/issues/ISSUE-F1-01-001-CORRIGIR-SURFACE-DE-MODELO-E-BOOT-DA-APP
+BASE_COMMIT: c81dddcbb5c9
+TARGET_COMMIT:e129279
+EVIDENCIA: git show e129279; log da suite alvo cd backend && PYTHONPATH=.. SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q tests/test_dashboard_age_analysis_endpoint.py tests/test_dashboard_leads_endpoint.py tests/test_dashboard_leads_report_endpoint.py
+OBSERVACOES: revisar como implementacao parcial/prematura; a issue original permanece todo e o commit evidencia apenas teste de regressao em backend/tests/test_dashboard_leads_endpoint.py, sem a correcao em backend/app/models/models.py
 ```
 
 ## Prompt

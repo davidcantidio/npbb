@@ -1292,3 +1292,45 @@ def test_gamificacao_complete_limpa_timestamp_quando_completed_false(client, eng
     assert uncomplete_resp.status_code == 200
     assert uncomplete_resp.json()["gamificacao_completed"] is False
     assert uncomplete_resp.json()["gamificacao_completed_at"] is None
+
+
+def test_submit_duplicata_mantem_lead_evento_canonico(client, engine):
+    """Red test for ISSUE-F1-02-002: duplicata de conversao nao perde o vinculo canonico LeadEvento."""
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Tecnologia")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Hackathon BB Duplicata Canonica",
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id, checkin_unico=True)
+        ativacao_id = ativacao.id
+        evento_id = evento.id
+
+    body = {
+        "nome": "Maria Duplicata",
+        "email": "maria.duplicata@example.com",
+        "cpf": "529.982.247-25",
+        "consentimento_lgpd": True,
+    }
+
+    resp1 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
+    resp2 = client.post(f"/landing/ativacoes/{ativacao_id}/submit", json=body)
+
+    assert resp1.status_code == 201
+    assert resp2.status_code == 201
+    assert resp2.json()["bloqueado_cpf_duplicado"] is True
+    assert resp1.json()["lead_id"] == resp2.json()["lead_id"]
+
+    with Session(engine) as session:
+        lead_eventos = session.exec(
+            select(LeadEvento)
+            .where(LeadEvento.lead_id == resp1.json()["lead_id"])
+            .where(LeadEvento.evento_id == evento_id)
+        ).all()
+        assert len(lead_eventos) == 1, "Deve manter exatamente 1 LeadEvento (idempotente)"
+        le = lead_eventos[0]
+        assert le.source_kind in (LeadEventoSourceKind.ACTIVATION, LeadEventoSourceKind.EVENT_DIRECT)
+        assert le.source_ref_id is not None

@@ -1,4 +1,24 @@
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver, PipelineStatus
+from app.models.framework_models import (
+    FrameworkProject,
+    FrameworkIntake,
+    FrameworkPRD,
+    FrameworkPhase,
+    FrameworkEpic,
+    FrameworkSprint,
+    FrameworkIssue,
+    FrameworkTask,
+    AgentExecution,
+    ProjectStatus,
+    DocumentStatus,
+    ApprovalStatus,
+    AgentMode,
+    AuditGateState,
+    IssueFormat,
+    TaskInstructionMode,
+    ReviewVerdict,
+    FollowupDestination,
+)
 
 __all__ = [
     "BatchStage",
@@ -6,5 +26,23 @@ __all__ = [
     "PipelineStatus",
     "LeadColumnAlias",
     "LeadSilver",
+    # Framework3 models
+    "FrameworkProject",
+    "FrameworkIntake",
+    "FrameworkPRD",
+    "FrameworkPhase",
+    "FrameworkEpic",
+    "FrameworkSprint",
+    "FrameworkIssue",
+    "FrameworkTask",
+    "AgentExecution",
+    "ProjectStatus",
+    "DocumentStatus",
+    "ApprovalStatus",
+    "AgentMode",
+    "AuditGateState",
+    "IssueFormat",
+    "TaskInstructionMode",
+    "ReviewVerdict",
+    "FollowupDestination",
 ]
-

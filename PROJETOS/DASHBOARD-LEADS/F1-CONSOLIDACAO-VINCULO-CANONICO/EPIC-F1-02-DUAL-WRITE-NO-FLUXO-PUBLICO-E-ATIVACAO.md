@@ -1,7 +1,7 @@
 ---
 doc_id: "EPIC-F1-02-DUAL-WRITE-NO-FLUXO-PUBLICO-E-ATIVACAO.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-17"
 ---
@@ -32,7 +32,7 @@ O submit publico passa a assegurar o vinculo canonico em todos os caminhos de su
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-02-001 | Garantir dual-write no submit publico | Consolidar `ensure_lead_event` no fluxo publico com e sem `ativacao`, mantendo a ordem transacional minima do PRD. | 2 | todo | [README](./issues/ISSUE-F1-02-001-GARANTIR-DUAL-WRITE-NO-SUBMIT-PUBLICO/README.md) |
+| ISSUE-F1-02-001 | Garantir dual-write no submit publico | Consolidar `ensure_lead_event` no fluxo publico com e sem `ativacao`, mantendo a ordem transacional minima do PRD. | 2 | done | [README](./issues/ISSUE-F1-02-001-GARANTIR-DUAL-WRITE-NO-SUBMIT-PUBLICO/README.md) |
 | ISSUE-F1-02-002 | Cobrir duplicata de conversao e invariantes do submit | Cobrir duplicatas, idempotencia e coerencia entre `LeadEvento` e `AtivacaoLead` nos caminhos do submit publico. | 1 | todo | [README](./issues/ISSUE-F1-02-002-COBRIR-DUPLICATA-DE-CONVERSAO-E-INVARIANTES-DO-SUBMIT/README.md) |
 
 ## Artifact Minimo do Epico

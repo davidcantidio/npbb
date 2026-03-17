@@ -13,12 +13,12 @@ last_updated: "2026-03-17"
 Preencha e cole junto com este prompt:
 
 ```
-PROJETO:       <nome do projeto, ex: FRAMEWORK-GOV>
-PRD_PATH:      <caminho do PRD, ex: PROJETOS/FRAMEWORK-GOV/PRD-FRAMEWORK-GOV-v1.0.md>
-ESCOPO:        <"projeto completo" | "apenas F<N>" | "apenas EPIC-F<N>-<NN>">
-PROFUNDIDADE:  <"fases" | "fases+epicos" | "fases+epicos+issues" | "completo">
-TASK_MODE:     <"optional" | "required" | "por issue">
-OBSERVACOES:   <restrições adicionais ou "nenhuma">
+PROJETO:       FRAMEWORK3
+PRD_PATH:      /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/FRAMEWORK3/PRD-FRAMEWORK3.md
+ESCOPO:       projeto completo
+PROFUNDIDADE:  completo
+TASK_MODE:     required
+OBSERVACOES:   nenhuma
 ```
 
 ---
@@ -35,8 +35,8 @@ Você é um **engenheiro de produto sênior** operando **exclusivamente em modo 
 2. `PROJETOS/COMUM/GOV-ISSUE-FIRST.md` (estrutura canonica completa)
 3. `PROJETOS/COMUM/PROMPT-PLANEJAR-FASE.md` (referência canônica de artefatos)
 4. `PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md`
-5. O PRD informado pelo PM: `{{PRD_PATH}}`
-6. `PROJETOS/<PROJETO>/INTAKE-<PROJETO>.md`
+5. O PRD informado: `{{PRD_PATH}}`
+6. `PROJETOS/FRAMEWORK3/INTAKE-FRAMEWORK3.md`
 
 ---
 

@@ -30,7 +30,7 @@ A aplicacao sobe sem ImportError, a persistencia `lead_evento` esta versionada e
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
 | EPIC-F1-01 | Baseline de modelo, import e migration | Fechar a fundacao estrutural de `LeadEvento`, incluindo surface de import e migration versionada. | Intake, PRD, Fase atual | todo | [EPIC-F1-01-BASELINE-DE-MODELO-IMPORT-E-MIGRATION.md](./EPIC-F1-01-BASELINE-DE-MODELO-IMPORT-E-MIGRATION.md) |
-| EPIC-F1-02 | Dual-write no fluxo publico e ativacao | Garantir `LeadEvento` nos caminhos de landing e submit publico, preservando `AtivacaoLead` como contexto de conversao. | EPIC-F1-01 | todo | [EPIC-F1-02-DUAL-WRITE-NO-FLUXO-PUBLICO-E-ATIVACAO.md](./EPIC-F1-02-DUAL-WRITE-NO-FLUXO-PUBLICO-E-ATIVACAO.md) |
+| EPIC-F1-02 | Dual-write no fluxo publico e ativacao | Garantir `LeadEvento` nos caminhos de landing e submit publico, preservando `AtivacaoLead` como contexto de conversao. | EPIC-F1-01 | active | [EPIC-F1-02-DUAL-WRITE-NO-FLUXO-PUBLICO-E-ATIVACAO.md](./EPIC-F1-02-DUAL-WRITE-NO-FLUXO-PUBLICO-E-ATIVACAO.md) |
 | EPIC-F1-03 | Dual-write em pipeline e ETL/importacao | Garantir `LeadEvento` nos caminhos batch e de ETL/importacao, com resolucao deterministica quando o evento vier apenas por nome. | EPIC-F1-01 | todo | [EPIC-F1-03-DUAL-WRITE-EM-PIPELINE-E-ETL-IMPORTACAO.md](./EPIC-F1-03-DUAL-WRITE-EM-PIPELINE-E-ETL-IMPORTACAO.md) |
 | EPIC-F1-04 | Cobertura executavel e invariantes do vinculo | Alinhar fixtures e suites de regressao ao modelo canonico para que a baseline futura seja auditavel. | EPIC-F1-02, EPIC-F1-03 | todo | [EPIC-F1-04-COBERTURA-EXECUTAVEL-E-INVARIANTES-DO-VINCULO.md](./EPIC-F1-04-COBERTURA-EXECUTAVEL-E-INVARIANTES-DO-VINCULO.md) |
 

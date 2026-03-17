@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-02-001-GARANTIR-DUAL-WRITE-NO-SUBMIT-PUBLICO.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-17"
 task_instruction_mode: "required"
@@ -35,7 +35,7 @@ Como mantenedor do modulo de leads e dashboards, quero garantir dual-write no su
 
 ## Definition of Done da Issue
 
-- [ ] O fluxo publico assegura `LeadEvento` tanto no submit direto do evento quanto no submit associado a ativacao.
+- [x] O fluxo publico assegura `LeadEvento` tanto no submit direto do evento quanto no submit associado a ativacao.
 - [ ] validacao final obrigatoria executada ou preparada no comando alvo da issue
 - [ ] dependencias e links canonicos da issue mantidos coerentes com fase e epic
 

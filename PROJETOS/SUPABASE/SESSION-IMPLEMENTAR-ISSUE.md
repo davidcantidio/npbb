@@ -11,11 +11,10 @@ last_updated: "2026-03-10"
 ## Parametros obrigatorios
 
 ```
-PROJETO:     SUPABASE
-FASE:        F3-Validacao-e-Cutover
-ISSUE_ID:    ISSUE-F3-02-001
-ISSUE_PATH:  /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/F3-Validacao-e-Cutover/issues/ISSUE-F3-02-001-Atualizar-Configuracao-e-Documentacao-para-Supabase-como-Banco-Unico
-TASK_ID:     T4
+PROJETO:     DASHBOARD-LEADS
+FASE:        F1-CONSOLIDACAO-VINCULO-CANONICO
+ISSUE_PATH:  /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/DASHBOARD-LEADS/F1-CONSOLIDACAO-VINCULO-CANONICO/issues/ISSUE-F1-01-001-CORRIGIR-SURFACE-DE-MODELO-E-BOOT-DA-APP
+TASK_ID:     T1
 
 ```
 

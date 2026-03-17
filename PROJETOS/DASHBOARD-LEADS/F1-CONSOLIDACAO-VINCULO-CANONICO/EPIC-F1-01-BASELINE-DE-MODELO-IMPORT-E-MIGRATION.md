@@ -34,6 +34,7 @@ O backend volta a subir e `lead_evento` passa a ter trilha Alembic explicita.
 |---|---|---|---|---|---|
 | ISSUE-F1-01-001 | Corrigir surface de modelo e boot da app | Reexportar `LeadEvento` e `LeadEventoSourceKind` no agregado de modelos e remover o erro de import que hoje impede a coleta da suite. | 1 | todo | [README](./issues/ISSUE-F1-01-001-CORRIGIR-SURFACE-DE-MODELO-E-BOOT-DA-APP/README.md) |
 | ISSUE-F1-01-002 | Versionar migration de lead_evento | Criar ou validar a migration Alembic da tabela `lead_evento` com FKs, indices e `UNIQUE (lead_id, evento_id)`. | 2 | todo | [README](./issues/ISSUE-F1-01-002-VERSIONAR-MIGRATION-LEAD-EVENTO/README.md) |
+| ISSUE-F1-01-003 | Exportar LeadEvento e LeadEventoSourceKind no agregado de modelos | Garantir que `LeadEvento` e `LeadEventoSourceKind` sejam exportados pelo agregado de modelos (`app.models.models`) para que a aplicacao suba sem `ImportError` e os modulos que dependem desses tipos possam importar pelo caminho canonico. | 1 | done | [README](./issues/ISSUE-F1-01-003-EXPORTAR-MODELEVENTOSOURCEKIND/README.md) |
 
 ## Artifact Minimo do Epico
 

@@ -11,11 +11,11 @@ last_updated: "2026-03-16"
 ## Parametros de entrada
 
 ```
-PROJETO:     <nome do projeto>
-FASE:        <F<N>-NOME>
-ISSUE_ID:    <ISSUE-F<N>-<NN>-<MMM>>
-ISSUE_PATH:  <caminho completo: arquivo ISSUE-*.md ou pasta ISSUE-*/ com README.md>
-TASK_ID:     <opcional: T<N> ou "auto">
+PROJETO:     DASHBOARD-LEADS
+FASE:        F1-CONSOLIDACAO-VINCULO-CANONICO
+ISSUE_ID:    F1-02-001
+ISSUE_PATH:  /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/DASHBOARD-LEADS/F1-CONSOLIDACAO-VINCULO-CANONICO/issues/ISSUE-F1-02-001-GARANTIR-DUAL-WRITE-NO-SUBMIT-PUBLICO
+TASK_ID:     T1
 ```
 
 ## Prompt

@@ -12,7 +12,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver
-from app.models.models import Evento, StatusEvento, Usuario
+from app.models.models import Evento, Lead, LeadEvento, StatusEvento, Usuario
 from app.utils.security import hash_password
 
 
@@ -338,3 +338,208 @@ class TestPostMapear:
             json={"evento_id": 1, "mapeamento": {}},
         )
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Tests for LeadEvento resolution by evento_nome (ISSUE-F1-03-002)
+# ---------------------------------------------------------------------------
+
+
+class TestResolveUniqueEventoByName:
+    """Tests for resolve_unique_evento_by_name function."""
+
+    def test_resolve_returns_resolved_when_single_match(self, client, engine):
+        """Given unique evento match by name, When resolved, Then returns resolved status with evento_id."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+            evento_id = evento.id
+            evento_nome = evento.nome
+
+        # Import the function to test
+        from app.services.lead_event_service import resolve_unique_evento_by_name
+
+        with Session(engine) as s:
+            result = resolve_unique_evento_by_name(s, evento_nome)
+
+        assert result.status == "resolved"
+        assert result.evento_id == evento_id
+
+    def test_resolve_returns_missing_when_no_event_match(self, client, engine):
+        """Given no evento matches the name, When resolved, Then returns missing status."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            _seed_evento(s)
+
+        from app.services.lead_event_service import resolve_unique_evento_by_name
+
+        with Session(engine) as s:
+            result = resolve_unique_evento_by_name(s, "Evento Inexistente 12345")
+
+        assert result.status == "missing"
+        assert result.evento_id is None
+
+    def test_resolve_returns_ambiguous_when_multiple_matches(self, client, engine):
+        """Given multiple eventos with same normalized name, When resolved, Then returns ambiguous status."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            status = _seed_status(s)
+
+            # Create two eventos with same normalized name
+            evento1 = Evento(
+                nome="Evento Duplicado",
+                cidade="São Paulo",
+                estado="SP",
+                status_id=status.id,
+            )
+            evento2 = Evento(
+                nome="EVENTO DUPLICADO",  # Same name, different case
+                cidade="Rio de Janeiro",
+                estado="RJ",
+                status_id=status.id,
+            )
+            s.add(evento1)
+            s.add(evento2)
+            s.commit()
+            s.refresh(evento1)
+            s.refresh(evento2)
+
+        from app.services.lead_event_service import resolve_unique_evento_by_name
+
+        with Session(engine) as s:
+            result = resolve_unique_evento_by_name(s, "Evento Duplicado")
+
+        assert result.status == "ambiguous"
+        assert result.evento_id is None
+
+    def test_resolve_returns_missing_when_event_name_is_none(self, client, engine):
+        """Given None as event name, When resolved, Then returns missing status."""
+        from app.services.lead_event_service import resolve_unique_evento_by_name
+
+        with Session(engine) as s:
+            result = resolve_unique_evento_by_name(s, None)
+
+        assert result.status == "missing"
+        assert result.evento_id is None
+
+    def test_resolve_returns_missing_when_event_name_is_empty(self, client, engine):
+        """Given empty string as event name, When resolved, Then returns missing status."""
+        from app.services.lead_event_service import resolve_unique_evento_by_name
+
+        with Session(engine) as s:
+            result = resolve_unique_evento_by_name(s, "")
+
+        assert result.status == "missing"
+        assert result.evento_id is None
+
+
+class TestEnsureCanonicalEventLink:
+    """Tests for _ensure_canonical_event_link function behavior."""
+
+    def test_creates_lead_evento_when_unique_match(self, client, engine):
+        """Given unique evento match, When link is ensured, Then LeadEvento is created."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+            # Create a lead with evento_nome
+            lead = Lead(
+                nome="Test Lead",
+                email="testlead@example.com",
+                evento_nome=evento.nome,
+            )
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+
+        from app.modules.leads_publicidade.application.etl_import import persistence
+
+        with Session(engine) as s:
+            lead = s.get(Lead, lead.id)
+            payload = {"evento_nome": evento.nome}
+            persistence._ensure_canonical_event_link(s, lead=lead, payload=payload)
+            s.commit()
+
+            # Verify LeadEvento was created
+            from app.models.models import LeadEvento
+            lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+
+        assert len(lead_eventos) == 1
+        assert lead_eventos[0].evento_id == evento.id
+
+    def test_does_not_create_lead_evento_when_ambiguous_match(self, client, engine):
+        """Given ambiguous evento match, When link is ensured, Then LeadEvento is NOT created."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            status = _seed_status(s)
+
+            # Create two eventos with same normalized name
+            evento1 = Evento(
+                nome="Evento Duplicado Teste",
+                cidade="São Paulo",
+                estado="SP",
+                status_id=status.id,
+            )
+            evento2 = Evento(
+                nome="EVENTO DUPLICADO TESTE",
+                cidade="Rio de Janeiro",
+                estado="RJ",
+                status_id=status.id,
+            )
+            s.add(evento1)
+            s.add(evento2)
+            s.commit()
+
+            # Create a lead with ambiguous evento_nome
+            lead = Lead(
+                nome="Test Lead Ambiguous",
+                email="testambiguous@example.com",
+                evento_nome="Evento Duplicado Teste",
+            )
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+
+        from app.modules.leads_publicidade.application.etl_import import persistence
+
+        with Session(engine) as s:
+            lead = s.get(Lead, lead.id)
+            payload = {"evento_nome": "Evento Duplicado Teste"}
+            persistence._ensure_canonical_event_link(s, lead=lead, payload=payload)
+            s.commit()
+
+            # Verify LeadEvento was NOT created (ambiguous match)
+            from app.models.models import LeadEvento
+            lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+
+        assert len(lead_eventos) == 0
+
+    def test_does_not_create_lead_evento_when_no_match(self, client, engine):
+        """Given no evento match, When link is ensured, Then LeadEvento is NOT created."""
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            _seed_evento(s)
+
+            # Create a lead with non-existent evento_nome
+            lead = Lead(
+                nome="Test Lead No Match",
+                email="testnomatch@example.com",
+                evento_nome="Evento Inexistente 999",
+            )
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+
+        from app.modules.leads_publicidade.application.etl_import import persistence
+
+        with Session(engine) as s:
+            lead = s.get(Lead, lead.id)
+            payload = {"evento_nome": "Evento Inexistente 999"}
+            persistence._ensure_canonical_event_link(s, lead=lead, payload=payload)
+            s.commit()
+
+            # Verify LeadEvento was NOT created (no match)
+            from app.models.models import LeadEvento
+            lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+
+        assert len(lead_eventos) == 0

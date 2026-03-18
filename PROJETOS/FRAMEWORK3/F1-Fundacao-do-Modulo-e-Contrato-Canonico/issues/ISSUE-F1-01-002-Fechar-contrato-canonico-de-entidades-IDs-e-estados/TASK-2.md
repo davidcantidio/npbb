@@ -3,9 +3,9 @@ doc_id: "TASK-2.md"
 issue_id: "ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados"
 task_id: "T2"
 version: "1.1"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-17"
+last_updated: "2026-03-18"
 tdd_aplicavel: true
 ---
 

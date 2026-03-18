@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados"
 version: "1.0"
-status: "active"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-18"
 task_instruction_mode: "required"
@@ -29,10 +29,10 @@ Depois de estabilizar a baseline o projeto precisa alinhar a estrutura persistid
 - Given a issue concluida, When epico fase e sprint forem revisados, Then nao resta ambiguidade operacional relevante para este recorte.
 
 ## Definition of Done da Issue
-- [ ] todas as tasks da issue estao `done`
-- [ ] validacoes obrigatorias do recorte foram executadas ou revisadas
-- [ ] o artifact minimo da issue foi produzido e ficou rastreavel
-- [ ] dependencias e links internos do manifesto foram conferidos
+- [x] todas as tasks da issue estao `done`
+- [x] validacoes obrigatorias do recorte foram executadas ou revisadas
+- [x] o artifact minimo da issue foi produzido e ficou rastreavel
+- [x] dependencias e links internos do manifesto foram conferidos
 
 ## Tasks
 - [T1 - Fechar contrato canonicode entidades estados e taxonomias](./TASK-1.md)

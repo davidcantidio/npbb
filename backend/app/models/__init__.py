@@ -11,6 +11,7 @@ from app.models.framework_models import (
     AgentExecution,
     ProjectStatus,
     DocumentStatus,
+    ArtifactStatus,
     ApprovalStatus,
     AgentMode,
     AuditGateState,
@@ -18,6 +19,8 @@ from app.models.framework_models import (
     TaskInstructionMode,
     ReviewVerdict,
     FollowupDestination,
+    IntakeKind,
+    SourceMode,
 )
 
 __all__ = [
@@ -38,6 +41,7 @@ __all__ = [
     "AgentExecution",
     "ProjectStatus",
     "DocumentStatus",
+    "ArtifactStatus",
     "ApprovalStatus",
     "AgentMode",
     "AuditGateState",
@@ -45,4 +49,6 @@ __all__ = [
     "TaskInstructionMode",
     "ReviewVerdict",
     "FollowupDestination",
+    "IntakeKind",
+    "SourceMode",
 ]

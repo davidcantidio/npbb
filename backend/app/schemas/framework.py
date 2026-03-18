@@ -9,13 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.framework_models import (
     AgentMode,
+    ArtifactStatus,
     ApprovalStatus,
     AuditGateState,
     DocumentStatus,
     FollowupDestination,
     IssueFormat,
+    IntakeKind,
     ProjectStatus,
     ReviewVerdict,
+    SourceMode,
     TaskInstructionMode,
 )
 
@@ -67,9 +70,9 @@ class FrameworkProjectRead(BaseModel):
 class FrameworkIntakeCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     doc_id: str | None = Field(default=None, max_length=200)
-    status: str = "draft"
-    intake_kind: str | None = Field(default=None, max_length=64)
-    source_mode: str | None = Field(default=None, max_length=64)
+    status: ArtifactStatus = ArtifactStatus.DRAFT
+    intake_kind: IntakeKind | None = None
+    source_mode: SourceMode | None = None
     content_md: str = Field(min_length=1)
     file_path: str | None = None
     checklist_status_json: dict[str, Any] | None = None
@@ -78,9 +81,9 @@ class FrameworkIntakeCreate(BaseModel):
 
 class FrameworkIntakeUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    status: str | None = Field(default=None, max_length=32)
-    intake_kind: str | None = Field(default=None, max_length=64)
-    source_mode: str | None = Field(default=None, max_length=64)
+    status: ArtifactStatus | None = None
+    intake_kind: IntakeKind | None = None
+    source_mode: SourceMode | None = None
     content_md: str | None = None
     file_path: str | None = None
     checklist_status_json: dict[str, Any] | None = None
@@ -94,10 +97,10 @@ class FrameworkIntakeRead(BaseModel):
     project_id: int
     doc_id: str
     title: str
-    status: str
+    status: ArtifactStatus
     approval_status: ApprovalStatus
-    intake_kind: str | None = None
-    source_mode: str | None = None
+    intake_kind: IntakeKind | None = None
+    source_mode: SourceMode | None = None
     content_md: str
     file_path: str | None = None
     checklist_status_json: dict[str, Any] | None = None
@@ -112,7 +115,7 @@ class FrameworkPRDCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     doc_id: str | None = Field(default=None, max_length=200)
     intake_id: int | None = None
-    status: str = "draft"
+    status: ArtifactStatus = ArtifactStatus.DRAFT
     content_md: str = Field(min_length=1)
     file_path: str | None = None
     metadata_json: dict[str, Any] | None = None
@@ -121,7 +124,7 @@ class FrameworkPRDCreate(BaseModel):
 class FrameworkPRDUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     intake_id: int | None = None
-    status: str | None = Field(default=None, max_length=32)
+    status: ArtifactStatus | None = None
     content_md: str | None = None
     file_path: str | None = None
     metadata_json: dict[str, Any] | None = None
@@ -135,7 +138,7 @@ class FrameworkPRDRead(BaseModel):
     intake_id: int | None = None
     doc_id: str
     title: str
-    status: str
+    status: ArtifactStatus
     approval_status: ApprovalStatus
     content_md: str
     file_path: str | None = None

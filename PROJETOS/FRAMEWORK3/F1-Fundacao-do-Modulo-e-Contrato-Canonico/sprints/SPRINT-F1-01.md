@@ -22,7 +22,7 @@ Remover a regressao ja introduzida no backend e fechar o contrato base do domini
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
 | ISSUE-F1-01-001 | Estabilizar baseline do embriao FRAMEWORK3 | 1 | done | [ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3](../issues/ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3/) |
-| ISSUE-F1-01-002 | Fechar contrato canonico de entidades IDs e estados | 2 | todo | [ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados](../issues/ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados/) |
+| ISSUE-F1-01-002 | Fechar contrato canonico de entidades IDs e estados | 2 | done | [ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados](../issues/ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados/) |
 | ISSUE-F1-03-001 | Definir maquina de estados e gates HITL do orquestrador | 1 | todo | [ISSUE-F1-03-001-Definir-maquina-de-estados-e-gates-HITL-do-orquestrador](../issues/ISSUE-F1-03-001-Definir-maquina-de-estados-e-gates-HITL-do-orquestrador/) |
 
 ## Riscos e Bloqueios

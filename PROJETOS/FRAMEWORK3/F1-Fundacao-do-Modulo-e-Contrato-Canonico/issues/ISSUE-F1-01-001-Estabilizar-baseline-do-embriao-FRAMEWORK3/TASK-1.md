@@ -3,9 +3,9 @@ doc_id: "TASK-1.md"
 issue_id: "ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3"
 task_id: "T1"
 version: "1.1"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-17"
+last_updated: "2026-03-18"
 tdd_aplicavel: true
 ---
 
@@ -13,14 +13,15 @@ tdd_aplicavel: true
 
 ## objetivo
 
-restaurar o import de app.main com o router framework habilitado
+restaurar o import de `app.main` com o router framework habilitado e proteger o boot com smoke test
 
 ## precondicoes
 
-- ler o estado atual do embriao framework e reproduzir a regressao de import
+- ler o estado atual do embriao framework e reproduzir a regressao real de import no ambiente do backend com `PYTHONPATH` configurado
 
 ## arquivos_a_ler_ou_tocar
 
+- `backend/app/models/framework_models.py`
 - `backend/app/services/framework_orchestrator.py`
 - `backend/app/api/v1/endpoints/framework.py`
 - `backend/app/main.py`
@@ -29,11 +30,12 @@ restaurar o import de app.main com o router framework habilitado
 ## testes_red
 
 - testes_a_escrever_primeiro:
-  - reproduzir a falha de import causada por `app.core.config` inexistente
+  - reproduzir a falha de import causada pelos relacionamentos `Mapped[...]` em `backend/app/models/framework_models.py`
+  - verificar que o app carregado expoe as rotas `/framework/projects` e `/framework/projects/`
   - proteger o boot do backend com smoke test especifico do recorte framework
 - comando_para_rodar:
-  - `cd backend && SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -m pytest -q tests/test_framework_startup.py`
-  - `cd backend && SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -c "import app.main"`
+  - `cd backend && PYTHONPATH=..:. SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -m pytest -q tests/test_framework_startup.py`
+  - `cd backend && PYTHONPATH=..:. SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -c "import app.main"`
 - criterio_red:
   - os testes acima devem falhar antes da implementacao; se passarem, parar e revisar a task
 
@@ -47,17 +49,17 @@ restaurar o import de app.main com o router framework habilitado
 
 ## comandos_permitidos
 
-- `cd backend && SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -m pytest -q tests/test_framework_startup.py`
-- `cd backend && SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -c "import app.main"`
+- `cd backend && PYTHONPATH=..:. SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -m pytest -q tests/test_framework_startup.py`
+- `cd backend && PYTHONPATH=..:. SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -c "import app.main"`
 
 ## resultado_esperado
 
-app.main volta a importar com o router framework habilitado e a regressao atual fica encapsulada por smoke test.
+`app.main` volta a importar com o router framework habilitado, as rotas `/framework` ficam registradas e a regressao atual fica encapsulada por smoke test.
 
 ## testes_ou_validacoes_obrigatorias
 
-- `cd backend && SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -m pytest -q tests/test_framework_startup.py`
-- `cd backend && SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -c "import app.main"`
+- `cd backend && PYTHONPATH=..:. SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -m pytest -q tests/test_framework_startup.py`
+- `cd backend && PYTHONPATH=..:. SECRET_KEY=ci-secret-key TESTING=true .venv/bin/python -c "import app.main"`
 
 ## stop_conditions
 

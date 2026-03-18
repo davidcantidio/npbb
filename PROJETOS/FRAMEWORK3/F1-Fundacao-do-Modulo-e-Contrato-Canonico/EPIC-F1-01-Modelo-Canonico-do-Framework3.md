@@ -1,9 +1,9 @@
 ---
 doc_id: "EPIC-F1-01-Modelo-Canonico-do-Framework3.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-17"
+last_updated: "2026-03-18"
 ---
 
 # EPIC-F1-01 - Modelo Canonico do Framework3
@@ -29,7 +29,7 @@ O repositorio ja contem `backend/app/models/framework_models.py`, `backend/app/a
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Estabilizar baseline do embriao FRAMEWORK3 | Baseline do backend importando com o router framework habilitado e smoke test rastreavel. | 1 | todo | [ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3](./issues/ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3/) |
+| ISSUE-F1-01-001 | Estabilizar baseline do embriao FRAMEWORK3 | Baseline do backend importando com o router framework habilitado e smoke test rastreavel. | 1 | done | [ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3](./issues/ISSUE-F1-01-001-Estabilizar-baseline-do-embriao-FRAMEWORK3/) |
 | ISSUE-F1-01-002 | Fechar contrato canonico de entidades IDs e estados | Dominio FRAMEWORK3 alinhado a taxonomias IDs e estados canonicos com modelos e schemas coerentes. | 2 | todo | [ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados](./issues/ISSUE-F1-01-002-Fechar-contrato-canonico-de-entidades-IDs-e-estados/) |
 
 ## Artifact Minimo do Epico

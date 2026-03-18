@@ -1,9 +1,9 @@
 ---
 doc_id: "F1_FRAMEWORK3_EPICS.md"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-17"
+last_updated: "2026-03-18"
 audit_gate: "not_ready"
 ---
 
@@ -47,7 +47,7 @@ A baseline do backend volta a importar com o router framework habilitado o domin
 
 | ID | Nome | Objetivo | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|
-| EPIC-F1-01 | Modelo Canonico do Framework3 | Consolidar o dominio canonico do FRAMEWORK3 e estabilizar a baseline tecnica do embriao ja presente no backend. | nenhuma | todo | [EPIC-F1-01-Modelo-Canonico-do-Framework3.md](./EPIC-F1-01-Modelo-Canonico-do-Framework3.md) |
+| EPIC-F1-01 | Modelo Canonico do Framework3 | Consolidar o dominio canonico do FRAMEWORK3 e estabilizar a baseline tecnica do embriao ja presente no backend. | nenhuma | active | [EPIC-F1-01-Modelo-Canonico-do-Framework3.md](./EPIC-F1-01-Modelo-Canonico-do-Framework3.md) |
 | EPIC-F1-02 | Coexistencia Markdown-Banco e Rastreabilidade | Definir como o FRAMEWORK3 convive com o filesystem documental atual com bootstrap minimo e historico rastreavel. | EPIC-F1-01 | todo | [EPIC-F1-02-Coexistencia-Markdown-Banco-e-Rastreabilidade.md](./EPIC-F1-02-Coexistencia-Markdown-Banco-e-Rastreabilidade.md) |
 | EPIC-F1-03 | Contrato do AgentOrchestrator e Modos de Operacao | Formalizar a maquina de estados os gates HITL os work orders e os modos de autonomia por projeto. | EPIC-F1-01 EPIC-F1-02 | todo | [EPIC-F1-03-Contrato-do-AgentOrchestrator-e-Modos-de-Operacao.md](./EPIC-F1-03-Contrato-do-AgentOrchestrator-e-Modos-de-Operacao.md) |
 

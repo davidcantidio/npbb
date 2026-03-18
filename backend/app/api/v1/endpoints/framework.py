@@ -7,12 +7,17 @@ from app.models.framework_models import (
     FrameworkProject, FrameworkIntake, FrameworkPRD,
     ProjectStatus, AgentMode
 )
-from app.services.framework_orchestrator import AgentOrchestrator, get_orchestrator
+from app.services.framework_orchestrator import AgentOrchestrator
 
 router = APIRouter(prefix="/framework", tags=["framework"])
 
 
-@router.post("/projects/", response_model=FrameworkProject)
+def get_orchestrator(db: Session = Depends(get_db)) -> AgentOrchestrator:
+    """Dependency to get orchestrator instance."""
+    return AgentOrchestrator(db)
+
+
+@router.post("/projects/", response_model=None)
 def create_framework_project(
     project_in: dict,
     db: Session = Depends(get_db),
@@ -21,7 +26,7 @@ def create_framework_project(
     """Cria um novo projeto no sistema FRAMEWORK3."""
     try:
         project = orchestrator.create_project(project_in)
-        return project
+        return {"id": project.id, "canonical_name": project.canonical_name, "title": project.title, "status": project.status.value}
     except Exception as e:
         raise HTTPException(
             status_code=400,

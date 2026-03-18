@@ -21,7 +21,9 @@ last_updated: "2026-03-18"
 
 | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| F1-FUNDACAO | not_ready | nao_aplicavel | [RELATORIO-AUDITORIA-F1-R01.md](PROJETOS/FW5/F1-FUNDACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | scaffold inicial gerado |
+| F1-FUNDACAO | not_ready | nao_aplicavel | [RELATORIO-AUDITORIA-F1-R01.md](./F1-FUNDACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | backlog canonico materializado para intake e PRD |
+| F2-PLANEJAMENTO-EXECUTAVEL | not_ready | nao_aplicavel | [RELATORIO-AUDITORIA-F2-R01.md](./F2-PLANEJAMENTO-EXECUTAVEL/auditorias/RELATORIO-AUDITORIA-F2-R01.md) | fase planejada e aguardando execucao apos F1 |
+| F3-OPERACAO-GOVERNANCA | not_ready | nao_aplicavel | [RELATORIO-AUDITORIA-F3-R01.md](./F3-OPERACAO-GOVERNANCA/auditorias/RELATORIO-AUDITORIA-F3-R01.md) | fase planejada e aguardando execucao apos F2 |
 
 ## Resolucoes de Follow-ups
 

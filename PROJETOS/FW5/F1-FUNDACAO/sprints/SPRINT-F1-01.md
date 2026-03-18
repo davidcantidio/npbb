@@ -10,26 +10,27 @@ last_updated: "2026-03-18"
 
 ## Objetivo da Sprint
 
-Consolidar o bootstrap inicial e deixar a fase F1 pronta para planejamento formal.
+Fechar intake estruturado, revisao e aprovacao governada na fase de fundacao.
 
-## Capacidade e Foco
+## Capacidade
 
-- capacidade estimada: baixa
-- foco: validar o scaffold e ajustar eventual drift estrutural
+- story_points_planejados: 8
+- issues_planejadas: 2
+- override: nenhum
 
 ## Issues Selecionadas
 
-| Issue ID | Nome | SP | Status | Feature | Documento |
+| Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|---|
-| ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO | Estabilizar scaffold inicial do projeto | 3 | todo | Feature 1 | [ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO](PROJETOS/FW5/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO) |
+| ISSUE-F1-01-001 | Estruturar intake inicial a partir de contexto bruto | 5 | todo | [ISSUE-F1-01-001-ESTRUTURAR-INTAKE-INICIAL-A-PARTIR-DE-CONTEXTO-BRUTO](../issues/ISSUE-F1-01-001-ESTRUTURAR-INTAKE-INICIAL-A-PARTIR-DE-CONTEXTO-BRUTO/) |
+| ISSUE-F1-01-002 | Registrar revisao e aprovacao governada do intake | 3 | todo | [ISSUE-F1-01-002-REGISTRAR-REVISAO-E-APROVACAO-GOVERNADA-DO-INTAKE](../issues/ISSUE-F1-01-002-REGISTRAR-REVISAO-E-APROVACAO-GOVERNADA-DO-INTAKE/) |
 
-## Riscos
+## Riscos e Bloqueios
 
-- drift de nomes ou caminhos
-- wrappers incompletos se a geracao for interrompida
+- o gate `Intake -> PRD` depende de lacunas criticas permanecerem explicitadas
+- a trilha de aprovacao precisa refletir versao, diff e aprovador sem ambiguidade
 
-## Definition of Done
+## Encerramento
 
-- [ ] o bootstrap F1 existe
-- [ ] a issue granularizada esta linkada na sprint
-- [ ] o audit log aponta para a fase F1-FUNDACAO
+- decisao: pendente
+- observacoes: a sprint encerra apenas quando intake, diff e aprovacao estiverem rastreaveis sem bloquear o PRD

@@ -11,11 +11,16 @@ audit_gate: "not_ready"
 
 ## Objetivo da Fase
 
-Consolidar o scaffold inicial do projeto com intake, PRD, wrappers de sessao e primeiro issue-first bootstrap.
+Levar o PM do contexto bruto a um intake aprovado e a um PRD `feature-first` aprovado, com rastreabilidade e historico consultavel.
+
+## Features Entregues
+
+- Feature 1: Intake governado a partir de contexto bruto
+- Feature 2: PRD `feature-first` derivado de intake aprovado
 
 ## Gate de Saida da Fase
 
-O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, issue granularizada com task e artefatos de auditoria prontos para uso.
+Intake e PRD existem, foram revisados/aprovados e preservam rastreabilidade, restricoes, riscos, hipoteses declaradas e trilha de aprovacao.
 
 ## Estado do Gate de Auditoria
 
@@ -50,27 +55,29 @@ O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, is
 
 | ID | Nome | Objetivo | Feature | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|---|
-| EPIC-F1-01 | Fundacao do projeto | Entregar o scaffold inicial e validar os artefatos de base. | Feature 1 | nenhuma | todo | [EPIC-EPIC-F1-01 - Fundacao do projeto](./EPIC-F1-01-FUNDACAO-DO-PROJETO.md) |
+| EPIC-F1-01 | Intake governado do projeto | Estruturar validar revisar e aprovar intake com historico de decisao. | Feature 1 | nenhuma | todo | [EPIC-F1-01-INTAKE-GOVERNADO-DO-PROJETO.md](./EPIC-F1-01-INTAKE-GOVERNADO-DO-PROJETO.md) |
+| EPIC-F1-02 | PRD feature-first aprovado | Derivar revisar e aprovar PRD a partir do intake ja aprovado. | Feature 2 | EPIC-F1-01 | todo | [EPIC-F1-02-PRD-FEATURE-FIRST-APROVADO.md](./EPIC-F1-02-PRD-FEATURE-FIRST-APROVADO.md) |
 
 ## Dependencias entre Epicos
 
 - `EPIC-F1-01`: nenhuma
+- `EPIC-F1-02`: EPIC-F1-01
 
 ## Escopo desta Fase
 
 ### Dentro
-- intake e PRD prefillados
-- wrappers locais
-- bootstrap F1 com issue granularizada
+- intake estruturado com taxonomias, lacunas e gate `Intake -> PRD`
+- revisao e aprovacao do intake com historico e diff
+- PRD `feature-first` derivado do intake aprovado
+- gate de aprovacao do PRD com rastreabilidade consultavel
 
 ### Fora
-- features de negocio reais
-- implementacao de codigo de produto
-- deploy ou integracoes externas
+- derivacao de fases, epicos, issues e tasks do projeto
+- selecao da proxima unidade elegivel e execucao assistida
+- review pos-issue, auditoria operacional e timeline final
 
 ## Definition of Done da Fase
-- [ ] intake e PRD existem com frontmatter preenchido
-- [ ] wrappers de sessao estao completos
-- [ ] fase F1, epico, issue e task existem
-- [ ] audit log aponta para o bootstrap inicial
-- [ ] relatorio base de auditoria existe em `auditorias/`
+- [ ] intake pronto para PRD sem lacuna critica aberta
+- [ ] PRD `feature-first` aprovado com criterios de aceite por feature
+- [ ] historico de versoes e aprovacoes consultavel
+- [ ] sprints F1 refletem o backlog canonico aprovado

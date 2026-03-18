@@ -28,7 +28,7 @@ audit_rigor: "elevated"
 
 # PRD - DL2
 
-> Este PRD substitui o scaffold documental anterior de `DL2` e reabre a
+> Este PRD substitui o artefato documental anterior de `DL2` e reabre a
 > remediacao de dashboards de leads por evento sob o eixo `delivery-first` /
 > `feature-first`. O intake regenerado e a unica fonte de negocio; o legado
 > arquivado entra apenas como evidencia complementar e fonte de rastreabilidade.
@@ -40,7 +40,7 @@ audit_rigor: "elevated"
 - **Data de criacao**: 2026-03-18
 - **PRD derivado**: nao_aplicavel
 - **Evidencia complementar de backfill**: `PROJETOS/FEITO/DASHBOARD-LEADS/` (sem usar `PRD-DASHBOARD-LEADS.MD`, que esta vazio)
-- **Drift estrutural conhecido fora do eixo deste PRD**: `F1-FUNDACAO` e o backlog bootstrap atual de `DL2` permanecem superseded ate uma sessao posterior de rebaseline
+- **Drift estrutural conhecido fora do eixo deste PRD**: `F1-FUNDACAO` e o backlog estrutural atual de `DL2` permanecem superseded ate uma sessao posterior de rebaseline
 
 ## 1. Resumo Executivo
 
@@ -85,7 +85,7 @@ audit_rigor: "elevated"
 - abrir novas superfices analiticas fora do recorte atual de `/dashboard/leads/*`
 - redesenhar UX, identidade visual ou payloads de frontend alem do necessario para preservar contratos existentes
 - manter `DASHBOARD-LEADS` como superficie ativa de planejamento ou execucao
-- rebalancear nesta rodada o scaffold estrutural atual de `DL2`; isso fica como follow-up posterior
+- rebalancear nesta rodada a estrutura documental atual de `DL2`; isso fica como follow-up posterior
 
 ## 6. Resultado de Negocio e Metricas
 
@@ -118,7 +118,7 @@ audit_rigor: "elevated"
 - **Banco/migracoes**: baseline de `lead_evento`, estrategia de vinculo canonico `lead-evento`, retroprocessamento historico, reconciliacao e endurecimento de dados persistidos
 - **Observabilidade**: testes de regressao, comparacao de contagens entre consumidores, artefatos `missing` / `ambiguous`, runbook de rollback e evidencias finais de auditoria
 - **Autorizacao/autenticacao**: preservar o modelo atual de acesso autenticado aos dashboards
-- **Rollout**: rollout incremental por feature validada; o legado fica arquivado e o rebaseline do scaffold atual de `DL2` fica fora desta rodada
+- **Rollout**: rollout incremental por feature validada; o legado fica arquivado e o rebaseline da estrutura documental atual de `DL2` fica fora desta rodada
 
 ## 10. Riscos Globais
 
@@ -133,7 +133,7 @@ audit_rigor: "elevated"
 - manter `DASHBOARD-LEADS` como projeto ativo em paralelo
 - abrir novas features de analytics fora das superfices atuais de `/dashboard/leads/*`
 - transformar esta rodada em redesenho visual ou reformulacao completa de UX
-- rebalancear agora a estrutura bootstrap existente de `DL2`
+- rebalancear agora a estrutura atual existente de `DL2`
 
 ---
 
@@ -401,7 +401,7 @@ documentados.
 
 | Issue ID | Nome | SP | Status | Feature | Origem complementar |
 |----------|------|-----|--------|---------|---------------------|
-| ISSUE-F1-01-001 | Stabilizar surface de modelo e boot da baseline canonica | 1 | todo | Feature 1 | `ISSUE-F1-01-001` + `ISSUE-F1-01-003` do legado |
+| ISSUE-F1-01-001 | Estabilizar surface de modelo e boot da baseline canonica | 1 | todo | Feature 1 | `ISSUE-F1-01-001` + `ISSUE-F1-01-003` do legado |
 | ISSUE-F1-01-002 | Versionar migration de `lead_evento` | 2 | todo | Feature 1 | `ISSUE-F1-01-002` do legado |
 | ISSUE-F1-01-003 | Garantir dual-write no submit publico | 2 | done | Feature 1 | `ISSUE-F1-02-001` do legado |
 | ISSUE-F1-01-004 | Cobrir duplicata de conversao e invariantes do submit | 1 | done | Feature 1 | `ISSUE-F1-02-002` do legado |

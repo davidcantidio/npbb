@@ -1,0 +1,721 @@
+{
+  "nodes": [
+    {
+      "id": "g1",
+      "type": "group",
+      "label": "Planejamento",
+      "x": -80,
+      "y": -80,
+      "width": 380,
+      "height": 1660,
+      "color": "5"
+    },
+    {
+      "id": "g2",
+      "type": "group",
+      "label": "Execucao e Fechamento",
+      "x": 380,
+      "y": -80,
+      "width": 400,
+      "height": 1940,
+      "color": "3"
+    },
+    {
+      "id": "g3",
+      "type": "group",
+      "label": "Review e Auditoria",
+      "x": 860,
+      "y": 720,
+      "width": 430,
+      "height": 1120,
+      "color": "2"
+    },
+    {
+      "id": "g4",
+      "type": "group",
+      "label": "Agentes e Modelos",
+      "x": 1360,
+      "y": -80,
+      "width": 560,
+      "height": 1900,
+      "color": "4"
+    },
+    {
+      "id": "n00",
+      "type": "text",
+      "text": "Algoritmo do Framework de Projetos\n\nRegra de ouro:\nplanejar por entrega demonstravel e operar por rastreabilidade explicita.\n\nCadeia canonica:\nIntake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias",
+      "x": 1410,
+      "y": 0,
+      "width": 460,
+      "height": 180
+    },
+    {
+      "id": "n01",
+      "type": "text",
+      "text": "01. Criar ou revisar Intake\n- problema\n- publico\n- fluxo principal\n- escopo\n- metricas\n- restricoes\n- riscos\n- lacunas",
+      "x": 0,
+      "y": 0,
+      "width": 240,
+      "height": 150
+    },
+    {
+      "id": "n02",
+      "type": "text",
+      "text": "02. Validar gate Intake -> PRD\nSe nao estiver pronto, voltar ao Intake e fechar lacunas.",
+      "x": 0,
+      "y": 170,
+      "width": 240,
+      "height": 100
+    },
+    {
+      "id": "n03",
+      "type": "text",
+      "text": "03. Gerar PRD\n- features demonstraveis\n- criterios de aceite\n- impactos arquiteturais\n- fases derivadas",
+      "x": 0,
+      "y": 300,
+      "width": 240,
+      "height": 130
+    },
+    {
+      "id": "n04",
+      "type": "text",
+      "text": "04. Aprovar PRD\nSem aprovacao, nao derivar fases, epicos e issues.",
+      "x": 0,
+      "y": 460,
+      "width": 240,
+      "height": 90
+    },
+    {
+      "id": "n05",
+      "type": "text",
+      "text": "05. Planejar Fases\n- objetivo\n- gate de saida\n- audit_gate\n- tabela de epicos\n- dependencias\n- escopo\n- DoD",
+      "x": 0,
+      "y": 580,
+      "width": 240,
+      "height": 150
+    },
+    {
+      "id": "n06",
+      "type": "text",
+      "text": "06. Planejar Epicos\n- feature de origem\n- comportamento coberto\n- resultado mensuravel\n- contexto arquitetural\n- DoD\n- tabela de issues",
+      "x": 0,
+      "y": 760,
+      "width": 240,
+      "height": 160
+    },
+    {
+      "id": "n07",
+      "type": "text",
+      "text": "07. Planejar Issues\n- user story\n- feature de origem\n- contexto tecnico\n- TDD\n- criterios Given/When/Then\n- DoD\n- task_instruction_mode\n- decision_refs",
+      "x": 0,
+      "y": 950,
+      "width": 240,
+      "height": 180
+    },
+    {
+      "id": "n08",
+      "type": "text",
+      "text": "08. Detalhar Tasks\nSe required:\n- issue granularizada\n- TASK-N.md completo\n- testes_red antes de passos_atomicos quando houver TDD",
+      "x": 0,
+      "y": 1160,
+      "width": 240,
+      "height": 150
+    },
+    {
+      "id": "n09",
+      "type": "text",
+      "text": "09. Planejar Sprint\nValidar limites:\n- max 5 issues\n- max 13 SP\n- issue <= 5 SP\n- task <= 1 dia ou 3 SP\n- max 8 tasks por issue",
+      "x": 0,
+      "y": 1340,
+      "width": 240,
+      "height": 160
+    },
+    {
+      "id": "n10",
+      "type": "text",
+      "text": "10. Selecionar proxima issue elegivel\n- status todo/active\n- task todo\n- rastreabilidade integra\n- formato aderente",
+      "x": 460,
+      "y": 0,
+      "width": 250,
+      "height": 130
+    },
+    {
+      "id": "n11",
+      "type": "text",
+      "text": "11. Validar elegibilidade da task\n- TASK-N.md existe se required\n- campos obrigatorios completos\n- testes_red + comando red + criterio de falha quando houver TDD",
+      "x": 460,
+      "y": 160,
+      "width": 250,
+      "height": 170
+    },
+    {
+      "id": "n12",
+      "type": "text",
+      "text": "12. Verificar risco e decisao\n- classificar R0-R3\n- ler decision_refs\n- exigir rollback em R2/R3\n- exigir approval humano quando nao for reversivel",
+      "x": 460,
+      "y": 360,
+      "width": 250,
+      "height": 150
+    },
+    {
+      "id": "n13",
+      "type": "text",
+      "text": "13. Verificar defasagem documental\nSe a issue veio de review/auditoria, conferir AUDIT-LOG e se houve rodada posterior que superou o contexto.",
+      "x": 460,
+      "y": 540,
+      "width": 250,
+      "height": 120
+    },
+    {
+      "id": "n14",
+      "type": "text",
+      "text": "14. Executar uma task por vez\n1. selecionar task\n2. executar o documentado\n3. validar resultado\n4. preparar commit\n5. atualizar estado",
+      "x": 460,
+      "y": 690,
+      "width": 250,
+      "height": 140
+    },
+    {
+      "id": "n15",
+      "type": "text",
+      "text": "15. Aplicar TDD quando requerido\n- escrever testes_red\n- rodar red e confirmar falha\n- implementar minimo para green\n- validar\n- refatorar sem ampliar escopo",
+      "x": 460,
+      "y": 860,
+      "width": 250,
+      "height": 160
+    },
+    {
+      "id": "n16",
+      "type": "text",
+      "text": "16. Commit apos cada task\nFormato:\n<PROJETO> <ISSUE_ID> <TASK_ID>: <descricao breve>",
+      "x": 460,
+      "y": 1050,
+      "width": 250,
+      "height": 110
+    },
+    {
+      "id": "n17",
+      "type": "text",
+      "text": "17. Fechar a issue\n- status done\n- atualizar last_updated\n- fechar DoD",
+      "x": 460,
+      "y": 1190,
+      "width": 250,
+      "height": 100
+    },
+    {
+      "id": "n18",
+      "type": "text",
+      "text": "18. Atualizar epic pai\nSe todas as issues estiverem encerradas, marcar epic como done; senao manter active.",
+      "x": 460,
+      "y": 1320,
+      "width": 250,
+      "height": 110
+    },
+    {
+      "id": "n19",
+      "type": "text",
+      "text": "19. Atualizar manifesto da fase\nSe todos os epicos estiverem done, mover audit_gate para pending.",
+      "x": 460,
+      "y": 1460,
+      "width": 250,
+      "height": 110
+    },
+    {
+      "id": "n20",
+      "type": "text",
+      "text": "20. Atualizar sprint\nRegra da cascata:\nissue -> epic -> fase -> sprint",
+      "x": 460,
+      "y": 1600,
+      "width": 250,
+      "height": 100
+    },
+    {
+      "id": "n21",
+      "type": "text",
+      "text": "21. Review pos-issue?\nVereditos:\n- aprovada\n- correcao_requerida\n- cancelled\nReview e opcional e nao substitui auditoria.",
+      "x": 940,
+      "y": 780,
+      "width": 270,
+      "height": 140
+    },
+    {
+      "id": "n22",
+      "type": "text",
+      "text": "22. Materializar follow-up de review\n- ajuste local -> issue-local\n- estrutural/sistemico -> new-intake\n- cancelled -> sem artefato novo",
+      "x": 940,
+      "y": 960,
+      "width": 270,
+      "height": 130
+    },
+    {
+      "id": "n23",
+      "type": "text",
+      "text": "23. Elegibilidade para auditoria\n- todos os epicos done\n- gate pending\n- insumos obrigatorios disponiveis\n- commit base auditavel\n- worktree limpa para veredito final\nSe suja: no maximo provisional",
+      "x": 940,
+      "y": 1130,
+      "width": 270,
+      "height": 180
+    },
+    {
+      "id": "n24",
+      "type": "text",
+      "text": "24. Executar auditoria\nOutputs:\n- relatorio da rodada\n- nova entrada em AUDIT-LOG\n- atualizacao do gate\nVereditos: go | hold | cancelled",
+      "x": 940,
+      "y": 1350,
+      "width": 270,
+      "height": 150
+    },
+    {
+      "id": "n25",
+      "type": "text",
+      "text": "25. Tratar hold\nCada follow-up bloqueante vira:\n- issue-local\n- new-intake\n- cancelled\nO gate fica hold ate nova rodada com go.",
+      "x": 940,
+      "y": 1540,
+      "width": 270,
+      "height": 140
+    },
+    {
+      "id": "n26",
+      "type": "text",
+      "text": "26. Fechar a fase\n- gate = approved\n- consolidar evidencias\n- mover pasta para feito/",
+      "x": 940,
+      "y": 1710,
+      "width": 270,
+      "height": 100
+    },
+    {
+      "id": "n27",
+      "type": "text",
+      "text": "BLOQUEADO / BLOCKED_LIMIT\nParar e corrigir antes de seguir:\n- issue required incompleta\n- TDD sem testes_red\n- risco sem approval/rollback\n- contexto superado\n- limite de sprint\n- auditoria sem insumo",
+      "x": 460,
+      "y": -180,
+      "width": 250,
+      "height": 170,
+      "color": "1"
+    },
+    {
+      "id": "n28",
+      "type": "text",
+      "text": "Fase encerrada\nProxima acao:\n- pasta em feito/\n- iniciar proxima fase ou encerrar projeto",
+      "x": 940,
+      "y": 1840,
+      "width": 270,
+      "height": 90,
+      "color": "4"
+    },
+    {
+      "id": "a1",
+      "type": "text",
+      "text": "Orquestrador de governanca\nModelo recomendado: gpt-5.2 (medium)\nUsar para:\n- manter contexto do projeto\n- decidir escalada\n- montar work orders\n- aplicar regras de risco\nMotivo: bom equilibrio entre custo, contexto longo e assertividade.",
+      "x": 1410,
+      "y": 220,
+      "width": 460,
+      "height": 190
+    },
+    {
+      "id": "a2",
+      "type": "text",
+      "text": "Analista documental\nModelo recomendado: gpt-5.4-mini (medium)\nUsar para:\n- intake lint\n- rascunho de PRD\n- derivar fase/epic/issue\n- checar aderencia a GOV-*\nNao usar como auditor final de fase quando houver risco sistemico.",
+      "x": 1410,
+      "y": 450,
+      "width": 460,
+      "height": 180
+    },
+    {
+      "id": "a3",
+      "type": "text",
+      "text": "Explorer de contexto\nModelo recomendado: gpt-5.4-mini (low/medium)\nUsar para:\n- mapear arquivos\n- dependencias\n- impacto tecnico\n- localizar artefatos e gaps\nBom para descoberta barata antes de gastar token de worker pesado.",
+      "x": 1410,
+      "y": 660,
+      "width": 460,
+      "height": 170
+    },
+    {
+      "id": "a4",
+      "type": "text",
+      "text": "Worker de implementacao\nModelo default: gpt-5.3-codex (medium)\nEscalar para gpt-5.4 (high) apenas quando houver:\n- migration delicada\n- R2/R3\n- refatoracao sistemica\n- fluxo multi-camada critico\n- rollback dificil",
+      "x": 1410,
+      "y": 860,
+      "width": 460,
+      "height": 180
+    },
+    {
+      "id": "a5",
+      "type": "text",
+      "text": "Reviewer / Auditor independente\nModelo default: gpt-5.2 (medium)\nEscalar para gpt-5.4 (medium/high) em:\n- auditoria de fase com risco sistemico\n- conflito de evidencias\n- arquitetura ambigua\nRegra: idealmente nao usar o mesmo agente que implementou.",
+      "x": 1410,
+      "y": 1070,
+      "width": 460,
+      "height": 190
+    },
+    {
+      "id": "a6",
+      "type": "text",
+      "text": "Faixa barata, mas com limite\nUsar gpt-5.1-codex-mini apenas para:\n- renomeacao local\n- boilerplate guiado\n- checklist mecanico\n- ajustes cegos de baixa ambiguidade\nNao usar como default de PRD, review, auditoria ou feature cross-layer.",
+      "x": 1410,
+      "y": 1290,
+      "width": 460,
+      "height": 180
+    },
+    {
+      "id": "a7",
+      "type": "text",
+      "text": "Politica de escalonamento\n1. Descoberta e lint: mini.\n2. Codigo normal: gpt-5.3-codex.\n3. Planejamento/governanca ambigua: gpt-5.2.\n4. R2/R3, auditoria critica, refactor sistemico: gpt-5.4.\nRegra pratica: subir de modelo por risco e ambiguidade, nao por habito.",
+      "x": 1410,
+      "y": 1500,
+      "width": 460,
+      "height": 190
+    },
+    {
+      "id": "src1",
+      "type": "file",
+      "file": "PROJETOS/Algoritmo.md",
+      "x": 1410,
+      "y": 1720,
+      "width": 460,
+      "height": 90,
+      "color": "5"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e01",
+      "fromNode": "n01",
+      "fromSide": "bottom",
+      "toNode": "n02",
+      "toSide": "top"
+    },
+    {
+      "id": "e02",
+      "fromNode": "n02",
+      "fromSide": "bottom",
+      "toNode": "n03",
+      "toSide": "top",
+      "label": "pronto"
+    },
+    {
+      "id": "e03",
+      "fromNode": "n02",
+      "fromSide": "left",
+      "toNode": "n01",
+      "toSide": "left",
+      "label": "lacunas"
+    },
+    {
+      "id": "e04",
+      "fromNode": "n03",
+      "fromSide": "bottom",
+      "toNode": "n04",
+      "toSide": "top"
+    },
+    {
+      "id": "e05",
+      "fromNode": "n04",
+      "fromSide": "bottom",
+      "toNode": "n05",
+      "toSide": "top",
+      "label": "aprovado"
+    },
+    {
+      "id": "e06",
+      "fromNode": "n04",
+      "fromSide": "left",
+      "toNode": "n03",
+      "toSide": "right",
+      "label": "ajustar PRD"
+    },
+    {
+      "id": "e07",
+      "fromNode": "n05",
+      "fromSide": "bottom",
+      "toNode": "n06",
+      "toSide": "top"
+    },
+    {
+      "id": "e08",
+      "fromNode": "n06",
+      "fromSide": "bottom",
+      "toNode": "n07",
+      "toSide": "top"
+    },
+    {
+      "id": "e09",
+      "fromNode": "n07",
+      "fromSide": "bottom",
+      "toNode": "n08",
+      "toSide": "top"
+    },
+    {
+      "id": "e10",
+      "fromNode": "n08",
+      "fromSide": "bottom",
+      "toNode": "n09",
+      "toSide": "top"
+    },
+    {
+      "id": "e11",
+      "fromNode": "n09",
+      "fromSide": "right",
+      "toNode": "n10",
+      "toSide": "left"
+    },
+    {
+      "id": "e12",
+      "fromNode": "n09",
+      "fromSide": "right",
+      "toNode": "n27",
+      "toSide": "left",
+      "label": "limites violados"
+    },
+    {
+      "id": "e13",
+      "fromNode": "n10",
+      "fromSide": "bottom",
+      "toNode": "n11",
+      "toSide": "top"
+    },
+    {
+      "id": "e14",
+      "fromNode": "n11",
+      "fromSide": "bottom",
+      "toNode": "n12",
+      "toSide": "top",
+      "label": "elegivel"
+    },
+    {
+      "id": "e15",
+      "fromNode": "n11",
+      "fromSide": "left",
+      "toNode": "n27",
+      "toSide": "right",
+      "label": "issue/task incompleta"
+    },
+    {
+      "id": "e16",
+      "fromNode": "n12",
+      "fromSide": "bottom",
+      "toNode": "n13",
+      "toSide": "top",
+      "label": "risco tratado"
+    },
+    {
+      "id": "e17",
+      "fromNode": "n12",
+      "fromSide": "left",
+      "toNode": "n27",
+      "toSide": "right",
+      "label": "sem approval/rollback"
+    },
+    {
+      "id": "e18",
+      "fromNode": "n13",
+      "fromSide": "bottom",
+      "toNode": "n14",
+      "toSide": "top",
+      "label": "contexto vigente"
+    },
+    {
+      "id": "e19",
+      "fromNode": "n13",
+      "fromSide": "left",
+      "toNode": "n27",
+      "toSide": "right",
+      "label": "contexto superado"
+    },
+    {
+      "id": "e20",
+      "fromNode": "n14",
+      "fromSide": "bottom",
+      "toNode": "n15",
+      "toSide": "top",
+      "label": "tdd_aplicavel = true"
+    },
+    {
+      "id": "e21",
+      "fromNode": "n14",
+      "fromSide": "right",
+      "toNode": "n16",
+      "toSide": "left",
+      "label": "tdd_aplicavel = false"
+    },
+    {
+      "id": "e22",
+      "fromNode": "n15",
+      "fromSide": "bottom",
+      "toNode": "n16",
+      "toSide": "top"
+    },
+    {
+      "id": "e23",
+      "fromNode": "n16",
+      "fromSide": "top",
+      "toNode": "n10",
+      "toSide": "right",
+      "label": "ha outra task todo"
+    },
+    {
+      "id": "e24",
+      "fromNode": "n16",
+      "fromSide": "bottom",
+      "toNode": "n17",
+      "toSide": "top",
+      "label": "todas as tasks done"
+    },
+    {
+      "id": "e25",
+      "fromNode": "n17",
+      "fromSide": "bottom",
+      "toNode": "n18",
+      "toSide": "top"
+    },
+    {
+      "id": "e26",
+      "fromNode": "n18",
+      "fromSide": "bottom",
+      "toNode": "n19",
+      "toSide": "top"
+    },
+    {
+      "id": "e27",
+      "fromNode": "n19",
+      "fromSide": "bottom",
+      "toNode": "n20",
+      "toSide": "top"
+    },
+    {
+      "id": "e28",
+      "fromNode": "n20",
+      "fromSide": "right",
+      "toNode": "n21",
+      "toSide": "left",
+      "label": "review solicitada"
+    },
+    {
+      "id": "e29",
+      "fromNode": "n20",
+      "fromSide": "right",
+      "toNode": "n23",
+      "toSide": "left",
+      "label": "sem review"
+    },
+    {
+      "id": "e30",
+      "fromNode": "n21",
+      "fromSide": "bottom",
+      "toNode": "n22",
+      "toSide": "top",
+      "label": "correcao_requerida"
+    },
+    {
+      "id": "e31",
+      "fromNode": "n21",
+      "fromSide": "right",
+      "toNode": "n23",
+      "toSide": "left",
+      "label": "aprovada"
+    },
+    {
+      "id": "e32",
+      "fromNode": "n21",
+      "fromSide": "right",
+      "toNode": "n23",
+      "toSide": "left",
+      "label": "cancelled"
+    },
+    {
+      "id": "e33",
+      "fromNode": "n22",
+      "fromSide": "left",
+      "toNode": "n07",
+      "toSide": "right",
+      "label": "issue-local"
+    },
+    {
+      "id": "e34",
+      "fromNode": "n22",
+      "fromSide": "left",
+      "toNode": "n01",
+      "toSide": "right",
+      "label": "new-intake"
+    },
+    {
+      "id": "e35",
+      "fromNode": "n22",
+      "fromSide": "bottom",
+      "toNode": "n23",
+      "toSide": "top",
+      "label": "cancelled / sem follow-up bloqueante"
+    },
+    {
+      "id": "e36",
+      "fromNode": "n23",
+      "fromSide": "bottom",
+      "toNode": "n24",
+      "toSide": "top",
+      "label": "elegivel"
+    },
+    {
+      "id": "e37",
+      "fromNode": "n23",
+      "fromSide": "left",
+      "toNode": "n27",
+      "toSide": "right",
+      "label": "insumo faltante / blocker aberto"
+    },
+    {
+      "id": "e38",
+      "fromNode": "n24",
+      "fromSide": "bottom",
+      "toNode": "n25",
+      "toSide": "top",
+      "label": "hold"
+    },
+    {
+      "id": "e39",
+      "fromNode": "n24",
+      "fromSide": "right",
+      "toNode": "n26",
+      "toSide": "left",
+      "label": "go"
+    },
+    {
+      "id": "e40",
+      "fromNode": "n25",
+      "fromSide": "left",
+      "toNode": "n07",
+      "toSide": "right",
+      "label": "issue-local"
+    },
+    {
+      "id": "e41",
+      "fromNode": "n25",
+      "fromSide": "left",
+      "toNode": "n01",
+      "toSide": "right",
+      "label": "new-intake"
+    },
+    {
+      "id": "e42",
+      "fromNode": "n25",
+      "fromSide": "bottom",
+      "toNode": "n23",
+      "toSide": "top",
+      "label": "todos os bloqueantes encerrados"
+    },
+    {
+      "id": "e43",
+      "fromNode": "n26",
+      "fromSide": "bottom",
+      "toNode": "n28",
+      "toSide": "top"
+    },
+    {
+      "id": "e44",
+      "fromNode": "src1",
+      "fromSide": "left",
+      "toNode": "n00",
+      "toSide": "bottom",
+      "label": "fonte de verdade local"
+    }
+  ]
+}

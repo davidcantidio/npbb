@@ -13,15 +13,15 @@
             "state": {
               "type": "canvas",
               "state": {
-                "file": "Sem título.canvas",
+                "file": "Algoritmo.canvas",
                 "viewState": {
-                  "x": 0,
-                  "y": 0,
-                  "zoom": 0.5
+                  "x": 956.6781913800785,
+                  "y": 800.3433225992504,
+                  "zoom": -1.036661783854166
                 }
               },
               "icon": "lucide-layout-dashboard",
-              "title": "Sem título"
+              "title": "Algoritmo"
             }
           }
         ]
@@ -188,8 +188,11 @@
   },
   "active": "7ba5354bf5c211b5",
   "lastOpenFiles": [
-    "Algoritmo.md",
+    "Sem título.md",
+    "Algoritmo.canvas",
     "Sem título.canvas",
+    "Sem título 1.canvas",
+    "Algoritmo.md",
     "FW5/PRD-FW5.md",
     "FEITO/FW4/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO/TASK-1.md",
     "FEITO/FW4/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO/README.md",
@@ -224,7 +227,6 @@
     "FEITO/FRAMEWORK4/SESSION-MAPA.md",
     "FEITO/FRAMEWORK4",
     "FW5/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO",
-    "Sem título 1.canvas",
     "Sem título 2.canvas"
   ]
 }

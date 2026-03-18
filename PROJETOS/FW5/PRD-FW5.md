@@ -1,6 +1,6 @@
 ---
 doc_id: "PRD-FW5.md"
-version: "1.1"
+version: "2.0"
 status: "draft"
 owner: "PM"
 last_updated: "2026-03-18"
@@ -26,9 +26,10 @@ audit_rigor: "elevated"
 
 # PRD - FW5
 
-> Adaptado ao paradigma `delivery-first` / `feature-first` do FW5.
-> O eixo principal deste PRD sao as features entregaveis; arquitetura aparece
-> como impacto e capacidade habilitadora, nao como organizacao principal.
+> Este PRD reconstroi o projeto a partir do intake aprovado e da governanca canonica.
+> O nome canonico do projeto e `FW5`; referencias a `FRAMEWORK3` aparecem apenas
+> como contexto historico da demanda original.
+> O principio do projeto e `delivery-first`, materializado aqui como `feature-first`.
 
 ## 0. Rastreabilidade
 
@@ -36,572 +37,550 @@ audit_rigor: "elevated"
 - **Versao do intake**: 1.1
 - **Data de criacao**: 2026-03-18
 - **PRD derivado** (se aplicavel): nao_aplicavel
+- **Contexto legado**: a demanda nasce da iniciativa antes descrita como `FRAMEWORK3`, agora normalizada como capacidade canonica `FW5`
 
 ## 1. Resumo Executivo
 
 - **Nome do projeto**: FW5
-- **Tese em 1 frase**: converter o framework documental de projetos em uma operacao assistida por IA, organizada por features demonstraveis e suportada por persistencia, CRUD e orquestracao.
+- **Tese em 1 frase**: transformar o fluxo documental manual de planejamento e execucao de projetos em uma experiencia governada por features entregaveis, com aprovacao humana quando necessario, automacao segura quando possivel e rastreabilidade persistida ponta a ponta.
 - **Valor esperado em 3 linhas**:
-  - reduzir o trabalho manual de criar e manter artefatos de planejamento e execucao.
-  - permitir que o PM acompanhe e aprove um fluxo inteiro de projeto com visibilidade, gates e automacao progressiva.
-  - transformar o historico operacional em ativo auditavel e reutilizavel para melhoria continua e treinamento futuro.
+  - eliminar a copia manual de arquivos `SESSION-*` e `TEMPLATE-*` e reduzir o trabalho operacional repetitivo do PM.
+  - permitir que o projeto seja aberto, planejado, executado e auditado a partir de features demonstraveis, sem perder a governanca existente.
+  - persistir prompts, decisoes, aprovacoes e evidencias para auditoria, analytics e futuro treinamento de um LLM especialista em gestao de projetos.
 
 ## 2. Problema ou Oportunidade
 
-- **Problema atual**: o framework atual exige montagem manual de artefatos e controle artesanal da progressao do projeto, com pouca centralizacao de historico e baixa automacao.
-- **Evidencia do problema**: o fluxo depende de copiar arquivos da pasta `COMUM/`, preencher frontmatter, manter aprovacoes sucessivas manualmente e consolidar contexto de execucao fora de um sistema persistente.
-- **Custo de nao agir**: o PM continua preso a trabalho operacional repetitivo, o framework nao escala bem e o historico fica subutilizado para auditoria e treinamento.
-- **Por que agora**: o contexto de governanca ja esta maduro o suficiente para migrar de um planejamento `architecture-first` para um planejamento `feature-first`, preservando a disciplina documental existente.
+- **Problema atual**: o framework atual depende de copia, renomeacao e preenchimento manual de artefatos Markdown, com baixa automacao operacional e pouca centralizacao de historico.
+- **Evidencia do problema**: o fluxo corrente exige repetir a cada projeto a criacao manual de intake, PRD, fases, epicos, issues e tasks a partir de arquivos-base, alem de gates manuais sucessivos.
+- **Custo de nao agir**: o PM continua consumindo tempo em trabalho mecanico, a operacao nao escala com seguranca e o historico fica fragmentado para auditoria e treinamento.
+- **Por que agora**: o framework ja atingiu maturidade suficiente para migrar do planejamento orientado a arquitetura para um planejamento orientado a entrega, sem perder a governanca existente.
 
 ## 3. Publico e Operadores
 
-- **Usuario principal**: PM responsavel por abrir, aprovar e acompanhar projetos
+- **Usuario principal**: PM / Product Manager responsavel por abrir, aprovar e acompanhar projetos
 - **Usuario secundario**: engenheiros e agentes IA que executam issues e tasks
-- **Operador interno**: AgentOrchestrator e subagentes
-- **Quem aprova ou patrocina**: PM
+- **Operador interno**: AgentOrchestrator e subagentes especializados
+- **Quem aprova ou patrocina**: PM, com poder de definir o nivel de autonomia operacional por projeto
 
 ## 4. Jobs to be Done
 
-- **Job principal**: conduzir o ciclo de um projeto do intake ate a auditoria de fase com menos operacao manual e mais rastreabilidade.
+- **Job principal**: conduzir um projeto do intake ate a auditoria de fase com rastreabilidade completa e menor dependencia de operacao manual repetitiva.
 - **Jobs secundarios**:
-  - consultar o estado do projeto em qualquer nivel hierarquico
-  - revisar aprovacoes, artefatos e execucoes em uma linha do tempo auditavel
-  - configurar e aumentar a autonomia operacional de forma controlada
-- **Tarefa atual que sera substituida**: copia/renomeacao de arquivos Markdown e orquestracao manual de gates, contexto e historico
+  - consultar o estado de qualquer feature, fase, epico, issue ou task
+  - revisar historico de aprovacoes, prompts e artefatos gerados
+  - usar os dados persistidos para melhoria continua e treinamento futuro
+- **Tarefa atual que sera substituida**: copiar e adaptar arquivos da pasta `COMUM/`, preencher cabecalhos manualmente e controlar gates de aprovacao de forma artesanal
 
 ## 5. Escopo
 
 ### Dentro
 
-- intake, PRD e planejamento hierarquico assistidos a partir de features
-- CRUD persistente para projetos e artefatos de governanca
-- execucao orquestrada de issues e tasks com gates configuraveis
-- revisao e auditoria formal integradas ao fluxo
-- rastreabilidade operacional completa de prompts, outputs, aprovacoes e evidencias
+- estruturar intake a partir de contexto bruto com rastreabilidade, lacunas explicitas e gate de aprovacao
+- gerar PRD `feature-first` a partir de intake aprovado, preservando taxonomias, origem e restricoes
+- derivar fases, epicos, issues e tasks com rastreabilidade `feature -> fase -> epico -> issue`
+- selecionar e acompanhar a proxima unidade elegivel para execucao, com autonomia configuravel e gates humanos
+- preparar review, auditoria e consulta de historico, decisoes, evidencias e artefatos no modulo administrativo do NPBB
 
 ### Fora
 
-- substituicao total do sistema documental legado
+- substituicao completa do sistema documental atual como unica fonte de verdade
+- interface mobile
+- multi-tenancy avancado
 - fine-tuning real de LLM nesta fase
-- mobile e multi-tenancy avancado
+- migracao obrigatoria de projetos legados para o fluxo assistido no MVP
 
 ## 6. Resultado de Negocio e Metricas
 
-- **Objetivo principal**: reduzir em mais de 70% o esforco manual para abrir, planejar e operar projetos no framework.
-- **Metricas leading**: quantidade de projetos iniciados via FRAMEWORK3, percentual de etapas automatizadas, quantidade de registros operacionais persistidos.
-- **Metricas lagging**: tempo medio para abrir um projeto ate issue executavel, taxa de auditorias aprovadas, satisfacao do PM com o fluxo.
-- **Criterio minimo para considerar sucesso**: o sistema consegue levar um projeto do intake aprovado ate a execucao auditavel de uma issue com historico e rastreabilidade completos.
+- **Objetivo principal**: reduzir em mais de 80% o tempo manual do PM no ciclo de governanca e planejamento de projeto.
+- **Metricas leading**:
+  - numero de projetos iniciados via FW5
+  - percentual de etapas automatizadas com seguranca
+  - volume de eventos operacionais persistidos por projeto
+- **Metricas lagging**:
+  - tempo medio para levar um projeto do intake ate a execucao de issue
+  - qualidade percebida das entregas
+  - taxa de auditorias aprovadas sem retrabalho estrutural
+- **Criterio minimo para considerar sucesso**: o FW5 deve conseguir levar um projeto do intake aprovado ate uma issue executavel com rastreabilidade completa e historico persistido.
 
 ## 7. Restricoes e Guardrails
 
-- **Restricoes tecnicas**: manter o stack atual do NPBB e a coexistencia com a estrutura `PROJETOS/`.
-- **Restricoes operacionais**: obedecer ao algoritmo de negocio e aos arquivos `GOV-*`, `SESSION-*` e `TEMPLATE-*`.
+- **Restricoes tecnicas**: reutilizar o stack existente do NPBB (FastAPI, PostgreSQL, React/Vite) e preservar compatibilidade com a estrutura atual em `PROJETOS/`.
+- **Restricoes operacionais**: obedecer aos arquivos `GOV-*`, `SESSION-*`, `TEMPLATE-*` e ao algoritmo de negocio sem inventar novas regras fora da governanca vigente.
 - **Restricoes legais ou compliance**: nao_aplicavel
-- **Restricoes de prazo**: priorizar MVP funcional em iteracoes curtas
-- **Restricoes de design ou marca**: manter o padrao de governanca documental vigente
+- **Restricoes de prazo**: buscar MVP funcional em poucas iteracoes, priorizando fluxo util antes de automacao total.
+- **Restricoes de design ou marca**: manter a linguagem e a disciplina documental do framework atual.
 
 ## 8. Dependencias e Integracoes
 
-- **Sistemas internos impactados**: backend FastAPI, frontend React/Vite, banco PostgreSQL, dashboard admin e ambiente de agentes
+- **Sistemas internos impactados**: backend FastAPI, banco PostgreSQL, frontend React/Vite, superficie administrativa do NPBB e sistema de agentes
 - **Sistemas externos impactados**: nenhum
-- **Dados de entrada necessarios**: intake aprovado, governanca canonica, algoritmo do negocio e contexto do projeto fornecido pelo PM
-- **Dados de saida esperados**: artefatos Markdown, registros estruturados no banco, timeline de execucao e trilha de auditoria
+- **Dados de entrada necessarios**: conteudo dos arquivos `GOV-*`, `SESSION-*`, `TEMPLATE-*`, contexto do projeto fornecido pelo PM e regras do [PROJETOS/Algoritmo.md](../Algoritmo.md)
+- **Dados de saida esperados**: artefatos Markdown canonicos, registros estruturados no banco, historico de execucao e trilha de auditoria
 
 ## 9. Arquitetura Geral do Projeto
 
-> Visao geral de impacto arquitetural. O detalhamento principal aparece nas features.
+> Visao geral de impacto arquitetural. O eixo do PRD continua sendo comportamento entregavel.
 
-- **Backend**: servicos para CRUD, planejamento, orquestracao, revisao e auditoria
-- **Frontend**: modulo admin integrado ao dashboard para navegacao, aprovacao e consulta de historico
-- **Banco/migracoes**: tabelas para artefatos, execucoes, aprovacoes, auditorias e estados do projeto
-- **Observabilidade**: logs estruturados e historico auditavel de eventos
-- **Autorizacao/autenticacao**: reutilizar auth atual do NPBB com guardas administrativas
-- **Rollout**: incremental, coexistindo com o fluxo documental legado
+- **Backend**: novos servicos e contratos para intake, PRD, planejamento, elegibilidade, orquestracao e registro de execucoes
+- **Frontend**: modulo admin para abrir projetos, revisar artefatos, navegar hierarquia e consultar historico operacional
+- **Banco/migracoes**: novas entidades para projetos, artefatos, aprovacoes, rastreabilidade, execucoes e auditorias
+- **Observabilidade**: logs estruturados de execucao, trilha de aprovacoes, evidencias e timeline consultavel
+- **Autorizacao/autenticacao**: reutilizar o modelo atual do NPBB, com guardas adequadas para operacao administrativa
+- **Rollout**: incremental, com coexistencia entre fluxo documental legado e fluxo assistido no FW5
 
 ## 10. Riscos Globais
 
-- **Risco de produto**: o projeto virar uma reorganizacao tecnica sem entregar valor perceptivel ao PM.
-- **Risco tecnico**: complexidade de sincronizar governanca documental, persistencia e orquestracao sem regressao.
-- **Risco operacional**: gates de aprovacao mal calibrados gerarem automacao insegura ou burocracia excessiva.
-- **Risco de dados**: historico salvo sem granularidade suficiente para auditoria e treinamento.
-- **Risco de adocao**: baixa confianca no sistema se a rastreabilidade nao for clara.
+- **Risco de produto**: transformar o projeto em uma plataforma excessivamente tecnica e perder o foco em entregas demonstraveis para o PM.
+- **Risco tecnico**: manter compatibilidade com a governanca documental enquanto adiciona persistencia, CRUD e orquestracao.
+- **Risco operacional**: calibrar corretamente quando exigir aprovacao humana e quando permitir execucao automatizada.
+- **Risco de dados**: registrar historico incompleto ou pouco util para auditoria e treinamento futuro.
+- **Risco de adocao**: o PM nao confiar na automacao se o fluxo ficar opaco ou dificil de inspecionar.
+
+### Hipoteses Declaradas
+
+- os niveis exatos de autonomia configuraveis por projeto serao detalhados na implementacao, mas o PRD ja fixa que a capacidade precisa existir
+- a forma final de integracao entre o AgentOrchestrator e o ambiente/cliente de agentes em uso permanece decisao tecnica aberta
+- o dataset de treinamento e as politicas finais de retencao ficam fora do MVP, mas o historico persistido deve nascer auditavel e reutilizavel
+- a estrategia de migracao ou onboarding de projetos legados sera tratada como rollout posterior, sem bloquear o fluxo minimo do MVP
 
 ## 11. Nao-Objetivos
 
-- reescrever o framework existente descartando os artefatos Markdown
-- tratar banco, backend ou frontend como macro-entregas independentes do valor entregue
-- automatizar irrestritamente todos os gates sem politica clara de controle
+- nao substituir completamente os arquivos Markdown por banco de dados
+- nao criar um novo framework de agentes do zero sem reaproveitar a governanca existente
+- nao considerar a arquitetura como eixo principal de planejamento do projeto
+- nao comprometer o MVP com migracao em massa de backlog legado
 
 ---
 
 # 12. Features do Projeto
 
-> Cada feature abaixo representa um comportamento demonstravel para o PM.
-> As camadas tecnicas entram como impacto de implementacao.
+> Cada feature abaixo representa um comportamento utilizavel pelo PM dentro da jornada do projeto.
+> Persistencia, CRUD, observabilidade e trilha operacional aparecem como impactos transversais de cada feature, e nao como feature separada.
+> As secoes `Fases de Implementacao` abaixo descrevem apenas impactos internos necessarios para entregar a feature; elas nao autorizam organizar backlog, fase, epico ou issue por camada tecnica fora da cadeia `feature -> fase -> epico -> issue`.
 
-## Feature 1: Intake e PRD assistidos com aprovacao governada
+## Feature 1: Intake governado a partir de contexto bruto
 
 ### Objetivo de Negocio
 
-Eliminar a abertura manual e inconsistente de projetos, garantindo que todo projeto
-comece com intake e PRD padronizados, rastreaveis e prontos para decomposicao.
+Eliminar a abertura manual e inconsistente de projetos, garantindo que o PM consiga sair de um contexto bruto para um intake estruturado, auditavel e pronto para gate `Intake -> PRD`.
 
 ### Comportamento Esperado
 
-O PM consegue informar o contexto do projeto, receber um intake estruturado,
-aprova-lo, gerar um PRD coerente com a governanca e sair com base suficiente
-para planejamento posterior.
+O PM informa o contexto inicial do projeto, recebe um intake estruturado com taxonomias, rastreabilidade, lacunas conhecidas e checklist de prontidao, revisa o material e registra aprovacao ou ajuste antes de seguir.
 
 ### Criterios de Aceite
 
-- [ ] o sistema gera intake completo com rastreabilidade, lacunas conhecidas e checklist de prontidao para PRD
-- [ ] o sistema gera PRD derivado do intake aprovado sem perder taxonomias nem origem
-- [ ] intake e PRD registram aprovacao humana e versao dos artefatos gerados
+- [ ] o sistema transforma contexto bruto em intake completo com problema, publico, fluxo principal, escopo, metricas, restricoes, riscos e lacunas conhecidas
+- [ ] o intake distingue fatos, inferencias e hipoteses e bloqueia a subida para PRD quando houver lacuna critica real
+- [ ] o PM consegue revisar, ajustar e aprovar o intake com registro de versao, timestamp e historico da decisao
 
 ### Dependencias com Outras Features
 
-- Feature 5: persistencia e trilha operacional para armazenar aprovacoes e artefatos
+- nenhuma obrigatoria
 
 ### Riscos Especificos
 
-- intake gerar hipoteses como fatos
-- PRD manter organizacao architecture-first e bloquear o planejamento posterior
+- intake consolidar hipoteses como fatos e contaminar o restante da cadeia
+- a experiencia de abertura virar apenas uma copia digital do processo manual atual
 
 ### Fases de Implementacao
 
-1. **Modelagem e Migration**: entidades para projeto, intake, PRD, versoes e aprovacoes
-2. **API**: endpoints para criar, revisar, aprovar e consultar intake/PRD
-3. **UI**: formularios e telas de aprovacao assistida
-4. **Testes**: cobertura de derivacao intake -> PRD, validacao de frontmatter e rastreabilidade
+1. **Modelagem e Migration**: entidades para projeto, intake, versoes, aprovacoes e lacunas
+2. **API**: contratos para criar, revisar, validar e aprovar intake
+3. **UI**: formulario assistido de abertura, diff de revisao e estados de gate
+4. **Testes**: cobertura de prontidao `Intake -> PRD`, taxonomias e persistencia de historico
 
 ### Impacts
 
 | Camada | Impacto | Detalhamento |
 |--------|---------|--------------|
-| Banco | `projects`, `intakes`, `prds`, `approvals` | versionamento, origem, status e relacao entre artefatos |
-| Backend | CRUD e geracao assistida | contratos para rascunho, aprovacao e materializacao de artefatos |
-| Frontend | abertura e aprovacao de projeto | formularios, review diff e timeline de decisao |
-| Testes | suites de intake/PRD | validacao do fluxo HITL e da consistencia dos documentos |
+| Banco | projetos, intakes, aprovacoes | origem, versao, status, lacunas conhecidas e timestamps |
+| Backend | servicos de intake | validacao do gate, geracao estruturada e aprovacao HITL |
+| Frontend | abertura assistida do projeto | captura do contexto bruto, revisao do intake e decisao do PM |
+| Testes | suites de intake | cobertura de completude, bloqueios e registro de aprovacao |
 
 ### Tasks da Feature
 
 | Task ID | Descricao | SP | Depende de |
 |---------|-----------|----|------------|
-| T1 | Modelar entidades e estados de intake, PRD e aprovacao | 3 | - |
-| T2 | Expor fluxo CRUD e geracao assistida de intake/PRD | 5 | T1 |
-| T3 | Entregar UI de revisao e aprovacao com historico | 3 | T2 |
+| T1 | Modelar intake, estados de versao e aprovacao | 3 | - |
+| T2 | Implementar fluxo assistido de geracao e validacao do intake | 3 | T1 |
+| T3 | Entregar revisao/aprovacao do intake com historico | 2 | T2 |
 
 ---
 
-## Feature 2: Planejamento hierarquico rastreavel a partir de features
+## Feature 2: PRD `feature-first` derivado de intake aprovado
 
 ### Objetivo de Negocio
 
-Fazer o planejamento de projeto nascer de entregas demonstraveis, e nao de camadas
-tecnicas, permitindo decomposicao segura em fases, epicos, issues e tasks.
+Garantir que o projeto saia do intake aprovado com um PRD coerente, auditavel e orientado por features demonstraveis, sem voltar ao padrao `architecture-first`.
 
 ### Comportamento Esperado
 
-Depois do PRD aprovado, o PM consegue gerar planejamento hierarquico em que cada
-fase entrega features explicitas e cada epico/issue preserva `Feature de Origem`.
+Depois da aprovacao do intake, o PM consegue gerar um PRD completo que preserva as taxonomias do intake, explicita features entregaveis, criterios de aceite verificaveis, impactos arquiteturais por feature e rastreabilidade minima para planejamento posterior.
 
 ### Criterios de Aceite
 
-- [ ] o PRD exibe features com criterios de aceite verificaveis e dependencias declaradas
-- [ ] cada fase lista claramente quais features entrega e qual gate de saida a valida
-- [ ] cada epico e issue conseguem repetir explicitamente o ID de feature definido no PRD
+- [ ] o PRD e gerado a partir do intake aprovado preservando frontmatter, origem, restricoes, riscos e nao-objetivos
+- [ ] cada feature do PRD declara objetivo de negocio, comportamento esperado, criterios de aceite verificaveis e impactos por camada
+- [ ] quando o intake nao sustentar uma nomeacao segura de escopo fino, o PRD deixa a lacuna explicita em vez de inventar comportamento ou issue
 
 ### Dependencias com Outras Features
 
-- Feature 1: intake e PRD aprovados
-- Feature 5: persistencia para armazenar hierarquia, status e historico
+- Feature 1: intake aprovado e pronto para PRD
 
 ### Riscos Especificos
 
-- features mal definidas virarem pseudo-camadas tecnicas
-- fases serem organizadas por backend/frontend/banco em vez de comportamento entregue
+- o PRD cair em organizacao por banco/backend/frontend e perder demonstrabilidade
+- o documento fechar escopo ingenuamente em areas onde o intake ainda marca lacuna aberta
 
 ### Fases de Implementacao
 
-1. **Modelagem e Migration**: entidades para fases, epicos, issues, tasks e relacao com features
-2. **API**: contratos para decomposicao hierarquica e consulta da rastreabilidade
-3. **UI**: navegacao hierarquica com filtros por feature e fase
-4. **Testes**: validacao de rastreabilidade e bloqueios quando o PRD estiver insuficiente
+1. **Modelagem e Migration**: entidades para PRD, features e rastreabilidade de origem
+2. **API**: contratos para derivar, revisar, ajustar e aprovar PRD
+3. **UI**: visualizacao estruturada do PRD, diff e confirmacao de gravacao
+4. **Testes**: consistencia intake -> PRD, frontmatter e criterios por feature
 
 ### Impacts
 
 | Camada | Impacto | Detalhamento |
 |--------|---------|--------------|
-| Banco | `phases`, `epics`, `issues`, `tasks`, `feature_links` | IDs canonicos, dependencias e origem por feature |
-| Backend | planejador hierarquico | geracao de fases, epicos, issues e tasks a partir do PRD |
-| Frontend | visao de mapa do projeto | navegacao por fase, epico, issue e feature |
-| Testes | suites de planejamento | consistencia `feature -> fase -> epico -> issue` |
+| Banco | PRDs, features, versoes | ligacao com intake, historico de revisao e aprovacao |
+| Backend | servicos de derivacao do PRD | transformacao `intake -> PRD`, validacao estrutural e rastreabilidade |
+| Frontend | revisao do PRD | leitura por secoes, diff e confirmacao do PM |
+| Testes | suites de PRD | validacao do template, preservacao de taxonomias e bloqueio de lacunas criticas |
 
 ### Tasks da Feature
 
 | Task ID | Descricao | SP | Depende de |
 |---------|-----------|----|------------|
-| T1 | Definir contratos e persistencia da hierarquia vinculada a features | 3 | - |
-| T2 | Implementar geracao assistida de fases, epicos e issues rastreaveis | 5 | T1 |
-| T3 | Entregar visao administrativa com filtros por feature | 3 | T2 |
+| T1 | Modelar PRD, features e rastreabilidade com o intake | 3 | - |
+| T2 | Implementar derivacao do PRD `feature-first` a partir do intake aprovado | 3 | T1 |
+| T3 | Entregar revisao/aprovacao do PRD com validacoes estruturais | 2 | T2 |
 
 ---
 
-## Feature 3: Execucao orquestrada de issues e tasks
+## Feature 3: Planejamento executavel com rastreabilidade canonica
 
 ### Objetivo de Negocio
 
-Reduzir a operacao manual de execucao de projeto, permitindo que issues elegiveis
-sejam executadas com contexto correto, sequenciamento e controle de autonomia.
+Permitir que o PM transforme o PRD aprovado em um plano executavel sem reorganizar manualmente o trabalho por camadas tecnicas, preservando a cadeia `feature -> fase -> epico -> issue`.
 
 ### Comportamento Esperado
 
-O sistema seleciona a proxima unidade executavel, monta o contexto da issue/task,
-aciona subagentes, acompanha o progresso e encerra a issue conforme o workflow
-governado.
+Com o PRD aprovado, o sistema deriva fases, epicos, issues e tasks coerentes com as features do projeto, mantendo `Feature de Origem` explicita e respeitando os limites do modelo `issue-first`.
 
 ### Criterios de Aceite
 
-- [ ] o orquestrador identifica a proxima task elegivel sem violar dependencias e gates
-- [ ] cada execucao registra contexto, entradas, saidas, status e evidencias relevantes
-- [ ] o PM consegue configurar quando a execucao exige confirmacao humana e quando pode seguir automaticamente
+- [ ] cada fase do projeto e definida por valor entregue, com gate de saida e features claramente alocadas
+- [ ] cada epico e issue repete explicitamente a `Feature de Origem` usada no PRD
+- [ ] a derivacao deixa lacunas explicitas quando uma issue nao puder ser nomeada com seguranca e evita criar itens acima dos limites canonicos sem sinalizacao
 
 ### Dependencias com Outras Features
 
-- Feature 2: hierarquia planejada e tasks elegiveis
-- Feature 5: trilha operacional persistida
+- Feature 2: PRD aprovado com features e criterios de aceite suficientes
 
 ### Riscos Especificos
 
-- execucao automatica fora de ordem
-- contexto insuficiente para subagentes concluirem a task com seguranca
+- fases e epicos serem montados por camada tecnica em vez de comportamento entregue
+- decomposicao gerar issues grandes ou vagas, invalidando a execucao posterior
 
 ### Fases de Implementacao
 
-1. **Modelagem e Migration**: estados de execucao, work orders e relacoes com tasks/issues
-2. **API**: selecao de proxima unidade, disparo e acompanhamento de execucao
-3. **UI**: painel de status operacional e proxima acao recomendada
-4. **Testes**: elegibilidade, sequenciamento e tolerancia a bloqueios
+1. **Modelagem e Migration**: entidades para fases, epicos, issues, tasks e links com features
+2. **API**: contratos para derivar hierarquia, dependencias e limites de decomposicao
+3. **UI**: mapa do projeto com navegacao por fase, epico, issue e feature
+4. **Testes**: rastreabilidade, consistencia de IDs e respeito aos limites de issue/task
 
 ### Impacts
 
 | Camada | Impacto | Detalhamento |
 |--------|---------|--------------|
-| Banco | `agent_executions`, `work_orders`, estados de task/issue | historico de execucao, evidencias e fechamento |
-| Backend | AgentOrchestrator | elegibilidade, montagem de contexto e coordenacao de subagentes |
-| Frontend | timeline operacional | status da issue, proxima acao e visibilidade de execucoes |
-| Testes | suites de orquestracao | sequenciamento, gates HITL e falhas de execucao |
+| Banco | fases, epicos, issues, tasks | IDs canonicos, dependencias, status e feature de origem |
+| Backend | planejador hierarquico | geracao da cadeia executavel a partir do PRD |
+| Frontend | mapa do projeto | navegacao da hierarquia e leitura da rastreabilidade |
+| Testes | suites de planejamento | consistencia `feature -> fase -> epico -> issue` e sinalizacao de lacunas |
 
 ### Tasks da Feature
 
 | Task ID | Descricao | SP | Depende de |
 |---------|-----------|----|------------|
-| T1 | Persistir work orders, execucoes e estados de elegibilidade | 3 | - |
-| T2 | Implementar orquestracao sequencial de tasks por issue | 5 | T1 |
-| T3 | Expor painel de acompanhamento e controle de autonomia | 3 | T2 |
+| T1 | Modelar a hierarquia planejada com links para features | 3 | - |
+| T2 | Implementar derivacao de fases, epicos e issues rastreaveis | 3 | T1 |
+| T3 | Expor visao administrativa da hierarquia com filtros por feature | 2 | T2 |
 
 ---
 
-## Feature 4: Revisao e auditoria com gates formais
+## Feature 4: Execucao assistida da proxima unidade elegivel
 
 ### Objetivo de Negocio
 
-Garantir que a automacao preserve qualidade e governanca por meio de revisao
-pos-issue e auditoria de fase com vereditos rastreaveis.
+Reduzir o trabalho operacional manual do PM e dos executores, permitindo que o sistema identifique a proxima unidade executavel, monte o contexto correto e aplique gates humanos apenas quando necessario.
 
 ### Comportamento Esperado
 
-Ao fim de uma issue ou fase, o sistema prepara o contexto de revisao/auditoria,
-registra veredito, abre follow-ups quando necessario e impede avancos indevidos.
+O sistema identifica a proxima issue/task elegivel, monta contexto suficiente para execucao, aplica a politica de autonomia configurada para o projeto, aciona o fluxo de execucao e registra progresso, bloqueios, outputs e evidencias.
 
 ### Criterios de Aceite
 
-- [ ] cada issue concluida pode gerar revisao formal com veredito e destino claro
-- [ ] cada fase possui gate de auditoria com resultado `go` ou `hold`
-- [ ] follow-ups de auditoria ficam vinculados ao artefato de origem e ao destino decidido
+- [ ] o sistema identifica a proxima unidade elegivel sem violar dependencias, gates ou regras de `task_instruction_mode`
+- [ ] o PM consegue definir quando a execucao segue automaticamente e quando exige confirmacao humana
+- [ ] cada execucao registra work order, contexto usado, status, outputs, evidencias e motivo de bloqueio quando houver
 
 ### Dependencias com Outras Features
 
-- Feature 3: execucoes concluiveis
-- Feature 5: persistencia de evidencias, vereditos e follow-ups
+- Feature 3: hierarquia executavel pronta e rastreavel
 
 ### Riscos Especificos
 
-- revisao virar etapa informal sem efeito sobre o estado do projeto
-- auditoria abrir follow-ups sem rastreabilidade de origem
+- a automacao avancar fora de ordem ou sem contexto suficiente
+- a politica de autonomia ficar opaca e gerar desconfianca operacional
 
 ### Fases de Implementacao
 
-1. **Modelagem e Migration**: entidades para reviews, auditorias, vereditos e follow-ups
-2. **API**: geracao de contexto de revisao, registro de veredito e abertura de follow-up
-3. **UI**: telas de review, auditoria e consulta de pendencias
-4. **Testes**: transicoes de estado, regras de gate e destino de follow-ups
+1. **Modelagem e Migration**: entidades para work orders, execucoes, estados operacionais e politica de autonomia
+2. **API**: selecao de unidade elegivel, disparo de execucao e captura de evidencias
+3. **UI**: painel da proxima acao recomendada, override humano e acompanhamento de status
+4. **Testes**: elegibilidade, gates, bloqueios e persistencia de execucao
 
 ### Impacts
 
 | Camada | Impacto | Detalhamento |
 |--------|---------|--------------|
-| Banco | `reviews`, `audit_logs`, `follow_ups` | vereditos, destino, artefato de origem e historico |
-| Backend | servicos de review e auditoria | regras de gate, hold/go e abertura de remediacao |
-| Frontend | telas de governanca final | aprovacao, hold, motivos e acoes seguintes |
-| Testes | suites de auditoria | regras de bloqueio, retomada e encadeamento de follow-up |
+| Banco | execucoes, work orders, politicas de autonomia | contexto, estado, evidencias e timestamps |
+| Backend | orquestracao operacional | elegibilidade, montagem de contexto, disparo e bloqueio controlado |
+| Frontend | acompanhamento da execucao | proxima unidade, status, override e feedback ao PM |
+| Testes | suites de execucao | ordem de dependencias, HITL e consistencia do historico operacional |
 
 ### Tasks da Feature
 
 | Task ID | Descricao | SP | Depende de |
 |---------|-----------|----|------------|
-| T1 | Modelar vereditos, auditorias e follow-ups rastreaveis | 3 | - |
-| T2 | Implementar fluxo de review pos-issue e gate de fase | 5 | T1 |
-| T3 | Expor consultas e acoes de governanca para o PM | 3 | T2 |
+| T1 | Modelar work order, estados de execucao e politica de autonomia | 3 | - |
+| T2 | Implementar selecao e disparo da proxima unidade elegivel | 3 | T1 |
+| T3 | Entregar painel operacional com override humano e visibilidade de evidencias | 2 | T2 |
 
 ---
 
-## Feature 5: Persistencia e rastreabilidade operacional
+## Feature 5: Governanca final percebida pelo PM
 
 ### Objetivo de Negocio
 
-Centralizar o historico operacional do framework para permitir auditoria,
-analytics, depuracao de fluxo e futuro treinamento de modelos.
+Dar ao PM controle visivel sobre qualidade, governanca e memoria do projeto, permitindo revisar o que foi feito, auditar fases e consultar a trilha completa de decisoes, artefatos e evidencias sem depender de leitura manual fragmentada.
 
 ### Comportamento Esperado
 
-O PM consegue inspecionar quem fez o que, em qual ordem, com qual contexto,
-qual veredito e qual artefato foi produzido em cada etapa do projeto.
+Ao fim de uma issue ou fase, o PM consegue abrir um contexto consolidado de review e auditoria, registrar vereditos e follow-ups rastreaveis e consultar a timeline do projeto por projeto, fase, epico, issue ou task.
 
 ### Criterios de Aceite
 
-- [ ] cada etapa relevante do fluxo registra entradas, saidas, aprovacoes, status e timestamps
-- [ ] o sistema permite consultar timeline de projeto, issue ou task sem depender apenas de arquivos soltos
-- [ ] os dados persistidos sao suficientes para auditoria formal e para curadoria futura de dataset
+- [ ] cada issue concluida pode ser revisada com veredito claro e cada fase pode passar por auditoria formal com resultado `go` ou `hold`
+- [ ] follow-ups de review ou auditoria ficam vinculados ao artefato de origem, ao destino definido e ao historico da decisao
+- [ ] o PM consegue consultar linha do tempo, aprovacoes, prompts, outputs, diffs e evidencias relevantes sem depender apenas de arquivos soltos
 
 ### Dependencias com Outras Features
 
-- nao_aplicavel; esta feature habilita as demais
+- Feature 2: artefatos de intake e PRD aprovados e versionados
+- Feature 4: execucoes e evidencias operacionais registradas
 
 ### Riscos Especificos
 
-- historico incompleto ou dificil de consultar
-- excesso de acoplamento entre persistencia e formato textual dos artefatos
+- review e auditoria virarem etapas formais sem efeito real sobre o estado do projeto
+- historico existir, mas ser incompleto ou dificil de consultar
 
 ### Fases de Implementacao
 
-1. **Modelagem e Migration**: entidades transversais para eventos, aprovacoes, artefatos e timeline
-2. **API**: endpoints de consulta, timeline e sincronizacao artefato <-> estado
-3. **UI**: visao consolidada de historico e proxima acao
-4. **Testes**: integridade de eventos, precedencia e sincronizacao
+1. **Modelagem e Migration**: entidades para reviews, auditorias, follow-ups, eventos e timeline
+2. **API**: registro de veredito, follow-up, consulta de historico e leitura consolidada de evidencias
+3. **UI**: telas de governanca, auditoria, follow-ups e timeline do projeto
+4. **Testes**: transicoes de gate, rastreabilidade de follow-up e consulta de historico
 
 ### Impacts
 
 | Camada | Impacto | Detalhamento |
 |--------|---------|--------------|
-| Banco | tabelas transversais de timeline e artefatos | storage auditavel, relacional e consultavel |
-| Backend | sincronizacao e consulta operacional | leitura/gravação de historico e exposicao de timeline |
-| Frontend | timeline e status consolidado | filtros por projeto, fase, issue, task e execucao |
-| Testes | suites transversais | consistencia de historico, ordering e integridade |
+| Banco | auditorias, follow-ups, eventos, timeline | vereditos, origem, destino, evidencias e consulta historica |
+| Backend | servicos de review, auditoria e timeline | consolidacao de contexto, registro de veredito e leitura auditavel |
+| Frontend | governanca final e historico | review, auditoria, follow-ups e timeline navegavel |
+| Testes | suites de auditoria/historico | gates `go/hold`, origem de follow-up e integridade da trilha operacional |
 
 ### Tasks da Feature
 
 | Task ID | Descricao | SP | Depende de |
 |---------|-----------|----|------------|
-| T1 | Definir modelo de historico, eventos e sincronizacao de artefatos | 3 | - |
-| T2 | Implementar consulta e persistencia de timeline operacional | 5 | T1 |
-| T3 | Integrar timeline ao modulo admin e aos fluxos de aprovacao | 3 | T2 |
+| T1 | Modelar auditoria, follow-ups e timeline auditavel | 3 | - |
+| T2 | Implementar review/auditoria com registro de veredito e destino | 3 | T1 |
+| T3 | Entregar consultas de historico, aprovacoes e evidencias para o PM | 2 | T2 |
 
 ---
 
 # 13. Estrutura de Fases
 
-> As fases abaixo agrupam entregas por valor e dependencia entre features.
-> Nenhuma fase e organizada por camada tecnica isolada.
+> As fases agrupam comportamentos entregues ao PM. Nenhuma fase e organizada por camada tecnica isolada.
 
-## Fase 1: Fundacao da experiencia assistida
+## Fase 1: Abertura governada do projeto
 
-- **Objetivo**: permitir que um projeto nasca com intake, PRD e base de rastreabilidade consistentes.
+- **Objetivo**: levar o PM do contexto bruto a um PRD aprovado, rastreavel e pronto para planejamento posterior.
 - **Features incluidas**:
   - Feature 1
-  - Feature 5
-- **Gate de saida**: um projeto consegue gerar intake e PRD aprovaveis com historico persistido e timeline consultavel.
-- **Criterios de aceite**: intake e PRD aprovados, historico consultavel e frontmatter completo.
+  - Feature 2
+- **Gate de saida**: intake e PRD existem, foram revisados/aprovados e preservam rastreabilidade, restricoes, riscos e hipoteses declaradas.
+- **Criterios de aceite**:
+  - intake pronto para PRD sem lacuna critica aberta
+  - PRD `feature-first` aprovado com criterios de aceite por feature
+  - historico de versoes e aprovacoes consultavel
 
 ### Epicos da Fase 1
 
 | Epico | Feature(s) | Status | SP Total |
 |-------|------------|--------|----------|
-| EPIC-F1-01 | Feature 1 | todo | 11 |
-| EPIC-F1-02 | Feature 5 | todo | 11 |
+| EPIC-F1-01 | Feature 1 | todo | 8 |
+| EPIC-F1-02 | Feature 2 | todo | 8 |
 
-## Fase 2: Planejamento governado por features
+## Fase 2: Planejamento executavel por features
 
-- **Objetivo**: decompor o PRD aprovado em fases, epicos, issues e tasks rastreaveis.
+- **Objetivo**: derivar a cadeia executavel do projeto a partir das features aprovadas no PRD.
 - **Features incluidas**:
-  - Feature 2
-- **Gate de saida**: o projeto exibe planejamento hierarquico completo com `Feature de Origem` explicita.
-- **Criterios de aceite**: rastreabilidade `feature -> fase -> epico -> issue` visivel e valida.
+  - Feature 3
+- **Gate de saida**: o projeto exibe fases, epicos, issues e tasks com `Feature de Origem` explicita e sem drift para planejamento por camada.
+- **Criterios de aceite**:
+  - rastreabilidade `feature -> fase -> epico -> issue` visivel e consistente
+  - lacunas de nomeacao fina aparecem explicitamente quando existirem
+  - decomposicao respeita limites canonicos de issue/task ou sinaliza necessidade de quebra
 
 ### Epicos da Fase 2
 
 | Epico | Feature(s) | Status | SP Total |
 |-------|------------|--------|----------|
-| EPIC-F2-01 | Feature 2 | todo | 11 |
+| EPIC-F2-01 | Feature 3 | todo | 8 |
 
-## Fase 3: Execucao governada e gates de qualidade
+## Fase 3: Operacao governada e validacao
 
-- **Objetivo**: executar issues com orquestracao, review e auditoria formais.
+- **Objetivo**: permitir execucao assistida, governanca de qualidade e consulta completa do historico operacional.
 - **Features incluidas**:
-  - Feature 3
   - Feature 4
-- **Gate de saida**: uma issue pode ser executada, revisada e auditada com vereditos rastreaveis.
-- **Criterios de aceite**: execucao sequencial, review pos-issue e auditoria de fase funcionando em fluxo integrado.
+  - Feature 5
+- **Gate de saida**: o sistema executa a proxima unidade elegivel com autonomia controlada, suporta review/auditoria e expoe trilha auditavel de ponta a ponta.
+- **Criterios de aceite**:
+  - elegibilidade e execucao respeitam dependencias, gates e work order
+  - review e auditoria conseguem produzir veredito e follow-up rastreavel
+  - timeline operacional e evidencias sao consultaveis pelo PM
 
 ### Epicos da Fase 3
 
 | Epico | Feature(s) | Status | SP Total |
 |-------|------------|--------|----------|
-| EPIC-F3-01 | Feature 3 | todo | 11 |
-| EPIC-F3-02 | Feature 4 | todo | 11 |
+| EPIC-F3-01 | Feature 4 | todo | 8 |
+| EPIC-F3-02 | Feature 5 | todo | 8 |
 
 ---
 
 # 14. Epicos
 
-> Cada epico abaixo aponta explicitamente para a feature de origem.
+> Cada epico abaixo repete explicitamente a `Feature de Origem` e preserva a cadeia canonica do framework.
 
-## Epico: Intake e PRD assistidos
+## Epico: Intake governado do projeto
 
 - **ID**: EPIC-F1-01
 - **Fase**: F1
 - **Feature de Origem**: Feature 1
-- **Objetivo**: permitir abertura e aprovacao governada de intake e PRD.
-- **Resultado de Negocio Mensuravel**: reduzir drasticamente o tempo do PM para abrir um projeto com documentacao inicial valida.
-- **Contexto Arquitetural**: CRUD de artefatos iniciais, aprovacoes, versoes e UI de revisao.
+- **Objetivo**: transformar contexto bruto em intake estruturado, revisavel e aprovavel.
+- **Resultado de Negocio Mensuravel**: reduzir fortemente o esforco manual do PM para abrir um projeto dentro da governanca.
+- **Contexto Arquitetural**: captura de contexto, validacao de taxonomias, versionamento de intake e historico de aprovacao.
 - **Definition of Done**:
-  - [ ] intake e PRD podem ser criados, aprovados e consultados com historico
+  - [ ] intake pode ser criado, validado, revisado e aprovado com trilha consultavel
 
 ### Issues do Epico
 
 | Issue ID | Nome | SP | Status | Feature |
 |----------|------|----|--------|---------|
-| ISSUE-F1-01-001 | Implementar intake assistido com gate de aprovacao | 5 | todo | Feature 1 |
-| ISSUE-F1-01-002 | Implementar geracao de PRD com rastreabilidade do gate | 6 | todo | Feature 1 |
+| ISSUE-F1-01-001 | Estruturar intake inicial a partir de contexto bruto | 5 | todo | Feature 1 |
+| ISSUE-F1-01-002 | Registrar revisao e aprovacao governada do intake | 3 | todo | Feature 1 |
 
 ---
 
-## Epico: Timeline e artefatos canonicos
+## Epico: PRD `feature-first` aprovado
 
 - **ID**: EPIC-F1-02
 - **Fase**: F1
-- **Feature de Origem**: Feature 5
-- **Objetivo**: persistir trilha operacional e sincronizar artefatos com estado do projeto.
-- **Resultado de Negocio Mensuravel**: permitir auditoria e consulta centralizada do historico do projeto.
-- **Contexto Arquitetural**: tabelas transversais, sincronizacao Markdown/banco e timeline administrativa.
+- **Feature de Origem**: Feature 2
+- **Objetivo**: gerar e aprovar um PRD coerente com o intake e com a governanca `feature-first`.
+- **Resultado de Negocio Mensuravel**: sair da abertura do projeto com um PRD utilizavel para decomposicao posterior, sem retrabalho estrutural.
+- **Contexto Arquitetural**: derivacao intake -> PRD, preservacao de frontmatter, estrutura de features e versoes aprovadas.
 - **Definition of Done**:
-  - [ ] timeline e historico operacional estao disponiveis por projeto
+  - [ ] PRD pode ser gerado, revisado e aprovado preservando origem e criterios por feature
 
 ### Issues do Epico
 
 | Issue ID | Nome | SP | Status | Feature |
 |----------|------|----|--------|---------|
-| ISSUE-F1-02-001 | Persistir prompts, outputs, aprovacoes e evidencias do planejamento | 5 | todo | Feature 5 |
-| ISSUE-F1-02-002 | Materializar artefatos Markdown e estado de sincronizacao | 6 | todo | Feature 5 |
+| ISSUE-F1-02-001 | Gerar PRD `feature-first` a partir do intake aprovado | 5 | todo | Feature 2 |
+| ISSUE-F1-02-002 | Validar rastreabilidade e gate de aprovacao do PRD | 3 | todo | Feature 2 |
 
 ---
 
-## Epico: Planejamento hierarquico orientado a features
+## Epico: Planejamento executavel rastreavel
 
 - **ID**: EPIC-F2-01
 - **Fase**: F2
-- **Feature de Origem**: Feature 2
-- **Objetivo**: gerar fases, epicos, issues e tasks a partir do PRD com rastreabilidade de feature.
-- **Resultado de Negocio Mensuravel**: o PM consegue decompor o projeto inteiro sem reorganizar manualmente o plano por camada tecnica.
-- **Contexto Arquitetural**: contratos de planejamento, IDs canonicos e navegacao hierarquica.
+- **Feature de Origem**: Feature 3
+- **Objetivo**: derivar fases, epicos, issues e tasks a partir do PRD, preservando `Feature de Origem`.
+- **Resultado de Negocio Mensuravel**: permitir que o PM decomponha um projeto inteiro sem reorganizar manualmente o trabalho por camada tecnica.
+- **Contexto Arquitetural**: hierarquia canonica, limites de issue/task, IDs estaveis e links de rastreabilidade.
 - **Definition of Done**:
-  - [ ] fases, epicos, issues e tasks refletem as features do PRD
+  - [ ] a cadeia `feature -> fase -> epico -> issue` e navegavel e consistente
 
 ### Issues do Epico
 
 | Issue ID | Nome | SP | Status | Feature |
 |----------|------|----|--------|---------|
-| ISSUE-F2-01-001 | Implementar decomposicao hierarquica por features | 5 | todo | Feature 2 |
-| ISSUE-F2-01-002 | Expor visao administrativa do planejamento feature-first | 6 | todo | Feature 2 |
+| ISSUE-F2-01-001 | Derivar fases e epicos a partir das features do PRD | 5 | todo | Feature 3 |
+| ISSUE-F2-01-002 | Derivar issues e tasks com `Feature de Origem` explicita | 5 | todo | Feature 3 |
 
 ---
 
-## Epico: Execucao orquestrada e governanca
+## Epico: Execucao assistida com autonomia controlada
 
 - **ID**: EPIC-F3-01
 - **Fase**: F3
-- **Feature de Origem**: Feature 3
-- **Objetivo**: executar issues com orquestracao, gates e autonomia configuravel.
-- **Resultado de Negocio Mensuravel**: reduzir o esforço manual de execucao e tornar a proxima unidade elegivel sempre identificavel.
-- **Contexto Arquitetural**: AgentOrchestrator, work orders e estados operacionais.
+- **Feature de Origem**: Feature 4
+- **Objetivo**: selecionar a proxima unidade elegivel, executar com contexto suficiente e aplicar gates humanos quando necessario.
+- **Resultado de Negocio Mensuravel**: reduzir a operacao manual para colocar o projeto em movimento com seguranca e previsibilidade.
+- **Contexto Arquitetural**: work orders, politica de autonomia, contexto de execucao, bloqueios e evidencias operacionais.
 - **Definition of Done**:
-  - [ ] a proxima task elegivel pode ser identificada e executada com controle de autonomia
+  - [ ] a proxima unidade elegivel pode ser selecionada, executada e acompanhada com historico consultavel
 
 ### Issues do Epico
 
 | Issue ID | Nome | SP | Status | Feature |
 |----------|------|----|--------|---------|
-| ISSUE-F3-01-001 | Implementar selecao da proxima unidade executavel | 5 | todo | Feature 3 |
-| ISSUE-F3-01-002 | Implementar painel operacional de execucao | 6 | todo | Feature 3 |
+| ISSUE-F3-01-001 | Selecionar a proxima unidade elegivel com contexto completo | 5 | todo | Feature 4 |
+| ISSUE-F3-01-002 | Executar com autonomia configuravel e acompanhamento operacional | 5 | todo | Feature 4 |
 
 ---
 
-## Epico: Revisao e auditoria formal
+## Epico: Governanca final e historico auditavel
 
 - **ID**: EPIC-F3-02
 - **Fase**: F3
-- **Feature de Origem**: Feature 4
-- **Objetivo**: fechar o ciclo com review, auditoria e follow-ups rastreaveis.
-- **Resultado de Negocio Mensuravel**: garantir que todo ciclo importante tenha veredito, origem e trilha de remediacao.
-- **Contexto Arquitetural**: review service, audit gate e persistencia de vereditos.
+- **Feature de Origem**: Feature 5
+- **Objetivo**: permitir review, auditoria e consulta do historico operacional com rastreabilidade de follow-ups.
+- **Resultado de Negocio Mensuravel**: aumentar a confianca do PM no fluxo e reduzir opacidade na operacao assistida.
+- **Contexto Arquitetural**: timeline, auditorias, vereditos, follow-ups, origem/destino e consulta de evidencias.
 - **Definition of Done**:
-  - [ ] issues e fases podem ser revisadas e auditadas com rastreabilidade de origem
+  - [ ] review, auditoria e timeline estao disponiveis com origem e historico claros
 
 ### Issues do Epico
 
 | Issue ID | Nome | SP | Status | Feature |
 |----------|------|----|--------|---------|
-| ISSUE-F3-02-001 | Implementar review pos-issue e gate de fase | 5 | todo | Feature 4 |
-| ISSUE-F3-02-002 | Implementar consultas de auditoria e follow-up | 6 | todo | Feature 4 |
+| ISSUE-F3-02-001 | Preparar review pos-issue e gate de auditoria de fase | 5 | todo | Feature 5 |
+| ISSUE-F3-02-002 | Expor timeline auditavel e follow-ups rastreaveis | 5 | todo | Feature 5 |
 
-## 15. Dependencias Externas
+---
+
+# 15. Dependencias Externas
 
 | Dependencia | Tipo | Origem | Impacto | Status |
-|---|---|---|---|---|
-| PROJETOS/COMUM | docs-governance | framework | fonte canônica do scaffold | active |
-
-## 16. Rollout e Comunicacao
-
-- **Estratégia de deploy**: coexistencia incremental com o fluxo documental legado
-- **Comunicação de mudanças**: o PM recebe visibilidade por feature, fase e historico operacional
-- **Treinamento necessário**: nenhum
-- **Suporte pós-launch**: ajuste de gates, autonomia e mapeamentos de feature conforme uso real
-
-## 17. Revisões e Auditorias
-
-- **Auditorias planejadas**: F1-R01, F2-R01, F3-R01
-- **Critérios de auditoria**: aderencia ao feature-first, rastreabilidade e ausencia de drift
-- **Threshold anti-monolito**: nao aplicavel; o artefato e documental e orientado a features
-
-## 18. Checklist de Prontidão
-
-- [x] Intake referenciado e versao confirmada
-- [x] Features definidas com criterios de aceite verificaveis
-- [x] Cada feature com impacts por camada preenchidos
-- [x] Rastreabilidade explicita `Feature -> Fase -> Epico -> Issue`
-- [x] Épicos criados e vinculados a features
-- [x] Fases definidas com gates de saída
-- [x] Dependências externas mapeadas
-- [x] Riscos identificados e mitigacoes planejadas
-- [x] Rollout planejado
-
-## 19. Anexos e Referências
-
-- [Intake](./INTAKE-FW5.md)
-- [Audit Log](./AUDIT-LOG.md)
-- [Fase](./F1-FUNDACAO/F1_FW5_EPICS.md)
-- [Epic](./F1-FUNDACAO/EPIC-F1-01-FUNDACAO-DO-PROJETO.md)
-- [Issue bootstrap](./F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO)
-- [Relatorio de auditoria](./F1-FUNDACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md)
-
-> Frase Guia: "Feature organiza, Task executa, Teste valida"
+|-------------|------|--------|---------|--------|
+| nenhuma dependencia externa critica no MVP | n-a | n-a | o escopo inicial depende apenas do stack e da governanca ja existentes no NPBB | n-a |

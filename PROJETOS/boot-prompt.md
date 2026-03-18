@@ -22,6 +22,12 @@ O padrao canonico deste repositorio e `issue-first`, com a cadeia:
 Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias
 ```
 
+Principio operacional:
+
+- `delivery-first` e a regra de produto
+- `feature-first` e a forma de organizar o PRD e o planejamento
+- a arquitetura existe para viabilizar a feature, nao para virar o eixo principal do projeto
+
 A entrega executavel vive em um recurso proprio dentro de `issues/`:
 
 - preferencialmente uma pasta `ISSUE-*/` com `README.md` e `TASK-*.md`
@@ -57,6 +63,7 @@ PROJETOS/COMUM/GOV-SCRUM.md
 PROJETOS/COMUM/GOV-SPRINT-LIMITES.md
 PROJETOS/COMUM/GOV-WORK-ORDER.md
 PROJETOS/COMUM/GOV-ISSUE-FIRST.md
+PROJETOS/COMUM/GOV-BRANCH-STRATEGY.md
 PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md
 PROJETOS/COMUM/GOV-COMMIT-POR-TASK.md
 PROJETOS/COMUM/GOV-INTAKE.md
@@ -73,8 +80,9 @@ PROJETOS/<PROJETO>/PRD-<PROJETO>.md
 PROJETOS/<PROJETO>/AUDIT-LOG.md
 ```
 
-Entenda a origem da iniciativa, o objetivo, o escopo, a arquitetura, os riscos,
-as fases previstas, as restricoes e o historico de auditorias do projeto.
+Entenda a origem da iniciativa, o objetivo, o escopo, as features do projeto,
+a arquitetura afetada, os riscos, as fases previstas, as restricoes e o
+historico de auditorias do projeto.
 
 ### Nivel 4 - Fases
 
@@ -100,7 +108,8 @@ Para execucao de issue, leia:
 PROJETOS/<PROJETO>/F<N>-<NOME>/EPIC-F<N>-<NN>-<NOME>.md
 ```
 
-Use o epico para entender objetivo, DoD, dependencias e indice das issues.
+Use o epico para entender objetivo, feature de origem, DoD, dependencias e
+indice das issues.
 
 Para auditoria de fase, leia:
 
@@ -194,7 +203,7 @@ Principios obrigatorios:
 
 - implementar exatamente o que os criterios de aceitacao descrevem
 - nao aumentar escopo sem aprovacao explicita
-- pensar na arquitetura antes de codificar
+- pensar primeiro na feature/entrega e usar a arquitetura como meio, nao como eixo
 - priorizar modularidade, responsabilidade unica, baixo acoplamento e alta coesao
 - escrever ou atualizar testes conforme indicado na issue
 - nao emitir veredito `go` em auditoria sem commit SHA e arvore limpa
@@ -249,7 +258,7 @@ Migrations     : alembic upgrade head deve passar sem erro
    `done` quando todas as tasks estiverem `done`); se for legada, atualize o
    arquivo `ISSUE-*.md`
 2. Marque o `Definition of Done` no `README.md` da issue ou no arquivo legado
-3. Atualize a tabela de issues do `EPIC-*.md`
+3. Atualize a tabela de issues do `EPIC-*.md`, mantendo a feature de origem explicita
 4. Recalcule o status do epico e mantenha a fase `active` ate o fechamento do gate de auditoria
 5. Se todos os epicos da fase estiverem `done`, atualize o gate de auditoria da fase para `pending`
 

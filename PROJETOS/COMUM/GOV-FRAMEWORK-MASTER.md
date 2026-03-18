@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-FRAMEWORK-MASTER.md"
-version: "2.1"
+version: "2.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-18"
 ---
 
 # GOV-FRAMEWORK-MASTER
@@ -11,6 +11,16 @@ last_updated: "2026-03-16"
 > Este documento e o mapa de alto nivel do framework. As regras detalhadas de intake,
 > scrum, auditoria, limites e execucao vivem em documentos especializados e devem ser
 > referenciadas, nao copiadas.
+
+## 0. Abordagem Delivery-First
+
+> O framework utiliza o principio **delivery-first** para planejamento de projetos de codigo.
+> No planejamento documental, esse principio se materializa como **feature-first**.
+> O eixo principal sao as **features** (comportamentos entregaveis), nao as camadas tecnicas
+> (banco/backend/frontend). A arquitetura aparece como impacto de cada feature, nao como
+> organizacao principal.
+>
+> Ver: `TEMPLATE-PRD.md` para estrutura de features, `GOV-BRANCH-STRATEGY.md` para estrategia de branches.
 
 ## 1. Estrutura Canonica do Repositorio
 
@@ -27,9 +37,11 @@ PROJETOS/
     GOV-COMMIT-POR-TASK.md
     GOV-DECISOES.md
     GOV-ISSUE-FIRST.md
+    GOV-BRANCH-STRATEGY.md          (delivery-first / feature-first)
     SPEC-TASK-INSTRUCTIONS.md
     SPEC-ANTI-MONOLITO.md
-    TEMPLATE-*.md
+    TEMPLATE-PRD.md                  (delivery-first / feature-first)
+    TEMPLATE-INTAKE.md
     PROMPT-*.md
     SESSION-*.md
   <PROJETO>/
@@ -73,6 +85,7 @@ A cadeia operacional do framework vive em `GOV-SCRUM.md`.
 | thresholds anti-monolito | `SPEC-ANTI-MONOLITO.md` |
 | decisoes estruturais compartilhadas | `GOV-DECISOES.md` |
 | operacao interativa em chat | `SESSION-MAPA.md` |
+| estrategia de branches | `GOV-BRANCH-STRATEGY.md` |
 
 ## 4. Artefatos Canonicos do Projeto
 

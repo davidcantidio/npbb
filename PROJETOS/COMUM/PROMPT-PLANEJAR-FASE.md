@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-PLANEJAR-FASE.md"
-version: "2.2"
+version: "2.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-18"
 ---
 
 # PROMPT-PLANEJAR-FASE
@@ -20,9 +20,15 @@ arquivo diretamente no chat fora do fluxo de sessao.
 
 Voce e um agente de engenharia responsavel por materializar o planejamento de um projeto ativo no repositorio atual.
 
+Principio de trabalho:
+
+- `delivery-first` e a regra de produto
+- `feature-first` e a forma de planejar esse principio no framework
+- fase, epico e issue existem para materializar features, nao para separar camadas tecnicas
+
 Seu objetivo e criar os arquivos de planejamento da fase e do epico no padrao `issue-first`, em que:
 
-- o arquivo da fase consolida os epicos
+- o arquivo da fase consolida os epicos e as features atendidas
 - o arquivo do epico funciona como manifesto e indice
 - cada issue vive como recurso proprio em `issues/`, preferencialmente uma
   pasta `ISSUE-*/` com `README.md` e `TASK-*.md`
@@ -65,8 +71,11 @@ Se a sprint ainda nao estiver definida, o arquivo em `sprints/` pode ser omitido
 - novos `EPIC-*.md`, manifestos `README.md` de issue, `ISSUE-*.md` legadas,
   `TASK-N.md` e `SPRINT-*.md` iniciam com status `todo`
 - o arquivo de fase deve conter objetivo, gate de saida, tabela de epicos, dependencias e escopo dentro/fora
+- a secao `Features do Projeto` do PRD e a fonte primaria do planejamento; se ela nao existir ou estiver insuficiente, emitir `BLOQUEADO`
+- cada fase deve listar explicitamente as features que entrega; nao organizar fase por camada tecnica
 - o epico nao duplica criterios detalhados da issue
-- cada issue deve conter `task_instruction_mode`, user story, contexto tecnico, plano TDD, criterios, DoD, tarefas, arquivos reais e artefato minimo
+- cada epico deve conter `Feature de Origem` usando o mesmo ID do PRD
+- cada issue deve conter `Feature de Origem`, `task_instruction_mode`, user story, contexto tecnico, plano TDD, criterios, DoD, tarefas, arquivos reais e artefato minimo
 - issue nova deve usar pasta `ISSUE-*/` com `README.md` + `TASK-*.md` quando
   houver tarefas decupadas, multiplas tasks ou `task_instruction_mode: required`
 - issue simples, local e de task unica pode permanecer como arquivo
@@ -85,6 +94,7 @@ Se a sprint ainda nao estiver definida, o arquivo em `sprints/` pode ser omitido
 - usar apenas os status documentais `todo`, `active`, `done`, `cancelled`
 - ao concluir uma fase, o arquivamento futuro sera em `<projeto>/feito/`
 - use o intake e o PRD como origem do escopo e nao invente requisitos fora deles
+- preserve a rastreabilidade minima `feature -> fase -> epico -> issue` em todos os artefatos gerados
 - links em epicos e sprints devem apontar para a pasta `ISSUE-*/` ou para
   `README.md` quando a issue for granularizada; nao assumir `.md` unico
 

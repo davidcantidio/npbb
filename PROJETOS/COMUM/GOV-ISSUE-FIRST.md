@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-ISSUE-FIRST.md"
-version: "2.3"
+version: "2.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-18"
 ---
 
 # GOV-ISSUE-FIRST
@@ -55,11 +55,11 @@ Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PRO
 ## Responsabilidades por Documento
 
 - `INTAKE-*.md`: usar `TEMPLATE-INTAKE.md`
-- `PRD-*.md`: objetivo, arquitetura, requisitos, fases e restricoes do projeto
+- `PRD-*.md`: objetivo, features, arquitetura afetada, fases e restricoes do projeto
 - `AUDIT-LOG.md`: usar `TEMPLATE-AUDITORIA-LOG.md`
 - `F<N>_<PROJETO>_EPICS.md`: objetivo da fase, gate, tabela de epicos, dependencias e checklist de transicao do gate
 - `EPIC-*.md`: manifesto do epico, DoD do epico, dependencias, artefato minimo e indice das issues
-- `issues/ISSUE-*/` (pasta) ou `issues/ISSUE-*.md` (legado): user story, plano TDD, criterios
+- `issues/ISSUE-*/` (pasta) ou `issues/ISSUE-*.md` (legado): feature de origem, user story, plano TDD, criterios
   `Given/When/Then`, DoD; quando granularizada, tasks em `TASK-*.md`; `decision_refs` e instructions
   por task quando exigidas; quando `task_instruction_mode: required` e a task envolver codigo,
   o plano TDD da issue deve descer para a task via `tdd_aplicavel` e `testes_red`; follow-up
@@ -113,9 +113,9 @@ audit_gate: "not_ready"
 
 ## Epicos
 
-| ID | Nome | Objetivo | Depende de | Status | Arquivo |
-|---|---|---|---|---|---|
-| EPIC-F1-01 | Nome do epico | Resultado tecnico do epico | nenhuma | todo | [EPIC-F1-01-NOME.md](./EPIC-F1-01-NOME.md) |
+| ID | Nome | Objetivo | Feature | Depende de | Status | Arquivo |
+|---|---|---|---|---|---|---|
+| EPIC-F1-01 | Nome do epico | Resultado entregavel do epico | Feature 1 | nenhuma | todo | [EPIC-F1-01-NOME.md](./EPIC-F1-01-NOME.md) |
 
 ## Dependencias entre Epicos
 
@@ -150,6 +150,14 @@ last_updated: "YYYY-MM-DD"
 
 ## Resultado de Negocio Mensuravel
 
+## Feature de Origem
+
+> Rastreabilidade: qual feature do PRD este épico implementa.
+> O eixo do framework é feature-first; o épico agrupa issues que entregam uma feature completa.
+
+- **Feature**: <ID da Feature no PRD, ex: Feature 1>
+- **Comportamento coberto**: <resumo do comportamento entregável>
+
 ## Contexto Arquitetural
 
 ## Definition of Done do Epico
@@ -157,9 +165,9 @@ last_updated: "YYYY-MM-DD"
 
 ## Issues do Epico
 
-| Issue ID | Nome | Objetivo | SP | Status | Documento |
-|---|---|---|---|---|---|
-| ISSUE-F1-01-001 | Nome da issue | Resultado tecnico unico | 3 | todo | [ISSUE-F1-01-001-NOME](./issues/ISSUE-F1-01-001-NOME/) |
+| Issue ID | Nome | Objetivo | SP | Status | Documento | Feature |
+|---|---|---|---|---|---|---|
+| ISSUE-F1-01-001 | Nome da issue | Resultado tecnico unico | 3 | todo | [ISSUE-F1-01-001-NOME](./issues/ISSUE-F1-01-001-NOME/) | Feature 1 |
 
 ## Artifact Minimo do Epico
 
@@ -186,6 +194,11 @@ decision_refs: []
 
 ## User Story
 Como <papel>, quero <acao> para <resultado>.
+
+## Feature de Origem
+
+- **Feature**: <ID da Feature no PRD, ex: Feature 1>
+- **Comportamento coberto**: <resumo do recorte implementado por esta issue>
 
 ## Contexto Tecnico
 
@@ -221,6 +234,7 @@ Como <papel>, quero <acao> para <resultado>.
 Notas obrigatorias:
 
 - o `README.md` concentra apenas o manifesto da issue
+- cada issue deve manter rastreabilidade explicita para a feature do PRD que ela implementa
 - o detalhamento operacional de cada task vive em `TASK-N.md`
 - quando `task_instruction_mode: required`, os campos obrigatorios aparecem no
   corpo de cada `TASK-N.md`, nunca como bloco inline no `README.md`
@@ -271,6 +285,11 @@ decision_refs: []
 
 ## User Story
 Como <papel>, quero <acao> para <resultado>.
+
+## Feature de Origem
+
+- **Feature**: <ID da Feature no PRD, ex: Feature 1>
+- **Comportamento coberto**: <resumo do recorte implementado por esta issue>
 
 ## Contexto Tecnico
 

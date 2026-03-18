@@ -14,6 +14,10 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _lowercase_enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
+
+
 class ProjectStatus(str, Enum):
     DRAFT = "draft"
     INTAKE = "intake"
@@ -27,6 +31,13 @@ class ProjectStatus(str, Enum):
 
 class DocumentStatus(str, Enum):
     TODO = "todo"
+    ACTIVE = "active"
+    DONE = "done"
+    CANCELLED = "cancelled"
+
+
+class ArtifactStatus(str, Enum):
+    DRAFT = "draft"
     ACTIVE = "active"
     DONE = "done"
     CANCELLED = "cancelled"
@@ -75,6 +86,20 @@ class FollowupDestination(str, Enum):
     CANCELLED = "cancelled"
 
 
+class IntakeKind(str, Enum):
+    NEW_PRODUCT = "new-product"
+    NEW_CAPABILITY = "new-capability"
+    PROBLEM = "problem"
+    REFACTOR = "refactor"
+    AUDIT_REMEDIATION = "audit-remediation"
+
+
+class SourceMode(str, Enum):
+    ORIGINAL = "original"
+    BACKFILLED = "backfilled"
+    AUDIT_DERIVED = "audit-derived"
+
+
 class FrameworkProject(SQLModel, table=True):
     """Top-level FRAMEWORK3 project."""
 
@@ -86,11 +111,11 @@ class FrameworkProject(SQLModel, table=True):
     description: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     status: ProjectStatus = Field(
         default=ProjectStatus.DRAFT,
-        sa_column=Column(SQLEnum(ProjectStatus, name="framework_project_status"), nullable=False),
+        sa_column=Column(SQLEnum(ProjectStatus, name="framework_project_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     agent_mode: AgentMode = Field(
         default=AgentMode.HUMAN_IN_LOOP,
-        sa_column=Column(SQLEnum(AgentMode, name="framework_agent_mode"), nullable=False),
+        sa_column=Column(SQLEnum(AgentMode, name="framework_agent_mode", values_callable=_lowercase_enum_values), nullable=False),
     )
     source_of_truth: str = Field(default="markdown_primary", max_length=40)
     project_root_path: Optional[str] = Field(default=None, max_length=500)
@@ -131,13 +156,22 @@ class FrameworkIntake(SQLModel, table=True):
     project_id: int = Field(foreign_key="framework_project.id", index=True)
     doc_id: str = Field(max_length=200)
     title: str = Field(max_length=200)
-    status: str = Field(default="draft", max_length=32, index=True)
+    status: ArtifactStatus = Field(
+        default=ArtifactStatus.DRAFT,
+        sa_column=Column(SQLEnum(ArtifactStatus, name="framework_artifact_status", values_callable=_lowercase_enum_values), nullable=False),
+    )
     approval_status: ApprovalStatus = Field(
         default=ApprovalStatus.PENDING,
-        sa_column=Column(SQLEnum(ApprovalStatus, name="framework_approval_status"), nullable=False),
+        sa_column=Column(SQLEnum(ApprovalStatus, name="framework_approval_status", values_callable=_lowercase_enum_values), nullable=False),
     )
-    intake_kind: Optional[str] = Field(default=None, max_length=64)
-    source_mode: Optional[str] = Field(default=None, max_length=64)
+    intake_kind: Optional[IntakeKind] = Field(
+        default=None,
+        sa_column=Column(SQLEnum(IntakeKind, name="framework_intake_kind", values_callable=_lowercase_enum_values), nullable=True),
+    )
+    source_mode: Optional[SourceMode] = Field(
+        default=None,
+        sa_column=Column(SQLEnum(SourceMode, name="framework_source_mode", values_callable=_lowercase_enum_values), nullable=True),
+    )
     content_md: str = Field(sa_column=Column(Text, nullable=False))
     file_path: Optional[str] = Field(default=None, max_length=500)
     checklist_status_json: Optional[dict[str, Any]] = Field(
@@ -172,10 +206,13 @@ class FrameworkPRD(SQLModel, table=True):
     intake_id: Optional[int] = Field(default=None, foreign_key="framework_intake.id", index=True)
     doc_id: str = Field(max_length=200)
     title: str = Field(max_length=200)
-    status: str = Field(default="draft", max_length=32, index=True)
+    status: ArtifactStatus = Field(
+        default=ArtifactStatus.DRAFT,
+        sa_column=Column(SQLEnum(ArtifactStatus, name="framework_artifact_status", values_callable=_lowercase_enum_values), nullable=False),
+    )
     approval_status: ApprovalStatus = Field(
         default=ApprovalStatus.PENDING,
-        sa_column=Column(SQLEnum(ApprovalStatus, name="framework_approval_status"), nullable=False),
+        sa_column=Column(SQLEnum(ApprovalStatus, name="framework_approval_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     content_md: str = Field(sa_column=Column(Text, nullable=False))
     file_path: Optional[str] = Field(default=None, max_length=500)
@@ -213,11 +250,11 @@ class FrameworkPhase(SQLModel, table=True):
     name: str = Field(max_length=200)
     status: DocumentStatus = Field(
         default=DocumentStatus.TODO,
-        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status"), nullable=False),
+        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     audit_gate: AuditGateState = Field(
         default=AuditGateState.NOT_READY,
-        sa_column=Column(SQLEnum(AuditGateState, name="framework_audit_gate_state"), nullable=False),
+        sa_column=Column(SQLEnum(AuditGateState, name="framework_audit_gate_state", values_callable=_lowercase_enum_values), nullable=False),
     )
     objective: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     exit_gate: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
@@ -269,7 +306,7 @@ class FrameworkEpic(SQLModel, table=True):
     context_architecture: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     status: DocumentStatus = Field(
         default=DocumentStatus.TODO,
-        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status"), nullable=False),
+        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     dependency_refs_json: Optional[list[str]] = Field(
         default=None,
@@ -314,7 +351,7 @@ class FrameworkSprint(SQLModel, table=True):
     objective: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     status: DocumentStatus = Field(
         default=DocumentStatus.TODO,
-        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status"), nullable=False),
+        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     capacity_story_points: int = Field(default=0)
     capacity_issues: int = Field(default=0)
@@ -356,16 +393,16 @@ class FrameworkIssue(SQLModel, table=True):
     title: str = Field(max_length=220)
     status: DocumentStatus = Field(
         default=DocumentStatus.TODO,
-        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status"), nullable=False),
+        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     issue_format: IssueFormat = Field(
         default=IssueFormat.DIRECTORY,
-        sa_column=Column(SQLEnum(IssueFormat, name="framework_issue_format"), nullable=False),
+        sa_column=Column(SQLEnum(IssueFormat, name="framework_issue_format", values_callable=_lowercase_enum_values), nullable=False),
     )
     task_instruction_mode: TaskInstructionMode = Field(
         default=TaskInstructionMode.REQUIRED,
         sa_column=Column(
-            SQLEnum(TaskInstructionMode, name="framework_task_instruction_mode"),
+            SQLEnum(TaskInstructionMode, name="framework_task_instruction_mode", values_callable=_lowercase_enum_values),
             nullable=False,
         ),
     )
@@ -431,7 +468,7 @@ class FrameworkTask(SQLModel, table=True):
     title: str = Field(max_length=220)
     status: DocumentStatus = Field(
         default=DocumentStatus.TODO,
-        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status"), nullable=False),
+        sa_column=Column(SQLEnum(DocumentStatus, name="framework_document_status", values_callable=_lowercase_enum_values), nullable=False),
     )
     objective: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     preconditions_json: Optional[list[str]] = Field(
@@ -509,7 +546,7 @@ class AgentExecution(SQLModel, table=True):
     human_approval: Optional[ApprovalStatus] = Field(
         default=None,
         sa_column=Column(
-            SQLEnum(ApprovalStatus, name="framework_approval_status"),
+            SQLEnum(ApprovalStatus, name="framework_approval_status", values_callable=_lowercase_enum_values),
             nullable=True,
         ),
     )

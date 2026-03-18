@@ -5,7 +5,7 @@ status: "draft"
 owner: "PM"
 last_updated: "2026-03-17"
 project: "FRAMEWORK3"
-intake_kind: "platform-capability"
+intake_kind: "new-capability"
 source_mode: "original"
 origin_project: "nao_aplicavel"
 origin_phase: "nao_aplicavel"
@@ -34,7 +34,7 @@ audit_rigor: "elevated"
 - fase de origem: nao_aplicavel
 - auditoria de origem: nao_aplicavel
 - relatorio de origem: nao_aplicavel
-- motivo da abertura deste intake: Consolidar o framework de projetos em um sistema CRUD + orquestrador de agentes. O usuário atualmente copia e renomeia arquivos da pasta COMUM, preenche cabeçalhos manualmente e aprova cada gate. Ver algoritmo detalhado em [PROJETOS/Algoritmo.md](PROJETOS/Algoritmo.md). Deseja deixar mais a cargo da IA (orquestrador + subagentes), persistir todo o histórico para treinamento futuro de LLM especialista e manter obediência aos arquivos de governança existentes.
+- motivo da abertura deste intake: Consolidar o framework de projetos em um sistema CRUD + orquestrador de agentes. O usuário atualmente copia e renomeia arquivos da pasta COMUM, preenche cabeçalhos manualmente e aprova cada gate. Ver algoritmo detalhado em [PROJETOS/Algoritmo.md](../Algoritmo.md). Deseja deixar mais a cargo da IA (orquestrador + subagentes), persistir todo o histórico para treinamento futuro de LLM especialista e manter obediência aos arquivos de governança existentes.
 
 ## 1. Resumo Executivo
 
@@ -70,9 +70,9 @@ audit_rigor: "elevated"
 
 ## 5. Fluxo Principal Desejado
 
-O fluxo segue rigorosamente o algoritmo descrito em [PROJETOS/Algoritmo.md](PROJETOS/Algoritmo.md) e os arquivos de governança:
+O fluxo segue rigorosamente o algoritmo descrito em [PROJETOS/Algoritmo.md](../Algoritmo.md) e os arquivos de governança:
 
-1. Preenchimento do intake via formulário (baseado em [PROJETOS/COMUM/SESSION-CRIAR-INTAKE.md](PROJETOS/COMUM/SESSION-CRIAR-INTAKE.md))
+1. Preenchimento do intake via formulário (baseado em [PROJETOS/COMUM/SESSION-CRIAR-INTAKE.md](../COMUM/SESSION-CRIAR-INTAKE.md))
 2. PM aprova Intake
 3. IA gera PRD baseado no Intake
 4. PM aprova PRD

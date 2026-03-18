@@ -11,7 +11,7 @@ project: "FW5"
 
 ## Objetivo
 
-Planejar o projeto novo a partir do PRD gerado e do bootstrap inicial da fase F1-FUNDACAO.
+Planejar o projeto novo a partir do PRD gerado e da fase inicial `F1-FUNDACAO`, preservando o backlog canonico derivado do PRD.
 
 ## Sessao Canonica
 

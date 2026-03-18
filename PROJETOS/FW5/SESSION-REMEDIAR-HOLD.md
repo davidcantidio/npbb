@@ -11,7 +11,7 @@ project: "FW5"
 
 ## Objetivo
 
-Roteiar follow-ups caso a auditoria inicial da fase bootstrap retorne hold.
+Roteiar follow-ups caso a auditoria da fase alvo retorne `hold`.
 
 ## Sessao Canonica
 

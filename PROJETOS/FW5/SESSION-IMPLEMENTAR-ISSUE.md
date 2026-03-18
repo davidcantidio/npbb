@@ -11,7 +11,7 @@ project: "FW5"
 
 ## Objetivo
 
-Executar a issue bootstrap da fase F1-FUNDACAO e validar o scaffold inicial do projeto.
+Executar a primeira issue canonica da fase F1-FUNDACAO e iniciar a entrega de intake governado do projeto.
 
 ## Sessao Canonica
 
@@ -24,11 +24,11 @@ Leia e siga integralmente:
 ```text
 PROJETO:     FW5
 FASE:        F1-FUNDACAO
-ISSUE_ID:    ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO
-ISSUE_PATH:  PROJETOS/FW5/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO
+ISSUE_ID:    ISSUE-F1-01-001-ESTRUTURAR-INTAKE-INICIAL-A-PARTIR-DE-CONTEXTO-BRUTO
+ISSUE_PATH:  PROJETOS/FW5/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTRUTURAR-INTAKE-INICIAL-A-PARTIR-DE-CONTEXTO-BRUTO
 TASK_ID:     T1
 ```
 
 ## Regra Local Adicional
 
-A primeira issue do projeto aponta para o bootstrap inicial gerado pelo scaffold.
+A primeira issue do projeto aponta para a entrega canônica de intake da Feature 1.

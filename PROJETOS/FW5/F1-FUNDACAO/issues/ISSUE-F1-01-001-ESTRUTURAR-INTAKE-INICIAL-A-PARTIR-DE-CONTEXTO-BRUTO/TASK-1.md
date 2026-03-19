@@ -3,9 +3,9 @@ doc_id: "TASK-1.md"
 issue_id: "ISSUE-F1-01-001-ESTRUTURAR-INTAKE-INICIAL-A-PARTIR-DE-CONTEXTO-BRUTO"
 task_id: "T1"
 version: "1.1"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-19"
 tdd_aplicavel: true
 ---
 

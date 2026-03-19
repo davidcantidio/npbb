@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, get_args, get_origin
 
 import sqlalchemy as sa
 
@@ -26,11 +26,15 @@ from app.models.framework_models import (
 )
 from app.schemas.framework import (
     FrameworkIntakeCreate,
+    FrameworkIntakeKnownGap,
     FrameworkIntakeRead,
+    FrameworkIntakeStructuredPayload,
     FrameworkIntakeUpdate,
+    FrameworkIntakeVersionEntry,
     FrameworkPRDCreate,
     FrameworkPRDRead,
     FrameworkPRDUpdate,
+    FrameworkReadinessChecklistItem,
 )
 
 
@@ -47,6 +51,21 @@ def _annotation_enum_values(annotation: Any) -> tuple[str, ...]:
             return _enum_values(arg)
 
     raise AssertionError(f"expected enum annotation, got {annotation!r}")
+
+
+def _annotation_list_item_type(annotation: Any) -> Any:
+    assert get_origin(annotation) is list
+    args = get_args(annotation)
+    assert len(args) == 1
+    return args[0]
+
+
+def _annotation_optional_type(annotation: Any) -> Any:
+    args = get_args(annotation)
+    assert len(args) == 2
+    non_none_args = [arg for arg in args if arg is not type(None)]
+    assert len(non_none_args) == 1
+    return non_none_args[0]
 
 
 def _assert_sqlalchemy_enum(
@@ -203,6 +222,34 @@ def test_framework_schemas_use_controlled_types_for_intake_and_prd_contracts() -
             _annotation_enum_values(schema_cls.model_fields["source_mode"].annotation)
             == expected_source_mode
         )
+
+
+def test_framework_intake_contract_exposes_typed_payload_gaps_checklist_and_versions() -> None:
+    assert isinstance(FrameworkIntake.structured_payload, property)
+    assert isinstance(FrameworkIntake.known_gaps, property)
+    assert isinstance(FrameworkIntake.version_history, property)
+    assert isinstance(FrameworkIntake.readiness_checklist, property)
+    assert isinstance(FrameworkIntake.ready_for_prd, property)
+
+    assert FrameworkIntakeCreate.model_fields["structured_payload"].annotation is FrameworkIntakeStructuredPayload
+    assert FrameworkIntakeCreate.model_fields["structured_payload"].is_required()
+    assert _annotation_list_item_type(FrameworkIntakeCreate.model_fields["known_gaps"].annotation) is FrameworkIntakeKnownGap
+    assert _annotation_list_item_type(FrameworkIntakeCreate.model_fields["version_history"].annotation) is FrameworkIntakeVersionEntry
+    assert _annotation_list_item_type(FrameworkIntakeCreate.model_fields["readiness_checklist"].annotation) is FrameworkReadinessChecklistItem
+    assert FrameworkIntakeCreate.model_fields["ready_for_prd"].annotation is bool
+
+    assert _annotation_optional_type(FrameworkIntakeUpdate.model_fields["structured_payload"].annotation) is FrameworkIntakeStructuredPayload
+    assert _annotation_list_item_type(FrameworkIntakeRead.model_fields["known_gaps"].annotation) is FrameworkIntakeKnownGap
+    assert _annotation_list_item_type(FrameworkIntakeRead.model_fields["version_history"].annotation) is FrameworkIntakeVersionEntry
+    assert _annotation_list_item_type(FrameworkIntakeRead.model_fields["readiness_checklist"].annotation) is FrameworkReadinessChecklistItem
+    assert FrameworkIntakeRead.model_fields["structured_payload"].annotation is FrameworkIntakeStructuredPayload
+    assert FrameworkIntakeRead.model_fields["ready_for_prd"].annotation is bool
+    assert _annotation_enum_values(FrameworkIntakeRead.model_fields["approval_status"].annotation) == (
+        "pending",
+        "approved",
+        "rejected",
+        "auto_approved",
+    )
 
 
 def test_framework_initial_revision_reflects_the_canonical_contract() -> None:

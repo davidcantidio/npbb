@@ -1,9 +1,9 @@
 ---
 doc_id: "ISSUE-F1-01-001-ESTRUTURAR-INTAKE-INICIAL-A-PARTIR-DE-CONTEXTO-BRUTO"
 version: "1.0"
-status: "todo"
+status: "active"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-19"
 task_instruction_mode: "required"
 decision_refs: []
 ---

@@ -67,6 +67,52 @@ class FrameworkProjectRead(BaseModel):
     completed_at: datetime | None = None
 
 
+class FrameworkIntakeStructuredPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    problem_statement: str = Field(min_length=1)
+    primary_audience: str = Field(min_length=1)
+    dominant_job_to_be_done: str = Field(min_length=1)
+    main_flow: list[str] = Field(default_factory=list, min_length=1)
+    scope_in: list[str] = Field(default_factory=list, min_length=1)
+    scope_out: list[str] = Field(default_factory=list, min_length=1)
+    business_goal: str = Field(min_length=1)
+    success_metrics: list[str] = Field(default_factory=list, min_length=1)
+    constraints: list[str] = Field(default_factory=list, min_length=1)
+    non_goals: list[str] = Field(default_factory=list, min_length=1)
+    dependencies: list[str] = Field(default_factory=list, min_length=1)
+    integrations: list[str] = Field(default_factory=list, min_length=1)
+    impacted_surfaces: list[str] = Field(default_factory=list, min_length=1)
+    risks: list[str] = Field(default_factory=list, min_length=1)
+
+
+class FrameworkIntakeKnownGap(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    blocking: bool
+    note: str | None = None
+
+
+class FrameworkReadinessChecklistItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    completed: bool
+    blocking: bool
+    note: str | None = None
+
+
+class FrameworkIntakeVersionEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_number: int = Field(ge=1)
+    created_at: datetime
+    summary: str = Field(min_length=1)
+
+
 class FrameworkIntakeCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     doc_id: str | None = Field(default=None, max_length=200)
@@ -74,6 +120,11 @@ class FrameworkIntakeCreate(BaseModel):
     intake_kind: IntakeKind | None = None
     source_mode: SourceMode | None = None
     content_md: str = Field(min_length=1)
+    structured_payload: FrameworkIntakeStructuredPayload
+    known_gaps: list[FrameworkIntakeKnownGap] = Field(default_factory=list)
+    version_history: list[FrameworkIntakeVersionEntry] = Field(default_factory=list)
+    readiness_checklist: list[FrameworkReadinessChecklistItem] = Field(default_factory=list)
+    ready_for_prd: bool = False
     file_path: str | None = None
     checklist_status_json: dict[str, Any] | None = None
     metadata_json: dict[str, Any] | None = None
@@ -85,6 +136,11 @@ class FrameworkIntakeUpdate(BaseModel):
     intake_kind: IntakeKind | None = None
     source_mode: SourceMode | None = None
     content_md: str | None = None
+    structured_payload: FrameworkIntakeStructuredPayload | None = None
+    known_gaps: list[FrameworkIntakeKnownGap] | None = None
+    version_history: list[FrameworkIntakeVersionEntry] | None = None
+    readiness_checklist: list[FrameworkReadinessChecklistItem] | None = None
+    ready_for_prd: bool | None = None
     file_path: str | None = None
     checklist_status_json: dict[str, Any] | None = None
     metadata_json: dict[str, Any] | None = None
@@ -102,6 +158,11 @@ class FrameworkIntakeRead(BaseModel):
     intake_kind: IntakeKind | None = None
     source_mode: SourceMode | None = None
     content_md: str
+    structured_payload: FrameworkIntakeStructuredPayload
+    known_gaps: list[FrameworkIntakeKnownGap] = Field(default_factory=list)
+    version_history: list[FrameworkIntakeVersionEntry] = Field(default_factory=list)
+    readiness_checklist: list[FrameworkReadinessChecklistItem] = Field(default_factory=list)
+    ready_for_prd: bool = False
     file_path: str | None = None
     checklist_status_json: dict[str, Any] | None = None
     metadata_json: dict[str, Any] | None = None

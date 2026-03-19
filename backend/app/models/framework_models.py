@@ -194,6 +194,28 @@ class FrameworkIntake(SQLModel, table=True):
 
     project: Optional[FrameworkProject] = Relationship(back_populates="intakes")
 
+    @property
+    def structured_payload(self) -> dict[str, Any]:
+        return dict((self.metadata_json or {}).get("structured_payload") or {})
+
+    @property
+    def known_gaps(self) -> list[dict[str, Any]]:
+        return list((self.metadata_json or {}).get("known_gaps") or [])
+
+    @property
+    def version_history(self) -> list[dict[str, Any]]:
+        return list((self.metadata_json or {}).get("version_history") or [])
+
+    @property
+    def readiness_checklist(self) -> list[dict[str, Any]]:
+        checklist_status = self.checklist_status_json or {}
+        return list(checklist_status.get("items") or [])
+
+    @property
+    def ready_for_prd(self) -> bool:
+        checklist_status = self.checklist_status_json or {}
+        return bool(checklist_status.get("ready_for_prd", False))
+
 
 class FrameworkPRD(SQLModel, table=True):
     """Persisted PRD document state."""

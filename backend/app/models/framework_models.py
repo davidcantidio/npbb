@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy import JSON, Column, DateTime, Enum as SQLEnum, Text, UniqueConstraint
 from sqlmodel import Field, Relationship
@@ -137,13 +135,13 @@ class FrameworkProject(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )
 
-    intakes: list["FrameworkIntake"] = Relationship(back_populates="project")
-    prds: list["FrameworkPRD"] = Relationship(back_populates="project")
-    phases: list["FrameworkPhase"] = Relationship(back_populates="project")
-    sprints: list["FrameworkSprint"] = Relationship(back_populates="project")
-    issues: list["FrameworkIssue"] = Relationship(back_populates="project")
-    tasks: list["FrameworkTask"] = Relationship(back_populates="project")
-    agent_executions: list["AgentExecution"] = Relationship(back_populates="project")
+    intakes: List["FrameworkIntake"] = Relationship(back_populates="project")
+    prds: List["FrameworkPRD"] = Relationship(back_populates="project")
+    phases: List["FrameworkPhase"] = Relationship(back_populates="project")
+    sprints: List["FrameworkSprint"] = Relationship(back_populates="project")
+    issues: List["FrameworkIssue"] = Relationship(back_populates="project")
+    tasks: List["FrameworkTask"] = Relationship(back_populates="project")
+    agent_executions: List["AgentExecution"] = Relationship(back_populates="project")
 
 
 class FrameworkIntake(SQLModel, table=True):
@@ -192,7 +190,7 @@ class FrameworkIntake(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="intakes")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="intakes")
 
     @property
     def structured_payload(self) -> dict[str, Any]:
@@ -252,7 +250,7 @@ class FrameworkPRD(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="prds")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="prds")
 
 
 class FrameworkPhase(SQLModel, table=True):
@@ -301,10 +299,10 @@ class FrameworkPhase(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="phases")
-    epics: list["FrameworkEpic"] = Relationship(back_populates="phase")
-    sprints: list["FrameworkSprint"] = Relationship(back_populates="phase")
-    issues: list["FrameworkIssue"] = Relationship(back_populates="phase")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="phases")
+    epics: List["FrameworkEpic"] = Relationship(back_populates="phase")
+    sprints: List["FrameworkSprint"] = Relationship(back_populates="phase")
+    issues: List["FrameworkIssue"] = Relationship(back_populates="phase")
 
 
 class FrameworkEpic(SQLModel, table=True):
@@ -350,9 +348,9 @@ class FrameworkEpic(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship()
-    phase: Optional[FrameworkPhase] = Relationship(back_populates="epics")
-    issues: list["FrameworkIssue"] = Relationship(back_populates="epic")
+    project: Optional["FrameworkProject"] = Relationship()
+    phase: Optional["FrameworkPhase"] = Relationship(back_populates="epics")
+    issues: List["FrameworkIssue"] = Relationship(back_populates="epic")
 
 
 class FrameworkSprint(SQLModel, table=True):
@@ -390,9 +388,9 @@ class FrameworkSprint(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="sprints")
-    phase: Optional[FrameworkPhase] = Relationship(back_populates="sprints")
-    issues: list["FrameworkIssue"] = Relationship(back_populates="sprint")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="sprints")
+    phase: Optional["FrameworkPhase"] = Relationship(back_populates="sprints")
+    issues: List["FrameworkIssue"] = Relationship(back_populates="sprint")
 
 
 class FrameworkIssue(SQLModel, table=True):
@@ -465,11 +463,11 @@ class FrameworkIssue(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="issues")
-    phase: Optional[FrameworkPhase] = Relationship(back_populates="issues")
-    epic: Optional[FrameworkEpic] = Relationship(back_populates="issues")
-    sprint: Optional[FrameworkSprint] = Relationship(back_populates="issues")
-    tasks: list["FrameworkTask"] = Relationship(back_populates="issue")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="issues")
+    phase: Optional["FrameworkPhase"] = Relationship(back_populates="issues")
+    epic: Optional["FrameworkEpic"] = Relationship(back_populates="issues")
+    sprint: Optional["FrameworkSprint"] = Relationship(back_populates="issues")
+    tasks: List["FrameworkTask"] = Relationship(back_populates="issue")
 
 
 class FrameworkTask(SQLModel, table=True):
@@ -542,8 +540,8 @@ class FrameworkTask(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="tasks")
-    issue: Optional[FrameworkIssue] = Relationship(back_populates="tasks")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="tasks")
+    issue: Optional["FrameworkIssue"] = Relationship(back_populates="tasks")
 
 
 class AgentExecution(SQLModel, table=True):
@@ -579,4 +577,4 @@ class AgentExecution(SQLModel, table=True):
     )
     created_at: datetime = Field(default_factory=now_utc)
 
-    project: Optional[FrameworkProject] = Relationship(back_populates="agent_executions")
+    project: Optional["FrameworkProject"] = Relationship(back_populates="agent_executions")

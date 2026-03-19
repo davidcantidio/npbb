@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from app.db.session import get_db
 from app.models.framework_models import (
-    FrameworkProject, FrameworkIntake, FrameworkPRD,
-    ProjectStatus, AgentMode
+    FrameworkIntake,
+    FrameworkProject,
 )
 from app.services.framework_orchestrator import AgentOrchestrator
+from app.schemas.framework import FrameworkIntakeGenerateRequest, FrameworkIntakeRead
 
 router = APIRouter(prefix="/framework", tags=["framework"])
 
@@ -47,19 +48,19 @@ def get_project_status(
     return status
 
 
-@router.post("/projects/{project_id}/intake")
+@router.post("/projects/{project_id}/intake", response_model=FrameworkIntakeRead)
 def submit_intake(
     project_id: int,
-    intake_content: str,
-    db: Session = Depends(get_db),
-    orchestrator: AgentOrchestrator = Depends(get_orchestrator)
+    intake_in: FrameworkIntakeGenerateRequest,
+    orchestrator: AgentOrchestrator = Depends(get_orchestrator),
 ):
     """Submete um Intake para processamento."""
     try:
-        intake = orchestrator.process_intake(project_id, intake_content)
-        return {"message": "Intake processado com sucesso", "intake_id": intake.id}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return orchestrator.process_intake(project_id, intake_in)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/projects/{project_id}/prd/generate")

@@ -130,6 +130,18 @@ class FrameworkIntakeCreate(BaseModel):
     metadata_json: dict[str, Any] | None = None
 
 
+class FrameworkIntakeGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=200)
+    raw_context: str = Field(min_length=1)
+    doc_id: str | None = Field(default=None, max_length=200)
+    intake_kind: IntakeKind | None = None
+    source_mode: SourceMode | None = None
+    file_path: str | None = None
+    metadata_json: dict[str, Any] | None = None
+
+
 class FrameworkIntakeUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     status: ArtifactStatus | None = None

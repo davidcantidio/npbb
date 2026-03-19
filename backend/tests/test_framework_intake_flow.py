@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 from sqlmodel import Session
 
+from app.models import models as _legacy_models  # noqa: F401
 from app.models.framework_models import ApprovalStatus, FrameworkIntake
 from app.schemas.framework import (
     FrameworkIntakeCreate,
@@ -237,11 +238,13 @@ def test_framework_intake_generation_blocks_prd_when_required_fields_are_missing
 
 def test_framework_intake_read_round_trips_typed_contract_from_model_helpers() -> None:
     intake = FrameworkIntake(
+        id=1,
         project_id=1,
         doc_id="INTAKE-FW5",
         title="FW5 Intake",
         content_md="# Intake",
         approval_status=ApprovalStatus.PENDING,
+        updated_at=datetime(2026, 3, 19, 12, 0, tzinfo=timezone.utc),
         checklist_status_json={
             "ready_for_prd": False,
             "items": [_checklist_item()],

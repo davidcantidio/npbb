@@ -3,10 +3,10 @@ doc_id: "EPIC-F1-01-FUNDACAO-DO-PROJETO.md"
 version: "1.0"
 status: "todo"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-19"
 ---
 
-# EPIC-EPIC-F1-01 - Fundacao do projeto
+# EPIC-F1-01 - Fundacao do projeto
 
 ## Objetivo
 
@@ -14,18 +14,19 @@ Estabilizar o projeto novo com docs canônicos, wrappers e um primeiro issue gra
 
 ## Resultado de Negocio Mensuravel
 
-O PM consegue iniciar planejamento e execucao sem preencher manualmente os cabecalhos principais.
+O PM consegue iniciar o planejamento e materializar `F2/F3/F4` sem reconstruir manualmente o bootstrap documental do projeto.
 
 ## Feature de Origem
 
-- **Feature**: Feature 1
-- **Comportamento coberto**: scaffold inicial do projeto com intake, PRD, wrappers e bootstrap operacional.
+- **Feature**: nao_aplicavel
+- **Comportamento coberto**: bootstrap estrutural do projeto, anterior ao eixo de valor do PRD.
 
 ## Contexto Arquitetural
 
 - raiz do projeto pronta para fases futuras
 - wrappers locais apontando para caminhos repo-relative
 - issue granularizada inicial para validar o bootstrap
+- fase preservada como base historica enquanto as features de negocio passam a viver em `F2/F3/F4`
 
 ## Definition of Done do Epico
 
@@ -38,7 +39,7 @@ O PM consegue iniciar planejamento e execucao sem preencher manualmente os cabec
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento | Feature |
 |---|---|---|---|---|---|---|
-| ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO | Estabilizar scaffold inicial do projeto | Validar e ajustar o bootstrap canonico do projeto. | 3 | todo | [ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO](PROJETOS/DL2/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO) | Feature 1 |
+| ISSUE-F1-01-001 | Estabilizar scaffold inicial do projeto | Validar e ajustar o bootstrap canonico do projeto. | 3 | todo | [README](./issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO/README.md) | nao_aplicavel |
 
 ## Artifact Minimo do Epico
 
@@ -48,6 +49,6 @@ O PM consegue iniciar planejamento e execucao sem preencher manualmente os cabec
 
 ## Dependencias
 
-- [Intake](PROJETOS/DL2/INTAKE-DL2.md)
-- [PRD](PROJETOS/DL2/PRD-DL2.md)
-- [Fase](PROJETOS/DL2/F1-FUNDACAO/F1_DL2_EPICS.md)
+- [Intake](../INTAKE-DL2.md)
+- [PRD](../PRD-DL2.md)
+- [Fase](./F1_DL2_EPICS.md)

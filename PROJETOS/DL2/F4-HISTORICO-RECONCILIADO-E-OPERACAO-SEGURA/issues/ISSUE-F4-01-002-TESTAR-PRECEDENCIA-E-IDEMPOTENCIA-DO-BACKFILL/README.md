@@ -1,0 +1,66 @@
+---
+doc_id: "ISSUE-F4-01-002-TESTAR-PRECEDENCIA-E-IDEMPOTENCIA-DO-BACKFILL.md"
+version: "1.0"
+status: "todo"
+owner: "PM"
+last_updated: "2026-03-19"
+task_instruction_mode: "required"
+decision_refs: []
+---
+
+# ISSUE-F4-01-002 - Testar precedencia e idempotencia do backfill
+
+## User Story
+
+Como mantenedor do modulo de leads e dashboards, quero testar precedencia e idempotencia do backfill para que a remediacao do vinculo canonico fique consistente e auditavel dentro de `EPIC-F4-01`.
+
+
+## Feature de Origem
+
+- **Feature**: Feature 3
+- **Comportamento coberto**: precedencia e idempotencia do backfill validadas.
+
+## Contexto Tecnico
+
+- a regra de precedencia e essencial para nao distorcer a rastreabilidade historica
+- issue pertence a `EPIC-F4-01` na fase `F4` do projeto `DL2`
+- artefato minimo esperado: A precedencia `ACTIVATION > LEAD_BATCH > EVENT_DIRECT > EVENT_NAME_BACKFILL` fica coberta e rastreavel.
+
+## Plano TDD
+
+- Red: escrever ou ajustar testes focados nos contratos diretamente afetados por `ISSUE-F4-01-002` usando `cd backend && PYTHONPATH=.. SECRET_KEY=ci-secret-key TESTING=true python3 -m pytest -q tests/test_lead_event_service.py -k source_kind` como comando alvo.
+- Green: implementar o minimo necessario para fazer os testes novos passarem sem ampliar escopo fora da issue.
+- Refactor: remover drift local, nomes confusos ou duplicacoes mantendo a suite alvo green.
+
+## Criterios de Aceitacao
+
+- Given os arquivos alvo de `ISSUE-F4-01-002`, When a issue for concluida, Then a precedencia `ACTIVATION > LEAD_BATCH > EVENT_DIRECT > EVENT_NAME_BACKFILL` fica coberta e rastreavel.
+- Given a dependencia das issues anteriores, When a validacao final rodar, Then a entrega nao reintroduz o paradigma antigo de `Lead -> AtivacaoLead -> Evento` como obrigatorio
+- Given o modo `required`, When outro agente ler a issue, Then `README.md` e `TASK-1.md` bastam para executar a entrega sem improvisar escopo
+
+## Definition of Done da Issue
+
+- [ ] A precedencia `ACTIVATION > LEAD_BATCH > EVENT_DIRECT > EVENT_NAME_BACKFILL` fica coberta e rastreavel.
+- [ ] validacao final obrigatoria executada ou preparada no comando alvo da issue
+- [ ] dependencias e links canonicos da issue mantidos coerentes com fase e epic
+
+## Tasks
+
+- [T1: Testar precedencia e idempotencia do backfill](./TASK-1.md)
+
+## Arquivos Reais Envolvidos
+
+- `backend/app/services/lead_event_service.py`
+- `backend/tests/test_lead_event_service.py`
+
+## Artifact Minimo
+
+A precedencia `ACTIVATION > LEAD_BATCH > EVENT_DIRECT > EVENT_NAME_BACKFILL` fica coberta e rastreavel.
+
+## Dependencias
+
+- [Intake](../../../INTAKE-DL2.md)
+- [PRD](../../../PRD-DL2.md)
+- [Fase](../../F4_DL2_EPICS.md)
+- [Epic](../../EPIC-F4-01-BACKFILL-IDEMPOTENTE-MULTI-ORIGEM.md)
+- [Issue Dependente](../ISSUE-F4-01-001-IMPLEMENTAR-RUNNER-IDEMPOTENTE-DE-BACKFILL/README.md)

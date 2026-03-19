@@ -3,7 +3,7 @@ doc_id: "F1_DL2_EPICS.md"
 version: "1.0"
 status: "todo"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-19"
 audit_gate: "not_ready"
 ---
 
@@ -11,11 +11,11 @@ audit_gate: "not_ready"
 
 ## Objetivo da Fase
 
-Consolidar o scaffold inicial do projeto com intake, PRD, wrappers de sessao e primeiro issue-first bootstrap.
+Consolidar o bootstrap estrutural do projeto com intake, PRD, wrappers de sessao e primeiro issue-first bootstrap, preservando `F1-FUNDACAO` como fase historica fora do eixo de valor do PRD.
 
 ## Gate de Saida da Fase
 
-O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, issue granularizada com task e artefatos de auditoria prontos para uso.
+O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, issue granularizada com task e artefatos de auditoria base prontos para sustentar a renumeracao executavel em `F2/F3/F4`.
 
 ## Estado do Gate de Auditoria
 
@@ -50,7 +50,7 @@ O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, is
 
 | ID | Nome | Objetivo | Feature | Depende de | Status | Arquivo |
 |---|---|---|---|---|---|---|
-| EPIC-F1-01 | Fundacao do projeto | Entregar o scaffold inicial e validar os artefatos de base. | Feature 1 | nenhuma | todo | [EPIC-EPIC-F1-01 - Fundacao do projeto](./EPIC-F1-01-FUNDACAO-DO-PROJETO.md) |
+| EPIC-F1-01 | Fundacao do projeto | Entregar o scaffold inicial e validar os artefatos de base. | nao_aplicavel | nenhuma | todo | [EPIC-F1-01 - Fundacao do projeto](./EPIC-F1-01-FUNDACAO-DO-PROJETO.md) |
 
 ## Dependencias entre Epicos
 
@@ -64,7 +64,7 @@ O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, is
 - bootstrap F1 com issue granularizada
 
 ### Fora
-- features de negocio reais
+- features de negocio do PRD, entregues a partir de `F2`
 - implementacao de codigo de produto
 - deploy ou integracoes externas
 
@@ -74,3 +74,4 @@ O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, is
 - [ ] fase F1, epico, issue e task existem
 - [ ] audit log aponta para o bootstrap inicial
 - [ ] relatorio base de auditoria existe em `auditorias/`
+- [ ] backlog executavel `F2/F3/F4` pode ser materializado sem colisao com a fundacao

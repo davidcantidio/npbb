@@ -4,12 +4,18 @@ from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
+from sqlmodel import Session
 
 from app.models.framework_models import ApprovalStatus, FrameworkIntake
 from app.schemas.framework import (
     FrameworkIntakeCreate,
+    FrameworkIntakeGenerateRequest,
     FrameworkIntakeRead,
+    IntakeKind,
+    SourceMode,
 )
+from app.services.framework_orchestrator import AgentOrchestrator
+from app.models.framework_models import FrameworkProject
 
 
 def _structured_payload() -> dict[str, object]:
@@ -82,6 +88,61 @@ def _version_entry() -> dict[str, object]:
     }
 
 
+def _complete_raw_context() -> str:
+    return """
+Problema ou oportunidade: O PM ainda depende de montagem manual de artefatos.
+Publico principal: PM
+Job to be done dominante: Abrir um projeto governado no FW5.
+Fluxo principal:
+- Receber contexto bruto
+- Gerar intake estruturado
+- Validar prontidao para PRD
+Escopo dentro:
+- Captura de contexto bruto
+- Estruturacao do intake
+Escopo fora:
+- Geracao do PRD
+Objetivo de negocio: Reduzir o trabalho manual de abertura do projeto.
+Metricas de sucesso:
+- tempo_manual_reduzido
+Restricoes:
+- Manter compatibilidade com a governanca vigente
+Nao objetivos:
+- Nao substituir toda a governanca markdown nesta task
+Dependencias:
+- GOV-INTAKE.md
+Integracoes:
+- framework-governanca
+Superficies impactadas:
+- backend-api
+- admin-panel
+Riscos:
+- Consolidar hipoteses como fatos
+""".strip()
+
+
+def _incomplete_raw_context() -> str:
+    return """
+Problema ou oportunidade: O PM ainda depende de montagem manual de artefatos.
+Objetivo de negocio: Reduzir o trabalho manual de abertura do projeto.
+Riscos:
+- Consolidar hipoteses como fatos
+""".strip()
+
+
+def _create_project(session: Session, canonical_name: str = "fw5-intake-flow") -> FrameworkProject:
+    project = FrameworkProject(
+        canonical_name=canonical_name,
+        title="FW5 Intake Flow",
+        created_by="pm",
+        owner="pm",
+    )
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
+
+
 def test_framework_intake_schema_requires_structured_payload_fields() -> None:
     with pytest.raises(ValidationError) as exc_info:
         FrameworkIntakeCreate(
@@ -122,6 +183,56 @@ def test_framework_intake_schema_serializes_gaps_checklist_and_version_history()
     assert payload.readiness_checklist[0].key == "problem_statement"
     assert payload.version_history[0].version_number == 1
     assert payload.ready_for_prd is False
+
+
+def test_framework_intake_generation_from_raw_context_persists_structured_payload(db_session: Session) -> None:
+    project = _create_project(db_session)
+    orchestrator = AgentOrchestrator(db_session)
+
+    intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+
+    assert intake.project_id == project.id
+    assert intake.doc_id == "INTAKE-FW5-INTAKE-FLOW"
+    assert intake.structured_payload["problem_statement"].startswith("O PM")
+    assert intake.structured_payload["primary_audience"] == "PM"
+    assert intake.ready_for_prd is True
+    assert intake.known_gaps == []
+    assert intake.readiness_checklist[0]["completed"] is True
+    assert intake.version_history[0]["version_number"] == 1
+
+
+def test_framework_intake_generation_blocks_prd_when_required_fields_are_missing(
+    db_session: Session,
+) -> None:
+    project = _create_project(db_session, canonical_name="fw5-intake-gaps")
+    orchestrator = AgentOrchestrator(db_session)
+
+    intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake",
+            raw_context=_incomplete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+
+    assert intake.ready_for_prd is False
+    assert any(gap["code"] == "missing-primary_audience" and gap["blocking"] for gap in intake.known_gaps)
+    assert any(
+        item["key"] == "primary_audience" and item["completed"] is False and item["blocking"] is True
+        for item in intake.readiness_checklist
+    )
+    assert intake.structured_payload["primary_audience"] == "nao_definido"
+    assert intake.metadata_json["evidence_map"]["primary_audience"]["classification"] == "hypothesis"
 
 
 def test_framework_intake_read_round_trips_typed_contract_from_model_helpers() -> None:

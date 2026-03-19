@@ -51,8 +51,10 @@ def client(engine):
 
 
 def test_models_aggregate_exports_lead_event_symbols():
+    assert Lead.__name__ == "Lead"
     assert LeadEvento.__name__ == "LeadEvento"
     assert LeadEventoSourceKind.EVENT_DIRECT.value == "event_id_direct"
+    assert LeadEventoSourceKind.ACTIVATION.value == "ativacao"
 
 
 def seed_user(session: Session, email="user@npbb.com.br", password="senha123") -> Usuario:
@@ -66,6 +68,20 @@ def seed_user(session: Session, email="user@npbb.com.br", password="senha123") -
     session.commit()
     session.refresh(user)
     return user
+
+
+def add_activation_canonical_link(session: Session, *, ativacao: Ativacao, lead: Lead) -> None:
+    ativacao_lead = AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id)
+    session.add(ativacao_lead)
+    session.flush()
+    session.add(
+        LeadEvento(
+            lead_id=lead.id,
+            evento_id=ativacao.evento_id,
+            source_kind=LeadEventoSourceKind.ACTIVATION,
+            source_ref_id=ativacao_lead.id,
+        )
+    )
 
 
 def seed_dashboard_data(session: Session):
@@ -125,12 +141,8 @@ def seed_dashboard_data(session: Session):
     session.refresh(lead_sp)
     session.refresh(lead_rj)
 
-    session.add_all(
-        [
-            AtivacaoLead(ativacao_id=ativacao_sp.id, lead_id=lead_sp.id),
-            AtivacaoLead(ativacao_id=ativacao_rj.id, lead_id=lead_rj.id),
-        ]
-    )
+    add_activation_canonical_link(session, ativacao=ativacao_sp, lead=lead_sp)
+    add_activation_canonical_link(session, ativacao=ativacao_rj, lead=lead_rj)
     session.commit()
 
     return {
@@ -210,12 +222,9 @@ def test_dashboard_leads_rankings_order(client, engine):
         session.add(lead_extra)
         session.commit()
         session.refresh(lead_extra)
-        session.add(
-            AtivacaoLead(
-                ativacao_id=ids["ativacao_sp_id"],
-                lead_id=lead_extra.id,
-            )
-        )
+        ativacao_sp = session.get(Ativacao, ids["ativacao_sp_id"])
+        assert ativacao_sp is not None
+        add_activation_canonical_link(session, ativacao=ativacao_sp, lead=lead_extra)
         session.commit()
         headers = get_auth_header(client, session)
 

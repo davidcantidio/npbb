@@ -1,6 +1,6 @@
 ---
 doc_id: "EPIC-F2-01-BASE-CANONICA-E-WRITERS-PARA-LEITURA-CONFIAVEL-POR-EVENTO.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-19"
@@ -32,7 +32,7 @@ Reagrupa a fundacao do legado `F1-01`, `F1-02` e `F1-03` como habilitador direto
 
 | Issue ID | Nome | Objetivo | SP | Status | Documento | Feature |
 |---|---|---|---|---|---|---|
-| ISSUE-F2-01-001 | Estabilizar surface de modelo e boot da baseline canonica | Baseline canonica minima para surface e boot da aplicacao | 1 | todo | [README](./issues/ISSUE-F2-01-001-ESTABILIZAR-SURFACE-DE-MODELO-E-BOOT-DA-BASELINE-CANONICA/README.md) | Feature 1 |
+| ISSUE-F2-01-001 | Estabilizar surface de modelo e boot da baseline canonica | Baseline canonica minima para surface e boot da aplicacao | 1 | done | [README](./issues/ISSUE-F2-01-001-ESTABILIZAR-SURFACE-DE-MODELO-E-BOOT-DA-BASELINE-CANONICA/README.md) | Feature 1 |
 | ISSUE-F2-01-002 | Versionar migration de lead_evento | Migration versionada e rastreavel de lead_evento | 2 | todo | [README](./issues/ISSUE-F2-01-002-VERSIONAR-MIGRATION-LEAD-EVENTO/README.md) | Feature 1 |
 | ISSUE-F2-01-003 | Garantir dual-write no submit publico | Dual-write canonico no submit publico | 2 | done | [README](./issues/ISSUE-F2-01-003-GARANTIR-DUAL-WRITE-NO-SUBMIT-PUBLICO/README.md) | Feature 1 |
 | ISSUE-F2-01-004 | Cobrir duplicata de conversao e invariantes do submit | Invariantes do submit cobertos sobre o caminho canonico | 1 | done | [README](./issues/ISSUE-F2-01-004-COBRIR-DUPLICATA-DE-CONVERSAO-E-INVARIANTES-DO-SUBMIT/README.md) | Feature 1 |

@@ -1,7 +1,7 @@
 ---
 doc_id: "ISSUE-F2-01-001-ESTABILIZAR-SURFACE-DE-MODELO-E-BOOT-DA-BASELINE-CANONICA"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "done"
 owner: "PM"
 last_updated: "2026-03-19"
 task_instruction_mode: "required"
@@ -39,9 +39,9 @@ Como mantenedor do modulo de leads e dashboards, quero estabilizar a surface can
 
 ## Definition of Done da Issue
 
-- [ ] a aplicacao sobe sem `ImportError` ligado a `LeadEvento`/`LeadEventoSourceKind`
-- [ ] o agregado canonico de modelos exposto em `app.models.models` fica consistente com a baseline esperada da Feature 1
-- [ ] dependencias e links canonicos da issue ficam coerentes com `F2` e `EPIC-F2-01`
+- [x] a aplicacao sobe sem `ImportError` ligado a `LeadEvento`/`LeadEventoSourceKind`
+- [x] o agregado canonico de modelos exposto em `app.models.models` fica consistente com a baseline esperada da Feature 1
+- [x] dependencias e links canonicos da issue ficam coerentes com `F2` e `EPIC-F2-01`
 
 ## Tasks
 

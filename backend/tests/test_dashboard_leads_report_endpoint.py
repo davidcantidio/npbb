@@ -7,7 +7,15 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Evento, Lead, StatusEvento, Usuario
+from app.models.models import (
+    Agencia,
+    Evento,
+    Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
+    StatusEvento,
+    Usuario,
+)
 from app.utils.security import hash_password
 
 
@@ -50,6 +58,17 @@ def seed_user(session: Session, email="user@npbb.com.br", password="senha123") -
     session.commit()
     session.refresh(user)
     return user
+
+
+def add_direct_canonical_link(session: Session, *, evento: Evento, lead: Lead) -> None:
+    session.add(
+        LeadEvento(
+            lead_id=lead.id,
+            evento_id=evento.id,
+            source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+            source_ref_id=evento.id,
+        )
+    )
 
 
 def seed_report_data(session: Session):
@@ -101,6 +120,12 @@ def seed_report_data(session: Session):
         data_compra=datetime(2025, 2, 5, tzinfo=timezone.utc),
     )
     session.add_all([lead_1, lead_2, lead_outro])
+    session.commit()
+    session.refresh(lead_1)
+    session.refresh(lead_2)
+
+    add_direct_canonical_link(session, evento=evento, lead=lead_1)
+    add_direct_canonical_link(session, evento=evento, lead=lead_2)
     session.commit()
 
     return {"evento_id": evento.id, "evento_nome": evento.nome}

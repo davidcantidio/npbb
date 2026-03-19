@@ -7,7 +7,17 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Ativacao, AtivacaoLead, Evento, Lead, StatusEvento, Usuario
+from app.models.models import (
+    Agencia,
+    Ativacao,
+    AtivacaoLead,
+    Evento,
+    Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
+    StatusEvento,
+    Usuario,
+)
 from app.utils.security import hash_password
 
 
@@ -89,6 +99,20 @@ def get_auth_header(
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def add_activation_canonical_link(session: Session, *, ativacao: Ativacao, lead: Lead) -> None:
+    ativacao_lead = AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id)
+    session.add(ativacao_lead)
+    session.flush()
+    session.add(
+        LeadEvento(
+            lead_id=lead.id,
+            evento_id=ativacao.evento_id,
+            source_kind=LeadEventoSourceKind.ACTIVATION,
+            source_ref_id=ativacao_lead.id,
+        )
+    )
 
 
 def seed_age_analysis_data(session: Session) -> dict[str, int]:
@@ -186,7 +210,7 @@ def seed_age_analysis_data(session: Session) -> dict[str, int]:
     for lead in created_leads:
         evento = evento_by_name[lead.evento_nome]
         ativacao = ativacao_by_event_id[evento.id]
-        session.add(AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id))
+        add_activation_canonical_link(session, ativacao=ativacao, lead=lead)
     session.commit()
 
     return {
@@ -496,12 +520,8 @@ def test_dashboard_age_analysis_agencia_ve_apenas_sua_agencia(client, engine):
         session.refresh(lead_a)
         session.refresh(lead_b)
 
-        session.add_all(
-            [
-                AtivacaoLead(ativacao_id=ativacao_a.id, lead_id=lead_a.id),
-                AtivacaoLead(ativacao_id=ativacao_b.id, lead_id=lead_b.id),
-            ]
-        )
+        add_activation_canonical_link(session, ativacao=ativacao_a, lead=lead_a)
+        add_activation_canonical_link(session, ativacao=ativacao_b, lead=lead_b)
         session.commit()
 
         headers = get_auth_header(
@@ -572,12 +592,8 @@ def test_dashboard_age_analysis_consolidado_conta_vinculos_mesmo_lead(client, en
         session.commit()
         session.refresh(lead)
 
-        session.add_all(
-            [
-                AtivacaoLead(ativacao_id=ativacao_a.id, lead_id=lead.id),
-                AtivacaoLead(ativacao_id=ativacao_b.id, lead_id=lead.id),
-            ]
-        )
+        add_activation_canonical_link(session, ativacao=ativacao_a, lead=lead)
+        add_activation_canonical_link(session, ativacao=ativacao_b, lead=lead)
         session.commit()
         headers = get_auth_header(client, session, email="vinculo@npbb.com.br")
 

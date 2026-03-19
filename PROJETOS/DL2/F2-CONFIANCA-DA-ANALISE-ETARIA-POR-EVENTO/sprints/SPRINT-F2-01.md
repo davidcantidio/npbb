@@ -1,7 +1,7 @@
 ---
 doc_id: "SPRINT-F2-01.md"
-version: "1.0"
-status: "todo"
+version: "1.1"
+status: "active"
 owner: "PM"
 last_updated: "2026-03-19"
 ---
@@ -22,7 +22,7 @@ Concluir a baseline canonica ainda pendente antes do reader da feature.
 
 | Issue ID | Nome | SP | Status | Documento |
 |---|---|---|---|---|
-| ISSUE-F2-01-001 | Estabilizar surface de modelo e boot da baseline canonica | 1 | todo | [README](../issues/ISSUE-F2-01-001-ESTABILIZAR-SURFACE-DE-MODELO-E-BOOT-DA-BASELINE-CANONICA/README.md) |
+| ISSUE-F2-01-001 | Estabilizar surface de modelo e boot da baseline canonica | 1 | done | [README](../issues/ISSUE-F2-01-001-ESTABILIZAR-SURFACE-DE-MODELO-E-BOOT-DA-BASELINE-CANONICA/README.md) |
 | ISSUE-F2-01-002 | Versionar migration de lead_evento | 2 | todo | [README](../issues/ISSUE-F2-01-002-VERSIONAR-MIGRATION-LEAD-EVENTO/README.md) |
 | ISSUE-F2-01-006 | Garantir LeadEvento no ETL por evento_nome | 2 | todo | [README](../issues/ISSUE-F2-01-006-GARANTIR-LEADEVENTO-NO-ETL-POR-EVENTO-NOME/README.md) |
 

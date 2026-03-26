@@ -1,10 +1,10 @@
 ---
 doc_id: "SESSION-REVISAR-US.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
-project: "DASHBOARD-ATIVOS"
+project: "ATIVOS-INGRESSOS"
 ---
 
 # SESSION-REVISAR-US - Revisao Pos-User Story em Sessao de Chat
@@ -22,7 +22,7 @@ Leia e siga integralmente:
 ## Parametros Preenchidos
 
 ```text
-PROJETO:        DASHBOARD-ATIVOS
+PROJETO:        ATIVOS-INGRESSOS
 FEATURE_ID:     <resolver_no_handoff_ou_na_us_alvo>
 US_ID:          <resolver_no_handoff_ou_na_us_alvo>
 US_PATH:        <resolver_no_handoff_ou_na_us_alvo>
@@ -36,5 +36,5 @@ REVIEW_MODE:    auto
 ## Regra Local Adicional
 
 - resolva primeiro a user story `ready_for_review` vigente do projeto; so use override manual quando o PM trouxer evidencia reproduzivel
-- este wrapper nao fixa a revisao na bootstrap; a US alvo muda conforme a fila
+- este wrapper nunca deve inferir uma US bootstrap inexistente; a US alvo vem da fila documental atual
 - em caso de conflito, o handoff persistido na user story continua sendo a fonte de verdade

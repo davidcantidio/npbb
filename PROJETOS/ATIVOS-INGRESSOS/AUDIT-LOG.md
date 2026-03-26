@@ -1,12 +1,12 @@
 ---
 doc_id: "AUDIT-LOG.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
 ---
 
-# AUDIT-LOG - DASHBOARD-ATIVOS
+# AUDIT-LOG - ATIVOS-INGRESSOS
 
 ## Politica
 
@@ -21,7 +21,7 @@ last_updated: "2026-03-26"
 
 | Feature | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| [FEATURE-1-FOUNDATION](features/FEATURE-1-FOUNDATION/FEATURE-1.md) | not_ready | nao_aplicavel | [RELATORIO-AUDITORIA-F1-R01.md](features/FEATURE-1-FOUNDATION/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | O ficheiro em `auditorias/` e um shell com `status: planned`; nao ha veredito canonico ate haver auditoria real concluida e registo coerente neste log. Scaffold inicial gerado. |
+| nenhuma | aguardando decomposicao `PRD -> Features` | nao_aplicavel | nao_aplicavel | Nenhuma feature foi criada ainda; este log passa a registrar gates reais apenas apos a decomposicao do PRD aprovado. |
 
 ## Resolucoes de Follow-ups
 

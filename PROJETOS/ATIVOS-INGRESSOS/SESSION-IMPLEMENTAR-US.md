@@ -1,10 +1,10 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-US.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
-project: "DASHBOARD-ATIVOS"
+project: "ATIVOS-INGRESSOS"
 ---
 
 # SESSION-IMPLEMENTAR-US - Execucao de User Story em Sessao de Chat
@@ -22,7 +22,7 @@ Leia e siga integralmente:
 ## Parametros Preenchidos
 
 ```text
-PROJETO:     DASHBOARD-ATIVOS
+PROJETO:     ATIVOS-INGRESSOS
 FEATURE_ID:  <resolver_na_feature_ativa_do_projeto>
 US_ID:       <resolver_na_user_story_elegivel_do_projeto>
 US_PATH:     <resolver_na_user_story_elegivel_do_projeto>
@@ -33,5 +33,5 @@ ROUND:       1
 ## Regra Local Adicional
 
 - use `boot-prompt.md` nos niveis de descoberta para resolver a unidade elegivel antes de colar os parametros
-- nao trate este wrapper como congelado na bootstrap; a fila atual do projeto prevalece
-- se o projeto ainda estiver apenas no scaffold inicial, a US bootstrap continua sendo a primeira candidata natural
+- se ainda nao houver arvore `features/` criada a partir do PRD aprovado, volte para `SESSION-PLANEJAR-PROJETO.md`
+- a fila documental real do projeto prevalece sobre qualquer exemplo antigo

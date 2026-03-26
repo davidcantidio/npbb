@@ -1,10 +1,10 @@
 ---
 doc_id: "SESSION-AUDITAR-FEATURE.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
-project: "DASHBOARD-ATIVOS"
+project: "ATIVOS-INGRESSOS"
 ---
 
 # SESSION-AUDITAR-FEATURE - Auditoria de Feature em Sessao de Chat
@@ -22,16 +22,16 @@ Leia e siga integralmente:
 ## Parametros Preenchidos
 
 ```text
-PROJETO:       DASHBOARD-ATIVOS
+PROJETO:       ATIVOS-INGRESSOS
 FEATURE_ID:    <resolver_na_feature_pronta_para_gate>
 FEATURE_PATH:  <resolver_na_feature_pronta_para_gate>
 RODADA:        <resolver_na_feature_pronta_para_gate>
 BASE_COMMIT:   worktree
-AUDIT_LOG:     PROJETOS/DASHBOARD-ATIVOS/AUDIT-LOG.md
+AUDIT_LOG:     PROJETOS/ATIVOS-INGRESSOS/AUDIT-LOG.md
 ```
 
 ## Regra Local Adicional
 
 - descubra a feature pronta para auditoria a partir de `AUDIT-LOG.md` e dos manifestos `FEATURE-*.md`
-- nao congele este wrapper na bootstrap; use a rodada correspondente ao estado atual do projeto
-- o log do projeto permanece em `PROJETOS/DASHBOARD-ATIVOS/AUDIT-LOG.md`
+- nao congele este wrapper em backlog bootstrap; use a rodada correspondente ao estado atual do projeto
+- o log do projeto permanece em `PROJETOS/ATIVOS-INGRESSOS/AUDIT-LOG.md`

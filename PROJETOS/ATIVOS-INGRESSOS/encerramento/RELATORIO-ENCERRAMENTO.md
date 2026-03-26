@@ -1,18 +1,19 @@
 ---
 doc_id: "RELATORIO-ENCERRAMENTO.md"
-version: "1.0"
+version: "1.1"
 status: "draft"
 owner: "PM"
 last_updated: "2026-03-26"
-project: "DASHBOARD-ATIVOS"
+project: "ATIVOS-INGRESSOS"
 ---
 
-# RELATORIO-ENCERRAMENTO - DASHBOARD-ATIVOS
+# RELATORIO-ENCERRAMENTO - ATIVOS-INGRESSOS
 
 ## Estado Atual
 
-Projeto em bootstrap inicial. Este relatorio existe apenas para manter
-a arvore canonica completa do projeto.
+Projeto em fase de intake e PRD. Este relatorio permanece como
+placeholder canonico e so deve ser preenchido apos rollout e
+encerramento real do projeto.
 
 ## Pre-condicoes para preenchimento
 

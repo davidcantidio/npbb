@@ -1,10 +1,10 @@
 ---
 doc_id: "SESSION-REFATORAR-MONOLITO.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
-project: "DASHBOARD-ATIVOS"
+project: "ATIVOS-INGRESSOS"
 ---
 
 # SESSION-REFATORAR-MONOLITO - Mini-Projeto de Refatoracao Estrutural
@@ -22,8 +22,8 @@ Leia e siga integralmente:
 ## Parametros Preenchidos
 
 ```text
-PROJETO:       DASHBOARD-ATIVOS
-INTAKE_PATH:   PROJETOS/DASHBOARD-ATIVOS/INTAKE-DASHBOARD-ATIVOS.md
+PROJETO:       ATIVOS-INGRESSOS
+INTAKE_PATH:   PROJETOS/ATIVOS-INGRESSOS/INTAKE-ATIVOS-INGRESSOS.md
 ARQUIVO_ALVO:  nao_aplicavel
 AUDIT_REF:     nao_aplicavel
 ```

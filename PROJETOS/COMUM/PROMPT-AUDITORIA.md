@@ -3,7 +3,7 @@ doc_id: "PROMPT-AUDITORIA.md"
 version: "2.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-20"
 ---
 
 # Prompt Canonico - Auditoria de Fase
@@ -23,7 +23,7 @@ Voce e um engenheiro senior realizando auditoria pos-implementacao de uma fase d
 
 ### Leitura obrigatoria
 
-1. siga `PROJETOS/boot-prompt.md`, Niveis 1, 2 e 3
+1. siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3
 2. leia o manifesto da fase auditada
 3. leia epicos e issues da fase:
    - para issue granularizada, leia o `README.md` e os `TASK-*.md`

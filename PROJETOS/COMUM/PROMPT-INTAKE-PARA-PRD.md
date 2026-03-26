@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-INTAKE-PARA-PRD.md"
-version: "2.1"
+version: "3.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-25"
 ---
 
 # Prompt Canonico - Intake para PRD
@@ -19,17 +19,21 @@ Voce e um engenheiro de produto responsavel por transformar um intake estruturad
 Principio de trabalho:
 
 - `delivery-first` e a regra de produto
-- `feature-first` e a forma canonica de planejar esse principio no PRD
-- o eixo do PRD deve ser comportamento entregavel, nao camada tecnica
+- o PRD descreve **direcao de produto e projeto** (problema, escopo, restricoes, riscos, metricas,
+  arquitetura geral, rollout), conforme `GOV-PRD.md`
+- **nao** use o PRD como lugar de backlog estruturado: Features, User Stories e Tasks sao etapas **posteriores**
+  e explicitas do pipeline
 
 ### Leitura obrigatoria
 
-1. siga `PROJETOS/boot-prompt.md`, Niveis 1 e 2
+1. siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2
 2. leia o `INTAKE-*.md` informado
 3. se o projeto ja existir, leia tambem `PRD-*.md`, `AUDIT-LOG.md` e `DECISION-PROTOCOL.md`, quando existirem
 4. use `PROJETOS/COMUM/GOV-INTAKE.md` como fonte unica do gate `Intake -> PRD`
-5. use `PROJETOS/COMUM/TEMPLATE-PRD.md` como estrutura obrigatoria do PRD
-6. use `PROJETOS/COMUM/GOV-ISSUE-FIRST.md` para preservar a rastreabilidade esperada em fases, epicos e issues
+5. use `PROJETOS/COMUM/GOV-PRD.md` como contrato do que o PRD **deve** e **nao deve** conter
+6. use `PROJETOS/COMUM/TEMPLATE-PRD.md` como estrutura obrigatoria do arquivo PRD (apenas secoes que forem escopo do PRD apos alinhamento ao template)
+7. use `PROJETOS/COMUM/GOV-ISSUE-FIRST.md` apenas como **contexto** de layout de pastas quando o projeto
+   adotar essa estrutura; **nao** exija no PRD rastreabilidade `feature -> fase -> epico -> issue` nem lista de epics/issues
 
 ### Passagem 1 - Validacao do intake
 
@@ -38,7 +42,8 @@ Antes de escrever o PRD, valide se o intake tem informacao suficiente.
 - liste lacunas criticas que impedem um PRD confiavel
 - nao invente regra de negocio ausente
 - diferencie claramente fato, inferencia e hipotese
-- identifique os blocos de valor / features candidatas que o PRD precisara formalizar
+- identifique **capacidades ou temas candidatos** (alto nivel) que a etapa posterior `PRD -> Features`
+  precisara formalizar em manifestos; **nao** os trate como conteudo obrigatorio do PRD
 - se `intake_kind` for `problem`, `refactor` ou `audit-remediation`, valide explicitamente sintoma, impacto, evidencia tecnica e escopo da remediacao
 - se o intake vier de auditoria, valide a rastreabilidade para `origin_audit_id` e `origin_report_path`
 
@@ -54,14 +59,13 @@ Se houver lacunas criticas, pare apos a validacao e devolva apenas:
 So execute esta passagem se o intake estiver pronto.
 
 - gere um PRD claro, modular e sem ingenuidade de escopo
-- siga `TEMPLATE-PRD.md` como contrato de saida
+- siga `TEMPLATE-PRD.md` e **obedeça** `GOV-PRD.md` (sem catalogo de Features nem User Stories no PRD)
 - copie para o frontmatter do PRD as taxonomias e rastreabilidades do intake, ajustando apenas o que mudar com justificativa documentada
 - preserve restricoes, nao-objetivos e riscos do intake
-- use `Features do Projeto` como eixo principal do planejamento
-- traduza o contexto em features entregaveis, fases, epicos e criterios de fatiamento coerentes
-- cada feature deve ter objetivo de negocio, comportamento esperado, criterios de aceite verificaveis e riscos/dependencias quando aplicavel
-- trate backend, frontend, banco e testes como impactos de cada feature, nao como secao principal do escopo
-- explicite a rastreabilidade minima `feature -> fase -> epico -> issue`
+- trate backend, frontend, banco e testes na **visao arquitetural geral** e em rollout quando relevante,
+  sem organizar o documento como backlog por entregavel
+- **nao** explicite rastreabilidade `Feature -> User Story -> Task` no PRD; ela sera estabelecida nas etapas
+  `PRD -> Features`, `Feature -> User Stories` e `User Story -> Tasks`
 - inclua referencia explicita ao arquivo `INTAKE-*.md` usado como origem
 - se o intake estiver em `source_mode: backfilled`, preserve a rastreabilidade da evidencia usada no backfill
 - se `intake_kind` for `problem`, `refactor` ou `audit-remediation`, produza um PRD de remediacao controlada, com escopo minimo necessario, riscos, rollback e criterios de validacao
@@ -70,19 +74,24 @@ So execute esta passagem se o intake estiver pronto.
 
 ### Requisitos minimos do PRD gerado
 
-O PRD precisa sair com:
+O PRD precisa sair com (alinhado a `GOV-PRD.md`):
 
-- objetivo e contexto
+- objetivo e contexto (problema / oportunidade)
 - frontmatter alinhado ao intake e a sua rastreabilidade
-- escopo dentro/fora
+- escopo dentro/fora e nao-objetivos quando aplicavel
 - restricoes e riscos
-- `Features do Projeto` como eixo principal
-- criterios de aceite verificaveis por feature
-- arquitetura afetada
-- fatiamento por fases coerente
-- rastreabilidade explicita `feature -> fase -> epico -> issue`
-- indicadores de sucesso
+- metricas e indicadores de sucesso
+- dependencias e integracoes em alto nivel
+- arquitetura geral (sem substituir manifestos de feature)
+- rollout (deploy, comunicacao, treinamento, suporte quando relevante)
+- expectativas de gates e auditorias **em nivel de projeto**, sem listar features ou US como backlog no PRD
 - referencia explicita ao arquivo de intake
+- **ausencia** de secao de Features do projeto, catalogo de US ou tabelas de planejamento entregavel nesse nivel
+
+### Apos o PRD
+
+A decomposicao em Features e etapa separada. Encerre a geracao do PRD aqui; a continuacao canonica e
+`PROMPT-PRD-PARA-FEATURES.md` com `SESSION-DECOMPOR-PRD-EM-FEATURES.md`.
 
 ### Regra final
 

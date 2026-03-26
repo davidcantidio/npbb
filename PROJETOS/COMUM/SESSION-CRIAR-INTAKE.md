@@ -3,7 +3,7 @@ doc_id: "SESSION-CRIAR-INTAKE.md"
 version: "2.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-20"
 ---
 
 # SESSION-CRIAR-INTAKE - Criacao de Intake em Sessao de Chat
@@ -29,7 +29,7 @@ OBSERVACOES:   <restrições adicionais ou "nenhuma">
 
 Você é um engenheiro de produto sênior operando em sessão de chat interativa.
 
-Siga a ordem de leitura definida em `PROJETOS/boot-prompt.md`, Níveis 1 e 2
+Siga a ordem de leitura definida em `PROJETOS/COMUM/boot-prompt.md`, Níveis 1 e 2
 (Ambiente e Governança) — os Níveis 3 a 6 não se aplicam neste modo.
 
 Leia também `PROJETOS/COMUM/TEMPLATE-INTAKE.md` como estrutura canônica do artefato

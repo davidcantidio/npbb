@@ -1,9 +1,9 @@
 ---
 doc_id: "TEMPLATE-PRD"
-version: "1.1"
+version: "2.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-25"
 project: "<PROJETO>"
 intake_kind: "<copiar_do_intake>"
 source_mode: "<copiar_do_intake>"
@@ -24,11 +24,11 @@ audit_rigor: "<copiar_do_intake>"
 # PRD - <PROJETO>
 
 > Preencha todos os campos. Mantenha a estrutura de governança existente.
-> O principio do framework e `delivery-first`; no planejamento, isso se materializa
-> como `feature-first`.
-> O eixo principal deste PRD sao as **Features** (comportamentos entregaveis).
-> A arquitetura (banco/backend/frontend) aparece como impacto de cada feature,
-> nao como organizacao principal.
+> O principio do framework e **delivery-first**; a decomposicao em comportamentos entregaveis
+> ocorre **apos** este PRD, na etapa explicita `PRD -> Features` (ver `GOV-PRD.md`,
+> `PROMPT-PRD-PARA-FEATURES.md`, `SESSION-DECOMPOR-PRD-EM-FEATURES.md`).
+> Este documento cobre **produto, escopo, restricoes, riscos, metricas, arquitetura geral e rollout** —
+> **sem** catalogo de Features nem listas de User Stories.
 > Copie do intake as taxonomias e os campos de rastreabilidade do frontmatter,
 > ajustando apenas quando houver motivo documentado.
 
@@ -99,14 +99,15 @@ audit_rigor: "<copiar_do_intake>"
 
 ## 9. Arquitetura Geral do Projeto
 
-> Visão geral de impacto arquitetural (detalhes por feature na seção Features)
+> Visao unificada de impacto arquitetural em nivel de projeto. Detalhamento por entregavel
+> fica nos manifestos `FEATURE-*.md` apos a etapa `PRD -> Features`.
 
 - **Backend**:
 - **Frontend**:
 - **Banco/migrações**:
 - **Observabilidade**:
 - **Autorização/autenticação**:
-- **Rollout**:
+- **Rollout** (visao de alto nivel; expandir na secao Rollout e Comunicacao):
 
 ## 10. Riscos Globais
 
@@ -122,137 +123,10 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-# 12. Features do Projeto
+> **Pos-PRD (nao faz parte deste arquivo):** backlog estruturado de features, user stories e tasks
+> segue `GOV-FEATURE.md`, `GOV-USER-STORY.md`, `GOV-SCRUM.md` e os prompts/sessoes de decomposicao.
 
-> **Este é o eixo principal do planejamento**. Cada feature representa um comportamento
-> entregável e demonstrável. Arquitetura (banco/backend/frontend) aparece como impacto
-> de cada feature, não como organização principal.
->
-> Regra: Se uma feature não pode ser demonstrada como algo utilizável, ela está
-> no nível errado de planejamento.
->
-> Use IDs estaveis (`Feature 1`, `Feature 2`, ...) e reutilize exatamente esses
-> IDs nas secoes de Fases e Epicos.
-
-## Feature 1: <Nome da Feature>
-
-### Objetivo de Negócio
-
-<Descrição do problema que esta feature resolve>
-
-### Comportamento Esperado
-
-<O que o usuário consegue fazer quando esta feature estiver pronta>
-
-### Critérios de Aceite
-
-- [ ] <Critério verificável 1>
-- [ ] <Critério verificável 2>
-- [ ] <Critério verificável 3>
-
-### Dependências com Outras Features
-
-- <Feature X>: <tipo de dependência>
-
-### Riscos Específicos
-
--
-
-### Fases de Implementação
-
-1. **Modelagem e Migration**: <descrição>
-2. **API**: <descrição>
-3. **UI**: <descrição>
-4. **Testes**: <descrição>
-
-### Impacts
-
-| Camada | Impacto | Detalhamento |
-|--------|---------|--------------|
-| Banco | <tabelas> | <colunas, constraints> |
-| Backend | <endpoints> | <métodos, contratos> |
-| Frontend | <telas> | <componentes, estados> |
-| Testes | <suítes> | <escopo> |
-
-### Tasks da Feature
-
-| Task ID | Descrição | SP | Depende de |
-|---------|-----------|-----|------------|
-| T1 | <ação atômica> | 2 | - |
-| T2 | <ação atômica> | 3 | T1 |
-| T3 | <ação atômica> | 2 | T2 |
-
----
-
-## Feature 2: <Nome da Feature>
-
-> Repita a mesma estrutura da Feature 1
-
----
-
-## Feature N: <Nome da Feature>
-
-> Repita a mesma estrutura
-
----
-
-# 13. Estrutura de Fases
-
-> Mantida a estrutura existente do framework. As features são alocadas nas fases
-> conforme dependências e prioridade. Nao organize fases por camada tecnica.
-
-## Fase 1: <Nome da Fase 1>
-
-- **Objetivo**:
-- **Features incluídas**:
-  - Feature 1
-  - Feature 2
-- **Gate de saída**:
-- **Critérios de aceite**:
-
-### Épicos da Fase 1
-
-| Épico | Feature(s) | Status | SP Total |
-|-------|------------|--------|----------|
-| EPIC-F1-01 | Feature 1 | todo | 8 |
-| EPIC-F1-02 | Feature 2 | todo | 5 |
-
-## Fase 2: <Nome da Fase 2>
-
-- **Objetivo**:
-- **Features incluídas**:
-- **Gate de saída**:
-- **Critérios de aceite**:
-
----
-
-# 14. Épicos
-
-> Cada épico agrupa issues que implementam uma ou mais features. O campo
-> "Feature de Origem" rastreia qual comportamento está sendo entregue.
-> Cada linha de issue deve repetir explicitamente a mesma feature usada no PRD.
-
-## Épico: <Nome do Épico>
-
-- **ID**: EPIC-F1-01
-- **Fase**: F1
-- **Feature de Origem**: Feature 1
-- **Objetivo**:
-- **Resultado de Negócio Mensurável**:
-- **Contexto Arquitetural**:
-- **Definition of Done**:
-  - [ ]
-
-### Issues do Épico
-
-| Issue ID | Nome | SP | Status | Feature |
-|----------|------|-----|--------|---------|
-| ISSUE-F1-01-001 | <nome> | 3 | todo | Feature 1 |
-| ISSUE-F1-01-002 | <nome> | 5 | todo | Feature 1 |
-
----
-
-# 15. Dependências Externas
+## 12. Dependências Externas
 
 | Dependência | Tipo | Origem | Impacto | Status |
 |-------------|------|--------|---------|--------|
@@ -260,7 +134,7 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-# 16. Rollout e Comunicação
+## 13. Rollout e Comunicação
 
 - **Estratégia de deploy**:
 - **Comunicação de mudanças**:
@@ -269,29 +143,25 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-# 17. Revisões e Auditorias
+## 14. Revisões e Auditorias
 
-- **Auditorias planejadas**: <fases>
+- **Gates e auditorias em nivel de projeto** (expectativa, nao backlog de features/US neste PRD):
 - **Critérios de auditoria**: <referência a GOV-AUDITORIA.md>
 - **Threshold anti-monolito**: <referência a SPEC-ANTI-MONOLITO.md>
 
 ---
 
-# 18. Checklist de Prontidão
+## 15. Checklist de Prontidão
 
 - [ ] Intake referenciado e versao confirmada
-- [ ] Features definidas com critérios de aceite verificáveis
-- [ ] Cada feature com impacts por camada preenchidos
-- [ ] Rastreabilidade explicita `Feature -> Fase -> Epico -> Issue`
-- [ ] Épicos criados e vinculados a features
-- [ ] Fases definidas com gates de saída
-- [ ] Dependências externas mapeadas
-- [ ] Riscos identificados e mitigacoes planejadas
-- [ ] Rollout planejado
+- [ ] Problema, escopo, restricoes, riscos e metricas preenchidos de forma verificavel
+- [ ] Arquitetura geral e rollout descritos **sem** catalogo de Features nem tabelas de User Stories neste PRD
+- [ ] Dependencias externas mapeadas
+- [ ] Proxima etapa explicita: `PRD -> Features` via `SESSION-DECOMPOR-PRD-EM-FEATURES.md` / `PROMPT-PRD-PARA-FEATURES.md`
 
 ---
 
-# 19. Anexos e Referências
+## 16. Anexos e Referências
 
 - <Link para diagrama>
 - <Link para documentação técnica>
@@ -299,4 +169,4 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-> **Frase Guia**: "Feature organiza, Task executa, Teste valida"
+> **Frase Guia (pipeline):** PRD direciona; Feature organiza; User Story fatia; Task executa; Teste valida.

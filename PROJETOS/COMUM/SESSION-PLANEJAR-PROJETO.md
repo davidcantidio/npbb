@@ -1,88 +1,121 @@
 ---
 doc_id: "SESSION-PLANEJAR-PROJETO.md"
-version: "2.3"
-status: "active"
+version: "4.0"
+status: "legacy_router"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-25"
 ---
 
-# SESSION-PLANEJAR-PROJETO - Planejamento de Projeto em Sessao de Chat
+# SESSION-PLANEJAR-PROJETO — Router legado de planejamento pos-PRD
 
-## Parâmetros obrigatórios
+Este ficheiro **nao** e mais a sessao operacional monolitica de decomposicao.
+Mantem-se como **roteador de compatibilidade**: aponta para etapas explicitas do
+pipeline `PRD -> Features -> User Stories -> Tasks`, alinhadas ao contrato em que
+o **PRD canônico nao lista Features nem User Stories** (ver `GOV-PRD.md` e
+`TEMPLATE-PRD.md`).
 
-Preencha e cole junto com este prompt:
+Para trabalho novo, abra **directamente** a sessao especializada da etapa em
+curso; use este router apenas quando um fluxo ou ferramenta ainda referenciar
+`SESSION-PLANEJAR-PROJETO.md` pelo nome historico.
 
-```
+Os ficheiros `SESSION-DECOMPOR-*`, `PROMPT-PRD-PARA-FEATURES.md`,
+`PROMPT-FEATURE-PARA-USER-STORIES.md`, `PROMPT-US-PARA-TASKS.md`, `GOV-PRD.md`,
+`GOV-FEATURE.md` e `TEMPLATE-FEATURE.md` sao o **contrato canônico** publicado;
+a tabela abaixo referencia esses caminhos.
+
+## Sessoes canonicas (substituem o prompt unificado)
+
+| Etapa do pipeline | Sessao | Prompt canonico associado |
+|-------------------|--------|---------------------------|
+| PRD (aprovado) -> Features | `PROJETOS/COMUM/SESSION-DECOMPOR-PRD-EM-FEATURES.md` | `PROJETOS/COMUM/PROMPT-PRD-PARA-FEATURES.md` |
+| Feature -> User Stories | `PROJETOS/COMUM/SESSION-DECOMPOR-FEATURE-EM-US.md` | `PROJETOS/COMUM/PROMPT-FEATURE-PARA-USER-STORIES.md` |
+| User Story -> Tasks | `PROJETOS/COMUM/SESSION-DECOMPOR-US-EM-TASKS.md` | `PROJETOS/COMUM/PROMPT-US-PARA-TASKS.md` |
+
+Contratos documentais de apoio: `GOV-FEATURE.md`, `TEMPLATE-FEATURE.md`,
+`GOV-USER-STORY.md`, `TEMPLATE-USER-STORY.md`, `SPEC-TASK-INSTRUCTIONS.md`,
+`TEMPLATE-TASK.md`.
+
+**Encerramento de projeto** (relatorio final): continue a usar
+`TEMPLATE-ENCERRAMENTO.md` e as regras de auditoria de feature em
+`GOV-FRAMEWORK-MASTER.md` / `SESSION-AUDITAR-FEATURE.md` — apenas depois de
+cobertura e gates aplicaveis ao escopo.
+
+## Parametros obrigatorios
+
+Os parametros abaixo mantem-se **para alinhamento com skills e automatismos** que
+ainda esperam este contrato. Preencha-os e encaminhe-os para a sessao escolhida na
+tabela anterior (nao reproduza aqui o algoritmo monolitico antigo).
+
+```text
 PROJETO:       <nome do projeto, ex: FRAMEWORK-GOV>
-PRD_PATH:      <caminho do PRD, ex: PROJETOS/FRAMEWORK-GOV/PRD-FRAMEWORK-GOV-v1.0.md>
-ESCOPO:        <"projeto completo" | "apenas F<N>" | "apenas EPIC-F<N>-<NN>">
-PROFUNDIDADE:  <"fases" | "fases+epicos" | "fases+epicos+issues" | "completo">
-TASK_MODE:     <"optional" | "required" | "por issue">
-OBSERVACOES:   <restrições adicionais ou "nenhuma">
+PRD_PATH:      <caminho do PRD ou adendo aprovado do PRD, ex: PROJETOS/FRAMEWORK-GOV/PRD-FRAMEWORK-GOV.md>
+ESCOPO:        <"projeto completo" | "apenas FEATURE-<N>-<NOME>" | "apenas US-<N>-<NN>-<NOME>" | "encerramento">
+PROFUNDIDADE:  <"features" | "features+user_stories" | "completo" | "encerramento">
+TASK_MODE:     <"optional" | "required" | "por user story">
+OBSERVACOES:   <restricoes adicionais ou "nenhuma">
 ```
 
----
+## Roteamento deterministico (mapa legado -> sessoes novas)
 
-## Prompt
+1. **Sempre** comece por confirmar `PRD_PATH` (PRD base ou adendo aprovado; se
+   for adendo, leia o PRD base referenciado). Lacunas que impecam decomposicao
+   sao tratadas na **sessao da etapa**, com `BLOQUEADO` quando o insumo daquela
+   etapa for insuficiente — **nao** exija que o PRD liste Features ou User
+   Stories.
+2. `PROFUNDIDADE: features` ou primeiro passo de `features+user_stories` /
+   `completo`: `SESSION-DECOMPOR-PRD-EM-FEATURES.md` + `PROMPT-PRD-PARA-FEATURES.md`.
+3. `ESCOPO` recortando uma feature ou `PROFUNDIDADE` incluindo user stories:
+   `SESSION-DECOMPOR-FEATURE-EM-US.md` + `PROMPT-FEATURE-PARA-USER-STORIES.md`
+   (por feature aplicavel).
+4. Detalhe de tasks (`completo`, ou `TASK_MODE` aplicavel): `SESSION-DECOMPOR-US-EM-TASKS.md`
+   + `PROMPT-US-PARA-TASKS.md` (por user story aplicavel).
+5. `PROFUNDIDADE: encerramento` ou `ESCOPO: encerramento`: relatorio de
+   encerramento conforme `TEMPLATE-ENCERRAMENTO.md`; bloqueie se faltar auditoria
+   final `go` onde a governanca exigir.
 
-Você é um **engenheiro de produto sênior** operando **exclusivamente em modo de planejamento** (nunca de implementação).
+## Ordem de leitura transversal (ainda valida)
 
-**Regra de ouro inegociável**: Neste prompt você **NUNCA** deve gerar, alterar ou sugerir código de aplicação (backend, frontend, models, endpoints, etc). Seu único output permitido é **estrutura documental de planejamento**: pastas, arquivos Markdown de fases, épicos, issues, tasks e sprints.
+1. `PROJETOS/COMUM/boot-prompt.md` (niveis aplicaveis)
+2. `PROJETOS/COMUM/GOV-FRAMEWORK-MASTER.md`
+3. A sessao especializada escolhida e o prompt canonico da etapa
+4. Artefactos do projeto: `{{PRD_PATH}}`, `PROJETOS/<PROJETO>/INTAKE-<PROJETO>.md`
 
-### Ordem de Leitura Obrigatória (não pule)
+## Pre-condicao operacional: indice derivado de `PROJETOS/`
 
-1. `PROJETOS/boot-prompt.md` → **apenas Níveis 1, 2 e 3** (Ambiente, Governança e Projeto). **Não execute Níveis 4, 5 ou 6**.
-2. `PROJETOS/COMUM/GOV-ISSUE-FIRST.md` (estrutura canonica completa)
-3. `PROJETOS/COMUM/PROMPT-PLANEJAR-FASE.md` (referência canônica de artefatos)
-4. `PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md`
-5. O PRD informado pelo PM: `{{PRD_PATH}}`
-6. `PROJETOS/<PROJETO>/INTAKE-<PROJETO>.md`
+Antes do primeiro gate de planejamento na etapa em curso, sincronize o indice
+operacional conforme o processo canônico vigente em `GOV-FRAMEWORK-MASTER.md`
+(por exemplo `./bin/sync-openclaw-projects-db.sh` enquanto o read model for
+SQLite; após cutover, seguir `SPEC-INDICE-PROJETOS-POSTGRES.md`).
 
-Ao ler o PRD, trate `Features do Projeto` como a fonte primaria do planejamento.
-Se o PRD nao trouxer features claras, criterios de aceite por feature ou
-rastreabilidade minima para fases/epicos, emita `BLOQUEADO` antes de decompor.
+1. execute o sync canônico
+2. consulte o estado do projeto e do escopo pedido no indice
+3. compare com o Markdown em Git; o **Markdown prevalece**
+4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate da etapa
+5. após gravacoes em `PROJETOS/` que alterem features, user stories, tasks ou
+   encerramento, execute novo sync
 
----
+## Literais de bloco (referencia para etapas especializadas)
 
-## Protocolo de confirmações HITL
+As sessoes novas reproduzem ou refinam estes literais; mantenha coerencia entre
+etapas:
 
-**Modo de Operação**: Este é um fluxo **HITL de planejamento hierárquico** com a seguinte ordem **obrigatória**:
-
-**Fases → Épicos → Issues → Sprints → Tasks (com detalhamento quando TASK_MODE=required)**
-
-Após propor cada nível hierárquico, **pare obrigatoriamente** e apresente ao PM:
-
+```text
+DRIFT_INDICE: <nenhuma | descricao>
 ```
-[NÍVEL CONCLUÍDO: Fases | Épicos | Issues | Sprints | Tasks]
+
+```text
+[NIVEL CONCLUIDO: Features | User Stories | Tasks | Encerramento]
 ─────────────────────────────────────────
-Total de itens: X | SP estimado: Y | Alertas: Z
-Lacunas identificadas no PRD: (se houver)
+Total de itens: X | Alertas: Z
+DRIFT_INDICE: <nenhuma | descricao>
+Lacunas identificadas no insumo da etapa: <nenhuma | lista>
 ─────────────────────────────────────────
-→ "sim" para avançar ao próximo nível
-→ "ajustar [instrução]" para revisar
-→ "encerrar aqui" para parar e gerar apenas o aprovado
+Resultado esperado do gate: `APROVADO | AJUSTAR | REPROVADO`
 ```
 
-**Antes de criar qualquer arquivo**, sempre anuncie:
+## Regra de compatibilidade
 
-```
-GERANDO ARTEFATO: <caminho-completo-do-arquivo.md>
-Formato: [pasta ISSUE-*/ com README.md + TASK-*.md | arquivo único]
-→ "sim" para gravar / "pular" / "ajustar [instrução]"
-```
-
----
-
-## Regras Inegociáveis (reforçadas)
-
-- **Nunca avance de nível** sem confirmação explícita do PM.
-- **Nunca grave arquivo** sem confirmação explícita do PM.
-- **Nunca invente requisitos** ausentes no Intake/PRD.
-- Use **exatamente** os templates definidos em `GOV-ISSUE-FIRST.md`.
-- Preserve rastreabilidade explicita `feature -> fase -> epico -> issue`.
-- Cada fase proposta deve listar as features que entrega.
-- Cada epico e cada issue devem declarar a `Feature de Origem` usando o mesmo ID do PRD.
-- Quando `TASK_MODE: required`, garanta que toda issue tenha detalhamento completo por task (usando `TEMPLATE-TASK.md`).
-- Se o PRD tiver lacunas que impeçam uma issue bem formada com `task_instruction_mode: required`, emita `BLOQUEADO` e liste as lacunas claramente.
-- Mantenha total fidelidade aos arquivos de governança (`GOV-*` e `SPEC-*`).
-- Este prompt é **exclusivamente para planejamento documental**. Qualquer sugestão de código ou implementação direta deve ser rejeitada.
+Quando documentacao de projeto, skills ou scripts ainda disserem "seguir
+`SESSION-PLANEJAR-PROJETO`", interprete como: **aplicar este router e executar a
+cadeia de sessoes especializadas** equivalente ao `ESCOPO` e `PROFUNDIDADE`
+pedidos — sem reintroduzir PRD com listas de Features ou User Stories.

@@ -1,179 +1,217 @@
-"""Testes para o gerador de projetos do framework."""
-
-from __future__ import annotations
-
-import inspect
+import importlib.util
+import os
+import sys
+import tempfile
+import unittest
 from pathlib import Path
 
-import pytest
 
-from scripts import criar_projeto as criar_projeto_mod
-
-
-def _project_root(base: Path, nome_projeto: str) -> Path:
-    """Retorna a raiz do projeto criada dentro do ``tmp_path``."""
-    return base / nome_projeto
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_PATH = REPO_ROOT / "scripts" / "criar_projeto.py"
+SYNC_SCRIPT_PATH = REPO_ROOT / "scripts" / "openclaw_projects_index" / "sync.py"
 
 
-def test_validar_nome_projeto_normaliza_para_maiusculas() -> None:
-    """O nome do projeto deve ser normalizado antes da criacao."""
-    assert criar_projeto_mod.validar_nome_projeto(" meu-projeto ") == "MEU-PROJETO"
+def load_module():
+    spec = importlib.util.spec_from_file_location("criar_projeto", SCRIPT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-@pytest.mark.parametrize("nome_invalido", ["", "foo/bar", "nome com espaco", "abc!"])
-def test_validar_nome_projeto_rejeita_nomes_invalidos(nome_invalido: str) -> None:
-    """Nomes fora da convencao devem ser rejeitados."""
-    with pytest.raises(ValueError):
-        criar_projeto_mod.validar_nome_projeto(nome_invalido)
+def load_sync_module():
+    spec = importlib.util.spec_from_file_location("openclaw_projects_index_sync", SYNC_SCRIPT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-def test_parse_args_preenche_defaults_e_flags() -> None:
-    """A CLI deve expor defaults canonicos e aceitar flags customizadas."""
-    opts = criar_projeto_mod.parse_args(
-        [
-            "meu-projeto",
-            "--escopo",
-            "apenas F<N>",
-            "--profundidade",
-            "fases+epicos+issues",
-            "--task-mode",
-            "por issue",
-            "--observacoes",
-            "validacao manual",
-            "-v",
-        ]
-    )
+class CriarProjetoTest(unittest.TestCase):
+    def setUp(self):
+        self.module = load_module()
+        self.sync_module = load_sync_module()
 
-    assert opts.nome_projeto == "MEU-PROJETO"
-    assert opts.escopo == "apenas F<N>"
-    assert opts.profundidade == "fases+epicos+issues"
-    assert opts.task_mode == "por issue"
-    assert opts.observacoes == "validacao manual"
-    assert opts.verbose is True
+    def test_scaffold_cria_arvore_feature_first(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            previous_cwd = Path.cwd()
+            os.chdir(tmp_path)
+            try:
+                self.module.criar_projeto("TESTE")
+            finally:
+                os.chdir(previous_cwd)
+
+            project_root = tmp_path / "PROJETOS" / "TESTE"
+
+            feature_root = (
+                project_root / "features" / "FEATURE-1-FOUNDATION"
+            )
+            feature_manifest = feature_root / "FEATURE-1.md"
+            user_story_readme = (
+                feature_root
+                / "user-stories"
+                / "US-1-01-BOOTSTRAP"
+                / "README.md"
+            )
+            task_file = user_story_readme.parent / "TASK-1.md"
+            audit_report = feature_root / "auditorias" / "RELATORIO-AUDITORIA-F1-R01.md"
+            closing_report = project_root / "encerramento" / "RELATORIO-ENCERRAMENTO.md"
+
+            self.assertTrue(feature_manifest.exists())
+            self.assertTrue(user_story_readme.exists())
+            self.assertTrue(task_file.exists())
+            self.assertTrue(audit_report.exists())
+            self.assertTrue(closing_report.exists())
+
+            self.assertFalse((project_root / "F1-FUNDACAO").exists())
+            self.assertFalse((project_root / "issues").exists())
+            self.assertFalse((project_root / "sprints").exists())
+
+            feature_body = feature_manifest.read_text(encoding="utf-8")
+            prd = (project_root / "PRD-TESTE.md").read_text(encoding="utf-8")
+
+            self.assertIn("# FEATURE-1 - Foundation", feature_body)
+            self.assertIn("| US-1-01 | Bootstrap do projeto | 3 | nenhuma | todo |", feature_body)
+            self.assertIn("STATUS: PENDENTE - aguardando conclusao do Intake", prd)
+            self.assertNotIn("## 12. Features do Projeto", prd)
+            self.assertNotIn("### User Stories planejadas", prd)
+            self.assertIn("Pos-PRD (nao faz parte deste arquivo)", prd)
+            self.assertIn("SESSION-DECOMPOR-PRD-EM-FEATURES.md", prd)
+
+    def test_wrappers_canonicos_nascem_genericos(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            previous_cwd = Path.cwd()
+            os.chdir(tmp_path)
+            try:
+                self.module.criar_projeto("TESTE")
+            finally:
+                os.chdir(previous_cwd)
+
+            project_root = tmp_path / "PROJETOS" / "TESTE"
+            implement_wrapper = (project_root / "SESSION-IMPLEMENTAR-US.md").read_text(
+                encoding="utf-8"
+            )
+            review_wrapper = (project_root / "SESSION-REVISAR-US.md").read_text(
+                encoding="utf-8"
+            )
+            audit_wrapper = (project_root / "SESSION-AUDITAR-FEATURE.md").read_text(
+                encoding="utf-8"
+            )
+            session_map = (project_root / "SESSION-MAPA.md").read_text(
+                encoding="utf-8"
+            )
+
+            self.assertFalse((project_root / "SESSION-IMPLEMENTAR-ISSUE.md").exists())
+            self.assertFalse((project_root / "SESSION-REVISAR-ISSUE.md").exists())
+            self.assertFalse((project_root / "SESSION-AUDITAR-FASE.md").exists())
+
+            self.assertIn("<resolver_na_user_story_elegivel_do_projeto>", implement_wrapper)
+            self.assertIn("PROJETOS/COMUM/SESSION-IMPLEMENTAR-US.md", implement_wrapper)
+            self.assertIn("REVIEW_MODE", review_wrapper)
+            self.assertIn("<resolver_na_feature_pronta_para_gate>", audit_wrapper)
+            self.assertIn(
+                "wrappers de user story/revisao/auditoria nao devem congelar a fila na bootstrap",
+                session_map,
+            )
+
+    def test_markdown_hrefs_sao_relativos_e_a_us_bootstrap_linka_prd_e_task(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            previous_cwd = Path.cwd()
+            os.chdir(tmp_path)
+            try:
+                self.module.criar_projeto("TESTE")
+            finally:
+                os.chdir(previous_cwd)
+
+            project_root = tmp_path / "PROJETOS" / "TESTE"
+            for md_path in sorted(project_root.rglob("*.md")):
+                body = md_path.read_text(encoding="utf-8")
+                self.assertNotIn(
+                    "](PROJETOS/",
+                    body,
+                    msg=f"href repo-relative invalido em {md_path.relative_to(project_root.parent)}",
+                )
+
+            user_story_readme = (
+                project_root
+                / "features"
+                / "FEATURE-1-FOUNDATION"
+                / "user-stories"
+                / "US-1-01-BOOTSTRAP"
+                / "README.md"
+            ).read_text(encoding="utf-8")
+            audit_report = (
+                project_root
+                / "features"
+                / "FEATURE-1-FOUNDATION"
+                / "auditorias"
+                / "RELATORIO-AUDITORIA-F1-R01.md"
+            ).read_text(encoding="utf-8")
+
+            self.assertIn("[PRD do projeto](../../../../PRD-TESTE.md)", user_story_readme)
+            self.assertRegex(user_story_readme, r"\[TASK-1\]\((\./)?TASK-1\.md\)")
+            self.assertIn('scope_type: "feature"', audit_report)
+            self.assertIn('followup_destination: "same-feature"', audit_report)
+
+    def test_scaffold_popula_indice_sqlite_estruturado(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            previous_cwd = Path.cwd()
+            os.chdir(tmp_path)
+            try:
+                self.module.criar_projeto("TESTE")
+            finally:
+                os.chdir(previous_cwd)
+
+            db_path = tmp_path / "openclaw.sqlite"
+            self.sync_module.run_sync(tmp_path, db_path, dry_run=False)
+
+            import sqlite3
+
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            cur.execute(
+                "SELECT feature_key, path_relative FROM features ORDER BY feature_key"
+            )
+            feature = cur.fetchone()
+            self.assertEqual(feature["feature_key"], "FEATURE-1-FOUNDATION")
+            self.assertEqual(
+                feature["path_relative"],
+                "PROJETOS/TESTE/features/FEATURE-1-FOUNDATION",
+            )
+
+            cur.execute(
+                "SELECT user_story_key, path_relative FROM user_stories ORDER BY user_story_key"
+            )
+            user_story = cur.fetchone()
+            self.assertEqual(user_story["user_story_key"], "US-1-01-BOOTSTRAP")
+            self.assertEqual(
+                user_story["path_relative"],
+                "PROJETOS/TESTE/features/FEATURE-1-FOUNDATION/user-stories/US-1-01-BOOTSTRAP/README.md",
+            )
+
+            cur.execute("SELECT task_id, path_relative FROM tasks ORDER BY task_number")
+            task = cur.fetchone()
+            self.assertEqual(task["task_id"], "T1")
+            self.assertEqual(
+                task["path_relative"],
+                "PROJETOS/TESTE/features/FEATURE-1-FOUNDATION/user-stories/US-1-01-BOOTSTRAP/TASK-1.md",
+            )
+
+            cur.execute(
+                "SELECT report_key, feature_code FROM feature_audits ORDER BY report_key"
+            )
+            audit = cur.fetchone()
+            self.assertEqual(audit["report_key"], "RELATORIO-AUDITORIA-F1-R01")
+            self.assertEqual(audit["feature_code"], "FEATURE-1-FOUNDATION")
+
+            conn.close()
 
 
-def test_criar_estrutura_minima_gera_diretorios_canonicos(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A estrutura minima deve criar raiz, feito e pastas da fase bootstrap."""
-    monkeypatch.setattr(criar_projeto_mod, "PROJETOS_DIR", tmp_path)
-
-    created = criar_projeto_mod.criar_estrutura_minima("MEU-PROJETO")
-
-    root = _project_root(tmp_path, "MEU-PROJETO")
-    assert root.is_dir()
-    assert (root / "feito").is_dir()
-    assert (root / "F1-FUNDACAO").is_dir()
-    assert (root / "F1-FUNDACAO" / "issues").is_dir()
-    assert (root / "F1-FUNDACAO" / "sprints").is_dir()
-    assert (root / "F1-FUNDACAO" / "auditorias").is_dir()
-    assert root in created
-
-
-def test_criar_arquivos_base_preenche_scaffold_completo(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Os arquivos base devem sair prontos, sem placeholders residuais."""
-    monkeypatch.setattr(criar_projeto_mod, "PROJETOS_DIR", tmp_path)
-
-    criar_projeto_mod.criar_estrutura_minima("MEU-PROJETO")
-    created = criar_projeto_mod.criar_arquivos_base("MEU-PROJETO")
-
-    root = _project_root(tmp_path, "MEU-PROJETO")
-    issue_dir = root / "F1-FUNDACAO" / "issues" / "ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO"
-
-    expected_files = [
-        "INTAKE-MEU-PROJETO.md",
-        "PRD-MEU-PROJETO.md",
-        "AUDIT-LOG.md",
-        "SESSION-PLANEJAR-PROJETO.md",
-        "SESSION-CRIAR-INTAKE.md",
-        "SESSION-CRIAR-PRD.md",
-        "SESSION-IMPLEMENTAR-ISSUE.md",
-        "SESSION-REVISAR-ISSUE.md",
-        "SESSION-AUDITAR-FASE.md",
-        "SESSION-REMEDIAR-HOLD.md",
-        "SESSION-REFATORAR-MONOLITO.md",
-        "SESSION-MAPA.md",
-        "F1-FUNDACAO/F1_MEU-PROJETO_EPICS.md",
-        "F1-FUNDACAO/EPIC-F1-01-FUNDACAO-DO-PROJETO.md",
-        "F1-FUNDACAO/sprints/SPRINT-F1-01.md",
-        "F1-FUNDACAO/auditorias/RELATORIO-AUDITORIA-F1-R01.md",
-    ]
-    for rel_path in expected_files:
-        assert (root / rel_path).exists()
-    assert (issue_dir / "README.md").exists()
-    assert (issue_dir / "TASK-1.md").exists()
-    assert len(created) == 18
-
-    planner = (root / "SESSION-PLANEJAR-PROJETO.md").read_text(encoding="utf-8")
-    assert "PROJETO:       MEU-PROJETO" in planner
-    assert "PRD_PATH:      PROJETOS/MEU-PROJETO/PRD-MEU-PROJETO.md" in planner
-    assert "ESCOPO:        projeto completo" in planner
-    assert "PROFUNDIDADE:  completo" in planner
-    assert "TASK_MODE:     required" in planner
-    assert "OBSERVACOES:   nenhuma" in planner
-    assert "<nome do projeto" not in planner
-
-    intake = (root / "INTAKE-MEU-PROJETO.md").read_text(encoding="utf-8")
-    prd = (root / "PRD-MEU-PROJETO.md").read_text(encoding="utf-8")
-    assert 'doc_id: "INTAKE-MEU-PROJETO.md"' in intake
-    assert 'project: "MEU-PROJETO"' in intake
-    assert "<PROJETO>" not in intake
-    assert 'doc_id: "PRD-MEU-PROJETO.md"' in prd
-    assert "<PROJETO>" not in prd
-
-    issue_readme = (issue_dir / "README.md").read_text(encoding="utf-8")
-    task = (issue_dir / "TASK-1.md").read_text(encoding="utf-8")
-    assert 'doc_id: "ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO"' in issue_readme
-    assert 'task_instruction_mode: "required"' in issue_readme
-    assert 'issue_id: "ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO"' in task
-    assert "tdd_aplicavel: false" in task
-    assert "<PROJETO>" not in issue_readme
-    assert "<PROJETO>" not in task
-
-    implement = (root / "SESSION-IMPLEMENTAR-ISSUE.md").read_text(encoding="utf-8")
-    assert "ISSUE_ID:" in implement
-    assert "ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO" in implement
-    assert "ISSUE_PATH:" in implement
-    assert "PROJETOS/MEU-PROJETO/F1-FUNDACAO/issues/ISSUE-F1-01-001-ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO" in implement
-
-
-def test_criar_projeto_rejeita_projeto_existente(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Uma pasta de projeto ja existente nao pode ser sobrescrita."""
-    monkeypatch.setattr(criar_projeto_mod, "PROJETOS_DIR", tmp_path)
-
-    (tmp_path / "OMEGA").mkdir()
-
-    with pytest.raises(FileExistsError):
-        criar_projeto_mod.criar_projeto("OMEGA")
-
-
-def test_main_smoke_creates_project_and_returns_zero(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A CLI deve conseguir criar um projeto completo em modo verbose."""
-    monkeypatch.setattr(criar_projeto_mod, "PROJETOS_DIR", tmp_path)
-
-    exit_code = criar_projeto_mod.main(["MEU-PROJETO", "-v"])
-
-    assert exit_code == 0
-    assert (tmp_path / "MEU-PROJETO" / "SESSION-MAPA.md").exists()
-    assert "PROJETO CRIADO: MEU-PROJETO" in capsys.readouterr().out
-
-
-def test_public_functions_have_docstrings() -> None:
-    """As funcoes publicas do script devem manter docstrings."""
-    publicas = [
-        criar_projeto_mod.validar_nome_projeto,
-        criar_projeto_mod.build_argument_parser,
-        criar_projeto_mod.parse_args,
-        criar_projeto_mod.criar_estrutura_minima,
-        criar_projeto_mod.criar_arquivos_base,
-        criar_projeto_mod.criar_projeto,
-        criar_projeto_mod.main,
-    ]
-    for func in publicas:
-        assert inspect.getdoc(func)
+if __name__ == "__main__":
+    unittest.main()

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -19,22 +20,20 @@ DEFAULT_OBSERVACOES = "nenhuma"
 
 PROJETOS_DIR = Path("PROJETOS")
 
-BOOTSTRAP_PHASE_DIR = "F1-FUNDACAO"
-BOOTSTRAP_PHASE_ID = "F1"
-BOOTSTRAP_PHASE_LABEL = "Fundacao do projeto"
-BOOTSTRAP_FEATURE_ID = "Feature 1"
-BOOTSTRAP_EPIC_ID = "EPIC-F1-01"
-BOOTSTRAP_EPIC_LABEL = "Fundacao do projeto"
-BOOTSTRAP_ISSUE_ID = "ISSUE-F1-01-001"
-BOOTSTRAP_ISSUE_SLUG = "ESTABILIZAR-SCAFFOLD-INICIAL-DO-PROJETO"
-BOOTSTRAP_ISSUE_DOC_ID = f"{BOOTSTRAP_ISSUE_ID}-{BOOTSTRAP_ISSUE_SLUG}"
-BOOTSTRAP_ISSUE_TITLE = "Estabilizar scaffold inicial do projeto"
-BOOTSTRAP_EPIC_SLUG = "FUNDACAO-DO-PROJETO"
-BOOTSTRAP_EPIC_FILENAME = f"{BOOTSTRAP_EPIC_ID}-{BOOTSTRAP_EPIC_SLUG}.md"
+BOOTSTRAP_FEATURE_DIR = "FEATURE-1-FOUNDATION"
+BOOTSTRAP_FEATURE_ID = BOOTSTRAP_FEATURE_DIR
+BOOTSTRAP_FEATURE_CODE = "FEATURE-1"
+BOOTSTRAP_FEATURE_LABEL = "Foundation"
+BOOTSTRAP_FEATURE_MANIFEST = "FEATURE-1.md"
+BOOTSTRAP_US_ID = "US-1-01"
+BOOTSTRAP_US_PRD_ID = "US-1.1"
+BOOTSTRAP_US_SLUG = "BOOTSTRAP"
+BOOTSTRAP_US_DIR = f"{BOOTSTRAP_US_ID}-{BOOTSTRAP_US_SLUG}"
+BOOTSTRAP_US_DOC_ID = BOOTSTRAP_US_DIR
+BOOTSTRAP_US_TITLE = "Bootstrap do projeto"
 BOOTSTRAP_TASK_ID = "T1"
 BOOTSTRAP_ROUND = "R01"
-BOOTSTRAP_SPRINT_ID = "SPRINT-F1-01"
-BOOTSTRAP_AUDIT_REPORT = f"RELATORIO-AUDITORIA-{BOOTSTRAP_PHASE_ID}-{BOOTSTRAP_ROUND}.md"
+BOOTSTRAP_AUDIT_REPORT = f"RELATORIO-AUDITORIA-F1-{BOOTSTRAP_ROUND}.md"
 
 
 @dataclass(frozen=True)
@@ -55,27 +54,26 @@ class ProjectPaths:
 
     filesystem_root: Path
     project_ref: Path
-    feito_dir: Path
-    phase_dir: Path
-    issues_dir: Path
-    sprints_dir: Path
+    features_dir: Path
+    feature_dir: Path
+    user_stories_dir: Path
+    user_story_dir: Path
     auditorias_dir: Path
+    encerramento_dir: Path
     intake_path: Path
     prd_path: Path
     audit_log_path: Path
-    phase_manifest_path: Path
-    epic_manifest_path: Path
-    issue_dir: Path
-    issue_readme_path: Path
+    feature_manifest_path: Path
+    user_story_readme_path: Path
     task1_path: Path
-    sprint_path: Path
     audit_report_path: Path
+    closing_report_path: Path
     session_plan_path: Path
     session_create_intake_path: Path
     session_create_prd_path: Path
-    session_implement_issue_path: Path
-    session_review_issue_path: Path
-    session_audit_phase_path: Path
+    session_implement_us_path: Path
+    session_review_us_path: Path
+    session_audit_feature_path: Path
     session_remediate_hold_path: Path
     session_refactor_monolith_path: Path
     session_map_path: Path
@@ -92,6 +90,10 @@ class ProjectContext:
     def rel(self, *parts: str) -> str:
         """Retorna caminho repo-relative dentro de ``PROJETOS/<PROJETO>``."""
         return self.paths.project_ref.joinpath(*parts).as_posix()
+
+    def md_href(self, writer: Path, target: Path) -> str:
+        """Caminho relativo de ``writer`` a ``target``, valido como href Markdown."""
+        return Path(os.path.relpath(target, writer.parent)).as_posix()
 
 
 @dataclass(frozen=True)
@@ -128,19 +130,24 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--escopo",
         default=DEFAULT_ESCOPO,
-        choices=["projeto completo", "apenas F<N>", "apenas EPIC-F<N>-<NN>"],
+        choices=[
+            "projeto completo",
+            "apenas FEATURE-<N>-<NOME>",
+            "apenas US-<N>-<NN>-<NOME>",
+            "encerramento",
+        ],
         help="Escopo predefinido para SESSION-PLANEJAR-PROJETO",
     )
     parser.add_argument(
         "--profundidade",
         default=DEFAULT_PROFUNDIDADE,
-        choices=["fases", "fases+epicos", "fases+epicos+issues", "completo"],
+        choices=["features", "features+user_stories", "completo", "encerramento"],
         help="Profundidade predefinida para SESSION-PLANEJAR-PROJETO",
     )
     parser.add_argument(
         "--task-mode",
         default=DEFAULT_TASK_MODE,
-        choices=["optional", "required", "por issue"],
+        choices=["optional", "required", "por user story"],
         help="Modo de task predefinido para SESSION-PLANEJAR-PROJETO",
     )
     parser.add_argument(
@@ -292,36 +299,36 @@ def _build_paths(options: ScaffoldOptions) -> ProjectPaths:
     """Deriva caminhos fisicos e referencias do scaffold."""
     filesystem_root = PROJETOS_DIR / options.nome_projeto
     project_ref = Path("PROJETOS") / options.nome_projeto
-    phase_dir = filesystem_root / BOOTSTRAP_PHASE_DIR
-    issues_dir = phase_dir / "issues"
-    issue_dir = issues_dir / BOOTSTRAP_ISSUE_DOC_ID
-    auditorias_dir = phase_dir / "auditorias"
-    sprints_dir = phase_dir / "sprints"
+    features_dir = filesystem_root / "features"
+    feature_dir = features_dir / BOOTSTRAP_FEATURE_DIR
+    user_stories_dir = feature_dir / "user-stories"
+    user_story_dir = user_stories_dir / BOOTSTRAP_US_DIR
+    auditorias_dir = feature_dir / "auditorias"
+    encerramento_dir = filesystem_root / "encerramento"
 
     return ProjectPaths(
         filesystem_root=filesystem_root,
         project_ref=project_ref,
-        feito_dir=filesystem_root / "feito",
-        phase_dir=phase_dir,
-        issues_dir=issues_dir,
-        sprints_dir=sprints_dir,
+        features_dir=features_dir,
+        feature_dir=feature_dir,
+        user_stories_dir=user_stories_dir,
+        user_story_dir=user_story_dir,
         auditorias_dir=auditorias_dir,
+        encerramento_dir=encerramento_dir,
         intake_path=filesystem_root / f"INTAKE-{options.nome_projeto}.md",
         prd_path=filesystem_root / f"PRD-{options.nome_projeto}.md",
         audit_log_path=filesystem_root / "AUDIT-LOG.md",
-        phase_manifest_path=phase_dir / f"F1_{options.nome_projeto}_EPICS.md",
-        epic_manifest_path=phase_dir / BOOTSTRAP_EPIC_FILENAME,
-        issue_dir=issue_dir,
-        issue_readme_path=issue_dir / "README.md",
-        task1_path=issue_dir / "TASK-1.md",
-        sprint_path=sprints_dir / f"{BOOTSTRAP_SPRINT_ID}.md",
+        feature_manifest_path=feature_dir / BOOTSTRAP_FEATURE_MANIFEST,
+        user_story_readme_path=user_story_dir / "README.md",
+        task1_path=user_story_dir / "TASK-1.md",
         audit_report_path=auditorias_dir / BOOTSTRAP_AUDIT_REPORT,
+        closing_report_path=encerramento_dir / "RELATORIO-ENCERRAMENTO.md",
         session_plan_path=filesystem_root / "SESSION-PLANEJAR-PROJETO.md",
         session_create_intake_path=filesystem_root / "SESSION-CRIAR-INTAKE.md",
         session_create_prd_path=filesystem_root / "SESSION-CRIAR-PRD.md",
-        session_implement_issue_path=filesystem_root / "SESSION-IMPLEMENTAR-ISSUE.md",
-        session_review_issue_path=filesystem_root / "SESSION-REVISAR-ISSUE.md",
-        session_audit_phase_path=filesystem_root / "SESSION-AUDITAR-FASE.md",
+        session_implement_us_path=filesystem_root / "SESSION-IMPLEMENTAR-US.md",
+        session_review_us_path=filesystem_root / "SESSION-REVISAR-US.md",
+        session_audit_feature_path=filesystem_root / "SESSION-AUDITAR-FEATURE.md",
         session_remediate_hold_path=filesystem_root / "SESSION-REMEDIAR-HOLD.md",
         session_refactor_monolith_path=filesystem_root / "SESSION-REFATORAR-MONOLITO.md",
         session_map_path=filesystem_root / "SESSION-MAPA.md",
@@ -372,12 +379,12 @@ def _render_intake(context: ProjectContext) -> str:
         # INTAKE - {project}
 
         > Scaffold inicial do projeto {project} para que intake, PRD, wrappers e
-        > bootstrap de fase sejam criados sem preenchimento manual repetitivo.
+        > bootstrap de feature sejam criados sem preenchimento manual repetitivo.
 
         ## 0. Rastreabilidade de Origem
 
         - projeto de origem: nao_aplicavel
-        - fase de origem: nao_aplicavel
+        - unidade de origem: nao_aplicavel
         - auditoria de origem: nao_aplicavel
         - relatorio de origem: nao_aplicavel
         - motivo da abertura deste intake: gerar um projeto novo com scaffold canônico e wrappers prontos para uso
@@ -388,7 +395,7 @@ def _render_intake(context: ProjectContext) -> str:
         - tese em 1 frase: criar um projeto pronto para planejamento e execucao sem preencher manualmente os cabecalhos principais
         - valor esperado em 3 linhas:
           - intake, PRD, audit log e wrappers locais prontos
-          - primeira fase, epico e issue bootstrap gerados
+          - feature bootstrap, user story bootstrap e task inicial geradas
           - menos drift e menor tempo de arranque para o projeto
 
         ## 2. Problema ou Oportunidade
@@ -417,7 +424,7 @@ def _render_intake(context: ProjectContext) -> str:
 
         1. Informar o nome do projeto e os defaults de planejamento.
         2. Gerar intake, PRD, audit log e wrappers locais com caminhos repo-relative.
-        3. Criar a fase F1-FUNDACAO com epico, issue granularizada e task.
+        3. Criar `features/FEATURE-1-FOUNDATION` com user story bootstrap e task inicial.
         4. Deixar o projeto pronto para planejamento, implementacao e auditoria.
 
         ## 6. Escopo Inicial
@@ -426,7 +433,7 @@ def _render_intake(context: ProjectContext) -> str:
 
         - scaffold inicial do projeto
         - wrappers de sessao prontos para uso
-        - fase bootstrap com issue granularizada
+        - feature bootstrap com user story granularizada
 
         ### Fora
 
@@ -461,7 +468,7 @@ def _render_intake(context: ProjectContext) -> str:
         - backend: nao aplicavel
         - frontend: nao aplicavel
         - banco/migracoes: nao aplicavel
-        - observabilidade: audit log e relatorio base de fase
+        - observabilidade: audit log e relatorio base de feature
         - autorizacao/autenticacao: nao aplicavel
         - rollout: uso local do scaffold gerado
 
@@ -483,7 +490,7 @@ def _render_intake(context: ProjectContext) -> str:
 
         - sintoma observado: projeto novo sem estrutura canônica
         - impacto operacional: necessidade de preencher manualmente sessoes e docs
-        - evidencia tecnica: o gerador precisa criar wrappers, phase bootstrap e artefatos base
+        - evidencia tecnica: o gerador precisa criar wrappers, feature bootstrap e artefatos base
         - componente(s) afetado(s): `scripts/criar_projeto.py`, `PROJETOS/COMUM` e os novos arquivos do projeto
         - riscos de nao agir: cada novo projeto diverge do padrao e aumenta retrabalho
 
@@ -497,38 +504,26 @@ def _render_intake(context: ProjectContext) -> str:
 def _render_prd(context: ProjectContext) -> str:
     """Renderiza o PRD inicial do projeto."""
     project = context.options.nome_projeto
-    rel = context.rel
-
-    feature_criteria = _bullet_list(
-        [
-            "intake, PRD, audit log e wrappers locais sao gerados com caminhos repo-relative",
-            "fase F1-FUNDACAO, epic e issue bootstrap existem e apontam para Feature 1",
-            "nao existem placeholders de frontmatter nem drifts entre doc_id e nome do arquivo",
-        ]
-    )
-
-    feature_table = _table(
-        ["Task ID", "Descricao", "SP", "Depende de"],
-        [
-            ["T1", "Gerar docs base e metadados do projeto", "2", "-"],
-            ["T2", "Gerar wrappers locais e bootstrap F1", "3", "T1"],
-            ["T3", "Validar tree final, links e doc_ids", "2", "T2"],
-        ],
-    )
-
-    phase_table = _table(
-        ["Epico", "Feature(s)", "Status", "SP Total"],
-        [["EPIC-F1-01", "Feature 1", "todo", "7"]],
-    )
-
-    issue_table = _table(
-        ["Issue ID", "Nome", "SP", "Status", "Feature"],
-        [[BOOTSTRAP_ISSUE_DOC_ID, BOOTSTRAP_ISSUE_TITLE, "3", "todo", "Feature 1"]],
-    )
+    p = context.paths
+    prd_w = p.prd_path
+    href_intake = context.md_href(prd_w, p.intake_path)
+    href_audit_log = context.md_href(prd_w, p.audit_log_path)
+    href_feature = context.md_href(prd_w, p.feature_manifest_path)
+    href_user_story = context.md_href(prd_w, p.user_story_readme_path)
+    href_report = context.md_href(prd_w, p.audit_report_path)
+    href_closing = context.md_href(prd_w, p.closing_report_path)
 
     dependency_table = _table(
         ["Dependencia", "Tipo", "Origem", "Impacto", "Status"],
-        [["PROJETOS/COMUM", "docs-governance", "framework", "fonte canônica do scaffold", "active"]],
+        [
+            [
+                "PROJETOS/COMUM",
+                "docs-governance",
+                "framework",
+                "fonte canonica do scaffold",
+                "active",
+            ]
+        ],
     )
 
     return dedent(
@@ -556,16 +551,22 @@ def _render_prd(context: ProjectContext) -> str:
             ("audit_rigor", "standard"),
         ])}
 
+        > **STATUS: PENDENTE - aguardando conclusao do Intake**
+        >
+        > Este arquivo nasce como scaffold inicial. Antes de planejar features reais
+        > do projeto, ele deve ser reescrito a partir do intake concreto.
+
         # PRD - {project}
 
-        > Origem: [INTAKE-{project}.md]({rel(f"INTAKE-{project}.md")})
+        > Origem: [INTAKE-{project}.md]({href_intake})
         >
-        > Este PRD descreve o scaffold canônico do projeto, nao um produto de negocio
-        > final. A intencao e deixar o projeto pronto para planejamento e execucao.
+        > Este PRD descreve o scaffold canonico do projeto, nao um produto de negocio
+        > final. A intencao e deixar o projeto pronto para intake -> PRD -> decomposicao
+        > sem confundir o placeholder inicial com backlog real.
 
         ## 0. Rastreabilidade
 
-        - **Intake de origem**: [INTAKE-{project}.md]({rel(f"INTAKE-{project}.md")})
+        - **Intake de origem**: [INTAKE-{project}.md]({href_intake})
         - **Versao do intake**: 1.0
         - **Data de criacao**: {context.today}
         - **PRD derivado**: nao aplicavel
@@ -576,7 +577,7 @@ def _render_prd(context: ProjectContext) -> str:
         - **Tese em 1 frase**: criar um projeto pronto para planejamento e execucao sem preenchimento manual dos cabecalhos principais
         - **Valor esperado em 3 linhas**:
           - intake, PRD, audit log e wrappers locais prontos
-          - primeira fase, epico e issue bootstrap gerados
+          - feature bootstrap, user story bootstrap e task inicial geradas
           - menos drift e menor tempo de arranque para o projeto
 
         ## 2. Problema ou Oportunidade
@@ -605,7 +606,7 @@ def _render_prd(context: ProjectContext) -> str:
 
         - scaffold inicial do projeto
         - wrappers de sessao prontos para uso
-        - fase bootstrap com issue granularizada
+        - feature bootstrap com user story granularizada
 
         ### Fora
 
@@ -637,12 +638,13 @@ def _render_prd(context: ProjectContext) -> str:
 
         ## 9. Arquitetura Geral do Projeto
 
-        > Visao geral de impacto arquitetural (detalhes por feature na secao Features)
+        > Visao unificada de impacto arquitetural em nivel de projeto. O detalhamento
+        > por entregavel acontece apos este PRD, na etapa `PRD -> Features`.
 
         - **Backend**: nao aplicavel
         - **Frontend**: nao aplicavel
         - **Banco/migracoes**: nao aplicavel
-        - **Observabilidade**: audit log e relatorio base de fase
+        - **Observabilidade**: audit log e relatorio base de feature
         - **Autorizacao/autenticacao**: nao aplicavel
         - **Rollout**: uso local do scaffold gerado
 
@@ -660,125 +662,45 @@ def _render_prd(context: ProjectContext) -> str:
         - nao implementar codigo de aplicacao
         - nao executar deploy
 
-        ## 12. Features do Projeto
+        > **Pos-PRD (nao faz parte deste arquivo):** backlog estruturado de features,
+        > user stories e tasks segue `GOV-FEATURE.md`, `GOV-USER-STORY.md`,
+        > `GOV-SCRUM.md` e as sessoes `SESSION-DECOMPOR-*`.
 
-        ### Feature 1: Fundacao do projeto
-
-        #### Objetivo de Negocio
-
-        Entregar um scaffold canônico do projeto que reduza o arranque manual e deixe os artefatos de base prontos para uso.
-
-        #### Comportamento Esperado
-
-        O PM cria um projeto novo, abre os wrappers locais e segue o fluxo sem preencher manualmente os cabecalhos principais.
-
-        #### Criterios de Aceite
-
-        {feature_criteria}
-
-        #### Dependencias com Outras Features
-
-        - nenhuma
-
-        #### Riscos Especificos
-
-        - drift de nomes e caminhos se a geracao nao for testada
-
-        #### Fases de Implementacao
-
-        1. Modelagem e scaffold: gerar docs e metadados.
-        2. Wrappers de sessao: preencher caminhos e defaults.
-        3. Issue bootstrap: criar issue granularizada e task.
-        4. Testes: validar tree, nomes e doc_ids.
-
-        #### Impacts
-
-        { _table(["Camada", "Impacto", "Detalhamento"], [
-            ["Banco", "nao aplicavel", "nenhuma migracao"],
-            ["Backend", "scripts/criar_projeto.py", "gerador local do scaffold"],
-            ["Frontend", "nao aplicavel", "nenhum impacto"],
-            ["Testes", "tests/test_criar_projeto.py", "cobertura do scaffold e dos wrappers"],
-        ])}
-
-        #### Tasks da Feature
-
-        {feature_table}
-
-        ## 13. Estrutura de Fases
-
-        ## Fase 1: {BOOTSTRAP_PHASE_DIR}
-
-        - **Objetivo**: consolidar o scaffold inicial do projeto.
-        - **Features incluídas**: Feature 1
-        - **Gate de saída**: o projeto novo esta pronto para planejamento e execucao sem drift documental.
-        - **Critérios de aceite**:
-          - intake, PRD, audit log e wrappers locais existem
-          - a fase bootstrap possui epico, issue e task
-          - os caminhos sao repo-relative
-
-        ### Épicos da Fase 1
-
-        {phase_table}
-
-        ## 14. Epicos
-
-        ### Épico: {BOOTSTRAP_EPIC_LABEL}
-
-        - **ID**: {BOOTSTRAP_EPIC_ID}
-        - **Fase**: {BOOTSTRAP_PHASE_ID}
-        - **Feature de Origem**: Feature 1
-        - **Objetivo**: entregar o scaffold inicial e validar os artefatos de base.
-        - **Resultado de Negócio Mensurável**: o projeto pode iniciar planejamento e execucao sem preenchimento manual dos cabecalhos principais.
-        - **Contexto Arquitetural**: raiz do projeto pronta para fases futuras; wrappers locais apontando para caminhos repo-relative.
-        - **Definition of Done**:
-          - [ ] intake e PRD existem com frontmatter preenchido
-          - [ ] wrappers de sessao estao completos
-          - [ ] fase F1, epico, issue e task existem
-          - [ ] audit log aponta para o bootstrap inicial
-
-        ### Issues do Epico
-
-        {issue_table}
-
-        ## 15. Dependencias Externas
+        ## 12. Dependencias Externas
 
         {dependency_table}
 
-        ## 16. Rollout e Comunicacao
+        ## 13. Rollout e Comunicacao
 
         - **Estratégia de deploy**: uso local do scaffold gerado
-        - **Comunicação de mudanças**: o PM recebe os wrappers prontos e os caminhos canônicos
+        - **Comunicacao de mudancas**: o PM recebe os wrappers prontos, o PRD placeholder e a indicacao explicita da proxima etapa `PRD -> Features`
         - **Treinamento necessário**: nenhum
-        - **Suporte pós-launch**: ajuste do scaffold caso o projeto real exija novas fases
+        - **Suporte pos-launch**: ajuste do scaffold caso o projeto real exija novas features
 
-        ## 17. Revisões e Auditorias
+        ## 14. Revisoes e Auditorias
 
-        - **Auditorias planejadas**: {BOOTSTRAP_PHASE_ID}-R01
+        - **Gates e auditorias em nivel de projeto**: preencher apos intake e PRD concretos; o bootstrap existe apenas para evitar drift inicial
         - **Critérios de auditoria**: aderencia ao scaffold, rastreabilidade e ausencia de drift
         - **Threshold anti-monolito**: nao aplicavel; o artefato e documental
 
-        ## 18. Checklist de Prontidão
+        ## 15. Checklist de Prontidao
 
-        - [x] Intake referenciado e versao confirmada
-        - [x] Features definidas com criterios de aceite verificaveis
-        - [x] Cada feature com impacts por camada preenchidos
-        - [x] Rastreabilidade explicita `Feature -> Fase -> Epico -> Issue`
-        - [x] Épicos criados e vinculados a features
-        - [x] Fases definidas com gates de saída
-        - [x] Dependências externas mapeadas
-        - [x] Riscos identificados e mitigacoes planejadas
-        - [x] Rollout planejado
+        - [ ] Intake referenciado e versao confirmada
+        - [ ] Problema, escopo, restricoes, riscos e metricas preenchidos de forma verificavel
+        - [ ] Arquitetura geral e rollout descritos sem catalogo de features nem tabelas de user stories neste PRD
+        - [ ] Dependencias externas mapeadas
+        - [ ] Proxima etapa explicita: `PRD -> Features` via `SESSION-DECOMPOR-PRD-EM-FEATURES.md` / `PROMPT-PRD-PARA-FEATURES.md`
 
-        ## 19. Anexos e Referências
+        ## 16. Anexos e Referencias
 
-        - [Intake]({rel(f"INTAKE-{project}.md")})
-        - [Audit Log]({rel("AUDIT-LOG.md")})
-        - [Fase]({rel(BOOTSTRAP_PHASE_DIR, f"F1_{project}_EPICS.md")})
-        - [Epic]({rel(BOOTSTRAP_PHASE_DIR, BOOTSTRAP_EPIC_FILENAME)})
-        - [Issue bootstrap]({rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)})
-        - [Relatorio de auditoria]({rel(BOOTSTRAP_PHASE_DIR, "auditorias", BOOTSTRAP_AUDIT_REPORT)})
+        - [Intake]({href_intake})
+        - [Audit Log]({href_audit_log})
+        - [Feature bootstrap]({href_feature})
+        - [User Story bootstrap]({href_user_story})
+        - [Relatorio de auditoria]({href_report})
+        - [Relatorio de encerramento]({href_closing})
 
-        > Frase Guia: "Feature organiza, Task executa, Teste valida"
+        > Frase Guia: "PRD direciona, Feature organiza, User Story fatia, Task executa, Teste valida"
         """
     ).strip() + "\n"
 
@@ -786,13 +708,14 @@ def _render_prd(context: ProjectContext) -> str:
 def _render_audit_log(context: ProjectContext) -> str:
     """Renderiza o AUDIT-LOG inicial do projeto."""
     project = context.options.nome_projeto
-    phase_rel = context.rel(BOOTSTRAP_PHASE_DIR)
-    report_rel = context.rel(BOOTSTRAP_PHASE_DIR, "auditorias", BOOTSTRAP_AUDIT_REPORT)
+    audit_w = context.paths.audit_log_path
+    report_href = context.md_href(audit_w, context.paths.audit_report_path)
+    feature_href = context.md_href(audit_w, context.paths.feature_manifest_path)
     return dedent(
         f"""
         {_frontmatter([
             ("doc_id", "AUDIT-LOG.md"),
-            ("version", "1.4"),
+            ("version", "2.0"),
             ("status", "active"),
             ("owner", "PM"),
             ("last_updated", context.today),
@@ -802,45 +725,46 @@ def _render_audit_log(context: ProjectContext) -> str:
 
         ## Politica
 
-        - toda auditoria formal deve gerar relatorio versionado por fase em `auditorias/`
+        - toda auditoria formal deve gerar relatorio versionado por feature em `features/FEATURE-*/auditorias/`
         - toda rodada deve registrar commit base, veredito e categoria dos achados materiais
         - auditoria `hold` abre follow-ups rastreaveis
-        - follow-up pode ter destino `issue-local`, `new-intake` ou `cancelled`
-        - auditoria `go` e pre-requisito para mover fase a `feito/`
+        - follow-up pode ter destino `same-feature`, `new-intake` ou `cancelled`
+        - auditoria `go` e pre-requisito para encerrar a feature
         - cada resolucao de follow-up deve registrar o `Audit ID de Origem` da rodada `hold` que gerou o item
 
-        ## Gate Atual por Fase
+        ## Gate Atual por Feature
 
-        | Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
+        | Feature | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
         |---|---|---|---|---|
-        | {BOOTSTRAP_PHASE_DIR} | not_ready | nao_aplicavel | [{BOOTSTRAP_AUDIT_REPORT}]({report_rel}) | scaffold inicial gerado |
+        | [{BOOTSTRAP_FEATURE_ID}]({feature_href}) | not_ready | nao_aplicavel | [{BOOTSTRAP_AUDIT_REPORT}]({report_href}) | O ficheiro em `auditorias/` e um shell com `status: planned`; nao ha veredito canonico ate haver auditoria real concluida e registo coerente neste log. Scaffold inicial gerado. |
 
         ## Resolucoes de Follow-ups
 
-        | Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
+        | Data | Audit ID de Origem | Feature | Follow-up | Destino Final | Resumo | Ref | Observacoes |
         |---|---|---|---|---|---|---|---|
         | nenhum | - | - | - | - | - | - | - |
 
         ## Rodadas
 
-        | Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
+        | Audit ID | Feature | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
         |---|---|---|---|---|---|---|---|---|---|---|---|---|
         | nenhum | - | - | - | - | - | - | - | - | - | - | - | - |
         """
     ).strip() + "\n"
 
 
-def _render_phase_manifest(context: ProjectContext) -> str:
-    """Renderiza o manifesto da fase F1."""
-    project = context.options.nome_projeto
-    issue_rel = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)
-    epic_rel = context.rel(BOOTSTRAP_PHASE_DIR, BOOTSTRAP_EPIC_FILENAME)
-    report_rel = context.rel(BOOTSTRAP_PHASE_DIR, "auditorias", BOOTSTRAP_AUDIT_REPORT)
-    log_rel = context.rel("AUDIT-LOG.md")
+def _render_feature_manifest(context: ProjectContext) -> str:
+    """Renderiza o manifesto da feature bootstrap."""
+    p = context.paths
+    feature_w = p.feature_manifest_path
+    prd_href = context.md_href(feature_w, p.prd_path)
+    audit_log_href = context.md_href(feature_w, p.audit_log_path)
+    user_story_href = context.md_href(feature_w, p.user_story_readme_path)
+    report_href = context.md_href(feature_w, p.audit_report_path)
     return dedent(
         f"""
         {_frontmatter([
-            ("doc_id", f"F1_{project}_EPICS.md"),
+            ("doc_id", BOOTSTRAP_FEATURE_MANIFEST),
             ("version", "1.0"),
             ("status", "todo"),
             ("owner", "PM"),
@@ -848,194 +772,127 @@ def _render_phase_manifest(context: ProjectContext) -> str:
             ("audit_gate", "not_ready"),
         ])}
 
-        # Epicos - {project} / F1 - {BOOTSTRAP_PHASE_LABEL}
+        # {BOOTSTRAP_FEATURE_CODE} - {BOOTSTRAP_FEATURE_LABEL}
 
-        ## Objetivo da Fase
+        ## Objetivo de Negocio
 
-        Consolidar o scaffold inicial do projeto com intake, PRD, wrappers de sessao e primeiro issue-first bootstrap.
-
-        ## Gate de Saida da Fase
-
-        O projeto tem intake, PRD, wrappers locais preenchidos, fase F1, epico F1-01, issue granularizada com task e artefatos de auditoria prontos para uso.
-
-        ## Estado do Gate de Auditoria
-
-        - gate_atual: `not_ready`
-        - ultima_auditoria: `nao_aplicavel`
-        - veredito_atual: `nao_aplicavel`
-        - relatorio_mais_recente: `{report_rel}`
-        - log_do_projeto: [{log_rel}]({log_rel})
-
-        ## Checklist de Transicao de Gate
-
-        > A semântica dos vereditos e as regras de julgamento vivem em `GOV-AUDITORIA.md`.
-
-        ### `not_ready -> pending`
-        - [ ] todos os epicos estao `done`
-        - [ ] todas as issues filhas estao `done`
-        - [ ] DoD da fase foi revisado
-
-        ### `pending -> hold`
-        - [ ] existe `RELATORIO-AUDITORIA-F1-R01.md`
-        - [ ] `AUDIT-LOG.md` foi atualizado
-        - [ ] o veredito da auditoria e `hold`
-        - [ ] o estado do gate foi atualizado para `hold`
-
-        ### `pending -> approved`
-        - [ ] existe `RELATORIO-AUDITORIA-F1-R01.md`
-        - [ ] `AUDIT-LOG.md` foi atualizado
-        - [ ] o veredito da auditoria e `go`
-        - [ ] o estado do gate foi atualizado para `approved`
-
-        ## Epicos
-
-        | ID | Nome | Objetivo | Feature | Depende de | Status | Arquivo |
-        |---|---|---|---|---|---|---|
-        | {BOOTSTRAP_EPIC_ID} | {BOOTSTRAP_EPIC_LABEL} | Entregar o scaffold inicial e validar os artefatos de base. | {BOOTSTRAP_FEATURE_ID} | nenhuma | todo | [EPIC-{BOOTSTRAP_EPIC_ID} - {BOOTSTRAP_EPIC_LABEL}](./{BOOTSTRAP_EPIC_FILENAME}) |
-
-        ## Dependencias entre Epicos
-
-        - `{BOOTSTRAP_EPIC_ID}`: nenhuma
-
-        ## Escopo desta Fase
-
-        ### Dentro
-        - intake e PRD prefillados
-        - wrappers locais
-        - bootstrap F1 com issue granularizada
-
-        ### Fora
-        - features de negocio reais
-        - implementacao de codigo de produto
-        - deploy ou integracoes externas
-
-        ## Definition of Done da Fase
-        - [ ] intake e PRD existem com frontmatter preenchido
-        - [ ] wrappers de sessao estao completos
-        - [ ] fase F1, epico, issue e task existem
-        - [ ] audit log aponta para o bootstrap inicial
-        - [ ] relatorio base de auditoria existe em `auditorias/`
-        """
-    ).strip() + "\n"
-
-
-def _render_epic_manifest(context: ProjectContext) -> str:
-    """Renderiza o manifesto do epico inicial."""
-    project = context.options.nome_projeto
-    issue_rel = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)
-    phase_rel = context.rel(BOOTSTRAP_PHASE_DIR, f"F1_{project}_EPICS.md")
-    return dedent(
-        f"""
-        {_frontmatter([
-            ("doc_id", BOOTSTRAP_EPIC_FILENAME),
-            ("version", "1.0"),
-            ("status", "todo"),
-            ("owner", "PM"),
-            ("last_updated", context.today),
-        ])}
-
-        # EPIC-{BOOTSTRAP_EPIC_ID} - {BOOTSTRAP_EPIC_LABEL}
-
-        ## Objetivo
-
-        Estabilizar o projeto novo com docs canônicos, wrappers e um primeiro issue granularizado.
+        Entregar o scaffold inicial do projeto no paradigma
+        `Feature -> User Story -> Task`, com wrappers locais e auditabilidade
+        prontos para uso.
 
         ## Resultado de Negocio Mensuravel
 
-        O PM consegue iniciar planejamento e execucao sem preencher manualmente os cabecalhos principais.
+        O PM consegue iniciar planejamento e execucao sem preencher manualmente
+        os cabecalhos principais nem adaptar caminhos legados.
 
-        ## Feature de Origem
+        ## Dependencias da Feature
 
-        - **Feature**: {BOOTSTRAP_FEATURE_ID}
-        - **Comportamento coberto**: scaffold inicial do projeto com intake, PRD, wrappers e bootstrap operacional.
+        - nenhuma
 
-        ## Contexto Arquitetural
+        ## Estado Operacional
 
-        - raiz do projeto pronta para fases futuras
-        - wrappers locais apontando para caminhos repo-relative
-        - issue granularizada inicial para validar o bootstrap
+        - status: `todo`
+        - audit_gate: `not_ready`
+        - relatorio_mais_recente: [RELATORIO-AUDITORIA-F1-R01]({report_href})
+        - audit_log: [AUDIT-LOG.md]({audit_log_href})
 
-        ## Definition of Done do Epico
+        ## Criterios de Aceite
 
-        - [ ] intake e PRD existem com frontmatter preenchido
-        - [ ] wrappers de sessao estao completos
-        - [ ] fase F1, epico, issue e task existem
-        - [ ] audit log aponta para o bootstrap inicial
+        - [ ] intake, PRD e audit log existem com frontmatter preenchido
+        - [ ] wrappers locais apontam para `SESSION-IMPLEMENTAR-US`,
+              `SESSION-REVISAR-US` e `SESSION-AUDITAR-FEATURE`
+        - [ ] `features/{BOOTSTRAP_FEATURE_DIR}/` existe com manifesto, user story
+              bootstrap e `TASK-1.md`
+        - [ ] nao existem `F1-*`, `issues/`, `sprints/` nem wrappers
+              `SESSION-*-ISSUE/FASE` no projeto novo
 
-        ## Issues do Epico
+        ## User Stories da Feature
 
-        | Issue ID | Nome | Objetivo | SP | Status | Documento | Feature |
-        |---|---|---|---|---|---|---|
-        | {BOOTSTRAP_ISSUE_DOC_ID} | {BOOTSTRAP_ISSUE_TITLE} | Validar e ajustar o bootstrap canonico do projeto. | 3 | todo | [{BOOTSTRAP_ISSUE_DOC_ID}]({issue_rel}) | {BOOTSTRAP_FEATURE_ID} |
+        | US ID | Titulo | SP | Depende de | Status | Documento |
+        |---|---|---|---|---|---|
+        | {BOOTSTRAP_US_ID} | {BOOTSTRAP_US_TITLE} | 3 | nenhuma | todo | [README](./user-stories/{BOOTSTRAP_US_DIR}/README.md) |
 
-        ## Artifact Minimo do Epico
+        ## Definition of Done da Feature
 
-        - `README.md` da issue bootstrap
-        - `TASK-1.md`
-        - `F1_{project}_EPICS.md`
+        - [ ] todas as user stories estao `done` ou `cancelled`
+        - [ ] auditoria da feature aprovada com veredito `go`
+        - [ ] `AUDIT-LOG.md` atualizado com a rodada mais recente
 
         ## Dependencias
 
-        - [Intake]({context.rel(f"INTAKE-{project}.md")})
-        - [PRD]({context.rel(f"PRD-{project}.md")})
-        - [Fase]({phase_rel})
+        - [PRD]({prd_href})
+        - [AUDIT-LOG]({audit_log_href})
+        - [User Story bootstrap]({user_story_href})
         """
     ).strip() + "\n"
 
 
-def _render_issue_readme(context: ProjectContext) -> str:
-    """Renderiza o manifesto da issue bootstrap."""
+def _render_user_story_readme(context: ProjectContext) -> str:
+    """Renderiza o manifesto da user story bootstrap."""
     project = context.options.nome_projeto
-    task_instruction_mode = "required"
-    task_rel = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID, "TASK-1.md")
+    p = context.paths
+    us_w = p.user_story_readme_path
+    task_href = context.md_href(us_w, p.task1_path)
+    feature_href = context.md_href(us_w, p.feature_manifest_path)
+    prd_href = context.md_href(us_w, p.prd_path)
     return dedent(
         f"""
         {_frontmatter([
-            ("doc_id", BOOTSTRAP_ISSUE_DOC_ID),
+            ("doc_id", BOOTSTRAP_US_DOC_ID),
             ("version", "1.0"),
             ("status", "todo"),
             ("owner", "PM"),
             ("last_updated", context.today),
-            ("task_instruction_mode", task_instruction_mode),
+            ("task_instruction_mode", "required"),
+            ("feature_id", BOOTSTRAP_FEATURE_ID),
             ("decision_refs", []),
         ])}
 
-        # {BOOTSTRAP_ISSUE_ID} - {BOOTSTRAP_ISSUE_TITLE}
+        # {BOOTSTRAP_US_ID} - {BOOTSTRAP_US_TITLE}
 
         ## User Story
 
-        Como PM, quero validar o scaffold inicial do projeto para que intake, PRD, sessoes e estrutura issue-first fiquem prontos sem preenchimento manual.
+        Como PM, quero validar o scaffold inicial do projeto para que intake,
+        PRD, wrappers e estrutura `Feature -> User Story -> Task` fiquem prontos
+        sem preenchimento manual repetitivo.
 
         ## Feature de Origem
 
         - **Feature**: {BOOTSTRAP_FEATURE_ID}
-        - **Comportamento coberto**: scaffold inicial do projeto com documentos e wrappers preenchidos.
+        - **Comportamento coberto**: scaffold inicial do projeto com documentos,
+          wrappers e relatorio base de auditoria.
 
         ## Contexto Tecnico
 
-        O script `scripts/criar_projeto.py` gera a raiz do projeto, os docs canônicos, os wrappers locais, a fase F1-FUNDACAO, o epic inicial, a issue granularizada e o primeiro task file.
+        O script `scripts/criar_projeto.py` gera a raiz do projeto, os docs
+        canonicos, os wrappers locais, a feature bootstrap, a user story
+        bootstrap, a primeira task e o shell de auditoria da feature.
 
-        ## Plano TDD
+        ## Plano TDD (opcional no manifesto da US)
 
-        - Red: revisar a árvore gerada e identificar placeholders ou caminhos incorretos
-        - Green: corrigir qualquer drift de nomes, frontmatter ou links
-        - Refactor: simplificar os artefatos para manter o bootstrap enxuto e legível
+        - **Red**: nao aplicavel
+        - **Green**: nao aplicavel
+        - **Refactor**: nao aplicavel
 
-        ## Criterios de Aceitacao
+        ## Criterios de Aceitacao (Given / When / Then)
 
-        - [ ] intake e PRD existem com `doc_id` e `project` preenchidos
-        - [ ] wrappers locais apontam para caminhos repo-relative do projeto
-        - [ ] fase F1, epic e issue bootstrap existem
-        - [ ] `SESSION-PLANEJAR-PROJETO.md` traz `escopo`, `profundidade`, `task_mode` e `observacoes` preenchidos
-        - [ ] issue bootstrap possui `TASK-1.md` completa
+        - **Given** um repositorio sem o projeto alvo,
+          **when** o script gera o scaffold,
+          **then** o projeto nasce com `features/{BOOTSTRAP_FEATURE_DIR}/`.
+        - **Given** a feature bootstrap criada,
+          **when** o PM abre os wrappers locais,
+          **then** apenas sessoes canonicas `Feature/User Story/Task` sao
+          referenciadas.
+        - **Given** a user story bootstrap,
+          **when** ela for inspecionada,
+          **then** `TASK-1.md` estara linkada e pronta para execucao.
 
-        ## Definition of Done da Issue
+        ## Definition of Done da User Story
 
-        - [ ] intake e PRD existem com `doc_id` e `project` preenchidos
-        - [ ] wrappers locais apontam para caminhos repo-relative do projeto
-        - [ ] fase F1, epic e issue bootstrap existem
-        - [ ] `SESSION-PLANEJAR-PROJETO.md` traz `escopo`, `profundidade`, `task_mode` e `observacoes` preenchidos
-        - [ ] issue bootstrap possui `TASK-1.md` completa
+        - [ ] Todas as tasks em `TASK-*.md` estao `done` ou `cancelled` com justificativa
+        - [ ] Criterios Given/When/Then verificados
+        - [ ] Handoff de revisao preenchido neste documento quando o fluxo do projeto exigir revisao pos-US
+        - [ ] Revisao aprovada conforme `PROJETOS/COMUM/GOV-SCRUM.md` antes de promover a US a `done`
 
         ## Tasks
 
@@ -1045,30 +902,40 @@ def _render_issue_readme(context: ProjectContext) -> str:
 
         - `INTAKE-{project}.md`
         - `PRD-{project}.md`
+        - `AUDIT-LOG.md`
         - `SESSION-PLANEJAR-PROJETO.md`
-        - `SESSION-CRIAR-INTAKE.md`
-        - `SESSION-CRIAR-PRD.md`
-        - `SESSION-IMPLEMENTAR-ISSUE.md`
-        - `SESSION-REVISAR-ISSUE.md`
-        - `SESSION-AUDITAR-FASE.md`
-        - `SESSION-REMEDIAR-HOLD.md`
-        - `SESSION-REFATORAR-MONOLITO.md`
-        - `F1-FUNDACAO/...`
+        - `SESSION-IMPLEMENTAR-US.md`
+        - `SESSION-REVISAR-US.md`
+        - `SESSION-AUDITAR-FEATURE.md`
+        - `features/{BOOTSTRAP_FEATURE_DIR}/FEATURE-1.md`
 
-        ## Artifact Minimo
+        ## Artefato Minimo
 
-        - `README.md`
-        - `TASK-1.md`
+        - `features/{BOOTSTRAP_FEATURE_DIR}/FEATURE-1.md`
+        - `features/{BOOTSTRAP_FEATURE_DIR}/user-stories/{BOOTSTRAP_US_DIR}/README.md`
+        - `features/{BOOTSTRAP_FEATURE_DIR}/user-stories/{BOOTSTRAP_US_DIR}/TASK-1.md`
+
+        ## Handoff para Revisao Pos-User Story
+
+        status: nao_iniciado
+        base_commit: nao_informado
+        target_commit: nao_informado
+        evidencia: nao_informado
+        commits_execucao: []
+        validacoes_executadas: []
+        arquivos_de_codigo_relevantes: []
+        limitacoes: []
 
         ## Dependencias
 
-        - [Epic]({context.rel(BOOTSTRAP_PHASE_DIR, BOOTSTRAP_EPIC_FILENAME)})
-        - [Fase]({context.rel(BOOTSTRAP_PHASE_DIR, f"F1_{project}_EPICS.md")})
-        - [PRD]({context.rel(f"PRD-{project}.md")})
+        - [Feature bootstrap]({feature_href})
+        - [PRD do projeto]({prd_href})
+        - Outras USs: nenhuma
+        - [GOV-USER-STORY.md](../../../../COMUM/GOV-USER-STORY.md)
 
         ## Navegacao Rapida
 
-        - [TASK-1]({task_rel})
+        - [TASK-1]({task_href})
         """
     ).strip() + "\n"
 
@@ -1080,7 +947,7 @@ def _render_task(context: ProjectContext) -> str:
         f"""
         {_frontmatter([
             ("doc_id", "TASK-1.md"),
-            ("issue_id", BOOTSTRAP_ISSUE_DOC_ID),
+            ("us_id", BOOTSTRAP_US_DOC_ID),
             ("task_id", BOOTSTRAP_TASK_ID),
             ("version", "1.1"),
             ("status", "todo"),
@@ -1093,44 +960,49 @@ def _render_task(context: ProjectContext) -> str:
 
         ## objetivo
 
-        Conferir se o scaffold gerado pelo script esta completo e sem drift de nomes ou caminhos.
+        Conferir se o scaffold gerado pelo script esta completo e sem drift de
+        nomes, wrappers ou caminhos.
 
         ## precondicoes
 
         - projeto novo gerado
-        - intake, PRD, wrappers e bootstrap F1 presentes
+        - intake, PRD, wrappers e feature bootstrap presentes
 
         ## arquivos_a_ler_ou_tocar
 
         - `PROJETOS/{project}/INTAKE-{project}.md`
         - `PROJETOS/{project}/PRD-{project}.md`
         - `PROJETOS/{project}/SESSION-PLANEJAR-PROJETO.md`
-        - `PROJETOS/{project}/F1-FUNDACAO/F1_{project}_EPICS.md`
-        - `PROJETOS/{project}/F1-FUNDACAO/issues/{BOOTSTRAP_ISSUE_DOC_ID}/README.md`
-        - `PROJETOS/{project}/F1-FUNDACAO/issues/{BOOTSTRAP_ISSUE_DOC_ID}/TASK-1.md`
+        - `PROJETOS/{project}/SESSION-IMPLEMENTAR-US.md`
+        - `PROJETOS/{project}/SESSION-REVISAR-US.md`
+        - `PROJETOS/{project}/SESSION-AUDITAR-FEATURE.md`
+        - `PROJETOS/{project}/features/{BOOTSTRAP_FEATURE_DIR}/FEATURE-1.md`
+        - `PROJETOS/{project}/features/{BOOTSTRAP_FEATURE_DIR}/user-stories/{BOOTSTRAP_US_DIR}/README.md`
+        - `PROJETOS/{project}/features/{BOOTSTRAP_FEATURE_DIR}/user-stories/{BOOTSTRAP_US_DIR}/TASK-1.md`
 
         ## passos_atomicos
 
         1. revisar a arvore do projeto
         2. validar os cabecalhos preenchidos
         3. confirmar links e caminhos dos wrappers
-        4. corrigir placeholders residuais se houver
-        5. confirmar que a fase F1 e o bootstrap inicial existem
+        4. confirmar a ausencia de `F1-*`, `issues/` e `sprints/`
+        5. corrigir placeholders residuais se houver
 
         ## comandos_permitidos
 
-        - `find PROJETOS/{project} -maxdepth 3 -type f | sort`
-        - `rg -n "SESSION-PLANEJAR-PROJETO|INTAKE-{project}|PRD-{project}" PROJETOS/{project}`
+        - `find PROJETOS/{project} -maxdepth 5 -type f | sort`
+        - `rg -n "SESSION-PLANEJAR-PROJETO|SESSION-IMPLEMENTAR-US|FEATURE-1|US-1-01" PROJETOS/{project}`
         - `git status --short`
 
         ## resultado_esperado
 
-        Scaffold inicial pronto para planejamento e execucao.
+        Scaffold inicial pronto para planejamento e execucao no paradigma
+        `Feature -> User Story -> Task`.
 
         ## testes_ou_validacoes_obrigatorias
 
-        - checar que nao ha placeholders em `SESSION-PLANEJAR-PROJETO.md`
-        - checar que o bootstrap F1 existe
+        - checar que nao ha placeholders residuais em `SESSION-PLANEJAR-PROJETO.md`
+        - checar que a feature bootstrap existe
         - checar que os caminhos sao repo-relative
 
         ## stop_conditions
@@ -1141,152 +1013,109 @@ def _render_task(context: ProjectContext) -> str:
     ).strip() + "\n"
 
 
-def _render_sprint(context: ProjectContext) -> str:
-    """Renderiza a sprint bootstrap."""
+def _render_feature_audit_report(context: ProjectContext) -> str:
+    """Renderiza um relatorio base de auditoria para a primeira rodada da feature."""
     project = context.options.nome_projeto
-    issue_rel = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)
+    p = context.paths
+    report_w = p.audit_report_path
+    href_intake = context.md_href(report_w, p.intake_path)
+    href_prd = context.md_href(report_w, p.prd_path)
+    href_feature = context.md_href(report_w, p.feature_manifest_path)
+    href_us = context.md_href(report_w, p.user_story_readme_path)
     return dedent(
         f"""
         {_frontmatter([
-            ("doc_id", f"{BOOTSTRAP_SPRINT_ID}.md"),
+            ("doc_id", BOOTSTRAP_AUDIT_REPORT[:-3]),
             ("version", "1.0"),
-            ("status", "todo"),
-            ("owner", "PM"),
-            ("last_updated", context.today),
-        ])}
-
-        # {BOOTSTRAP_SPRINT_ID} - Fundacao do projeto
-
-        ## Objetivo da Sprint
-
-        Consolidar o bootstrap inicial e deixar a fase F1 pronta para planejamento formal.
-
-        ## Capacidade e Foco
-
-        - capacidade estimada: baixa
-        - foco: validar o scaffold e ajustar eventual drift estrutural
-
-        ## Issues Selecionadas
-
-        | Issue ID | Nome | SP | Status | Feature | Documento |
-        |---|---|---|---|---|---|
-        | {BOOTSTRAP_ISSUE_DOC_ID} | {BOOTSTRAP_ISSUE_TITLE} | 3 | todo | {BOOTSTRAP_FEATURE_ID} | [{BOOTSTRAP_ISSUE_DOC_ID}]({issue_rel}) |
-
-        ## Riscos
-
-        - drift de nomes ou caminhos
-        - wrappers incompletos se a geracao for interrompida
-
-        ## Definition of Done
-
-        - [ ] o bootstrap F1 existe
-        - [ ] a issue granularizada esta linkada na sprint
-        - [ ] o audit log aponta para a fase F1-FUNDACAO
-        """
-    ).strip() + "\n"
-
-
-def _render_audit_report(context: ProjectContext) -> str:
-    """Renderiza um relatorio base de auditoria para a primeira rodada."""
-    project = context.options.nome_projeto
-    phase_rel = context.rel(BOOTSTRAP_PHASE_DIR)
-    issue_rel = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)
-    log_rel = context.rel("AUDIT-LOG.md")
-    return dedent(
-        f"""
-        {_frontmatter([
-            ("doc_id", f"RELATORIO-AUDITORIA-{BOOTSTRAP_PHASE_ID}-{BOOTSTRAP_ROUND}.md"),
-            ("version", "2.2"),
             ("status", "planned"),
-            ("verdict", "hold"),
-            ("scope_type", "phase"),
-            ("scope_ref", BOOTSTRAP_PHASE_DIR),
-            ("phase", BOOTSTRAP_PHASE_ID),
+            ("scope_type", "feature"),
+            ("scope_ref", BOOTSTRAP_FEATURE_ID),
+            ("feature_id", BOOTSTRAP_FEATURE_ID),
             ("reviewer_model", "nao_aplicavel"),
             ("base_commit", "HEAD"),
             ("compares_to", "none"),
             ("round", 1),
             ("supersedes", "none"),
-            ("followup_destination", "issue-local"),
+            ("followup_destination", "same-feature"),
             ("decision_refs", []),
             ("last_updated", context.today),
         ])}
 
-        # RELATORIO-AUDITORIA - {project} / {BOOTSTRAP_PHASE_DIR} / {BOOTSTRAP_ROUND}
+        # RELATORIO-AUDITORIA - {project} / {BOOTSTRAP_FEATURE_ID} / {BOOTSTRAP_ROUND}
 
         ## Resumo Executivo
 
-        Relatorio base reservado para a primeira auditoria da fase bootstrap.
+        Este ficheiro e um shell para a primeira rodada de auditoria da feature.
+        Com `status: planned`, a rodada nao foi executada; o `AUDIT-LOG.md`
+        permanece sem veredito material ate haver auditoria real.
 
         ## Escopo Auditado e Evidencias
 
-        - intake: [INTAKE-{project}.md]({context.rel(f"INTAKE-{project}.md")})
-        - prd: [PRD-{project}.md]({context.rel(f"PRD-{project}.md")})
-        - fase: [Fase]({phase_rel})
-        - epicos: [Epic bootstrap]({context.rel(BOOTSTRAP_PHASE_DIR, BOOTSTRAP_EPIC_FILENAME)})
-        - issues: [Issue bootstrap]({issue_rel})
+        - intake: [INTAKE-{project}.md]({href_intake})
+        - prd: [PRD-{project}.md]({href_prd})
+        - feature: [Feature bootstrap]({href_feature})
+        - user stories: [US bootstrap]({href_us})
         - testes: `tests/test_criar_projeto.py`
         - diff/commit: nao aplicavel ainda
 
         ## Conformidades
 
-        - scaffold inicial presente
-        - wrappers locais preenchidos
-        - audit log e fase inicial linkados
+        - nao aplicavel enquanto `planned`
 
         ## Nao Conformidades
 
-        - nenhuma nesta rodada base
-
-        ## Verificacao de Decisoes Registradas
-
-        | Decision Ref | Resultado | Evidencia | Observacoes |
-        |---|---|---|---|
-        | nenhum | aderente | nao aplicavel | scaffold inicial |
-
-        ## Analise de Complexidade Estrutural
-
-        | ID | Componente | Tipo | Linguagem | Metricas observadas | Threshold de referencia | Tendencia vs rodada anterior | Bloqueante? | Destino sugerido |
-        |---|---|---|---|---|---|---|---|---|
-        | M-01 | scripts/criar_projeto.py | documentation-scaffold | python | estrutura modular e declarativa | nao aplicavel | inicial | nao | issue-local |
-
-        ## Bugs e Riscos Antecipados
-
-        | ID | Categoria | Severidade | Descricao | Evidencia | Correcao sugerida | Bloqueante? |
-        |---|---|---|---|---|---|---|
-        | A-01 | test-gap | low | primeira rodada ainda nao possui auditoria real do projeto gerado | `tests/test_criar_projeto.py` | executar auditoria real quando o projeto for usado | nao |
+        - nao aplicavel enquanto `planned`
 
         ## Cobertura de Testes
 
         | Funcionalidade | Teste existe? | Tipo | Observacao |
         |---|---|---|---|
-        | scaffold do projeto | sim | unit | cobre tree, wrappers e doc_ids |
+        | scaffold do projeto | sim | unit | cobre arvore, wrappers e ausencia de legados no bootstrap |
 
         ## Decisao
 
-        - veredito: hold
-        - justificativa: relatorio base/planned para a primeira rodada do bootstrap
-        - gate_da_fase: not_ready
-        - follow_up_destino_padrao: issue-local
-
-        ## Handoff para Novo Intake
-
-        > Preencher apenas quando houver remediacao estrutural ou sistemica com destino `new-intake`.
-
-        - nome_sugerido_do_intake: nao aplicavel
-        - intake_kind_recomendado: nao aplicavel
-        - problema_resumido: scaffold base apenas
-        - evidencias: nao aplicavel
-        - impacto: nao aplicavel
-        - escopo_presumido: nao aplicavel
+        - estado do artefato: `planned`
+        - veredito canonico (`go` / `hold` / `cancelled`): nao aplicavel ate conclusao da rodada
+        - gate_da_feature: `not_ready`
+        - follow-up padrao: `same-feature`
 
         ## Follow-ups Bloqueantes
 
-        1. nenhum
+        1. nao aplicavel ao shell `planned`
 
         ## Follow-ups Nao Bloqueantes
 
-        1. nenhum
+        1. nao aplicavel ao shell `planned`
+        """
+    ).strip() + "\n"
+
+
+def _render_closing_report(context: ProjectContext) -> str:
+    """Renderiza o relatorio de encerramento placeholder."""
+    project = context.options.nome_projeto
+    return dedent(
+        f"""
+        {_frontmatter([
+            ("doc_id", "RELATORIO-ENCERRAMENTO.md"),
+            ("version", "1.0"),
+            ("status", "draft"),
+            ("owner", "PM"),
+            ("last_updated", context.today),
+            ("project", project),
+        ])}
+
+        # RELATORIO-ENCERRAMENTO - {project}
+
+        ## Estado Atual
+
+        Projeto em bootstrap inicial. Este relatorio existe apenas para manter
+        a arvore canonica completa do projeto.
+
+        ## Pre-condicoes para preenchimento
+
+        - todas as features do projeto encerradas
+        - auditorias finais aprovadas
+        - `AUDIT-LOG.md` coerente com o estado final
         """
     ).strip() + "\n"
 
@@ -1298,7 +1127,7 @@ def _render_session_planner(context: ProjectContext) -> str:
         context=context,
         doc_id="SESSION-PLANEJAR-PROJETO.md",
         title="SESSION-PLANEJAR-PROJETO - Planejamento de Projeto em Sessao de Chat",
-        objective="Planejar o projeto novo a partir do PRD gerado e do bootstrap inicial da fase F1-FUNDACAO.",
+        objective="Planejar o projeto novo a partir do PRD gerado e do bootstrap inicial em `features/`.",
         canonical_ref="PROJETOS/COMUM/SESSION-PLANEJAR-PROJETO.md",
         params=[
             ("PROJETO", project),
@@ -1311,7 +1140,7 @@ def _render_session_planner(context: ProjectContext) -> str:
         local_note=dedent(
             f"""
             - use o PRD gerado pelo scaffold como ponto de partida
-            - a fase inicial do projeto e `{BOOTSTRAP_PHASE_DIR}`
+            - a feature bootstrap inicial do projeto e `{BOOTSTRAP_FEATURE_ID}`
             - em caso de conflito, `PROJETOS/COMUM/SESSION-PLANEJAR-PROJETO.md` prevalece
             """
         ).strip(),
@@ -1358,68 +1187,87 @@ def _render_session_create_prd(context: ProjectContext) -> str:
     )
 
 
-def _render_session_implement_issue(context: ProjectContext) -> str:
-    """Renderiza o wrapper local de implementacao da issue bootstrap."""
+def _render_session_implement_us(context: ProjectContext) -> str:
+    """Renderiza o wrapper local de execucao de user story."""
     project = context.options.nome_projeto
-    issue_path = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)
     return _render_session_wrapper(
         context=context,
-        doc_id="SESSION-IMPLEMENTAR-ISSUE.md",
-        title="SESSION-IMPLEMENTAR-ISSUE - Execucao de Issue em Sessao de Chat",
-        objective="Executar a issue bootstrap da fase F1-FUNDACAO e validar o scaffold inicial do projeto.",
-        canonical_ref="PROJETOS/COMUM/SESSION-IMPLEMENTAR-ISSUE.md",
+        doc_id="SESSION-IMPLEMENTAR-US.md",
+        title="SESSION-IMPLEMENTAR-US - Execucao de User Story em Sessao de Chat",
+        objective="Executar a user story atualmente elegivel do projeto, resolvida a partir da fila documental vigente.",
+        canonical_ref="PROJETOS/COMUM/SESSION-IMPLEMENTAR-US.md",
         params=[
             ("PROJETO", project),
-            ("FASE", BOOTSTRAP_PHASE_DIR),
-            ("ISSUE_ID", BOOTSTRAP_ISSUE_DOC_ID),
-            ("ISSUE_PATH", issue_path),
-            ("TASK_ID", BOOTSTRAP_TASK_ID),
+            ("FEATURE_ID", "<resolver_na_feature_ativa_do_projeto>"),
+            ("US_ID", "<resolver_na_user_story_elegivel_do_projeto>"),
+            ("US_PATH", "<resolver_na_user_story_elegivel_do_projeto>"),
+            ("TASK_ID", "auto"),
+            ("ROUND", "1"),
         ],
-        local_note="A primeira issue do projeto aponta para o bootstrap inicial gerado pelo scaffold.",
+        local_note=dedent(
+            """
+            - use `boot-prompt.md` nos niveis de descoberta para resolver a unidade elegivel antes de colar os parametros
+            - nao trate este wrapper como congelado na bootstrap; a fila atual do projeto prevalece
+            - se o projeto ainda estiver apenas no scaffold inicial, a US bootstrap continua sendo a primeira candidata natural
+            """
+        ).strip(),
     )
 
 
-def _render_session_review_issue(context: ProjectContext) -> str:
-    """Renderiza o wrapper local de revisao pos-issue."""
+def _render_session_review_us(context: ProjectContext) -> str:
+    """Renderiza o wrapper local de revisao pos-user-story."""
     project = context.options.nome_projeto
-    issue_path = context.rel(BOOTSTRAP_PHASE_DIR, "issues", BOOTSTRAP_ISSUE_DOC_ID)
     return _render_session_wrapper(
         context=context,
-        doc_id="SESSION-REVISAR-ISSUE.md",
-        title="SESSION-REVISAR-ISSUE - Revisao Pos-Issue em Sessao de Chat",
-        objective="Revisar a issue bootstrap caso o scaffold precise de ajuste ou validacao formal.",
-        canonical_ref="PROJETOS/COMUM/SESSION-REVISAR-ISSUE.md",
+        doc_id="SESSION-REVISAR-US.md",
+        title="SESSION-REVISAR-US - Revisao Pos-User Story em Sessao de Chat",
+        objective="Revisar a user story atualmente em `ready_for_review` ou a user story explicitamente indicada pelo PM.",
+        canonical_ref="PROJETOS/COMUM/SESSION-REVISAR-US.md",
         params=[
             ("PROJETO", project),
-            ("FASE", BOOTSTRAP_PHASE_DIR),
-            ("ISSUE_ID", BOOTSTRAP_ISSUE_DOC_ID),
-            ("ISSUE_PATH", issue_path),
-            ("BASE_COMMIT", "HEAD"),
-            ("TARGET_COMMIT", "worktree"),
-            ("EVIDENCIA", "git diff HEAD..worktree"),
-            ("OBSERVACOES", "revisar o scaffold inicial do projeto"),
+            ("FEATURE_ID", "<resolver_no_handoff_ou_na_us_alvo>"),
+            ("US_ID", "<resolver_no_handoff_ou_na_us_alvo>"),
+            ("US_PATH", "<resolver_no_handoff_ou_na_us_alvo>"),
+            ("BASE_COMMIT", "auto"),
+            ("TARGET_COMMIT", "auto"),
+            ("EVIDENCIA", "auto"),
+            ("OBSERVACOES", "usar o handoff persistido na user story alvo sempre que existir"),
+            ("REVIEW_MODE", "auto"),
         ],
-        local_note="Use quando houver alteracoes locais no bootstrap ou uma revisao do scaffold precisar ser registrada.",
+        local_note=dedent(
+            """
+            - resolva primeiro a user story `ready_for_review` vigente do projeto; so use override manual quando o PM trouxer evidencia reproduzivel
+            - este wrapper nao fixa a revisao na bootstrap; a US alvo muda conforme a fila
+            - em caso de conflito, o handoff persistido na user story continua sendo a fonte de verdade
+            """
+        ).strip(),
     )
 
 
-def _render_session_audit_phase(context: ProjectContext) -> str:
-    """Renderiza o wrapper local de auditoria da fase."""
+def _render_session_audit_feature(context: ProjectContext) -> str:
+    """Renderiza o wrapper local de auditoria da feature."""
     project = context.options.nome_projeto
     return _render_session_wrapper(
         context=context,
-        doc_id="SESSION-AUDITAR-FASE.md",
-        title="SESSION-AUDITAR-FASE - Auditoria de Fase em Sessao de Chat",
-        objective="Auditar a fase F1-FUNDACAO quando o scaffold inicial estiver pronto para revisao.",
-        canonical_ref="PROJETOS/COMUM/SESSION-AUDITAR-FASE.md",
+        doc_id="SESSION-AUDITAR-FEATURE.md",
+        title="SESSION-AUDITAR-FEATURE - Auditoria de Feature em Sessao de Chat",
+        objective="Auditar a feature atualmente pronta para gate, conforme manifesto da feature e `AUDIT-LOG.md`.",
+        canonical_ref="PROJETOS/COMUM/SESSION-AUDITAR-FEATURE.md",
         params=[
             ("PROJETO", project),
-            ("FASE", BOOTSTRAP_PHASE_DIR),
-            ("RODADA", BOOTSTRAP_ROUND),
-            ("BASE_COMMIT", "HEAD"),
+            ("FEATURE_ID", "<resolver_na_feature_pronta_para_gate>"),
+            ("FEATURE_PATH", "<resolver_na_feature_pronta_para_gate>"),
+            ("RODADA", "<resolver_na_feature_pronta_para_gate>"),
+            ("BASE_COMMIT", "worktree"),
             ("AUDIT_LOG", context.rel("AUDIT-LOG.md")),
         ],
-        local_note=f"O relatorio base da fase fica em {context.rel(BOOTSTRAP_PHASE_DIR, 'auditorias', BOOTSTRAP_AUDIT_REPORT)}.",
+        local_note=dedent(
+            f"""
+            - descubra a feature pronta para auditoria a partir de `AUDIT-LOG.md` e dos manifestos `FEATURE-*.md`
+            - nao congele este wrapper na bootstrap; use a rodada correspondente ao estado atual do projeto
+            - o log do projeto permanece em `{context.rel("AUDIT-LOG.md")}`
+            """
+        ).strip(),
     )
 
 
@@ -1430,16 +1278,22 @@ def _render_session_remediate_hold(context: ProjectContext) -> str:
         context=context,
         doc_id="SESSION-REMEDIAR-HOLD.md",
         title="SESSION-REMEDIAR-HOLD - Roteamento de Remediacao Pos-Auditoria",
-        objective="Roteiar follow-ups caso a auditoria inicial da fase bootstrap retorne hold.",
+        objective="Roteiar follow-ups caso a auditoria inicial da feature bootstrap retorne hold.",
         canonical_ref="PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md",
         params=[
             ("PROJETO", project),
-            ("FASE", BOOTSTRAP_PHASE_DIR),
-            ("RELATORIO_PATH", context.rel(BOOTSTRAP_PHASE_DIR, "auditorias", BOOTSTRAP_AUDIT_REPORT)),
+            ("FEATURE_ID", "<resolver_na_ultima_auditoria_hold>"),
+            ("FEATURE_PATH", "<resolver_na_ultima_auditoria_hold>"),
+            ("RELATORIO_PATH", "<resolver_na_ultima_auditoria_hold>"),
             ("AUDIT_LOG_PATH", context.rel("AUDIT-LOG.md")),
-            ("OBSERVACOES", "nenhuma"),
+            ("OBSERVACOES", "usar o ultimo relatorio `hold` realmente ativo"),
         ],
-        local_note="Use este wrapper imediatamente apos uma auditoria com veredito hold.",
+        local_note=dedent(
+            """
+            - use este wrapper apenas quando houver um `hold` real aberto no projeto
+            - resolva feature e relatorio a partir do `AUDIT-LOG.md`, nao do scaffold inicial
+            """
+        ).strip(),
     )
 
 
@@ -1469,9 +1323,9 @@ def _render_session_map(context: ProjectContext) -> str:
         "SESSION-CRIAR-INTAKE.md",
         "SESSION-CRIAR-PRD.md",
         "SESSION-PLANEJAR-PROJETO.md",
-        "SESSION-IMPLEMENTAR-ISSUE.md",
-        "SESSION-REVISAR-ISSUE.md",
-        "SESSION-AUDITAR-FASE.md",
+        "SESSION-IMPLEMENTAR-US.md",
+        "SESSION-REVISAR-US.md",
+        "SESSION-AUDITAR-FEATURE.md",
         "SESSION-REMEDIAR-HOLD.md",
         "SESSION-REFATORAR-MONOLITO.md",
     ]
@@ -1480,7 +1334,7 @@ def _render_session_map(context: ProjectContext) -> str:
         f"""
         {_frontmatter([
             ("doc_id", "SESSION-MAPA.md"),
-            ("version", "1.0"),
+            ("version", "2.0"),
             ("status", "active"),
             ("owner", "PM"),
             ("last_updated", context.today),
@@ -1489,7 +1343,7 @@ def _render_session_map(context: ProjectContext) -> str:
 
         # SESSION-MAPA - {project}
 
-        > Mapa dos wrappers locais do projeto novo.
+        > Mapa dos wrappers locais do projeto.
         > Use este arquivo como ponto de entrada quando operar em chat interativo
         > em vez de Cloud Agent autonomo.
 
@@ -1505,6 +1359,8 @@ def _render_session_map(context: ProjectContext) -> str:
 
         ## Regra Local Adicional
 
+        - os wrappers locais sao presets finos do projeto, nao uma segunda fonte normativa
+        - wrappers de user story/revisao/auditoria nao devem congelar a fila na bootstrap; resolva a unidade atual nos artefatos do projeto
         - os wrappers locais apontam para os caminhos repo-relative do projeto
         - em caso de conflito, `PROJETOS/COMUM/SESSION-MAPA.md` prevalece
         """
@@ -1571,29 +1427,29 @@ def _build_scaffold_items(context: ProjectContext) -> list[ScaffoldItem]:
     """Constrói a lista declarativa de itens do scaffold."""
     paths = context.paths
     return [
-        ScaffoldItem(paths.feito_dir, "dir"),
-        ScaffoldItem(paths.phase_dir, "dir"),
-        ScaffoldItem(paths.issues_dir, "dir"),
-        ScaffoldItem(paths.sprints_dir, "dir"),
+        ScaffoldItem(paths.features_dir, "dir"),
+        ScaffoldItem(paths.feature_dir, "dir"),
+        ScaffoldItem(paths.user_stories_dir, "dir"),
+        ScaffoldItem(paths.user_story_dir, "dir"),
         ScaffoldItem(paths.auditorias_dir, "dir"),
+        ScaffoldItem(paths.encerramento_dir, "dir"),
         ScaffoldItem(paths.intake_path, "file", _render_intake),
         ScaffoldItem(paths.prd_path, "file", _render_prd),
         ScaffoldItem(paths.audit_log_path, "file", _render_audit_log),
         ScaffoldItem(paths.session_plan_path, "file", _render_session_planner),
         ScaffoldItem(paths.session_create_intake_path, "file", _render_session_create_intake),
         ScaffoldItem(paths.session_create_prd_path, "file", _render_session_create_prd),
-        ScaffoldItem(paths.session_implement_issue_path, "file", _render_session_implement_issue),
-        ScaffoldItem(paths.session_review_issue_path, "file", _render_session_review_issue),
-        ScaffoldItem(paths.session_audit_phase_path, "file", _render_session_audit_phase),
+        ScaffoldItem(paths.session_implement_us_path, "file", _render_session_implement_us),
+        ScaffoldItem(paths.session_review_us_path, "file", _render_session_review_us),
+        ScaffoldItem(paths.session_audit_feature_path, "file", _render_session_audit_feature),
         ScaffoldItem(paths.session_remediate_hold_path, "file", _render_session_remediate_hold),
         ScaffoldItem(paths.session_refactor_monolith_path, "file", _render_session_refactor_monolith),
         ScaffoldItem(paths.session_map_path, "file", _render_session_map),
-        ScaffoldItem(paths.phase_manifest_path, "file", _render_phase_manifest),
-        ScaffoldItem(paths.epic_manifest_path, "file", _render_epic_manifest),
-        ScaffoldItem(paths.issue_readme_path, "file", _render_issue_readme),
+        ScaffoldItem(paths.feature_manifest_path, "file", _render_feature_manifest),
+        ScaffoldItem(paths.user_story_readme_path, "file", _render_user_story_readme),
         ScaffoldItem(paths.task1_path, "file", _render_task),
-        ScaffoldItem(paths.sprint_path, "file", _render_sprint),
-        ScaffoldItem(paths.audit_report_path, "file", _render_audit_report),
+        ScaffoldItem(paths.audit_report_path, "file", _render_feature_audit_report),
+        ScaffoldItem(paths.closing_report_path, "file", _render_closing_report),
     ]
 
 
@@ -1643,8 +1499,9 @@ def _create_files(context: ProjectContext, *, verbose: bool) -> list[Path]:
 def criar_estrutura_minima(options: ScaffoldOptions | str) -> list[Path]:
     """Cria a estrutura minima do projeto novo.
 
-    A estrutura inclui a raiz do projeto, ``feito/`` e os diretórios da fase
-    bootstrap. Esta função e pública para facilitar testes focados na árvore.
+    A estrutura inclui a raiz do projeto, ``features/``, a feature bootstrap,
+    ``encerramento/`` e os diretórios canonicos da user story bootstrap.
+    Esta função e pública para facilitar testes focados na árvore.
     """
     resolved = _coerce_options(options)
     context = _build_context(resolved)

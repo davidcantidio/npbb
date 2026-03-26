@@ -3,7 +3,7 @@ doc_id: "GOV-AUDITORIA.md"
 version: "2.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-25"
 ---
 
 # GOV-AUDITORIA
@@ -137,22 +137,37 @@ Estados operacionais do gate dentro do manifesto da fase:
 ## Modelo Operacional Recomendado
 
 - recomendacao: usar IA auditora independente da IA implementadora
+- regra operacional para OpenClaw multi-agente: usar o modelo configurado em
+  `OPENCLAW_AUDITOR_MODEL`, acessado via OpenRouter, como agente senior de
+  gate; o default esperado e
+  `openrouter/anthropic/claude-opus-4.6`
+- intake e PRD permanecem como unicos gates humanos normais; auditoria e
+  remediacao pos-hold nao dependem de aprovacao humana passo a passo
 - fallback aceitavel: mesma IA em sessao separada, lendo apenas artefatos, diff e evidencias
 - qualquer auditoria deve julgar aderencia, risco, cobertura de testes, saude estrutural do codigo e rastreabilidade da remediacao
+- todo gate de auditoria deve conferir alinhamento explicito ao PRD e as
+  features da fase antes de aprovar ou abrir follow-up
+- override humano apos o PRD so existe como excecao explicita para conflito
+  reproduzivel de parametros/evidencias, cancelamento declarado ou contexto
+  externo novo
 
 ## Procedimento Pós-Hold
 
-Após qualquer auditoria com veredito `hold`, o PM deve executar o seguinte
-algoritmo antes de retomar o desenvolvimento:
+Após qualquer auditoria com veredito `hold`, o `agente senior` deve executar o
+seguinte algoritmo antes de retomar o desenvolvimento. O PM so pode
+sobrescrever o destino de um follow-up de forma explicita e justificada:
 
 ```
 Para cada follow-up bloqueante no relatório:
   │
   ├─ followup_destination = issue-local
   │     └─→ criar recurso de issue local na fase atual
+  │          → se nenhum epico atual acomodar a remediacao sem drift,
+  │            o agente senior pode criar um novo epic na mesma fase antes
+  │            das issues corretivas
   │          → preferir pasta `ISSUE-*/` com `README.md` + `TASK-*.md`
   │          → usar `ISSUE-*.md` apenas para follow-up simples
-  │          → ciclo normal: SESSION-IMPLEMENTAR-ISSUE
+  │          → ciclo normal: SESSION-IMPLEMENTAR-US -> SESSION-REVISAR-US
   │
   ├─ followup_destination = new-intake
   │     └─→ criar INTAKE-<PROJETO>-<SLUG>.md
@@ -182,7 +197,7 @@ ser tratados em paralelo sem travar a fase.
 ## Artefatos Vinculados
 
 - prompt de auditoria: `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
-- session de auditoria: `PROJETOS/COMUM/SESSION-AUDITAR-FASE.md`
+- session de auditoria de feature: `PROJETOS/COMUM/SESSION-AUDITAR-FEATURE.md`
 - session de remediação pós-hold: `PROJETOS/COMUM/SESSION-REMEDIAR-HOLD.md`
 - template de relatório: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-RELATORIO.md`
 - template de log: `PROJETOS/COMUM/TEMPLATE-AUDITORIA-LOG.md`

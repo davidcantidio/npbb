@@ -46,7 +46,7 @@ estrutural rastreavel.
 
 ### Leitura obrigatoria
 
-1. siga `PROJETOS/boot-prompt.md`, Niveis 1 e 2
+1. siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2
 2. leia o relatorio de auditoria de origem
 3. leia `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`
 4. leia `PROJETOS/COMUM/TEMPLATE-INTAKE.md`

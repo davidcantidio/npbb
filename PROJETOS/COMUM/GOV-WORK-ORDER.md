@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-WORK-ORDER.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-25"
 ---
 
 # GOV-WORK-ORDER
@@ -74,6 +74,11 @@ work_order:
 - todo work order de auditoria precisa nomear `phase_path`, `audit_log_path`, `report_path` e `base_commit`
 - o manifesto da issue (`README.md` da pasta ou arquivo legado) e a fonte
   primaria do escopo executavel
+- quando o escopo executavel for uma user story (pasta `US-*/` com
+  `README.md` ou manifesto legado equivalente no projeto), `SCOPE-LEARN.md` no
+  mesmo diretorio, quando existir, e entrada suplementar valida para revisao de
+  criterios de aceite em `SESSION-REVISAR-US.md`; nao substitui o manifesto
+  primario nem o PRD
 - quando a issue for granularizada, a task selecionada em `TASK-N.md` completa
   o escopo operacional da work order
 - o arquivo da auditoria e a fonte primaria do veredito de gate

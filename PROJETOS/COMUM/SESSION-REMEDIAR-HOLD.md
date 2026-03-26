@@ -1,229 +1,211 @@
-  ---
-  doc_id: "SESSION-REMEDIAR-HOLD.md"
-  version: "1.2"
-  status: "active"
-  owner: "PM"
-  last_updated: "2026-03-16"
-  ---
+---
+doc_id: "SESSION-REMEDIAR-HOLD.md"
+version: "2.0"
+status: "active"
+owner: "PM"
+last_updated: "2026-03-25"
+---
 
-  # SESSION-REMEDIAR-HOLD — Roteamento de Remediação Pós-Auditoria
+# SESSION-REMEDIAR-HOLD - Roteamento de Remediacao Pos-Auditoria de Feature
 
-  ## Quando usar
+## Quando usar
 
-  Use este prompt imediatamente após qualquer auditoria com veredito `hold`,
-  independente de como o relatório foi produzido (agente autônomo, sessão de chat
-  ou auditor externo). Cobre todos os destinos canônicos de follow-up em um único
-  fluxo guiado.
+Use este prompt imediatamente apos qualquer auditoria de feature com veredito
+`hold`, independente de como o relatorio foi produzido. Cobre todos os destinos
+canonicos de follow-up em um unico fluxo guiado.
 
-  Não use para auditorias com veredito `go` ou `cancelled`.
+Nao use para auditorias com veredito `go` ou `cancelled`.
 
-  ## Parâmetros obrigatórios
+## Parametros obrigatorios
 
-  Preencha e cole junto com este prompt:
+Preencha e cole junto com este prompt:
 
-  ```
-  PROJETO: SUPABASE
-  FASE: F2
-  RRELATORIO_PATH: /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/F1-Schema-no-Supabase/auditorias/RELATORIO-AUDITORIA-F1-R01.md
-  RELATORIO-AUDITORIA-F1-R01.md>
-  AUDIT_LOG_PATH: AUDIT_LOG_PATH: /Users/genivalfreirenobrejunior/Documents/code/npbb/npbb/PROJETOS/SUPABASE/AUDIT-LOG.md
+```text
+PROJETO:         <nome do projeto>
+FEATURE_ID:      <FEATURE-<N>-<NOME>>
+FEATURE_PATH:    <caminho completo da pasta da feature>
+RELATORIO_PATH:  <caminho completo do RELATORIO-AUDITORIA-*.md>
+AUDIT_LOG_PATH:  <caminho completo do AUDIT-LOG.md>
+OBSERVACOES:     <restricoes adicionais ou "nenhuma">
+```
 
-  OBSERVACOES:   NENHUMA
-  ```
+## Prompt
 
-  ---
+Voce e um engenheiro de produto senior operando em sessao de chat interativa.
 
-  ## Prompt
+Siga a ordem de leitura definida em `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2.
+Nao execute os Niveis 3 a 6.
 
-  Você é um engenheiro de produto sênior operando em sessão de chat interativa.
+Leia tambem antes de qualquer acao:
 
-  Siga a ordem de leitura definida em `PROJETOS/boot-prompt.md`, Níveis 1 e 2
-  (Ambiente e Governança). Não execute os Níveis 3 a 6.
+- `PROJETOS/COMUM/GOV-AUDITORIA.md`
+- `PROJETOS/COMUM/GOV-SCRUM.md`
+- `PROJETOS/COMUM/GOV-USER-STORY.md`
+- `PROJETOS/COMUM/TEMPLATE-USER-STORY.md`
+- `PROJETOS/COMUM/TEMPLATE-TASK.md`
+- `PROJETOS/COMUM/TEMPLATE-INTAKE.md`
+- `PROJETOS/COMUM/GOV-INTAKE.md`
+- `PROJETOS/{{PROJETO}}/INTAKE-{{PROJETO}}.md`
+- `PROJETOS/{{PROJETO}}/PRD-{{PROJETO}}.md`
+- `{{FEATURE_PATH}}`
+- `{{RELATORIO_PATH}}`
+- `{{AUDIT_LOG_PATH}}`
 
-  Leia também antes de qualquer ação:
+## Pre-condicao: Sync do Indice SQLite
 
-  - `PROJETOS/COMUM/GOV-AUDITORIA.md` — regras de destino de follow-up
-  - `PROJETOS/COMUM/GOV-ISSUE-FIRST.md` — template canônico de issue
-  - `PROJETOS/COMUM/TEMPLATE-INTAKE.md` — estrutura do intake
-  - `PROJETOS/COMUM/GOV-INTAKE.md` — critérios de prontidão para PRD
-  - `PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md` — critérios de task_instruction_mode
-  - `{{RELATORIO_PATH}}` — relatório de auditoria com hold
-  - `{{AUDIT_LOG_PATH}}` — log de auditoria do projeto
+Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
 
-  ---
+1. rode `./bin/sync-openclaw-projects-db.sh`
+2. consulte no DB o estado atual da feature, das user stories nao encerradas e
+   do relatorio mais recente
+3. compare o resultado com o Markdown canonico da feature, do relatorio e do
+   `AUDIT-LOG.md`; o **Markdown prevalece**
+4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes da classificacao
+5. apos qualquer gravacao em `PROJETOS/` que altere feature, user story, intake
+   de follow-up ou `AUDIT-LOG.md`, execute novo sync
 
-  ### Passo 0 — Leitura e Classificação dos Follow-ups
+## Contrato operacional pos-PRD
 
-  Leia `{{RELATORIO_PATH}}`. Extraia todos os follow-ups das seções
-  "Follow-ups Bloqueantes" e "Follow-ups Não Bloqueantes".
+- a classificacao e aprovacao dos follow-ups deve ser feita pelo `agente senior`
+- esta sessao nao introduz checkpoint humano adicional apos o PRD
+- divergencia **SQLite vs Markdown** e telemetria operacional em
+  `DRIFT_INDICE`; isso nao substitui a comprovacao de alinhamento com intake,
+  PRD e feature afetada
+- toda classificacao deve conferir alinhamento com o PRD, a feature afetada e
+  os criterios de aceite antes de abrir remediacao local
+- se surgir `new-intake`, o gate humano reaparece apenas quando esse intake
+  entrar no fluxo canonico de intake/PRD
 
-  Derive também o `Audit ID de Origem` desta remediação a partir do relatório,
-  usando `phase` + `round` do frontmatter no formato `F<N>-R<NN>`; exemplo:
-  `phase: "F1"` e `round: 1` geram `F1-R01`.
+## Mapeamento deterministico de destino
 
-  Para cada follow-up, determine o destino canônico conforme `GOV-AUDITORIA.md`:
+Use os destinos operacionais abaixo:
 
-  - `issue-local` — correção local e contida dentro da fase auditada
-  - `new-intake` — remediação estrutural ou sistêmica que atravessa módulos,
-    exige rediscutir escopo ou não cabe como ajuste pontual na fase atual
-  - `cancelled` — follow-up que o PM decide não endereçar, com justificativa
+| Destino operacional | Quando usar | Registro legado no `AUDIT-LOG.md` |
+|---|---|---|
+| `same-feature` | o ajuste continua dentro da feature atual | `issue-local` |
+| `new-intake` | o ajuste excede a feature atual | `new-intake` |
+| `cancelled` | nao deve virar trabalho novo | `cancelled` |
 
-  O campo `followup_destination` do frontmatter do relatório indica o destino
-  padrão sugerido pelo auditor. O PM pode reclassificar item a item.
+Enquanto o `AUDIT-LOG.md` ainda usar a coluna `Fase`, grave nela o valor de
+`FEATURE_ID`.
 
-  Apresente:
+## Passo 0 - Leitura e classificacao dos follow-ups
 
-  ```
-  CLASSIFICAÇÃO DOS FOLLOW-UPS
-  ─────────────────────────────────────────
-  Relatório: {{RELATORIO_PATH}}
-  Veredito:  hold
-  Destino padrão do relatório: <followup_destination do frontmatter>
-  ─────────────────────────────────────────
+Antes de classificar qualquer follow-up:
 
-  Follow-ups Bloqueantes:
-  | # | Resumo | Destino proposto | Justificativa |
-  |---|---|---|---|
-  | B1 | ... | issue-local / new-intake / cancelled | ... |
+- leia o intake principal `PROJETOS/{{PROJETO}}/INTAKE-{{PROJETO}}.md`
+- leia o PRD `PROJETOS/{{PROJETO}}/PRD-{{PROJETO}}.md`
+- leia o manifesto da feature em `{{FEATURE_PATH}}`
+- se o intake principal, o PRD ou o manifesto da feature nao puderem ser
+  localizados ou lidos, responda `BLOQUEADO` e pare sem classificar
+  follow-ups
 
-  Follow-ups Não Bloqueantes:
-  | # | Resumo | Destino proposto | Justificativa |
-  |---|---|---|---|
-  | N1 | ... | issue-local / new-intake / cancelled | ... |
+Leia `{{RELATORIO_PATH}}`. Extraia todos os follow-ups das secoes
+"Follow-ups Bloqueantes" e "Follow-ups nao bloqueantes".
 
-  ─────────────────────────────────────────
-  → "confirmar" para prosseguir com esta classificação
-  → "ajustar B[N] para [destino]" para reclassificar bloqueante
-  → "ajustar N[N] para [destino]" para reclassificar não bloqueante
-  → "cancelar tudo" para encerrar sem gerar artefatos
-  ```
+Para cada follow-up:
 
-  **Pare aqui. Aguarde resposta do PM.**
+- identifique a feature, criterio ou trecho do PRD afetado
+- determine se o ajuste cabe em uma US existente da mesma feature ou exige uma
+  nova US na mesma feature
+- registre explicitamente o sinal de alinhamento ou de drift que justifica
+  `same-feature` versus `new-intake`
+- se nao for possivel comprovar alinhamento com intake, PRD e feature afetada,
+  responda `BLOQUEADO` e pare sem classificar
 
-  ---
+Apresente:
 
-  ### Passo 1 — Rota `issue-local`
+```text
+CLASSIFICACAO DOS FOLLOW-UPS
+─────────────────────────────────────────
+Relatorio: {{RELATORIO_PATH}}
+Veredito:  hold
+DRIFT_INDICE: <nenhuma | descricao>
+─────────────────────────────────────────
 
-  Execute somente se houver follow-ups classificados como `issue-local`.
+Follow-ups Bloqueantes:
+| # | Resumo | Destino operacional | Registro legado | Feature/PRD afetado | US candidata / motivo explicito | Alinhamento ou drift |
+|---|---|---|---|---|---|---|
+| B1 | ... | same-feature / new-intake / cancelled | issue-local / new-intake / cancelled | ... | ... | ... |
 
-  Para cada um, gere rascunho seguindo o template de `GOV-ISSUE-FIRST.md`:
+Follow-ups Nao Bloqueantes:
+| # | Resumo | Destino operacional | Registro legado | Feature/PRD afetado | US candidata / motivo explicito | Alinhamento ou drift |
+|---|---|---|---|---|---|---|
+| N1 | ... | same-feature / new-intake / cancelled | issue-local / new-intake / cancelled | ... | ... | ... |
 
-  - **Issue granularizada (padrao):** criar pasta `ISSUE-F<N>-<NN>-<MMM>-<SLUG>/`
-    com `README.md` (manifesto) e `TASK-*.md` (uma task por arquivo); usar
-    `TEMPLATE-TASK.md` para cada task. Escolher este formato sempre que houver
-    multiplas tasks, tarefas decupadas ou `task_instruction_mode: required`.
-  - **Issue simples:** criar arquivo unico `ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md`
-    apenas quando o follow-up for local, simples e de task unica.
-  - `status: todo` no manifesto
-  - `task_instruction_mode` definido conforme `SPEC-TASK-INSTRUCTIONS.md`
-  - user story, contexto tecnico, plano TDD, criterios, DoD e tasks derivados do follow-up
-  - quando uma task envolver codigo novo ou alteracao com cobertura automatizavel,
-    marcar `tdd_aplicavel: true` e preencher `testes_red` + `passos_atomicos`
-    na ordem red -> green -> refactor; quando nao envolver TDD, manter
-    `tdd_aplicavel: false` ou omitir conforme a spec
-  - campo `Dependencias` com referencia ao relatorio de origem
+─────────────────────────────────────────
+Resultado esperado do gate: `APROVADO | AJUSTAR | REPROVADO`
+```
 
-  ```
-  RASCUNHO: ISSUE-F<N>-<NN>-<MMM>-<SLUG>/ (pasta) ou ISSUE-F<N>-<NN>-<MMM>-<SLUG>.md (arquivo)
-  ─────────────────────────────────────────
-  <conteudo completo>
-  ─────────────────────────────────────────
-  Destino: PROJETOS/{{PROJETO}}/{{FASE}}-.../issues/
-  → "aprovar" para gravar
-  → "ajustar [instrucao]" para revisar antes de gravar
-  → "pular" para nao gravar esta issue
-  ```
+## Passo 1 - Rota `same-feature`
 
-  **Pare após cada rascunho. Aguarde resposta do PM.**
+Execute somente se houver follow-ups classificados como `same-feature`.
 
-  ---
+Para cada um:
 
-  ### Passo 2 — Rota `new-intake`
+- prefira reutilizar a US existente quando o gap ainda pertencer claramente ao
+  seu escopo original
+- se nenhuma US atual acomodar o escopo corretivo sem drift, criar uma nova
+  pasta `US-<N>-<NN>-<SLUG>/` em `{{FEATURE_PATH}}/user-stories/`
+- usar `README.md` baseado em `TEMPLATE-USER-STORY.md`
+- gerar `TASK-*.md` baseados em `TEMPLATE-TASK.md` conforme o
+  `task_instruction_mode`
+- manter `status: todo` na nova US e registrar a referencia ao relatorio de origem
+- atualizar o manifesto da feature para refletir a US criada ou reaberta
 
-  Execute somente se houver follow-ups classificados como `new-intake`.
+```text
+RASCUNHO: US-<N>-<NN>-<SLUG>/
+─────────────────────────────────────────
+<conteudo completo do README.md e resumo das TASK-*.md>
+─────────────────────────────────────────
+Destino: {{FEATURE_PATH}}/user-stories/
+Resultado esperado do gate: `APROVADO | AJUSTAR | REPROVADO`
+```
 
-  Para cada um, gere rascunho completo de `INTAKE-{{PROJETO}}-<SLUG>.md`
-  seguindo `TEMPLATE-INTAKE.md`:
+## Passo 2 - Rota `new-intake`
 
-  - `intake_kind: audit-remediation`
-  - `source_mode: audit-derived`
-  - `origin_audit_id` com o `doc_id` do relatório
-  - `origin_report_path` com `{{RELATORIO_PATH}}`
-  - seção 0 (Rastreabilidade) totalmente preenchida
-  - seção 13 (Contexto Específico) obrigatória — sintoma, impacto, evidência
-    técnica, componentes e riscos de não agir extraídos do relatório
-  - lacunas conhecidas explicitamente declaradas para o que o relatório não cobriu
-  - checklist de prontidão para PRD (seção 16) preenchido ao final
+Execute somente se houver follow-ups classificados como `new-intake`.
 
-  ```
-  RASCUNHO: INTAKE-{{PROJETO}}-<SLUG>.md
-  ─────────────────────────────────────────
-  <conteúdo completo>
-  ─────────────────────────────────────────
-  Checklist de prontidão para PRD:
-  [x] / [ ] <item>
-  ...
-  Prontidão: <"pronto" | "bloqueado — ver checklist">
-  ─────────────────────────────────────────
-  Destino: PROJETOS/{{PROJETO}}/
-  → "aprovar" para gravar
-  → "ajustar [instrução]" para revisar antes de gravar
-  → "pular" para não gravar este intake
-  ```
+Para cada um, gere rascunho completo de `INTAKE-{{PROJETO}}-<SLUG>.md`
+seguindo `TEMPLATE-INTAKE.md`.
 
-  **Pare após cada rascunho. Aguarde resposta do PM.**
+```text
+RASCUNHO: INTAKE-{{PROJETO}}-<SLUG>.md
+─────────────────────────────────────────
+<conteudo completo>
+─────────────────────────────────────────
+Resultado esperado do gate: `APROVADO | AJUSTAR | REPROVADO`
+```
 
-  > Após aprovação do intake, o ciclo downstream segue normalmente via
-  > SESSION-CRIAR-PRD → SESSION-PLANEJAR-PROJETO → execução e auditoria própria.
-  > Este SESSION não conduz esse ciclo — apenas entrega o intake como ponto de
-  > entrada.
+## Passo 3 - Rota `cancelled`
 
-  ---
+Para cada follow-up classificado como `cancelled`, registre a justificativa
+tecnica da classificacao. Nenhum artefato e gerado.
 
-  ### Passo 3 — Rota `cancelled`
+## Passo 4 - Atualizacao do `AUDIT-LOG`
 
-  Para cada follow-up classificado como `cancelled`, registre a justificativa
-  fornecida pelo PM. Nenhum artefato é gerado. A justificativa será incluída no
-  AUDIT-LOG no Passo 4.
+Apos todos os passos anteriores, atualize `{{AUDIT_LOG_PATH}}`:
 
-  ---
+- preserve a linha da rodada e o gate ja gravados pela sessao de auditoria
+- atualize a secao `Resolucoes de Follow-ups` com uma linha por follow-up
+- preencha `Audit ID de Origem` com o identificador derivado de `{{RELATORIO_PATH}}`
+- preencha `Fase` com `FEATURE_ID` por compatibilidade
+- para `same-feature`, `Ref` aponta para a US criada/reaberta e o `Destino`
+  legado deve ser `issue-local`
+- para `new-intake`, `Ref` aponta para o `INTAKE-*.md` gerado
+- para `cancelled`, use `n/a` em `Ref` e registre a justificativa em `Observacoes`
 
-  ### Passo 4 — Atualização do AUDIT-LOG
+```text
+GERANDO: atualizacao da secao Resolucoes de Follow-ups em {{AUDIT_LOG_PATH}}
+─────────────────────────────────────────
+<diff da atualizacao proposta>
+Resultado esperado do gate: `APROVADO | AJUSTAR | REPROVADO`
+```
 
-  Após todos os passos anteriores, atualize `{{AUDIT_LOG_PATH}}`:
+## Regras inegociaveis
 
-  - preserve a linha da rodada e o gate já gravados pela sessão de auditoria; não
-    duplique a tabela `Rodadas`
-  - atualize a seção `Resolucoes de Follow-ups` com uma linha por follow-up
-  - preencha `Audit ID de Origem` com o identificador derivado de
-    `{{RELATORIO_PATH}}`
-  - preencha `Fase` com a fase auditada
-  - para `issue-local`, `Ref` aponta para a pasta `ISSUE-*/` ou arquivo `ISSUE-*.md` gerado
-  - para `new-intake`, `Ref` aponta para o `INTAKE-*.md` gerado
-  - para `cancelled`, use `n/a` em `Ref` e registre a justificativa em
-    `Observacoes`
-
-  ```
-  GERANDO: atualização da seção Resolucoes de Follow-ups em {{AUDIT_LOG_PATH}}
-  ─────────────────────────────────────────
-  <diff da atualização proposta>
-  ─────────────────────────────────────────
-  → "aprovar" para gravar
-  → "ajustar [instrução]" para revisar antes de gravar
-  ```
-
-  **Pare aqui. Aguarde resposta do PM.**
-
-  ---
-
-  ## Regras inegociáveis
-
-  - Nunca gravar arquivo sem confirmação explícita do PM
-  - Nunca inventar escopo, componente ou risco ausente no relatório
-  - Nunca reclassificar `new-intake` como `issue-local` sem justificativa explícita
-    do PM — remediação sistêmica subdimensionada como issue local é risco de
-    regressão normativa
-  - Follow-up não bloqueante classificado como `issue-local` deve ser gerado mas
-    sinalizado ao PM como não bloqueante da próxima rodada de auditoria
-  - O intake gerado neste SESSION não substitui SESSION-CRIAR-PRD; ele é apenas
-    o artefato de entrada para esse fluxo
+- nunca inventar escopo, componente ou risco ausente no relatorio
+- nunca reclassificar `new-intake` como `same-feature` sem justificativa explicita
+- se houver override humano, registre explicitamente a excecao e a motivacao
+- follow-up nao bloqueante classificado como `same-feature` deve ser gerado e sinalizado como nao bloqueante
+- nao gerar novos artefatos `ISSUE-*`; referencias historicas podem apenas ser lidas

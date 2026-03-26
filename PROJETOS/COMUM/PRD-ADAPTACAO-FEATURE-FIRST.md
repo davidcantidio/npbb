@@ -135,7 +135,7 @@ Intake → Sintese conceitual → PRD (Feature-Oriented) → Fases → Épicos �
 
 ### Fora
 
-- Não alterar a cadeia principal de governanca (Intake -> PRD -> Fases -> Epicos -> Issues -> Tasks -> Auditorias)
+- Consolidar a cadeia principal de governanca em `Intake -> PRD -> Features -> User Stories -> Tasks -> Revisao -> Auditoria de Feature`
 - Não alterar limites de sprint (GOV-SPRINT-LIMITES)
 - Não alterar spec de task instructions (SPEC-TASK-INSTRUCTIONS)
 - Não forçar retrofit em projetos existentes
@@ -398,7 +398,6 @@ Apenas para fundações compartilhadas genuinamente transversais:
 | SESSION-CRIAR-PRD.md | Exigir `TEMPLATE-PRD.md` e PRD orientado a feature |
 | PROMPT-INTAKE-PARA-PRD.md | Exigir `Features do Projeto` e rastreabilidade minima |
 | SESSION-PLANEJAR-PROJETO.md | Exigir PRD com features como eixo para decomposicao |
-| PROMPT-PLANEJAR-FASE.md | Preservar rastreabilidade `feature -> fase -> epico -> issue` |
 | TEMPLATE-INTAKE.md | Inalterado |
 | TEMPLATE-PRD.md | Atualizar para `delivery-first` / `feature-first` |
 | GOV-BRANCH-STRATEGY.md | Criar e incluir na leitura obrigatoria |

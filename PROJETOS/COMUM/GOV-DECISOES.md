@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-DECISOES.md"
-version: "2.0"
+version: "2.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-09"
+last_updated: "2026-03-25"
 ---
 
 # GOV-DECISOES
@@ -56,7 +56,7 @@ decision:
 
 | Decision ID | Data | Escopo | Risk Tier | Status | Decisao |
 |---|---|---|---|---|---|
-| `dec-2026-03-09-001` | `2026-03-09` | `framework/planning` | `R1` | `APPROVED` | `PROMPT-PLANEJAR-FASE.md` permanece como artefato complementar consumido por `SESSION-PLANEJAR-PROJETO.md`; nao deve substituir o fluxo de sessao e nao esta depreciado. |
+| `dec-2026-03-25-001` | `2026-03-25` | `framework/planning` | `R1` | `APPROVED` | `SESSION-PLANEJAR-PROJETO.md` passa a ser o unico entrypoint ativo de planejamento em `PROJETOS/COMUM/`; `PROMPT-PLANEJAR-FASE.md` foi removido para evitar reintroducao do fluxo `fase -> epico -> issue` como superficie principal. |
 
 ## Notas de Uso
 

@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-ISSUE-FIRST.md"
-version: "2.4"
+version: "2.5"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-18"
+last_updated: "2026-03-23"
 ---
 
 # GOV-ISSUE-FIRST
@@ -63,7 +63,8 @@ Intakes adicionais de remediacao podem coexistir na raiz no formato `INTAKE-<PRO
   `Given/When/Then`, DoD; quando granularizada, tasks em `TASK-*.md`; `decision_refs` e instructions
   por task quando exigidas; quando `task_instruction_mode: required` e a task envolver codigo,
   o plano TDD da issue deve descer para a task via `tdd_aplicavel` e `testes_red`; follow-up
-  de review pos-issue deve preservar rastreabilidade explicita para a issue de origem
+  de review pos-issue deve preservar rastreabilidade explicita para a issue de origem; o
+  manifesto da issue tambem concentra o handoff canônico para revisao pos-issue
 - `sprints/SPRINT-*.md`: selecao de issues, capacidade, riscos e consolidacao de status
 - `auditorias/RELATORIO-AUDITORIA-*.md`: usar `TEMPLATE-AUDITORIA-RELATORIO.md`
 
@@ -224,6 +225,21 @@ Como <papel>, quero <acao> para <resultado>.
 ## Artifact Minimo
 - `artifacts/...`
 
+## Handoff para Revisao Pos-Issue
+
+status: ready
+base_commit: nao_informado
+target_commit: nao_informado
+evidencia: nao_informado
+commits_execucao:
+- <sha> <mensagem>
+validacoes_executadas:
+- <comando> -> <pass | fail | nao_rodado>
+arquivos_de_codigo_relevantes:
+- `backend/...`
+limitacoes:
+- nenhuma
+
 ## Dependencias
 - [Intake](../../INTAKE-PROJETO.md)
 - [Epic](../EPIC-F1-01-NOME-DO-EPICO.md)
@@ -236,11 +252,13 @@ Notas obrigatorias:
 - o `README.md` concentra apenas o manifesto da issue
 - cada issue deve manter rastreabilidade explicita para a feature do PRD que ela implementa
 - o detalhamento operacional de cada task vive em `TASK-N.md`
+- o handoff de revisao pos-issue tambem vive no `README.md` ou no arquivo
+  legado da issue; nao criar artefato paralelo fora da issue
 - quando `task_instruction_mode: required`, os campos obrigatorios aparecem no
   corpo de cada `TASK-N.md`, nunca como bloco inline no `README.md`
 - quando a task envolver codigo com cobertura automatizavel, `TASK-N.md` deve declarar
   `tdd_aplicavel: true` e descrever `testes_red` antes de `passos_atomicos`
-- o status do `README.md` e agregado das tasks
+- o status do `README.md` e agregado das tasks combinado ao gate de revisao
 
 Exemplo minimo de `TASK-1.md` quando TDD aplica:
 
@@ -405,10 +423,17 @@ last_updated: "YYYY-MM-DD"
 
 Quando a issue for pasta com `TASK-*.md`, o status no `README.md` e derivado das tasks:
 
-- `done`: todas as tasks `done`
-- `active`: pelo menos uma task `active` ou `done`, mas nem todas `done`
+- `done`: todas as tasks `done` e a revisao pos-issue aprovou o fechamento
+- `ready_for_review`: todas as tasks `done`, o handoff de revisao foi persistido e a revisao ainda nao decidiu o fechamento
+- `active`: pelo menos uma task `active` ou `done`, mas nem todas `done`, ou a revisao devolveu a issue ao escopo original
 - `todo`: todas as tasks `todo`
 - `cancelled`: cancelamento explicito da issue
+
+Regras adicionais:
+
+- `ready_for_review` deve ser espelhado na linha da issue no `EPIC-*.md` e no
+  `SPRINT-*.md`
+- `ready_for_review` nao libera dependencias de outras issues
 
 ## Convencao de Links
 

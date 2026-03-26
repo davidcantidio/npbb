@@ -28,3 +28,11 @@ NPBB is an event management and marketing analytics platform with a **Python/Fas
 ### Quick commands reference
 
 See `docs/SETUP.md` for full details and `Makefile` target `ci-quality` for the full CI checks.
+
+## OpenClaw governance
+
+- `PROJETOS/COMUM/boot-prompt.md` is the canonical autonomous entrypoint for the local OpenClaw governance flow.
+- `PROJETOS/COMUM/SESSION-MAPA.md` is the canonical interactive entrypoint.
+- The active governance chain in this repo is `Intake -> PRD -> Feature -> User Story -> Task -> Execucao -> Review -> Auditoria de Feature`.
+- `PROJETOS/**/*.md` is the source of truth for governance artifacts. The derived index under `.openclaw/openclaw-projects.sqlite` is read-only operational state.
+- New project work must use the canonical layout `PROJETOS/<PROJETO>/features/FEATURE-*/user-stories/US-*/TASK-*.md`.

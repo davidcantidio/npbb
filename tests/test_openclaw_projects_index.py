@@ -327,6 +327,30 @@ class OpenClawProjectsIndexTest(unittest.TestCase):
             },
         )
 
+    def test_adapt_front_matter_postgres_normalizes_yaml_dates(self):
+        raw = textwrap.dedent(
+            """
+            ---
+            last_updated: 2026-03-25
+            nested:
+              reviewed_at: 2026-03-24
+            ---
+
+            # Titulo
+            """
+        ).lstrip()
+
+        meta, _ = self.module.parse_front_matter(raw, source_name="fixture.md")
+        adapted = self.module._adapt_front_matter("postgres", meta)
+
+        self.assertEqual(
+            adapted.obj,
+            {
+                "last_updated": "2026-03-25",
+                "nested": {"reviewed_at": "2026-03-24"},
+            },
+        )
+
     def test_classify_md_recognizes_feature_first_layout_and_cuts_legacy_to_documents(self):
         feature_manifest = self.module.classify_md(
             "PROJETOS/DEMO/features/FEATURE-1-FOUNDATION/FEATURE-1-FOUNDATION.md"

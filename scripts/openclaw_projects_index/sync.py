@@ -145,11 +145,18 @@ def _sql_ph(backend: str, sql: str) -> str:
     return sql
 
 
+def _json_ready(value: Any) -> Any:
+    serialized = json_text(value)
+    if serialized is None:
+        return None
+    return json.loads(serialized)
+
+
 def _adapt_front_matter(backend: str, front_matter: dict[str, Any]) -> Any:
     if backend == "postgres":
         from psycopg.types.json import Json
 
-        return Json(front_matter)
+        return Json(_json_ready(front_matter))
     return json_text(front_matter)
 
 
@@ -159,7 +166,7 @@ def _adapt_decision_refs(backend: str, value: Any) -> Any:
     if backend == "postgres":
         from psycopg.types.json import Json
 
-        return Json(value)
+        return Json(_json_ready(value))
     return json_text(value)
 
 

@@ -1,23 +1,28 @@
 ---
 doc_id: "GOV-INTAKE.md"
-version: "2.1"
+version: "3.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-10"
+last_updated: "2026-03-26"
 ---
 
 # GOV-INTAKE
 
 ## Objetivo
 
-Formalizar a etapa `Intake -> PRD` para que a IA gere PRDs completos, auditaveis,
-nao ingenuos e reutilizaveis tanto para novas iniciativas quanto para problemas,
-refactors e remediacoes estruturais.
+Formalizar a etapa `Intake -> Clarificacao -> PRD` para que a IA gere PRDs
+completos, auditaveis, nao ingenuos e reutilizaveis tanto para novas
+iniciativas quanto para problemas, refactors e remediacoes estruturais.
 
 ## Regra Canonica
 
 - todo fluxo novo comeca em `INTAKE-<PROJETO>.md` ou `INTAKE-<PROJETO>-<SLUG>.md`
+- intake aprovado **nao** vai direto para PRD: passa primeiro por um gate
+  explicito de clarificacao em `SESSION-CLARIFICAR-INTAKE.md`
 - o PRD so e elegivel quando referenciar explicitamente o arquivo de intake usado como origem
+- a clarificacao deve congelar, antes do PRD, `lacunas resolvidas`,
+  `hipoteses congeladas`, `dependencias externas pendentes` e
+  `riscos de interpretacao`
 - se o intake estiver incompleto, a IA deve devolver lacunas criticas em vez de improvisar regra de negocio
 - achados estruturais originados de auditoria podem abrir novos intakes com `intake_kind: audit-remediation`
 - se `intake_kind` for `problem`, `refactor` ou `audit-remediation`, o PRD gerado deve ser de remediacao controlada
@@ -80,16 +85,17 @@ Regras operacionais:
 - o intake retroativo continua obrigado a preencher problema ou oportunidade, publico ou operador principal, job to be done dominante, fluxo principal esperado, objetivo de negocio e metricas de sucesso, restricoes e nao-objetivos, dependencias e integracoes, arquitetura ou superficies impactadas, riscos relevantes e lacunas conhecidas
 - quando `intake_kind` for `problem`, `refactor` ou `audit-remediation`, o backfill tambem continua obrigado a registrar sintoma observado, impacto operacional, evidencia tecnica, componente(s) afetado(s) e riscos de nao agir
 - a rastreabilidade de origem continua obrigatoria em todo backfill e deve apontar o documento, auditoria ou contexto historico usado como base
-- o gate `Intake -> PRD` continua valendo integralmente
+- o gate `Intake -> Clarificacao -> PRD` continua valendo integralmente
 - `backfilled` nao dispensa nenhuma secao exigida pelo gate e nao cria excecao para avancar com lacunas criticas
 - campos historicos desconhecidos podem ficar como `nao_definido` somente se isso nao bloquear objetivo, escopo, restricoes, arquitetura ou riscos
 - todo `nao_definido` precisa aparecer em `Lacunas Conhecidas`
 
-## Gate de Prontidao para PRD
+## Gate de Prontidao para Clarificacao e PRD
 
-Esta e a fonte unica do gate `Intake -> PRD`.
+Esta e a fonte unica do gate `Intake -> Clarificacao -> PRD`.
 
-A etapa de geracao do PRD so deve avancar quando o `INTAKE-*.md`, inclusive em `source_mode: backfilled`, responder com clareza suficiente:
+A etapa de clarificacao so deve avancar quando o `INTAKE-*.md`, inclusive em
+`source_mode: backfilled`, responder com clareza suficiente:
 
 - por que isso existe
 - para quem existe
@@ -99,6 +105,14 @@ A etapa de geracao do PRD so deve avancar quando o `INTAKE-*.md`, inclusive em `
 - quais restricoes e riscos sao incontornaveis
 - o que ainda esta em aberto
 - se existe origem auditavel de um problema ou remediacao
+
+A etapa de geracao do PRD so deve avancar quando, alem do intake pronto, a
+clarificacao pre-PRD tiver produzido um bloco objetivo com:
+
+- lacunas resolvidas
+- hipoteses congeladas
+- dependencias externas pendentes
+- riscos de interpretacao
 
 ## Regra Anti-PRD-Ingenuo
 
@@ -149,4 +163,5 @@ Nao e permitido:
 - template preenchivel: `PROJETOS/COMUM/TEMPLATE-INTAKE.md`
 - prompt canonico: `PROJETOS/COMUM/PROMPT-INTAKE-PARA-PRD.md`
 - sessao de intake: `PROJETOS/COMUM/SESSION-CRIAR-INTAKE.md`
+- sessao de clarificacao: `PROJETOS/COMUM/SESSION-CLARIFICAR-INTAKE.md`
 - sessao de PRD: `PROJETOS/COMUM/SESSION-CRIAR-PRD.md`

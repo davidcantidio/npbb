@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-REMEDIAR-HOLD.md"
-version: "1.1"
+version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
@@ -11,8 +11,7 @@ project: "ATIVOS-INGRESSOS"
 
 ## Objetivo
 
-Roteiar follow-ups sempre que uma auditoria real de feature retornar
-`hold`.
+Roteiar follow-ups caso a auditoria inicial da feature bootstrap retorne hold.
 
 ## Sessao Canonica
 
@@ -34,4 +33,4 @@ OBSERVACOES:     usar o ultimo relatorio `hold` realmente ativo
 ## Regra Local Adicional
 
 - use este wrapper apenas quando houver um `hold` real aberto no projeto
-- resolva feature e relatorio a partir do `AUDIT-LOG.md`, nunca de artefatos bootstrap legados
+- resolva feature e relatorio a partir do `AUDIT-LOG.md`, nao do scaffold inicial

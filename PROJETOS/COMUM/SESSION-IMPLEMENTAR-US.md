@@ -1,12 +1,47 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-US.md"
-version: "1.1"
+version: "1.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # SESSION-IMPLEMENTAR-US - Execucao de User Story em Sessao de Chat
+
+## Entrada canonica e roteamento
+
+- **Por task (recomendado)** quando a unidade de execucao e de commit e uma
+  `TASK-*.md` concreta: use `PROJETOS/COMUM/SESSION-IMPLEMENTAR-TASK.md` com
+  `TASK_PATH` preenchido. Esse fluxo executa a **leitura ascendente** (Task → US →
+  Feature → PRD → Intake) e delega a este documento com `TASK_ID` ja resolvido e
+  fixo para a invocacao.
+- **Por user story** quando a proxima task deve ser escolhida na fila (`todo` /
+  `active` e `depends_on`): use este documento com `TASK_ID: auto` ou
+  `TASK_ID: T<n>` explicito.
+
+## Leitura ascendente obrigatoria
+
+Antes da **primeira** alteracao material (codigo ou documentos normativos) nesta
+invocacao, e **sempre que a task alvo mudar** (por exemplo de T1 para T2 na
+mesma sessao com `TASK_ID: auto`), o executor deve ter lido na ordem:
+
+1. **Task** corrente (`TASK-*.md` ou bloco legado): instrucoes, `depends_on`,
+   TDD, `write_scope`.
+2. **User Story**: `README.md` da pasta (granularizada) ou ficheiro legado;
+   criterios, `task_instruction_mode`, handoff.
+3. **Feature** (`FEATURE-*.md` referenciada pela US): criterios de aceite e
+   impactos por camada relevantes para a task.
+4. **PRD** do projeto (`prd_path` no manifesto da feature ou caminho canonico):
+   rastreabilidade, escopo dentro/fora e plano tecnico nas partes que a task
+   toca; leitura **integral** se a task alterar contrato publico ou multiplas
+   camadas. Em conflito com a task, **BLOQUEADO** — nao contornar.
+5. **Intake** (`intake_path` da feature ou `INTAKE-<PROJETO>.md`): restricoes,
+   dados sensiveis, lacunas e integracoes que condicionem a implementacao.
+
+Registe no Passo 0 um resumo (2–4 linhas) confirmando a cadeia ou, se usar leitura
+**orientada** de PRD/Intake, quais secoes foram lidas. Se a entrada foi via
+`SESSION-IMPLEMENTAR-TASK.md`, pode reutilizar o bloco `CADEIA DE RASTREIO` desse
+documento no Passo 0.
 
 ## Parametros de entrada
 
@@ -55,9 +90,9 @@ Antes do Passo 0, leia `PROJETOS/COMUM/GOV-USER-STORY.md` como fonte normativa d
 
 Se a US for inelegivel ou violar esses limites, responda `BLOQUEADO` em vez de estender escopo ou contornar a governanca.
 
-## Pré-condição: Sync do Índice SQLite
+## Pre-condicao: Sync do indice derivado Postgres
 
-Antes do Passo 0, sincronize o índice SQLite derivado de `PROJETOS/`:
+Antes do Passo 0, sincronize o indice derivado de `PROJETOS/`:
 
 1. rode `./bin/sync-openclaw-projects-db.sh`
 2. consulte no DB o estado atual da user story: `status`,
@@ -79,7 +114,7 @@ checkpoint humano adicional durante a execucao da user story.
   local, nao pedidos de permissao
 - o agente local deve reler PRD, feature de origem, user story e task antes de cada
   alteracao material para verificar alinhamento e evitar `scope-drift`
-- divergencia **SQLite vs Markdown** e telemetria operacional em
+- divergencia **indice derivado vs Markdown** e telemetria operacional em
   `DRIFT_INDICE`; isso nao entra no bloco `ALINHAMENTO PRD` e nao substitui a
   leitura canonica do Markdown
 - o gate senior nao acontece no meio da task; ele acontece quando a user story
@@ -164,12 +199,14 @@ altere criterios `Given/When/Then` sem veredito da sessao
 - **US granularizada (pasta):** Liste os `TASK-*.md` em ordem. Se `TASK_ID` foi informado,
   valide que o `TASK-N.md` correspondente existe e esta `todo` ou `active`; se nao estiver,
   responda `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task com `status: todo` ou
-  `active`. Execute apenas essa task; ao concluir, atualize `status: done` no `TASK-N.md`,
+  `active` **e** com todos os itens de `depends_on` ja `done`; se houver dependencia aberta,
+  responda `BLOQUEADO`. Execute apenas essa task; ao concluir, atualize `status: done` no `TASK-N.md`,
   recalcule o status agregado no `README.md` (`active` se ainda houver task aberta; nao use
   `done` diretamente ao fim da execucao), e faca commit; se todas as tasks estiverem done,
   siga para o Passo 3 para preparar o handoff e sincronizar `ready_for_review`. Se a task alvo tiver `tdd_aplicavel: true`, o plano de
   execucao deve explicitar as etapas `red`, `green` e `refactor` antes de qualquer mudanca de
-  codigo.
+  codigo. Se `parallel_safe: true`, valide primeiro que `write_scope` esta preenchido de modo
+  concreto; sessao local continua mono-task e nao usa paralelismo implicito.
 - **US legada (arquivo):** Liste as tasks em ordem. Se `TASK_ID` foi informado, valide que
   existe bloco correspondente e que a task nao esta encerrada; se nao existir, responda
   `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task elegivel. Em ambos os casos, execute
@@ -198,11 +235,14 @@ Decisao:                    <PROSSEGUIR | BLOQUEADO - motivo>
 Regras do bloco:
 
 - emitir uma vez por task, imediatamente antes do bloco `EXECUTANDO`
-- divergencia **SQLite vs Markdown** regista-se fora deste bloco, em
+- divergencia **indice derivado vs Markdown** regista-se fora deste bloco, em
   `DRIFT_INDICE`; o Markdown prevalece
 - se `Drift detectado` for diferente de `nenhum`, parar e reportar antes de
   alterar qualquer arquivo
 - se `Escopo da task vs PRD: fora`, responder `BLOQUEADO` e nao executar a task
+- se `depends_on` estiver aberto, responder `BLOQUEADO`
+- se `parallel_safe: true` e `write_scope` estiver vazio, generico ou ambiguo,
+  responder `BLOQUEADO`
 
 **Gap de criterio de aceite vs drift de PRD**
 

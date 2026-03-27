@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-DECOMPOR-US-EM-TASKS.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # SESSION-DECOMPOR-US-EM-TASKS - Decomposicao User Story em Tasks
@@ -49,7 +49,7 @@ sugerir codigo de aplicacao. O output permitido e apenas ficheiros
 9. manifesto da feature: `FEATURE_PATH/FEATURE-<N>.md` e `GOV-FEATURE.md`
 10. `PRD_PATH` apenas para contexto alinhado — **nao** invente escopo novo
 
-## Pre-condicao operacional: sync do indice derivado
+## Pre-condicao operacional: sync do indice derivado Postgres
 
 Antes do primeiro gate desta sessao:
 
@@ -60,7 +60,7 @@ Antes do primeiro gate desta sessao:
 5. apos gravacoes em `PROJETOS/` sob `TASK-*.md`, execute novo sync
 
 > Read model alvo: Postgres (`SPEC-INDICE-PROJETOS-POSTGRES.md`); enquanto a
-> implementacao usar SQLite, o mesmo script de sync cobre o backend configurado.
+> implementacao operacional do indice e o backend canônico desta sessao.
 
 ## Contrato operacional (apenas esta etapa)
 
@@ -72,6 +72,10 @@ ficheiro e persistido sem `APROVADO` nesse modo.
 - se `task_instruction_mode: required`, cada task com instrucoes detalhadas deve
   ter **ficheiro proprio** `TASK-N.md`
 - coerencia obrigatoria entre Given/When/Then da US e o somatorio das tasks
+- cada `TASK-N.md` deve declarar `user_story_id`, `depends_on`,
+  `parallel_safe` e `write_scope`
+- task proposta como paralelizavel so pode sair elegivel quando `write_scope`
+  estiver explicito e sem conflito irresolvido no plano da US
 
 ## Literais de bloco
 
@@ -107,14 +111,20 @@ Gate necessario: APROVADO
    - `user story completa`: conjunto de tasks necessarias para cumprir a US
    - `apenas TASK-<N>`: apenas o ficheiro de task indicado
 4. Criar ou atualizar `TASK-1.md` ... `TASK-K.md` (K <= 5) na pasta da US.
-5. Atualizar a secao **Tasks** do `README.md` com links relativos para cada task.
-6. **Nao** alterar o manifesto da feature nem o PRD nesta sessao, salvo referencia
+5. Declarar ordem e elegibilidade por task:
+   - preencher `depends_on` com `[]` apenas quando a task puder iniciar sem
+     predecessoras
+   - usar `parallel_safe: false` como default
+   - preencher `write_scope` com caminhos ou superficies concretas
+6. Atualizar a secao **Tasks** do `README.md` com links relativos para cada task.
+7. **Nao** alterar o manifesto da feature nem o PRD nesta sessao, salvo referencia
    cruzada explicitamente pedida pelo gate.
 
 ## Regras inegociaveis
 
-- nunca avance para `SESSION-IMPLEMENTAR-US.md` sem tasks adequadas quando
-  `task_instruction_mode: required`
+- nunca avance para `SESSION-IMPLEMENTAR-US.md` ou `SESSION-IMPLEMENTAR-TASK.md`
+  sem tasks adequadas quando `task_instruction_mode: required`
+- nunca marque task como paralelizavel sem `write_scope` verificavel
 - nunca grave arquivo sem `APROVADO` do agente senior *(quando o gate estiver ativo)*
 - nunca alargar escopo alem da US aprovada
 - preserve rastreabilidade **User Story -> Task**
@@ -122,5 +132,6 @@ Gate necessario: APROVADO
 
 ## Proxima etapa canonica
 
-Execucao: `SESSION-IMPLEMENTAR-US.md` ate `ready_for_review`, depois
+Execucao: `SESSION-IMPLEMENTAR-TASK.md` (task conhecida) ou
+`SESSION-IMPLEMENTAR-US.md` (proxima task na fila) ate `ready_for_review`, depois
 `SESSION-REVISAR-US.md`.

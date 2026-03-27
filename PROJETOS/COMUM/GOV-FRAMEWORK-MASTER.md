@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-FRAMEWORK-MASTER.md"
-version: "2.7"
+version: "2.8"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # GOV-FRAMEWORK-MASTER
@@ -18,7 +18,7 @@ last_updated: "2026-03-25"
 > No planejamento documental, esse principio se materializa como **feature-first** na **arvore
 > de entrega** sob `features/` (manifestos, user stories e tasks), nao como obrigatorio de
 > embutir Features ou User Stories no corpo do PRD. O PRD e contrato estrategico; o desdobramento
-> entregavel e etapa explicita do pipeline (`GOV-PRD.md`, prompts `PROMPT-*-PARA-*`, sessoes
+> entregavel e etapa explicita do pipeline (`GOV-PRD.md`, `SESSION-CLARIFICAR-INTAKE.md`, prompts `PROMPT-*-PARA-*`, sessoes
 > `SESSION-DECOMPOR-*` quando aplicavel).
 >
 > Ver: `GOV-PRD.md` e `TEMPLATE-PRD.md` para o contrato do PRD; `TEMPLATE-FEATURE.md` para manifesto
@@ -56,31 +56,34 @@ A cadeia operacional do framework vive em `GOV-SCRUM.md`.
 
 ## 2. Premissas do Repositorio
 
-- a cadeia normativa e `Intake -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`; o PRD nao substitui manifestos nem lista Features/US (`GOV-PRD.md`)
+- a cadeia normativa e `Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`; o PRD nao substitui manifestos nem lista Features/US (`GOV-PRD.md`)
 - o planeamento e a entrega seguem a hierarquia **Feature > User Story > Task** na arvore sob `features/`; o mapa de pastas alvo para esse modelo esta na secao `1. Estrutura Canonica do Repositorio`
 - todo projeto ativo precisa ter `INTAKE-<PROJETO>.md`, `PRD-<PROJETO>.md` e `AUDIT-LOG.md`
 - artefatos em `PROJETOS/COMUM/` usam prefixos funcionais: `GOV-`, `TEMPLATE-`, `PROMPT-`, `SESSION-`, `SPEC-`
 - o contrato de ciclo de trabalho, estados operacionais e Definition of Done do framework vive em `GOV-SCRUM.md` (nao duplicar aqui)
+- `GOV-ISSUE-FIRST.md`, `GOV-SPRINT-LIMITES.md` e `SPEC-T1-ESTADO-ATUAL-FRAMEWORK-OPENCLAW.md` permanecem apenas como stubs de compatibilidade; o conteudo historico foi arquivado em `PROJETOS/COMUM/LEGADO/` e nao define a superficie operacional ativa do v3.0
 
 ## 3. Fontes de Verdade por Tema
 
 | Tema | Fonte primaria |
 |---|---|
 | contrato do PRD (sem Features/US no documento) | `GOV-PRD.md` |
+| clarificacao pre-PRD | `SESSION-CLARIFICAR-INTAKE.md` |
 | manifesto de feature e decomposicao Feature -> US | `GOV-FEATURE.md` |
 | ciclo de trabalho, status e DoD | `GOV-SCRUM.md` |
-| auditoria (fase / projeto, contrato geral) | `GOV-AUDITORIA.md` |
+| auditoria (contrato geral do gate de feature) | `GOV-AUDITORIA.md` |
 | gate `Intake -> PRD` e taxonomias | `GOV-INTAKE.md` |
 | contratos de execucao com side effect | `GOV-WORK-ORDER.md` |
 | tamanho e DoD de User Story | `GOV-USER-STORY.md` |
 | auditoria de feature | `GOV-AUDITORIA-FEATURE.md` |
+| auditoria ad hoc do framework/repositorio | `PROMPT-AUDITORIA-FRAMEWORK.md` |
 | encerramento de projeto | `TEMPLATE-ENCERRAMENTO.md` |
 | rules de `task_instruction_mode` | `SPEC-TASK-INSTRUCTIONS.md` |
 | commit apos cada task | `GOV-COMMIT-POR-TASK.md` |
 | thresholds anti-monolito | `SPEC-ANTI-MONOLITO.md` |
 | decisoes estruturais compartilhadas | `GOV-DECISOES.md` |
 | operacao interativa em chat | `SESSION-MAPA.md` |
-| read model operacional (Postgres, pgvector, sync desde Git) | `SPEC-INDICE-PROJETOS-POSTGRES.md` |
+| read model operacional obrigatorio (Postgres, pgvector, sync desde Git) | `SPEC-INDICE-PROJETOS-POSTGRES.md` |
 | migracao normativa PRD sem Features/US no documento (pipeline em etapas) | `SPEC-PIPELINE-PRD-SEM-FEATURES.md` |
 | estrategia de branches | `GOV-BRANCH-STRATEGY.md` |
 
@@ -100,9 +103,9 @@ A cadeia operacional do framework vive em `GOV-SCRUM.md`.
 
 ## 5. Modos de Operacao
 
-- `boot-prompt.md`: entrada para Cloud Agent autonomo; descobre a proxima `Feature` ativa, a proxima `User Story` elegivel e a proxima `Task` elegivel, ou entra em auditoria de feature quando aplicavel; a descoberta baseia-se em **Markdown + Git** sob `PROJETOS/<PROJETO>/`; indices derivados (Postgres) sao opcionais e nunca substituem os ficheiros
+- `boot-prompt.md`: entrada para Cloud Agent autonomo; descobre a proxima `Feature` ativa, a proxima `User Story` elegivel e a proxima `Task` elegivel, ou entra em auditoria de feature quando aplicavel; a descoberta baseia-se em **Markdown + Git** sob `PROJETOS/<PROJETO>/`; o read model Postgres e operacional, mas nunca substitui os ficheiros
 - `SESSION-MAPA.md`: entrada para chat interativo; o humano escolhe o prompt
-  e informa os parametros da sessao; intake e PRD continuam humanos; apos PRD
+  e informa os parametros da sessao; intake, clarificacao e PRD continuam humanos; apos PRD
   aprovado, o desdobramento em Features, User Stories e Tasks e **explicito**
   (prompts e sessoes dedicadas); a execucao segue a hierarquia `Feature > User Story > Task`
   com gates do agente senior, e qualquer override humano vira excecao explicita

@@ -46,7 +46,7 @@ Se o manifesto da feature estiver incompleto ao ponto de impedir US bem
 formadas (criterios de aceite da feature vagos, dependencias nao resolvidas),
 responda `BLOQUEADO` com lacunas objetivas.
 
-## Pre-condicao operacional: sync do indice derivado
+## Pre-condicao operacional: sync do indice derivado Postgres
 
 Antes do primeiro gate desta sessao:
 

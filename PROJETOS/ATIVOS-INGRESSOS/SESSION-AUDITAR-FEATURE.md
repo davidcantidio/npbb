@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-AUDITAR-FEATURE.md"
-version: "1.1"
+version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
@@ -33,5 +33,5 @@ AUDIT_LOG:     PROJETOS/ATIVOS-INGRESSOS/AUDIT-LOG.md
 ## Regra Local Adicional
 
 - descubra a feature pronta para auditoria a partir de `AUDIT-LOG.md` e dos manifestos `FEATURE-*.md`
-- nao congele este wrapper em backlog bootstrap; use a rodada correspondente ao estado atual do projeto
+- nao congele este wrapper na bootstrap; use a rodada correspondente ao estado atual do projeto
 - o log do projeto permanece em `PROJETOS/ATIVOS-INGRESSOS/AUDIT-LOG.md`

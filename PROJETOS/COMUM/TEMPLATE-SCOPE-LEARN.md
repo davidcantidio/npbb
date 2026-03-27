@@ -11,7 +11,7 @@ last_updated: "YYYY-MM-DD"
 
 > Copie este ficheiro para a pasta da user story granularizada (`US-*/SCOPE-LEARN.md`)
 > ou para o mesmo diretorio do ficheiro da user story legada.
-> Fluxo normativo: `SESSION-IMPLEMENTAR-US.md` e `SESSION-REVISAR-US.md`.
+> Fluxo normativo: `SESSION-IMPLEMENTAR-TASK.md` (entrada em task), `SESSION-IMPLEMENTAR-US.md` e `SESSION-REVISAR-US.md`.
 > Nao substitui o PRD; alteracoes aos Given/When/Then do manifesto exigem
 > veredito do agente senior.
 

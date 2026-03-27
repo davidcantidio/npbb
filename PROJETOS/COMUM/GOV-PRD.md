@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-PRD.md"
-version: "1.0"
+version: "2.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # GOV-PRD
@@ -12,11 +12,20 @@ last_updated: "2026-03-25"
 
 Definir o **contrato normativo** do Product Requirements Document (PRD) no OpenClaw:
 o que o PRD deve descrever, o que fica **fora** do PRD, e como ele se encaixa na cadeia
-`Intake -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`.
+`Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`.
 
-O PRD e artefato **estratégico e de produto**: problema, direcao, escopo, restricoes, riscos,
-metricas, visao arquitetural geral e rollout. A **decomposicao entregavel** (features, user stories,
-tasks) e etapa **posterior** e explicita do pipeline, nao conteudo do PRD.
+O PRD e artefato **estratégico e de produto**: problema, direcao, escopo,
+restricoes, riscos, metricas, visao arquitetural geral e rollout. A
+**decomposicao entregavel** (features, user stories, tasks) e etapa **posterior**
+e explicita do pipeline, nao conteudo do PRD.
+
+No v3.0, o PRD passa a ter duas camadas internas obrigatorias:
+
+- **Especificacao Funcional**: fonte autoritativa do **o que / por que**
+- **Plano Tecnico**: derivado revisavel do **como**
+
+Se houver conflito entre ambas, a **Especificacao Funcional prevalece** e o
+Plano Tecnico deve ser revisto.
 
 ## Fonte de verdade
 
@@ -36,6 +45,15 @@ tasks) e etapa **posterior** e explicita do pipeline, nao conteudo do PRD.
    `PROMPT-PRD-PARA-FEATURES.md` e `SESSION-DECOMPOR-PRD-EM-FEATURES.md` (prompt e sessao canonicos).
 5. O conteudo obrigatorio do corpo do PRD segue a estrutura acordada em `TEMPLATE-PRD.md`, **apenas nas
    secoes que o template mantiver como escopo do PRD** (apos alinhamento do template ao presente contrato).
+6. O PRD deve incorporar, em secao propria, o resultado do gate
+   `Intake -> Clarificacao -> PRD` com:
+   `lacunas resolvidas`, `hipoteses congeladas`, `dependencias externas pendentes`
+   e `riscos de interpretacao`.
+7. A secao **Especificacao Funcional** nao deve citar stack, framework,
+   endpoint, esquema fisico ou decisao de implementacao como eixo do documento.
+8. A secao **Plano Tecnico** pode detalhar arquitetura, contratos e decisoes
+   de implementacao, desde que permaneça subordinada a
+   **Especificacao Funcional**.
 
 ## Conteudo obrigatorio (contrato do PRD)
 
@@ -51,6 +69,7 @@ O PRD deve cobrir, de forma auditavel:
 | **Metricas** | Leading, lagging, criterio minimo de sucesso |
 | **Restricoes e guardrails** | Tecnicas, operacionais, legais, prazo, marca/design |
 | **Dependencias e integracoes** | Sistemas, dados de entrada/saida, impactos em alto nivel |
+| **Hipoteses congeladas** | Lacunas resolvidas, hipoteses aceitas, dependencias pendentes, riscos de interpretacao |
 | **Arquitetura geral** | Visao unificada de backend, frontend, dados, observabilidade, auth quando relevante — **sem** substituir o detalhamento por feature em `FEATURE-*.md` |
 | **Riscos globais** | Produto, tecnico, operacional, dados, adocao |
 | **Rollout** | Estrategia de deploy, comunicacao, treinamento, suporte pos-launch |
@@ -74,6 +93,8 @@ Antes de considerar o PRD pronto para a etapa `PRD -> Features`:
 
 - [ ] Intake referenciado e versao confirmada
 - [ ] Problema, escopo, restricoes, riscos e metricas estao preenchidos de forma verificavel
+- [ ] `Especificacao Funcional` e `Plano Tecnico` estao separados e com precedencia explicita
+- [ ] `Hipoteses Congeladas` registra lacunas resolvidas, hipoteses aceitas, dependencias pendentes e riscos de interpretacao
 - [ ] Arquitetura geral e rollout estao descritos sem depender de lista de features no PRD
 - [ ] **Nao** ha secao de catalogo de Features nem tabelas de User Stories planejadas no PRD
 - [ ] Proxima etapa explicita: decomposicao via `SESSION-DECOMPOR-PRD-EM-FEATURES.md` / `PROMPT-PRD-PARA-FEATURES.md`
@@ -83,6 +104,7 @@ Antes de considerar o PRD pronto para a etapa `PRD -> Features`:
 | Documento | Papel |
 |-----------|--------|
 | `GOV-INTAKE.md` | Gate e taxonomias `Intake -> PRD` |
+| `SESSION-CLARIFICAR-INTAKE.md` | Gate conversacional `Intake -> Clarificacao` antes do PRD |
 | `TEMPLATE-PRD.md` | Estrutura e frontmatter do arquivo PRD |
 | `PROMPT-INTAKE-PARA-PRD.md` | Geracao do PRD a partir do intake (ate o escopo do PRD) |
 | `SESSION-CRIAR-PRD.md` | Sessao interativa de criacao do PRD |
@@ -92,5 +114,6 @@ Antes de considerar o PRD pronto para a etapa `PRD -> Features`:
 ## Responsabilidade deste documento
 
 - Fixar o contrato do PRD **sem** Features/User Stories no corpo normativo.
+- Fixar a precedencia `Especificacao Funcional > Plano Tecnico`.
 - Evitar duplicar Definition of Done, estados de US ou regras de auditoria detalhadas; remeter a
   `GOV-SCRUM.md`, `GOV-USER-STORY.md` e `GOV-AUDITORIA.md` quando necessario.

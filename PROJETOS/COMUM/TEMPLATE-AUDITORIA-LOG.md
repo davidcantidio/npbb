@@ -1,6 +1,6 @@
 ---
 doc_id: "AUDIT-LOG.md"
-version: "1.4"
+version: "2.0"
 status: "active"
 owner: "PM"
 last_updated: "YYYY-MM-DD"
@@ -10,32 +10,33 @@ last_updated: "YYYY-MM-DD"
 
 ## Politica
 
-- toda auditoria formal deve gerar relatorio versionado por fase em `auditorias/`
+- toda auditoria formal deve gerar relatorio versionado por feature em `auditorias/`
 - toda rodada deve registrar commit base, veredito e categoria dos achados materiais
 - auditoria `hold` abre follow-ups rastreaveis
-- follow-up pode ter destino `issue-local`, `new-intake` ou `cancelled`
-- auditoria `go` e pre-requisito para mover fase a `feito/`
+- follow-up pode ter destino `same-feature`, `new-intake` ou `cancelled`
+- `issue-local` pode aparecer apenas como enum legado de compatibilidade
+- auditoria `go` e pre-requisito para mover feature a `features/encerradas/`
 - cada resolucao de follow-up deve registrar o `Audit ID de Origem` da rodada
   `hold` que gerou o item
 
-## Gate Atual por Fase
+## Gate Atual por Feature
 
-| Fase | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
+| Feature | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
 | preencher |  |  |  |  |
 
 ## Resolucoes de Follow-ups
 
-| Data | Audit ID de Origem | Fase | Follow-up | Destino Final | Resumo | Ref | Observacoes |
+| Data | Audit ID de Origem | Feature | Follow-up | Destino Final | Resumo | Ref | Observacoes |
 |---|---|---|---|---|---|---|---|
-| YYYY-MM-DD | F1-R01 | F1 - NOME-DA-FASE | B1 | issue-local | resumo curto | ISSUE-F1-01-001-EXEMPLO/ | bloqueante |
+| YYYY-MM-DD | FEATURE-1-R01 | FEATURE-1 | B1 | same-feature | resumo curto | US-1-03-CORRECAO/README.md | bloqueante |
 
-> Em `Ref`, para `issue-local`, apontar para a pasta `ISSUE-*/` ou para
-> `README.md` quando a issue for granularizada; usar `ISSUE-*.md` apenas para
-> legado.
+> Em `Ref`, para `same-feature`, apontar para a pasta `US-*/` ou para o
+> `README.md` correspondente. Se o projeto ainda carregar follow-up legado como
+> `issue-local`, manter a referencia historica sem promovê-la a contrato novo.
 
 ## Rodadas
 
-| Audit ID | Fase | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
+| Audit ID | Feature | Data | Reviewer/Model | Base Commit | Commit Anterior Auditado | Verdict | Status | Relatorio | Achados Materiais | Follow-up Destino | Follow-up Ref | Supersedes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | nenhum | - | - | - | - | - | - | - | - | - | - | - | - |

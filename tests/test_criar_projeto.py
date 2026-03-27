@@ -93,6 +93,9 @@ class CriarProjetoTest(unittest.TestCase):
             implement_wrapper = (project_root / "SESSION-IMPLEMENTAR-US.md").read_text(
                 encoding="utf-8"
             )
+            implement_task_wrapper = (project_root / "SESSION-IMPLEMENTAR-TASK.md").read_text(
+                encoding="utf-8"
+            )
             review_wrapper = (project_root / "SESSION-REVISAR-US.md").read_text(
                 encoding="utf-8"
             )
@@ -109,6 +112,10 @@ class CriarProjetoTest(unittest.TestCase):
 
             self.assertIn("<resolver_na_user_story_elegivel_do_projeto>", implement_wrapper)
             self.assertIn("PROJETOS/COMUM/SESSION-IMPLEMENTAR-US.md", implement_wrapper)
+            self.assertTrue((project_root / "SESSION-IMPLEMENTAR-TASK.md").is_file())
+            self.assertIn("TASK_PATH", implement_task_wrapper)
+            self.assertIn("PROJETOS/COMUM/SESSION-IMPLEMENTAR-TASK.md", implement_task_wrapper)
+            self.assertIn("SESSION-IMPLEMENTAR-TASK.md", session_map)
             self.assertIn("REVIEW_MODE", review_wrapper)
             self.assertIn("<resolver_na_feature_pronta_para_gate>", audit_wrapper)
             self.assertIn(

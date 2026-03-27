@@ -19,7 +19,7 @@ unidade elegivel do projeto indicado no comando de invocacao.
 O padrao canonico deste repositorio segue a hierarquia:
 
 ```text
-Intake -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditorias de Feature
+Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature
 ```
 
 Principio operacional:
@@ -28,8 +28,9 @@ Principio operacional:
 - `feature-first` organiza a **entrega** sob `features/` (manifestos, US, tasks), nao o corpo do PRD;
   o PRD segue `PROJETOS/COMUM/GOV-PRD.md` (sem lista de Features nem User Stories)
 - a arquitetura existe para viabilizar a feature, nao para virar o eixo principal do projeto
-- **Markdown + Git** sao a fonte de verdade; um **read model Postgres** (pgvector, memoria semantica)
-  pode complementar descoberta quando configurado — ver `PROJETOS/COMUM/SPEC-INDICE-PROJETOS-POSTGRES.md`
+- **Markdown + Git** sao a fonte de verdade; o **read model Postgres** (pgvector, memoria semantica)
+  e a camada operacional obrigatoria do runtime v3.0; SQLite fica restrito a
+  migracao/backfill explicitos — ver `PROJETOS/COMUM/SPEC-INDICE-PROJETOS-POSTGRES.md`
 
 A entrega executavel canonica vive sob `features/`:
 

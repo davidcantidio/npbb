@@ -72,6 +72,7 @@ class ProjectPaths:
     session_create_intake_path: Path
     session_create_prd_path: Path
     session_implement_us_path: Path
+    session_implement_task_path: Path
     session_review_us_path: Path
     session_audit_feature_path: Path
     session_remediate_hold_path: Path
@@ -327,6 +328,7 @@ def _build_paths(options: ScaffoldOptions) -> ProjectPaths:
         session_create_intake_path=filesystem_root / "SESSION-CRIAR-INTAKE.md",
         session_create_prd_path=filesystem_root / "SESSION-CRIAR-PRD.md",
         session_implement_us_path=filesystem_root / "SESSION-IMPLEMENTAR-US.md",
+        session_implement_task_path=filesystem_root / "SESSION-IMPLEMENTAR-TASK.md",
         session_review_us_path=filesystem_root / "SESSION-REVISAR-US.md",
         session_audit_feature_path=filesystem_root / "SESSION-AUDITAR-FEATURE.md",
         session_remediate_hold_path=filesystem_root / "SESSION-REMEDIAR-HOLD.md",
@@ -800,7 +802,7 @@ def _render_feature_manifest(context: ProjectContext) -> str:
 
         - [ ] intake, PRD e audit log existem com frontmatter preenchido
         - [ ] wrappers locais apontam para `SESSION-IMPLEMENTAR-US`,
-              `SESSION-REVISAR-US` e `SESSION-AUDITAR-FEATURE`
+              `SESSION-IMPLEMENTAR-TASK`, `SESSION-REVISAR-US` e `SESSION-AUDITAR-FEATURE`
         - [ ] `features/{BOOTSTRAP_FEATURE_DIR}/` existe com manifesto, user story
               bootstrap e `TASK-1.md`
         - [ ] nao existem `F1-*`, `issues/`, `sprints/` nem wrappers
@@ -905,6 +907,7 @@ def _render_user_story_readme(context: ProjectContext) -> str:
         - `AUDIT-LOG.md`
         - `SESSION-PLANEJAR-PROJETO.md`
         - `SESSION-IMPLEMENTAR-US.md`
+        - `SESSION-IMPLEMENTAR-TASK.md`
         - `SESSION-REVISAR-US.md`
         - `SESSION-AUDITAR-FEATURE.md`
         - `features/{BOOTSTRAP_FEATURE_DIR}/FEATURE-1.md`
@@ -974,6 +977,7 @@ def _render_task(context: ProjectContext) -> str:
         - `PROJETOS/{project}/PRD-{project}.md`
         - `PROJETOS/{project}/SESSION-PLANEJAR-PROJETO.md`
         - `PROJETOS/{project}/SESSION-IMPLEMENTAR-US.md`
+        - `PROJETOS/{project}/SESSION-IMPLEMENTAR-TASK.md`
         - `PROJETOS/{project}/SESSION-REVISAR-US.md`
         - `PROJETOS/{project}/SESSION-AUDITAR-FEATURE.md`
         - `PROJETOS/{project}/features/{BOOTSTRAP_FEATURE_DIR}/FEATURE-1.md`
@@ -991,7 +995,7 @@ def _render_task(context: ProjectContext) -> str:
         ## comandos_permitidos
 
         - `find PROJETOS/{project} -maxdepth 5 -type f | sort`
-        - `rg -n "SESSION-PLANEJAR-PROJETO|SESSION-IMPLEMENTAR-US|FEATURE-1|US-1-01" PROJETOS/{project}`
+        - `rg -n "SESSION-PLANEJAR-PROJETO|SESSION-IMPLEMENTAR-US|SESSION-IMPLEMENTAR-TASK|FEATURE-1|US-1-01" PROJETOS/{project}`
         - `git status --short`
 
         ## resultado_esperado
@@ -1214,6 +1218,36 @@ def _render_session_implement_us(context: ProjectContext) -> str:
     )
 
 
+def _render_session_implement_task(context: ProjectContext) -> str:
+    """Renderiza o wrapper local de execucao com entrada na task."""
+    project = context.options.nome_projeto
+    return _render_session_wrapper(
+        context=context,
+        doc_id="SESSION-IMPLEMENTAR-TASK.md",
+        title="SESSION-IMPLEMENTAR-TASK - Execucao com entrada na Task",
+        objective=(
+            "Executar uma task concreta (`TASK-*.md`) com leitura ascendente ate "
+            "PRD/Intake e delegacao ao fluxo operacional de user story."
+        ),
+        canonical_ref="PROJETOS/COMUM/SESSION-IMPLEMENTAR-TASK.md",
+        params=[
+            ("PROJETO", project),
+            (
+                "TASK_PATH",
+                "<caminho completo para PROJETOS/"
+                f"{project}/features/.../user-stories/.../TASK-N.md>",
+            ),
+            ("ROUND", "1"),
+        ],
+        local_note=dedent(
+            """
+            - prefira esta sessao quando a task alvo ja for conhecida (commit atomico, TDD por task); use `SESSION-IMPLEMENTAR-US.md` com `TASK_ID: auto` quando a fila ainda tiver de ser resolvida na US
+            - nao congele caminhos da bootstrap; a fila real do projeto prevalece
+            """
+        ).strip(),
+    )
+
+
 def _render_session_review_us(context: ProjectContext) -> str:
     """Renderiza o wrapper local de revisao pos-user-story."""
     project = context.options.nome_projeto
@@ -1324,6 +1358,7 @@ def _render_session_map(context: ProjectContext) -> str:
         "SESSION-CRIAR-PRD.md",
         "SESSION-PLANEJAR-PROJETO.md",
         "SESSION-IMPLEMENTAR-US.md",
+        "SESSION-IMPLEMENTAR-TASK.md",
         "SESSION-REVISAR-US.md",
         "SESSION-AUDITAR-FEATURE.md",
         "SESSION-REMEDIAR-HOLD.md",
@@ -1440,6 +1475,7 @@ def _build_scaffold_items(context: ProjectContext) -> list[ScaffoldItem]:
         ScaffoldItem(paths.session_create_intake_path, "file", _render_session_create_intake),
         ScaffoldItem(paths.session_create_prd_path, "file", _render_session_create_prd),
         ScaffoldItem(paths.session_implement_us_path, "file", _render_session_implement_us),
+        ScaffoldItem(paths.session_implement_task_path, "file", _render_session_implement_task),
         ScaffoldItem(paths.session_review_us_path, "file", _render_session_review_us),
         ScaffoldItem(paths.session_audit_feature_path, "file", _render_session_audit_feature),
         ScaffoldItem(paths.session_remediate_hold_path, "file", _render_session_remediate_hold),

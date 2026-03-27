@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-MAPA.md"
-version: "2.1"
+version: "2.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
@@ -25,6 +25,7 @@ Leia e use como fonte de verdade:
 - `PROJETOS/ATIVOS-INGRESSOS/SESSION-CRIAR-PRD.md`
 - `PROJETOS/ATIVOS-INGRESSOS/SESSION-PLANEJAR-PROJETO.md`
 - `PROJETOS/ATIVOS-INGRESSOS/SESSION-IMPLEMENTAR-US.md`
+- `PROJETOS/ATIVOS-INGRESSOS/SESSION-IMPLEMENTAR-TASK.md`
 - `PROJETOS/ATIVOS-INGRESSOS/SESSION-REVISAR-US.md`
 - `PROJETOS/ATIVOS-INGRESSOS/SESSION-AUDITAR-FEATURE.md`
 - `PROJETOS/ATIVOS-INGRESSOS/SESSION-REMEDIAR-HOLD.md`
@@ -33,7 +34,6 @@ Leia e use como fonte de verdade:
 ## Regra Local Adicional
 
 - os wrappers locais sao presets finos do projeto, nao uma segunda fonte normativa
-- a decomposicao do projeto em `features/` so deve ocorrer apos aprovacao do PRD
-- wrappers de user story, revisao e auditoria nao devem inventar backlog; use a fila documental real do projeto quando ela existir
+- wrappers de user story/revisao/auditoria nao devem congelar a fila na bootstrap; resolva a unidade atual nos artefatos do projeto
 - os wrappers locais apontam para os caminhos repo-relative do projeto
 - em caso de conflito, `PROJETOS/COMUM/SESSION-MAPA.md` prevalece

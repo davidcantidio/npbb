@@ -48,7 +48,7 @@ PRD antes de decompor.
 Se o PRD referenciar adendo aprovado, leia o PRD base indicado antes de propor
 features.
 
-## Pre-condicao operacional: sync do indice derivado
+## Pre-condicao operacional: sync do indice derivado Postgres
 
 Antes do primeiro gate desta sessao, sincronize o indice derivado de `PROJETOS/`:
 

@@ -36,8 +36,11 @@ Nao introduza confirmacoes humanas adicionais apos a aprovacao do PRD.
 Use, conforme a etapa:
 
 - `SESSION-CRIAR-PRD.md`
-- `SESSION-PLANEJAR-PROJETO.md`
+- `SESSION-DECOMPOR-PRD-EM-FEATURES.md`
+- `SESSION-DECOMPOR-FEATURE-EM-US.md`
+- `SESSION-DECOMPOR-US-EM-TASKS.md`
 - `SESSION-IMPLEMENTAR-US.md`
+- `SESSION-IMPLEMENTAR-TASK.md`
 - `SESSION-AUDITAR-FEATURE.md`
 - `SPEC-ANTI-MONOLITO.md`
 

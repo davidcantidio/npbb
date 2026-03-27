@@ -3,12 +3,13 @@ doc_id: "SESSION-PLANEJAR-PROJETO.md"
 version: "4.0"
 status: "legacy_router"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # SESSION-PLANEJAR-PROJETO — Router legado de planejamento pos-PRD
 
 Este ficheiro **nao** e mais a sessao operacional monolitica de decomposicao.
+Tambem **nao** e o entrypoint canônico de planejamento pos-PRD.
 Mantem-se como **roteador de compatibilidade**: aponta para etapas explicitas do
 pipeline `PRD -> Features -> User Stories -> Tasks`, alinhadas ao contrato em que
 o **PRD canônico nao lista Features nem User Stories** (ver `GOV-PRD.md` e
@@ -80,12 +81,13 @@ OBSERVACOES:   <restricoes adicionais ou "nenhuma">
 3. A sessao especializada escolhida e o prompt canonico da etapa
 4. Artefactos do projeto: `{{PRD_PATH}}`, `PROJETOS/<PROJETO>/INTAKE-<PROJETO>.md`
 
-## Pre-condicao operacional: indice derivado de `PROJETOS/`
+## Pre-condicao operacional: indice derivado Postgres de `PROJETOS/`
 
 Antes do primeiro gate de planejamento na etapa em curso, sincronize o indice
 operacional conforme o processo canônico vigente em `GOV-FRAMEWORK-MASTER.md`
-(por exemplo `./bin/sync-openclaw-projects-db.sh` enquanto o read model for
-SQLite; após cutover, seguir `SPEC-INDICE-PROJETOS-POSTGRES.md`).
+(por exemplo `./bin/sync-openclaw-projects-db.sh` com
+`OPENCLAW_PROJECTS_DATABASE_URL` apontando para o Postgres local-first canônico;
+ver `SPEC-INDICE-PROJETOS-POSTGRES.md`).
 
 1. execute o sync canônico
 2. consulte o estado do projeto e do escopo pedido no indice

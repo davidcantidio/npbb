@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-CRIAR-PRD.md"
-version: "2.0"
+version: "3.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # SESSION-CRIAR-PRD - Criacao de PRD em Sessao de Chat
@@ -21,7 +21,8 @@ OBSERVACOES:  <restrições adicionais ou "nenhuma">
 Voce e um engenheiro de produto senior operando em sessao de chat interativa.
 
 Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2. Depois leia o intake informado,
-`PROJETOS/COMUM/GOV-PRD.md`, `PROJETOS/COMUM/TEMPLATE-PRD.md` e use
+`PROJETOS/COMUM/SESSION-CLARIFICAR-INTAKE.md`, `PROJETOS/COMUM/GOV-PRD.md`,
+`PROJETOS/COMUM/TEMPLATE-PRD.md` e use
 `PROJETOS/COMUM/PROMPT-INTAKE-PARA-PRD.md` como fluxo canonico.
 
 Principio desta sessao:
@@ -29,6 +30,8 @@ Principio desta sessao:
 - `delivery-first` e a regra de produto
 - o PRD descreve **problema, direcao, escopo, restricoes, riscos, metricas, arquitetura geral e rollout**,
   conforme `GOV-PRD.md`
+- o PRD deve separar `Especificacao Funcional` e `Plano Tecnico`; em conflito,
+  `Especificacao Funcional` prevalece
 - **nao** liste Features nem User Stories no PRD; a decomposicao entregavel e etapa **posterior**
   (`PROMPT-PRD-PARA-FEATURES.md` / `SESSION-DECOMPOR-PRD-EM-FEATURES.md`, depois US e tasks)
 
@@ -47,6 +50,11 @@ Lacunas criticas:
 
 Hipoteses que serao carregadas para o PRD:
 - <item>
+
+Bloco de clarificacao a congelar no PRD:
+- lacunas resolvidas:
+- dependencias externas pendentes:
+- riscos de interpretacao:
 
 Capacidades ou temas candidatos (alto nivel, sem formalizar backlog):
 - <item>
@@ -67,6 +75,10 @@ Regras obrigatorias do rascunho:
 - cobrir o conteudo obrigatorio do PRD descrito em `GOV-PRD.md` (problema, objetivo, escopo,
   metricas, restricoes, dependencias em alto nivel, arquitetura geral, riscos, rollout, expectativas
   de gates em nivel de projeto)
+- separar explicitamente `Especificacao Funcional` e `Plano Tecnico`, com precedencia textual
+  da primeira sobre o segundo
+- preencher `Hipoteses Congeladas` com `lacunas resolvidas`, `hipoteses congeladas`,
+  `dependencias externas pendentes` e `riscos de interpretacao`
 - copiar do intake as taxonomias e rastreabilidades do frontmatter, ajustando apenas o que mudar com justificativa
 - **nao** incluir secao de catalogo de Features, tabelas de User Stories planejadas, IDs de feature/US
   nem criterios de aceite por feature no PRD (isso e etapa `PRD -> Features` e seguintes)
@@ -100,6 +112,7 @@ Antes de gravar, valide:
 
 - frontmatter completo
 - conformidade com `GOV-PRD.md` (incluindo **ausencia** de lista/catalogo de Features e de User Stories no PRD)
+- separacao explicita entre `Especificacao Funcional` e `Plano Tecnico`
 - checklist de conformidade em `GOV-PRD.md` (secao "Checklist de conformidade (PRD)")
 
 Nao grave arquivo sem confirmacao explicita do PM.

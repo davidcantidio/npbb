@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-REVISAR-US.md"
-version: "1.1"
+version: "1.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # SESSION-REVISAR-US - Revisao Pos-User Story em Sessao de Chat
@@ -84,9 +84,9 @@ Regra de resolucao: use o handoff canonico como fonte de verdade por padrao.
 So mantenha override manual quando ele for mais especifico e reproduzivel que o
 handoff; se nao for possivel decidir com seguranca, responda `BLOQUEADO`.
 
-## Pre-condicao: Sync do Indice SQLite
+## Pre-condicao: Sync do indice derivado Postgres
 
-Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
+Antes do Passo 0, sincronize o indice derivado de `PROJETOS/`:
 
 1. rode `./bin/sync-openclaw-projects-db.sh`
 2. consulte no DB o estado atual da user story: `status`, `task_instruction_mode`,
@@ -109,7 +109,7 @@ Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
 - override humano apos o PRD so e valido quando houver conflito reproduzivel
   entre handoff e evidencia manual, cancelamento declarado ou contexto
   externo novo
-- divergencia **SQLite vs Markdown** e telemetria operacional em
+- divergencia **indice derivado vs Markdown** e telemetria operacional em
   `DRIFT_INDICE`; isso nao substitui a leitura canonica do manifesto da user story
   nem a validacao de alinhamento com o PRD
 - inferir o `ROUND` atual a partir do handoff persistido; se o handoff nao
@@ -235,7 +235,9 @@ Regras deste passo:
   `destino_proposto: nenhum` e ajuste a user story original antes da cascata documental
 - quando a mesma user story voltar para `active`, use
   `ROUND de retorno: <ROUND atual + 1>` e encerre com proximo passo explicito:
-  `SESSION-IMPLEMENTAR-US.md` com `TASK_ID: auto`
+  `SESSION-IMPLEMENTAR-US.md` com `TASK_ID: auto` ou, se a task corretiva ja
+  existir, `SESSION-IMPLEMENTAR-TASK.md` com `TASK_PATH` apontando para o
+  `TASK-*.md` alvo
 - nao crie uma segunda user story local para duplicar trabalho que ainda cabe na user story
   original em status `todo`, `active` ou `ready_for_review` quando o escopo
   remanescente ainda pertence a mesma user story (`GOV-SCRUM.md`)
@@ -292,12 +294,16 @@ Atualizacoes obrigatorias:
      o status dela para `todo` ou `active`
    - reescrever objetivo, arquivos a ler ou tocar, testes ou validacoes e TDD
      quando aplicavel
+   - manter `depends_on`, `parallel_safe` e `write_scope` coerentes com o novo
+     plano da user story
    - manter tasks concluidas e fora do achado em `done`
 3. nova task dentro da mesma user story, quando o gap ainda pertencer ao escopo
    original mas nao couber em task existente:
    - criar a proxima task rastreavel no formato ja usado pela user story
    - user story granularizada: criar o proximo `TASK-N.md` e atualizar a lista
      `## Tasks` no `README.md`
+   - a nova task nasce com `user_story_id` coerente, `depends_on` explicito,
+     `parallel_safe: false` por default e `write_scope` declarado
    - user story legada: adicionar a task ou checklist no proprio manifesto; se
      `task_instruction_mode: required`, atualizar tambem `## Instructions por Task`
 

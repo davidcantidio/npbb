@@ -1,9 +1,9 @@
 ---
 doc_id: "TEMPLATE-PRD"
-version: "2.0"
+version: "3.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 project: "<PROJETO>"
 intake_kind: "<copiar_do_intake>"
 source_mode: "<copiar_do_intake>"
@@ -29,6 +29,10 @@ audit_rigor: "<copiar_do_intake>"
 > `PROMPT-PRD-PARA-FEATURES.md`, `SESSION-DECOMPOR-PRD-EM-FEATURES.md`).
 > Este documento cobre **produto, escopo, restricoes, riscos, metricas, arquitetura geral e rollout** —
 > **sem** catalogo de Features nem listas de User Stories.
+> Estrutura obrigatoria do v3.0:
+> `Especificacao Funcional` = fonte autoritativa do "o que/por que";
+> `Plano Tecnico` = derivado revisavel do "como".
+> Se houver conflito, **Especificacao Funcional prevalece**.
 > Copie do intake as taxonomias e os campos de rastreabilidade do frontmatter,
 > ajustando apenas quando houver motivo documentado.
 
@@ -45,27 +49,33 @@ audit_rigor: "<copiar_do_intake>"
 - **Tese em 1 frase**:
 - **Valor esperado em 3 linhas**:
 
-## 2. Problema ou Oportunidade
+## 2. Especificacao Funcional
+
+> Nesta secao, descreva **o que** precisa ser entregue e **por que** isso
+> importa. Nao use stack, framework, endpoint, esquema fisico ou ferramenta
+> como eixo da especificacao.
+
+### 2.1 Problema ou Oportunidade
 
 - **Problema atual**:
 - **Evidência do problema**:
 - **Custo de não agir**:
 - **Por que agora**:
 
-## 3. Público e Operadores
+### 2.2 Publico e Operadores
 
 - **Usuário principal**:
 - **Usuário secundário**:
 - **Operador interno**:
 - **Quem aprova ou patrocina**:
 
-## 4. Jobs to be Done
+### 2.3 Jobs to be Done
 
 - **Job principal**:
 - **Jobs secundários**:
 - **Tarefa atual que será substituída**:
 
-## 5. Escopo
+### 2.4 Escopo
 
 ### Dentro
 
@@ -75,14 +85,14 @@ audit_rigor: "<copiar_do_intake>"
 
 -
 
-## 6. Resultado de Negócio e Métricas
+### 2.5 Resultado de Negocio e Metricas
 
 - **Objetivo principal**:
 - **Métricas leading**:
 - **Métricas lagging**:
 - **Critério mínimo para considerar sucesso**:
 
-## 7. Restrições e Guardrails
+### 2.6 Restricoes e Guardrails
 
 - **Restrições técnicas**:
 - **Restrições operacionais**:
@@ -90,14 +100,27 @@ audit_rigor: "<copiar_do_intake>"
 - **Restrições de prazo**:
 - **Restrições de design ou marca**:
 
-## 8. Dependências e Integrações
+### 2.7 Dependencias e Integracoes
 
 - **Sistemas internos impactados**:
 - **Sistemas externos impactados**:
 - **Dados de entrada necessários**:
 - **Dados de saída esperados**:
 
-## 9. Arquitetura Geral do Projeto
+## 3. Hipoteses Congeladas
+
+- **Lacunas resolvidas na clarificacao**:
+- **Hipoteses congeladas**:
+- **Dependencias externas pendentes**:
+- **Riscos de interpretacao**:
+
+## 4. Plano Tecnico
+
+> Esta secao descreve **como** a especificacao sera viabilizada. Se qualquer
+> item daqui entrar em conflito com a `Especificacao Funcional`, o `Plano
+> Tecnico` deve ser revisto.
+
+### 4.1 Arquitetura Geral do Projeto
 
 > Visao unificada de impacto arquitetural em nivel de projeto. Detalhamento por entregavel
 > fica nos manifestos `FEATURE-*.md` apos a etapa `PRD -> Features`.
@@ -109,7 +132,14 @@ audit_rigor: "<copiar_do_intake>"
 - **Autorização/autenticação**:
 - **Rollout** (visao de alto nivel; expandir na secao Rollout e Comunicacao):
 
-## 10. Riscos Globais
+### 4.2 Decisoes Tecnicas e Contratos Relevantes
+
+- **Contratos de API / integrações**:
+- **Persistencia / migracoes**:
+- **Observabilidade e operacao**:
+- **Trade-offs tecnicos assumidos**:
+
+## 5. Riscos Globais
 
 - **Risco de produto**:
 - **Risco técnico**:
@@ -117,7 +147,7 @@ audit_rigor: "<copiar_do_intake>"
 - **Risco de dados**:
 - **Risco de adoção**:
 
-## 11. Não-Objetivos
+## 6. Nao-Objetivos
 
 -
 
@@ -126,7 +156,7 @@ audit_rigor: "<copiar_do_intake>"
 > **Pos-PRD (nao faz parte deste arquivo):** backlog estruturado de features, user stories e tasks
 > segue `GOV-FEATURE.md`, `GOV-USER-STORY.md`, `GOV-SCRUM.md` e os prompts/sessoes de decomposicao.
 
-## 12. Dependências Externas
+## 7. Dependencias Externas
 
 | Dependência | Tipo | Origem | Impacto | Status |
 |-------------|------|--------|---------|--------|
@@ -134,7 +164,7 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-## 13. Rollout e Comunicação
+## 8. Rollout e Comunicacao
 
 - **Estratégia de deploy**:
 - **Comunicação de mudanças**:
@@ -143,7 +173,7 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-## 14. Revisões e Auditorias
+## 9. Revisoes e Auditorias
 
 - **Gates e auditorias em nivel de projeto** (expectativa, nao backlog de features/US neste PRD):
 - **Critérios de auditoria**: <referência a GOV-AUDITORIA.md>
@@ -151,17 +181,19 @@ audit_rigor: "<copiar_do_intake>"
 
 ---
 
-## 15. Checklist de Prontidão
+## 10. Checklist de Prontidao
 
 - [ ] Intake referenciado e versao confirmada
 - [ ] Problema, escopo, restricoes, riscos e metricas preenchidos de forma verificavel
+- [ ] `Especificacao Funcional` e `Plano Tecnico` estao separados com precedencia explicita
+- [ ] `Hipoteses Congeladas` esta preenchido com lacunas resolvidas, hipoteses aceitas, dependencias pendentes e riscos de interpretacao
 - [ ] Arquitetura geral e rollout descritos **sem** catalogo de Features nem tabelas de User Stories neste PRD
 - [ ] Dependencias externas mapeadas
 - [ ] Proxima etapa explicita: `PRD -> Features` via `SESSION-DECOMPOR-PRD-EM-FEATURES.md` / `PROMPT-PRD-PARA-FEATURES.md`
 
 ---
 
-## 16. Anexos e Referências
+## 11. Anexos e Referencias
 
 - <Link para diagrama>
 - <Link para documentação técnica>

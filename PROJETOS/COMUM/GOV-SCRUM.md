@@ -1,16 +1,16 @@
 ---
 doc_id: "GOV-SCRUM.md"
-version: "2.10"
+version: "3.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # GOV-SCRUM
 
 ## Cadeia de Trabalho
 
-`Intake -> PRD -> Features -> User Stories -> Tasks`
+`Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`
 
 ## Unidade Operacional Canonica
 
@@ -74,8 +74,11 @@ last_updated: "2026-03-25"
 ### Task
 
 - task rastreavel e documentada no formato canonico definido em `TEMPLATE-TASK.md`
+- `user_story_id`, `depends_on`, `parallel_safe` e `write_scope` preenchidos
 - quando `tdd_aplicavel: true`, ordem TDD e `testes_red` completos conforme `SPEC-TASK-INSTRUCTIONS.md`
 - validacoes obrigatorias executadas antes de encerrar
+- task com dependencia aberta nao e elegivel
+- task marcada como paralelizavel sem `write_scope` verificavel nao e elegivel
 - commit da task realizado conforme `GOV-COMMIT-POR-TASK.md` antes da cascata de fechamento
 
 ### Auditoria
@@ -147,6 +150,10 @@ esta taxonomia permanece a referencia vigente para o gate da feature.
   task no formato escolhido (`TASK-N.md` na user story granularizada ou
   `## Instructions por Task` na user story em formato legado) nao e elegivel
   para execucao
+- `depends_on` governa ordem entre tasks da mesma user story; so tarefas com
+  predecessoras encerradas podem entrar em execucao
+- `parallel_safe` e apenas declaracao de elegibilidade; a execucao paralela so
+  e permitida quando `write_scope` nao conflitar com outras tasks em voo
 
 ## Commit por Task
 
@@ -213,8 +220,8 @@ Regras de aplicacao:
 - o proximo passo natural apos uma user story chegar em `ready_for_review` e
   uma sessao de revisao do agente senior via `PROJETOS/COMUM/SESSION-REVISAR-US.md`
   (ou o wrapper `SESSION-REVISAR-US.md` do projeto, quando existir)
-- a review pos-user-story altera a cadeia operacional canonica para
-  `Intake -> PRD -> Features -> User Stories -> Tasks -> Revisao -> Auditoria de Feature`
+- a review pos-user-story fecha a cadeia operacional canonica
+  `Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`
 - a review pos-user-story nao substitui a auditoria formal da feature
 - a review atua como gate de fechamento da user story antes de `done`
 - vereditos canonicos da review: `aprovada`, `correcao_requerida`, `cancelled`

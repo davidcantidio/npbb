@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-REFATORAR-MONOLITO.md"
-version: "1.1"
+version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"

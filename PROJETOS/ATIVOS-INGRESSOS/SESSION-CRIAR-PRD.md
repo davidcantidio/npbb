@@ -1,6 +1,6 @@
 ---
 doc_id: "SESSION-CRIAR-PRD.md"
-version: "1.1"
+version: "1.0"
 status: "active"
 owner: "PM"
 last_updated: "2026-03-26"
@@ -11,8 +11,7 @@ project: "ATIVOS-INGRESSOS"
 
 ## Objetivo
 
-Gerar o PRD do projeto a partir do intake aprovado, mantendo o
-enquadramento capability-first do dominio de ativos e ingressos.
+Gerar o PRD inicial a partir do intake do projeto e do scaffold existente.
 
 ## Sessao Canonica
 
@@ -25,10 +24,9 @@ Leia e siga integralmente:
 ```text
 PROJETO:      ATIVOS-INGRESSOS
 INTAKE_PATH:  PROJETOS/ATIVOS-INGRESSOS/INTAKE-ATIVOS-INGRESSOS.md
-OBSERVACOES:  manter o PRD no nivel de capacidade; nao listar features; tratar dashboard como superficie e validacao de QR como etapa posterior
+OBSERVACOES:  nenhuma
 ```
 
 ## Regra Local Adicional
 
-Use o intake aprovado como fonte de verdade e deixe a decomposicao em
-features para a etapa posterior do pipeline.
+Use o intake gerado pelo scaffold como entrada inicial do PRD.

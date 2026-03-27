@@ -3,7 +3,7 @@ doc_id: "TEMPLATE-FEATURE"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 project: "<PROJETO>"
 feature_key: "FEATURE-<N>"
 feature_slug: "<SLUG-EM-MAIUSCULAS-COM-HIFEN>"
@@ -75,8 +75,8 @@ audit_gate: "not_ready"
 
 ## 8. Estado Operacional
 
-- **status**: `todo` | `active` | `blocked` | `done` *(conforme `GOV-SCRUM.md`)*
-- **audit_gate**: `not_ready` | `ready` | *(outros valores conforme `GOV-AUDITORIA-FEATURE.md`)*
+- **status**: `todo` | `active` | `done` | `cancelled` *(conforme `GOV-SCRUM.md`)*
+- **audit_gate**: `not_ready` | `pending` | `hold` | `approved` *(conforme `GOV-SCRUM.md`)*
 
 ## 9. User Stories (rastreabilidade)
 

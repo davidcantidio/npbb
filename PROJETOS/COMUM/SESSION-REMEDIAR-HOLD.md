@@ -3,7 +3,7 @@ doc_id: "SESSION-REMEDIAR-HOLD.md"
 version: "2.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-REMEDIAR-HOLD - Roteamento de Remediacao Pos-Auditoria de Feature
@@ -51,11 +51,11 @@ Leia tambem antes de qualquer acao:
 - `{{RELATORIO_PATH}}`
 - `{{AUDIT_LOG_PATH}}`
 
-## Pre-condicao: Sync do Indice SQLite
+## Pre-condicao: Sync do indice derivado Postgres
 
-Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
+Antes do Passo 0, sincronize o indice derivado de `PROJETOS/`:
 
-1. rode `./bin/sync-openclaw-projects-db.sh`
+1. rode `./bin/sync-fabrica-projects-db.sh`
 2. consulte no DB o estado atual da feature, das user stories nao encerradas e
    do relatorio mais recente
 3. compare o resultado com o Markdown canonico da feature, do relatorio e do
@@ -64,11 +64,21 @@ Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
 5. apos qualquer gravacao em `PROJETOS/` que altere feature, user story, intake
    de follow-up ou `AUDIT-LOG.md`, execute novo sync
 
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou sync impossivel nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; prossiga com
+Markdown + Git conforme a matriz.
+
+Edicoes em `AUDIT-LOG.md` ou manifestos: `PROJETOS/COMUM/SPEC-EDITOR-ARTEFACTOS.md`.
+
 ## Contrato operacional pos-PRD
 
 - a classificacao e aprovacao dos follow-ups deve ser feita pelo `agente senior`
 - esta sessao nao introduz checkpoint humano adicional apos o PRD
-- divergencia **SQLite vs Markdown** e telemetria operacional em
+- divergencia **indice derivado vs Markdown** e telemetria operacional em
   `DRIFT_INDICE`; isso nao substitui a comprovacao de alinhamento com intake,
   PRD e feature afetada
 - toda classificacao deve conferir alinhamento com o PRD, a feature afetada e
@@ -82,12 +92,12 @@ Use os destinos operacionais abaixo:
 
 | Destino operacional | Quando usar | Registro legado no `AUDIT-LOG.md` |
 |---|---|---|
-| `same-feature` | o ajuste continua dentro da feature atual | `issue-local` |
+| `same-feature` | o ajuste continua dentro da feature atual | `same-feature` (`issue-local` apenas em logs antigos) |
 | `new-intake` | o ajuste excede a feature atual | `new-intake` |
 | `cancelled` | nao deve virar trabalho novo | `cancelled` |
 
-Enquanto o `AUDIT-LOG.md` ainda usar a coluna `Fase`, grave nela o valor de
-`FEATURE_ID`.
+Se o `AUDIT-LOG.md` ainda usar a coluna legada `Fase`, grave nela o valor de
+`FEATURE_ID` como alias de `Feature`.
 
 ## Passo 0 - Leitura e classificacao dos follow-ups
 
@@ -126,12 +136,12 @@ DRIFT_INDICE: <nenhuma | descricao>
 Follow-ups Bloqueantes:
 | # | Resumo | Destino operacional | Registro legado | Feature/PRD afetado | US candidata / motivo explicito | Alinhamento ou drift |
 |---|---|---|---|---|---|---|
-| B1 | ... | same-feature / new-intake / cancelled | issue-local / new-intake / cancelled | ... | ... | ... |
+| B1 | ... | same-feature / new-intake / cancelled | same-feature / issue-local / new-intake / cancelled | ... | ... | ... |
 
 Follow-ups Nao Bloqueantes:
 | # | Resumo | Destino operacional | Registro legado | Feature/PRD afetado | US candidata / motivo explicito | Alinhamento ou drift |
 |---|---|---|---|---|---|---|
-| N1 | ... | same-feature / new-intake / cancelled | issue-local / new-intake / cancelled | ... | ... | ... |
+| N1 | ... | same-feature / new-intake / cancelled | same-feature / issue-local / new-intake / cancelled | ... | ... | ... |
 
 ─────────────────────────────────────────
 Resultado esperado do gate: `APROVADO | AJUSTAR | REPROVADO`
@@ -189,9 +199,10 @@ Apos todos os passos anteriores, atualize `{{AUDIT_LOG_PATH}}`:
 - preserve a linha da rodada e o gate ja gravados pela sessao de auditoria
 - atualize a secao `Resolucoes de Follow-ups` com uma linha por follow-up
 - preencha `Audit ID de Origem` com o identificador derivado de `{{RELATORIO_PATH}}`
-- preencha `Fase` com `FEATURE_ID` por compatibilidade
+- preencha `Feature` com `FEATURE_ID` ou a coluna legada `Fase` quando o log
+  ainda nao tiver migrado
 - para `same-feature`, `Ref` aponta para a US criada/reaberta e o `Destino`
-  legado deve ser `issue-local`
+  normalizado deve ser `same-feature`
 - para `new-intake`, `Ref` aponta para o `INTAKE-*.md` gerado
 - para `cancelled`, use `n/a` em `Ref` e registre a justificativa em `Observacoes`
 

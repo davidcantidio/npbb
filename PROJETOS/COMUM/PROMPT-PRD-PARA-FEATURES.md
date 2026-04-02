@@ -30,12 +30,13 @@ Principios de trabalho:
 ### Leitura obrigatoria
 
 1. siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2, quando aplicavel
-2. leia o `PRD-<PROJETO>.md` informado na integra
+2. leia o `PRD-<PROJETO>.md` por evidencia minima: primeiro secoes/ancoras relevantes; use `scripts/session_tools/read_file.py` antes de qualquer leitura integral
 3. use `PROJETOS/COMUM/GOV-PRD.md` como limite do que o PRD cobre e do que fica fora
 4. use `PROJETOS/COMUM/GOV-FEATURE.md` como contrato normativo do manifesto de feature
 5. use `PROJETOS/COMUM/TEMPLATE-FEATURE.md` como **estrutura obrigatoria** de cada `FEATURE-<N>.md`
 6. confirme a estrutura de pastas alvo em `PROJETOS/COMUM/GOV-FRAMEWORK-MASTER.md` (secao de estrutura canonica)
-7. se o projeto ja tiver features, leia os `FEATURE-*.md` existentes para **numeracao, nomenclatura e dependencias** antes de acrescentar novas
+7. use `PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md` para nao inflar contexto com dumps brutos
+8. se o projeto ja tiver features, leia os `FEATURE-*.md` existentes para **numeracao, nomenclatura e dependencias** antes de acrescentar novas
 
 ### Passagem 1 - Alinhamento e lacunas
 

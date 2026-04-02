@@ -3,7 +3,7 @@ doc_id: "SESSION-DECOMPOR-FEATURE-EM-US.md"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-DECOMPOR-FEATURE-EM-US - Decomposicao Feature em User Stories
@@ -13,11 +13,11 @@ last_updated: "2026-03-25"
 Preencha e cole junto com este prompt:
 
 ```text
-PROJETO:       <nome do projeto>
-FEATURE_PATH:  <caminho da pasta da feature: PROJETOS/<PROJETO>/features/FEATURE-<N>-<SLUG>/>
-PRD_PATH:      <caminho do PRD aprovado, para contexto de alinhamento>
-ESCOPO:        <"feature completa" | "apenas US-<N>-<NN>-<NOME>">
-OBSERVACOES:   <restricoes adicionais ou "nenhuma">
+PROJETO:       OPENCLAW-FRAMEWORK
+FEATURE_PATH: //Users/genivalfreirenobrejunior/Documents/gh-repos/openclaw/PROJETOS/OPENCLAW-FRAMEWORK-V4/features/FEATURE-1-DOMINIO-COMPARTILHADO/FEATURE-1.md
+PRD_PATH:      /Users/genivalfreirenobrejunior/Documents/gh-repos/openclaw/PROJETOS/OPENCLAW-FRAMEWORK-V4/PRD-OPENCLAW-FRAMEWORK-V4.md
+ESCOPO:        FEATURE COMPLETA
+OBSERVACOES:   NENHUMA
 ```
 
 ## Prompt
@@ -46,15 +46,24 @@ Se o manifesto da feature estiver incompleto ao ponto de impedir US bem
 formadas (criterios de aceite da feature vagos, dependencias nao resolvidas),
 responda `BLOQUEADO` com lacunas objetivas.
 
-## Pre-condicao operacional: sync do indice derivado
+## Pre-condicao operacional: preflight do runtime e sync do indice derivado Postgres
 
 Antes do primeiro gate desta sessao:
 
-1. rode `./bin/sync-openclaw-projects-db.sh`
-2. consulte o estado da feature e das user stories ja existentes no projeto
-3. compare com o Markdown canonico; o **Markdown prevalece**
-4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate
-5. apos gravacoes em `PROJETOS/` sob `user-stories/`, execute novo sync
+1. rode `./bin/ensure-fabrica-projects-index-runtime.sh --allow-missing-url`
+2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh`
+3. consulte o estado da feature e das user stories ja existentes no projeto apenas quando o sync tiver corrido
+4. compare com o Markdown canonico; o **Markdown prevalece**
+5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate, incluindo exit code e motivo quando o preflight falhar
+6. apos gravacoes em `PROJETOS/` sob `user-stories/`, execute novo sync apenas se o preflight permanecer OK
+
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou preflight falho nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; prossiga com
+Markdown + Git conforme a matriz.
 
 ## Contrato operacional (apenas esta etapa)
 

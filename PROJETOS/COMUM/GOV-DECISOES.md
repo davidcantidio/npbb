@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-DECISOES.md"
-version: "2.1"
+version: "2.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # GOV-DECISOES
@@ -50,15 +50,20 @@ decision:
 - `explicit_human_approval` e obrigatorio quando o side effect nao for trivialmente reversivel
 - nenhuma decision pode ir para `APPROVED` sem contexto suficiente para execucao auditavel
 - transicoes devem ser registradas com timestamp e agente responsavel
-- decision que conclui gate de fase deve incluir como acao de fechamento a movimentacao da fase para `<projeto>/feito/` e a atualizacao dos caminhos relacionados
+- decision que conclui auditoria de feature com fechamento autorizado deve
+  incluir como acao de fechamento a atualizacao do `AUDIT-LOG.md`, do manifesto
+  da feature e a movimentacao da pasta para `features/encerradas/` quando a
+  governanca da feature exigir
 
 ## Registro Ativo
 
 | Decision ID | Data | Escopo | Risk Tier | Status | Decisao |
 |---|---|---|---|---|---|
-| `dec-2026-03-25-001` | `2026-03-25` | `framework/planning` | `R1` | `APPROVED` | `SESSION-PLANEJAR-PROJETO.md` passa a ser o unico entrypoint ativo de planejamento em `PROJETOS/COMUM/`; `PROMPT-PLANEJAR-FASE.md` foi removido para evitar reintroducao do fluxo `fase -> epico -> issue` como superficie principal. |
+| `dec-2026-03-25-001` | `2026-03-25` | `framework/planning` | `R1` | `APPROVED` | A superficie canonica de planejamento pos-PRD em `PROJETOS/COMUM/` passa a ser a cadeia `SESSION-DECOMPOR-*` por etapa; `SESSION-PLANEJAR-PROJETO.md` permanece apenas como router legado de compatibilidade. `PROMPT-PLANEJAR-FASE.md` foi removido para evitar reintroducao do fluxo `fase -> epico -> issue` como superficie principal. |
 
 ## Notas de Uso
 
-- `decision_refs` em issues e auditorias podem apontar para IDs deste registro ou para um `DECISION-PROTOCOL.md` local do projeto
+- `decision_refs` em user stories, tasks, auditorias e artefatos legados de
+  issue podem apontar para IDs deste registro ou para um
+  `DECISION-PROTOCOL.md` local do projeto
 - decisoes estruturais de `PROJETOS/COMUM/` devem preferir este arquivo como registro compartilhado

@@ -1,9 +1,9 @@
 ---
 doc_id: "PROMPT-US-PARA-TASKS.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-26"
 ---
 
 # Prompt Canonico - User Story para Tasks
@@ -30,12 +30,13 @@ Principios de trabalho:
 ### Leitura obrigatoria
 
 1. siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2, quando aplicavel
-2. leia o `README.md` da User Story na integra (narrativa, criterios Given/When/Then, dependencias, `task_instruction_mode`)
+2. leia o `README.md` da User Story por secoes/ancoras relevantes (narrativa, Given/When/Then, dependencias, `task_instruction_mode`); use `scripts/session_tools/read_file.py` antes de leitura integral
 3. leia o `FEATURE-<N>.md` de origem e trechos relevantes do `PRD-<PROJETO>.md` apenas para contexto — **nao** reabra escopo da US
 4. use `PROJETOS/COMUM/GOV-USER-STORY.md` para limites e elegibilidade
 5. use `PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md` para modo `required`/`optional` e campos minimos por task
 6. use `PROJETOS/COMUM/TEMPLATE-TASK.md` como estrutura obrigatoria de cada `TASK-N.md`
 7. use `PROJETOS/COMUM/GOV-COMMIT-POR-TASK.md` se precisar alinhar expectativa de commit por task com o texto das tasks
+8. use `PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md` para evitar dump bruto do manifesto
 
 ### Passagem 1 - Prontidao da US
 
@@ -44,6 +45,8 @@ Antes de escrever tasks:
 - confirme que a US tem criterios de aceite **testaveis ou verificaveis**
 - confirme dependencias a outras USs: se uma US predecessora nao estiver `done`, declare `BLOQUEADO` em vez de assumir ordem
 - se `task_instruction_mode: required` e a US ainda nao tiver espaco estruturado para tasks em ficheiros, planeie a criacao dos `TASK-*.md` correspondentes
+- confirme que a ordem entre tasks pode ser expressa por `depends_on` sem ambiguidade
+- confirme que qualquer task marcada como potencialmente paralelizavel consegue declarar `write_scope` concreto
 - decida se cada task precisa de `tdd_aplicavel: true` com base nos fatores de risco em `SPEC-TASK-INSTRUCTIONS.md` e `GOV-USER-STORY.md`
 
 Se a US estiver ambigua ou sem criterios suficientes:
@@ -56,17 +59,19 @@ Se a US estiver ambigua ou sem criterios suficientes:
 So execute se a passagem 1 nao estiver bloqueada.
 
 - crie `TASK-1.md` ... `TASK-K.md` (K <= 5) na mesma pasta que o `README.md` da US
-- cada ficheiro deve seguir `TEMPLATE-TASK.md`, com `issue_id` / identificadores alinhados ao projeto (use o ID da US ou convencao local documentada no README)
+- cada ficheiro deve seguir `TEMPLATE-TASK.md`, com `user_story_id` alinhado ao `US_ID` da pasta e defaults explicitos para `depends_on`, `parallel_safe` e `write_scope`
 - preencha `objetivo`, `precondicoes`, `arquivos_a_ler_ou_tocar`, `passos_atomicos`, `comandos_permitidos`, `resultado_esperado`, `testes_ou_validacoes_obrigatorias`, `stop_conditions`
 - quando `tdd_aplicavel: true`, preencha `testes_red` **antes** de `passos_atomicos`
 - atualize a secao **Tasks** do `README.md` da US com links relativos para cada `TASK-N.md`
-- garanta ordem logica entre tasks (T1 antes de T2 quando houver dependencia) e que nenhuma task misture entregas de outra US
+- garanta ordem logica entre tasks via `depends_on` e que nenhuma task misture entregas de outra US
+- use `parallel_safe: true` apenas quando a task puder rodar em paralelo **e** `write_scope` nao conflitar com outras tasks paralelizaveis da mesma US
 
 ### Requisitos minimos da saida
 
 - no maximo **5** tasks por US
 - coerencia total entre o texto da US (Given/When/Then) e o somatorio das tasks
 - `task_instruction_mode` respeitado: se `required`, **nenhuma** task pode ficar apenas como bullet vago no README sem `TASK-N.md`
+- task com `parallel_safe: true` e `write_scope` vazio, generico ou sobreposto de forma nao resolvida deve sair como `BLOQUEADO`, nao como task elegivel
 
 ### Regra final
 

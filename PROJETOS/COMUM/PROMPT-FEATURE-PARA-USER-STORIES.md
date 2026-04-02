@@ -29,12 +29,13 @@ Principios de trabalho:
 ### Leitura obrigatoria
 
 1. siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1 e 2, quando aplicavel
-2. leia o `FEATURE-<N>.md` alvo na integra
+2. leia o `FEATURE-<N>.md` alvo por ancoras e secoes relevantes; use `scripts/session_tools/read_file.py` antes de leitura integral
 3. leia o `PRD-<PROJETO>.md` para contexto global (escopo, restricoes, arquitetura geral) — **sem** copiar listas do PRD como fonte de backlog
 4. use `PROJETOS/COMUM/GOV-FEATURE.md` para limites do manifesto de feature e criterios de decomposicao
 5. use `PROJETOS/COMUM/GOV-USER-STORY.md` para tamanho, elegibilidade e `task_instruction_mode`
 6. use `PROJETOS/COMUM/TEMPLATE-USER-STORY.md` como base do conteudo de cada US; o ficheiro canonico da US no layout OpenClaw e o `README.md` dentro da pasta da user story (ver estrutura em `GOV-FRAMEWORK-MASTER.md`)
-7. use `PROJETOS/COMUM/GOV-SCRUM.md` para estados e encadeamento com execucao/review quando precisar alinhar texto do manifesto
+7. use `PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md` para leitura minima guiada por evidencia
+8. use `PROJETOS/COMUM/GOV-SCRUM.md` para estados e encadeamento com execucao/review quando precisar alinhar texto do manifesto
 
 ### Passagem 1 - Checagem da feature
 

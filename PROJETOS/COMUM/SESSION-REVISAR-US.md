@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-REVISAR-US.md"
-version: "1.1"
+version: "1.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-REVISAR-US - Revisao Pos-User Story em Sessao de Chat
@@ -38,7 +38,23 @@ Limites e elegibilidade da user story em revisao: `PROJETOS/COMUM/GOV-USER-STORY
 Voce e um engenheiro senior operando em sessao de chat interativa no papel de
 agente senior revisor.
 
-Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia:
+## Passo -1 (obrigatorio — no maximo tres comandos antes de ler manifestos)
+
+Antes de abrir `README.md` da user story, `TASK-*.md`, a feature referenciada ou
+ficheiros citados pela evidencia:
+
+1. executar o preflight canonico: `./bin/ensure-fabrica-projects-index-runtime.sh`
+   na raiz do repositorio (opcional `--json`);
+2. se o exit code for diferente de `0` **e** a revisao exigir `sync_runs`,
+   comparacao DB real ou outro runtime operacional: responda `BLOQUEADO`, copie
+   o motivo para a saida e **nao** elabore plano extenso nem leia artefactos de
+   escopo (ver `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md`);
+3. so apos (1) passar ou (2) nao se aplicar, prossiga com `boot-prompt` e
+   **leitura minima** conforme `PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md`
+   (e orcamento de exploracao na mesma spec).
+
+Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia (com leitura
+minima para artefactos longos):
 
 - a user story informada (se for pasta, leia `README.md` e os `TASK-*.md` para revisao)
 - o handoff de revisao persistido no manifesto da user story, quando existir (secao `## Handoff para Revisao Pos-User Story`)
@@ -52,7 +68,7 @@ Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia:
 
 Nao execute descoberta autonoma de feature ou user story.
 
-Nao existe ainda ficheiro dedicado `PROMPT-REVISAR-US.md`; o procedimento normativo desta sessao e o presente documento mais os normativos acima.
+Nao existe ainda ficheiro dedicado `PROMPT-REVISAR-US.md`; o procedimento normativo desta sessao e o presente documento mais os normativos acima. Quando existir `REV-US-<N>-<NN>.md` na pasta da user story, trate-o como instancia local dos parametros e do contexto dessa US; nao substitui este documento nem os normativos referenciados.
 
 Antes do Passo 0, valide os parametros recebidos. Se `FEATURE_ID`,
 `US_ID`, `US_PATH`, `BASE_COMMIT`, `TARGET_COMMIT`, `EVIDENCIA` ou
@@ -84,23 +100,32 @@ Regra de resolucao: use o handoff canonico como fonte de verdade por padrao.
 So mantenha override manual quando ele for mais especifico e reproduzivel que o
 handoff; se nao for possivel decidir com seguranca, responda `BLOQUEADO`.
 
-## Pre-condicao: Sync do Indice SQLite
+## Pre-condicao: preflight do runtime e sync do indice derivado Postgres
 
-Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
+Antes do Passo 0, execute o preflight do runtime e sincronize o indice derivado de `PROJETOS/` quando elegivel:
 
-1. rode `./bin/sync-openclaw-projects-db.sh`
-2. consulte no DB o estado atual da user story: `status`, `task_instruction_mode`,
-   tasks abertas, feature associada
-3. compare o resultado com o Markdown canonico; o **Markdown prevalece**
-4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do bloco
-   `REVISAO POS-USER-STORY`
-5. apos qualquer gravacao em `PROJETOS/` que altere user story, task, feature,
-   handoff de review ou `SCOPE-LEARN.md`, execute novo sync
+1. rode `./bin/ensure-fabrica-projects-index-runtime.sh`
+2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh` e consulte no DB o estado atual da user story: `status`, `task_instruction_mode`, tasks abertas, feature associada
+3. se o preflight falhar e a revisao exigir `sync_runs`, comparacao DB real ou outro runtime operacional, responda `BLOQUEADO`
+4. compare o resultado com o Markdown canonico; o **Markdown prevalece**
+5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do bloco `REVISAO POS-USER-STORY`, incluindo exit code e motivo quando o preflight falhar
+6. apos qualquer gravacao em `PROJETOS/` que altere user story, task, feature, handoff de review ou `SCOPE-LEARN.md`, execute novo sync apenas se o preflight permanecer OK
+
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou preflight falho nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; para revisao
+documental prossiga com Markdown + Git conforme a matriz; para runtime real, bloqueie cedo.
+
+Gravacoes no `README.md` da US, `REV-US-*.md` ou `SCOPE-LEARN.md`:
+`PROJETOS/COMUM/SPEC-EDITOR-ARTEFACTOS.md`.
 
 ## Contrato Operacional Pos-PRD
 
 - esta sessao deve rodar no `agente senior`, isto e, no modelo configurado em
-  `OPENCLAW_AUDITOR_MODEL`, acessado via OpenRouter; o default esperado e
+  `FABRICA_AUDITOR_MODEL`, acessado via OpenRouter; o default esperado e
   `openrouter/anthropic/claude-opus-4.6`
 - esta sessao nao introduz confirmacao humana adicional apos o PRD; os
   checkpoints abaixo pertencem ao proprio gate do agente senior
@@ -109,7 +134,7 @@ Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
 - override humano apos o PRD so e valido quando houver conflito reproduzivel
   entre handoff e evidencia manual, cancelamento declarado ou contexto
   externo novo
-- divergencia **SQLite vs Markdown** e telemetria operacional em
+- divergencia **indice derivado vs Markdown** e telemetria operacional em
   `DRIFT_INDICE`; isso nao substitui a leitura canonica do manifesto da user story
   nem a validacao de alinhamento com o PRD
 - inferir o `ROUND` atual a partir do handoff persistido; se o handoff nao
@@ -121,6 +146,9 @@ Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
   - em qualquer outro caso, usar `padrao`
 - toda revisao deve explicitar alinhamento com o PRD, a feature de origem e os
   criterios de aceite da user story antes do veredito final
+- antes do veredito final, execute
+  `python3 scripts/framework_governance/validate_us_traceability.py --repo-root . --us-path <US_PATH>`;
+  falha desse gate invalida `ready_for_review`
 - se a correcao ainda pertencer ao escopo original, o agente senior deve
   preferir adicionar ou ajustar `TASK-N.md` dentro da propria user story em vez de
   propor backlog paralelo
@@ -292,12 +320,16 @@ Atualizacoes obrigatorias:
      o status dela para `todo` ou `active`
    - reescrever objetivo, arquivos a ler ou tocar, testes ou validacoes e TDD
      quando aplicavel
+   - manter `depends_on`, `parallel_safe` e `write_scope` coerentes com o novo
+     plano da user story
    - manter tasks concluidas e fora do achado em `done`
 3. nova task dentro da mesma user story, quando o gap ainda pertencer ao escopo
    original mas nao couber em task existente:
    - criar a proxima task rastreavel no formato ja usado pela user story
    - user story granularizada: criar o proximo `TASK-N.md` e atualizar a lista
      `## Tasks` no `README.md`
+   - a nova task nasce com `user_story_id` coerente, `depends_on` explicito,
+     `parallel_safe: false` por default e `write_scope` declarado
    - user story legada: adicionar a task ou checklist no proprio manifesto; se
      `task_instruction_mode: required`, atualizar tambem `## Instructions por Task`
 

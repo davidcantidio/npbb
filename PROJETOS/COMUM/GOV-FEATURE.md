@@ -1,9 +1,9 @@
 ---
 doc_id: "GOV-FEATURE.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # GOV-FEATURE
@@ -51,6 +51,22 @@ dentro do corpo do PRD (ver `GOV-PRD.md`).
    **Feature -> User Stories** (`PROMPT-FEATURE-PARA-USER-STORIES.md`).
 6. IDs estáveis: `FEATURE-<N>` e pastas `FEATURE-<N>-<SLUG>` devem permanecer
    coerentes; renomeações exigem atualização de referências e sync do índice.
+
+### Identificadores: `feature_key` curto vs pasta com slug
+
+Para evitar ambiguidade em agentes e em front matter:
+
+| Forma | Exemplo | Onde usar |
+|-------|---------|-----------|
+| **feature_key** (curto) | `FEATURE-1` | `feature_key` e `depende_de` no manifesto; `FEATURE_ID` em parametros de `SESSION-*` quando o contrato pede `FEATURE-<N>`; referencias em tabelas de US na feature |
+| **Pasta canonica** | `FEATURE-1-DOMINIO-COMPARTILHADO` | Path no repositorio: `features/FEATURE-<N>-<SLUG>/`; `FEATURE_PATH` em sessoes; **nao** substitui o `feature_key` em listas normativas |
+| **Slug humano** | `DOMINIO-COMPARTILHADO` | Segmento da pasta apos `FEATURE-<N>-`; estabilidade desejavel; mudancas exigem atualizar paths e indice |
+
+**Nao** misturar o nome completo da pasta (`FEATURE-1-DOMINIO-...`) com o valor de
+`feature_key` salvo que o documento ou a sessao explicitem essa forma (ex. auditoria
+com `FEATURE_ID` igual ao identificador de log). Em `REV-US-*.md` e handoffs, preferir
+`feature_id` alinhado ao `feature_key` do manifesto (`FEATURE-<N>`) e citar o path da
+pasta apenas onde o caminho for necessario para reproducao.
 
 ## Dependências entre features
 
@@ -106,6 +122,8 @@ objetivas (ver `SESSION-DECOMPOR-FEATURE-EM-US.md`).
 | `GOV-USER-STORY.md` | Limites e elegibilidade da US |
 | `GOV-SCRUM.md` | Estados e ciclo após existirem artefatos |
 | `GOV-AUDITORIA-FEATURE.md` | Gate e auditoria de feature |
+| `SPEC-RUNTIME-POSTGRES-MATRIX.md` | Sync Postgres vs Markdown nas sessoes |
+| `TEMPLATE-IMP-SESSAO.md` | Cabecalhos opcionais `imp-N.md` nas pastas de US |
 
 ## Responsabilidade deste documento
 

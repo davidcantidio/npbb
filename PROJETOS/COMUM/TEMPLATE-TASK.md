@@ -1,11 +1,14 @@
 ---
 doc_id: "TASK-N.md"
-issue_id: "ISSUE-F<N>-<NN>-<MMM>-<slug>"
+user_story_id: "US-<N>-<NN>-<slug>"
 task_id: "T<N>"
-version: "1.1"
+version: "2.1"
 status: "todo"
 owner: "PM"
 last_updated: "YYYY-MM-DD"
+depends_on: []
+parallel_safe: false
+write_scope: []
 tdd_aplicavel: false
 ---
 
@@ -14,6 +17,24 @@ tdd_aplicavel: false
 ## objetivo
 
 ## precondicoes
+
+## orquestracao
+
+- `depends_on`: liste `T<N>` que precisam estar `done` antes desta task
+- `parallel_safe`: use `true` apenas quando a task puder rodar em paralelo sem
+  conflito documental ou de codigo
+- `write_scope`: liste caminhos, modulos ou superfícies concretas tocadas pela
+  task; se `parallel_safe: true`, esta lista deve ser especifica o suficiente
+  para detectar conflito
+
+> Regras canônicas:
+> - task com qualquer item de `depends_on` ainda aberto e `BLOQUEADO`
+> - `parallel_safe: true` com `write_scope: []`, generico ou ambiguo e
+>   `BLOQUEADO`
+
+Cabecalho opcional de sessao (`imp-<N>.md`) alinhado a esta task:
+`PROJETOS/COMUM/TEMPLATE-IMP-SESSAO.md` e parametros em
+`PROJETOS/COMUM/SESSION-IMPLEMENTAR-US.md`.
 
 ## arquivos_a_ler_ou_tocar
 

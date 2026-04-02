@@ -16,7 +16,8 @@ Definir thresholds objetivos para os achados `monolithic-file` e
 ## Escopo
 
 - linguagens cobertas nesta versao: `TypeScript/React` e `Python`
-- uso principal: auditoria de fase, follow-up estrutural e intake de remediacao
+- uso principal: auditoria de feature, follow-up estrutural e intake de
+  remediacao
 - gerado automaticamente, arquivos declarativos simples e barrels puros podem ser reavaliados manualmente
 
 ## Calibracao Inicial

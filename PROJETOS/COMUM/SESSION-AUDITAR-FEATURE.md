@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-AUDITAR-FEATURE.md"
-version: "1.1"
+version: "1.4"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-AUDITAR-FEATURE - Auditoria de Feature em Sessao de Chat
@@ -27,36 +27,49 @@ Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia o
 manifesto da feature, as user stories da feature (ler `README.md` e todos os
 `TASK-*.md` de cada US), o ultimo relatorio da feature e use:
 
+- `PROJETOS/COMUM/GOV-AUDITORIA.md`
+- `PROJETOS/COMUM/GOV-AUDITORIA-FEATURE.md`
 - `PROJETOS/COMUM/PROMPT-AUDITORIA.md`
 - `PROJETOS/COMUM/TEMPLATE-AUDITORIA-FEATURE.md`
 - `PROJETOS/COMUM/SPEC-ANTI-MONOLITO.md`
 
-Use `PROJETOS/COMUM/GOV-AUDITORIA.md` como referencia normativa vigente para
-vereditos, severidades e remediacao enquanto
-`PROJETOS/COMUM/GOV-AUDITORIA-FEATURE.md` ainda estiver em modo placeholder.
+Use `PROJETOS/COMUM/GOV-AUDITORIA.md` para vereditos, severidades e remediacao
+geral. Use `PROJETOS/COMUM/GOV-AUDITORIA-FEATURE.md` para o contrato
+feature-first do relatorio e da superficie de auditoria. Se qualquer um desses
+arquivos ou `PROJETOS/COMUM/TEMPLATE-AUDITORIA-FEATURE.md` nao existir ou nao
+puder ser lido, responda `BLOQUEADO` e pare.
 
-Se `PROJETOS/COMUM/TEMPLATE-AUDITORIA-FEATURE.md` nao existir ou nao puder ser
-lido, responda `BLOQUEADO` e pare sem fallback para
-`TEMPLATE-AUDITORIA-RELATORIO.md`.
+## Pre-condicao: Sync do indice derivado Postgres
 
-## Pre-condicao: Sync do Indice SQLite
+Antes do Passo 0, sincronize o indice derivado de `PROJETOS/`:
 
-Antes do Passo 0, sincronize o indice SQLite derivado de `PROJETOS/`:
-
-1. rode `./bin/sync-openclaw-projects-db.sh`
-2. consulte no DB o estado atual da feature: `status`, `audit_gate` e user
-   stories abertas relevantes para a rodada
-3. compare o resultado com o Markdown canonico da feature e do `AUDIT-LOG.md`;
+1. rode `./bin/ensure-fabrica-projects-index-runtime.sh`
+2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh`
+3. consulte no DB o estado atual da feature: `status`, `audit_gate` e user
+   stories abertas relevantes para a rodada apenas quando o sync tiver corrido
+4. compare o resultado com o Markdown canonico da feature e do `AUDIT-LOG.md`;
    o **Markdown prevalece**
-4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes da pre-checagem
-5. apos qualquer gravacao em `PROJETOS/` que altere relatorio, `AUDIT-LOG.md`,
-   feature ou user stories, execute novo sync
+5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes da pre-checagem,
+   incluindo exit code e motivo quando o preflight falhar
+6. apos qualquer gravacao em `PROJETOS/` que altere relatorio, `AUDIT-LOG.md`,
+   feature ou user stories, execute novo sync apenas se o preflight permanecer OK
+
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou preflight falho nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; **nao** cancele
+a rodada de auditoria apenas por falta de sync; prossiga com Markdown + Git conforme a matriz.
+
+Ao gravar `AUDIT-LOG.md` ou relatorios em `auditorias/`, siga
+`PROJETOS/COMUM/SPEC-EDITOR-ARTEFACTOS.md` (patches pequenos, evitar reescrita total).
 
 ## Contrato operacional pos-PRD
 
 - esta sessao deve rodar no `agente senior`
 - esta sessao nao introduz confirmacao humana adicional apos o PRD
-- divergencia **SQLite vs Markdown** e telemetria operacional em
+- divergencia **indice derivado vs Markdown** e telemetria operacional em
   `DRIFT_INDICE`; isso nao substitui a leitura canonica da feature, do
   relatorio ou do `AUDIT-LOG.md`
 - todo veredito deve comparar a feature auditada contra o PRD, as user stories
@@ -82,9 +95,9 @@ Somente se todas as User Stories estiverem `done` ou `cancelled`, leia o
 `AUDIT-LOG.md` do projeto. Localize a entrada mais recente da feature na tabela
 de Rodadas e verifique seu veredito.
 
-Enquanto o `AUDIT-LOG.md` ainda usa a coluna `Fase`, trate esse campo como o
-identificador de compatibilidade da feature auditada. Ao filtrar e ao gravar
-entradas, use exatamente `{{FEATURE_ID}}` nessa coluna.
+Se o `AUDIT-LOG.md` ainda usar a coluna legada `Fase`, trate-a como alias de
+compatibilidade para `Feature`. Ao filtrar e ao gravar entradas, use
+exatamente `{{FEATURE_ID}}`.
 
 - se o veredito da rodada mais recente for `go` ou se nao houver rodada
   anterior, a feature e elegivel
@@ -96,7 +109,7 @@ Identifique o `Audit ID` da rodada `hold` mais recente. Na secao
 `Resolucoes de Follow-ups`, considere apenas as linhas em que:
 
 - `Audit ID de Origem` = `Audit ID` da rodada `hold` mais recente
-- `Fase` = `{{FEATURE_ID}}`
+- `Feature` = `{{FEATURE_ID}}` ou coluna legada `Fase` com o mesmo valor
 
 Para cada follow-up dessa rodada, determine a situacao pelo tipo:
 
@@ -205,7 +218,8 @@ O relatorio deve ser gravado em:
 `{{FEATURE_PATH}}/auditorias/RELATORIO-AUDITORIA-F<N>-R<NN>.md`
 
 Ao atualizar o `AUDIT-LOG.md`, grave `{{FEATURE_ID}}` na coluna `Fase` por
-compatibilidade ate a migracao completa do template de log.
+compatibilidade apenas quando o log ainda nao tiver migrado para a coluna
+`Feature`.
 
 ## Passo 5 - Pos-Hold
 

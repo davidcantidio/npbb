@@ -1,10 +1,11 @@
 ---
 doc_id: "TEMPLATE-FEATURE"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 project: "<PROJETO>"
+# feature_key: sempre FEATURE-<N> (curto). Pasta do repo: FEATURE-<N>-<SLUG>/ — ver GOV-FEATURE.md
 feature_key: "FEATURE-<N>"
 feature_slug: "<SLUG-EM-MAIUSCULAS-COM-HIFEN>"
 prd_path: "../../PRD-<PROJETO>.md"
@@ -75,8 +76,8 @@ audit_gate: "not_ready"
 
 ## 8. Estado Operacional
 
-- **status**: `todo` | `active` | `blocked` | `done` *(conforme `GOV-SCRUM.md`)*
-- **audit_gate**: `not_ready` | `ready` | *(outros valores conforme `GOV-AUDITORIA-FEATURE.md`)*
+- **status**: `todo` | `active` | `done` | `cancelled` *(conforme `GOV-SCRUM.md`)*
+- **audit_gate**: `not_ready` | `pending` | `hold` | `approved` *(conforme `GOV-SCRUM.md`)*
 
 ## 9. User Stories (rastreabilidade)
 

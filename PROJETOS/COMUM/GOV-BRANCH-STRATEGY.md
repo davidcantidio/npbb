@@ -196,7 +196,7 @@ git rebase origin/main
 ## Referências
 
 - `GOV-SCRUM.md` - Cadeia de trabalho
-- `GOV-ISSUE-FIRST.md` - Estrutura de issues
+- `LEGADO/GOV-ISSUE-FIRST.md` - Estrutura historica de issues
 - `GOV-COMMIT-POR-TASK.md` - Commits
 - `SPEC-TASK-INSTRUCTIONS.md` - Atomicidade
 

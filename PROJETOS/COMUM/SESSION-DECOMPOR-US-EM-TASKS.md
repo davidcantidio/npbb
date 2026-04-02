@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-DECOMPOR-US-EM-TASKS.md"
-version: "1.0"
+version: "1.1"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-DECOMPOR-US-EM-TASKS - Decomposicao User Story em Tasks
@@ -13,12 +13,14 @@ last_updated: "2026-03-25"
 Preencha e cole junto com este prompt:
 
 ```text
-PROJETO:       <nome do projeto>
-US_PATH:       <caminho do README da US: PROJETOS/<PROJETO>/features/FEATURE-<N>-<SLUG>/user-stories/US-<N>-<NN>-<NOME>/README.md>
-FEATURE_PATH:  <caminho da pasta da feature (opcional se derivavel de US_PATH)>
-PRD_PATH:      <caminho do PRD aprovado, para contexto — sem reabrir escopo>
-ESCOPO:        <"user story completa" | "apenas TASK-<N>">
-OBSERVACOES:   <restricoes adicionais ou "nenhuma">
+PROJETO:       OPENCLAW-FRAMEWORK
+
+US_PATH: /Users/genivalfreirenobrejunior/Documents/gh-repos/openclaw/PROJETOS/OPENCLAW-FRAMEWORK-V4/features/FEATURE-1-DOMINIO-COMPARTILHADO/user-stories/US-1-01-API-DOMINIO-CONSUMIDOR-MINIMO/README.md
+
+FEATURE_PATH: /Users/genivalfreirenobrejunior/Documents/gh-repos/openclaw/PROJETOS/OPENCLAW-FRAMEWORK-V4/features/FEATURE-7-EXTENSAO-GOVERNANCA-COMUM-DB
+PRD_PATH:      /Users/genivalfreirenobrejunior/Documents/gh-repos/openclaw/PROJETOS/OPENCLAW-FRAMEWORK-V4/PRD-OPENCLAW-FRAMEWORK-V4.md
+ESCOPO:        FEATURE COMPLETA
+OBSERVACOES:   NENHUMA
 ```
 
 ## Prompt
@@ -49,18 +51,27 @@ sugerir codigo de aplicacao. O output permitido e apenas ficheiros
 9. manifesto da feature: `FEATURE_PATH/FEATURE-<N>.md` e `GOV-FEATURE.md`
 10. `PRD_PATH` apenas para contexto alinhado — **nao** invente escopo novo
 
-## Pre-condicao operacional: sync do indice derivado
+## Pre-condicao operacional: preflight do runtime e sync do indice derivado Postgres
 
 Antes do primeiro gate desta sessao:
 
-1. rode `./bin/sync-openclaw-projects-db.sh`
-2. consulte o estado da US e das tasks ja existentes no projeto
-3. compare com o Markdown canonico; o **Markdown prevalece**
-4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate
-5. apos gravacoes em `PROJETOS/` sob `TASK-*.md`, execute novo sync
+1. rode `./bin/ensure-fabrica-projects-index-runtime.sh --allow-missing-url`
+2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh`
+3. consulte o estado da US e das tasks ja existentes no projeto apenas quando o sync tiver corrido
+4. compare com o Markdown canonico; o **Markdown prevalece**
+5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate, incluindo exit code e motivo quando o preflight falhar
+6. apos gravacoes em `PROJETOS/` sob `TASK-*.md`, execute novo sync apenas se o preflight permanecer OK
+
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou preflight falho nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; prossiga com
+Markdown + Git conforme a matriz.
 
 > Read model alvo: Postgres (`SPEC-INDICE-PROJETOS-POSTGRES.md`); enquanto a
-> implementacao usar SQLite, o mesmo script de sync cobre o backend configurado.
+> implementacao operacional do indice e o backend canônico desta sessao.
 
 ## Contrato operacional (apenas esta etapa)
 
@@ -72,6 +83,10 @@ ficheiro e persistido sem `APROVADO` nesse modo.
 - se `task_instruction_mode: required`, cada task com instrucoes detalhadas deve
   ter **ficheiro proprio** `TASK-N.md`
 - coerencia obrigatoria entre Given/When/Then da US e o somatorio das tasks
+- cada `TASK-N.md` deve declarar `user_story_id`, `depends_on`,
+  `parallel_safe` e `write_scope`
+- task proposta como paralelizavel so pode sair elegivel quando `write_scope`
+  estiver explicito e sem conflito irresolvido no plano da US
 
 ## Literais de bloco
 
@@ -100,21 +115,27 @@ Gate necessario: APROVADO
 
 ## Algoritmo deterministico
 
-1. Validar `US_PATH` e ler o `README.md` da US na integra.
+1. Validar `US_PATH` e ler o `README.md` da US por secoes/ancoras relevantes, usando `scripts/session_tools/read_file.py` antes de qualquer leitura integral.
 2. Executar a **Passagem 1 - Prontidao** de `PROMPT-US-PARA-TASKS.md`; se
    bloqueado, parar.
 3. Resolver `ESCOPO`:
    - `user story completa`: conjunto de tasks necessarias para cumprir a US
    - `apenas TASK-<N>`: apenas o ficheiro de task indicado
 4. Criar ou atualizar `TASK-1.md` ... `TASK-K.md` (K <= 5) na pasta da US.
-5. Atualizar a secao **Tasks** do `README.md` com links relativos para cada task.
-6. **Nao** alterar o manifesto da feature nem o PRD nesta sessao, salvo referencia
+5. Declarar ordem e elegibilidade por task:
+   - preencher `depends_on` com `[]` apenas quando a task puder iniciar sem
+     predecessoras
+   - usar `parallel_safe: false` como default
+   - preencher `write_scope` com caminhos ou superficies concretas
+6. Atualizar a secao **Tasks** do `README.md` com links relativos para cada task.
+7. **Nao** alterar o manifesto da feature nem o PRD nesta sessao, salvo referencia
    cruzada explicitamente pedida pelo gate.
 
 ## Regras inegociaveis
 
 - nunca avance para `SESSION-IMPLEMENTAR-US.md` sem tasks adequadas quando
   `task_instruction_mode: required`
+- nunca marque task como paralelizavel sem `write_scope` verificavel
 - nunca grave arquivo sem `APROVADO` do agente senior *(quando o gate estiver ativo)*
 - nunca alargar escopo alem da US aprovada
 - preserve rastreabilidade **User Story -> Task**

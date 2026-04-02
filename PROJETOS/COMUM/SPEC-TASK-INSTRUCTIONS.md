@@ -1,34 +1,50 @@
 ---
 doc_id: "SPEC-TASK-INSTRUCTIONS.md"
-version: "2.3"
+version: "3.2"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-16"
+last_updated: "2026-03-30"
 ---
 
 # SPEC-TASK-INSTRUCTIONS
 
 ## Objetivo
 
-Definir como `instructions` atomicas devem viver dentro de `tasks` no padrao `issue-first`, sem criar novo artefato raiz para execucao.
+Definir como `instructions` atomicas devem viver dentro de `tasks` no modelo
+canonico `feature -> user story -> task`, sem criar novo artefato raiz para
+execucao.
 
 ## Conceitos
 
-- `issue`: unidade documental completa de execucao
-- `task`: menor unidade executavel dentro da issue
+- `user story`: unidade documental completa de execucao
+- `task`: menor unidade executavel dentro da user story
 - `instruction`: menor unidade atomica de execucao dentro da task
+- `depends_on`: relacao explicita de precedencia entre tasks da mesma user story
+- `parallel_safe`: declaracao de elegibilidade para execucao paralela
+- `write_scope`: lista parseavel de caminhos, modulos ou superficies tocadas
+
+Checklist minima antes de `status: done` no `TASK-N.md`:
+
+- `write_scope` cobre o que foi efetivamente entregue ou validado
+- validacoes citadas em `testes_ou_validacoes_obrigatorias` (e `testes_red` se
+  `tdd_aplicavel: true`) foram executadas com resultado coerente, ou a task foi
+  `cancelled` com motivo
+- se a task terminar `done`, o commit rastreavel da task existe conforme
+  `GOV-COMMIT-POR-TASK.md`
+- nao manter a task em `todo` quando a entrega ja esta no repo: regularizar
+  `done` ou ajustar escopo em nova task
 
 Regra canonica:
 
 - `instruction` nunca vira arquivo independente
-- `instruction` vive inline na issue, na secao `## Instructions por Task`, ou no corpo de
-  `TASK-N.md` quando a issue for granularizada
-- `task` pode ser checklist curto (issue legada) ou arquivo `TASK-N.md` (issue granularizada);
+- `instruction` vive inline na user story legada, na secao `## Instructions por Task`, ou no corpo de
+  `TASK-N.md` quando a user story for granularizada
+- `task` pode ser checklist curto (user story legada) ou arquivo `TASK-N.md` (user story granularizada);
   `instruction` operacionaliza o como executar
 
-## Campo Canonico da Issue
+## Campo Canonico da User Story
 
-Toda issue nova ou revisada deve declarar no frontmatter:
+Toda user story nova ou revisada deve declarar no frontmatter:
 
 ```yaml
 task_instruction_mode: "optional"
@@ -41,30 +57,37 @@ Valores aceitos:
 
 ## Quando `required` e obrigatorio
 
-Use `task_instruction_mode: required` quando a issue contiver qualquer um destes fatores:
+Use `task_instruction_mode: required` quando a user story contiver qualquer um destes fatores:
 
 - migration ou mudanca com persistencia/rollback sensivel
 - ordem de execucao critica
 - alteracao multi-camada ou multi-arquivo com dependencia forte
 - remediacao originada de auditoria `hold`
-- remediacao originada de revisao pos-issue com risco alto ou regressao delicada
+- remediacao originada de revisao pos-user-story com risco alto ou regressao delicada
 - handoff planejado para outra IA ou sessao
 
 Se nenhum desses fatores existir, `optional` e o default recomendado.
 
 ## Estrutura Minima do Detalhamento por Task
 
-Quando `task_instruction_mode: required`, a issue precisa ter:
+Cabeçalhos opcionais de sessao (`imp-N.md`) alinhados a cada task:
+`PROJETOS/COMUM/TEMPLATE-IMP-SESSAO.md`.
+
+Quando `task_instruction_mode: required`, a user story precisa ter:
 
 - tasks identificadas de forma rastreavel (`T1`, `T2`, `T3`...)
 - um detalhamento vinculante por task no formato escolhido:
-  - issue granularizada: um arquivo `TASK-N.md` por task
-  - issue legada: secao `## Instructions por Task` com um bloco por task
+  - user story granularizada: um arquivo `TASK-N.md` por task
+  - user story legada: secao `## Instructions por Task` com um bloco por task
 
 Campos minimos por task:
 
+- `user_story_id`
 - `objetivo`
 - `precondicoes`
+- `depends_on`
+- `parallel_safe`
+- `write_scope`
 - `arquivos_a_ler_ou_tocar`
 - `tdd_aplicavel` (`true`, `false` ou omitido; omitido equivale a `false`)
 - `testes_red` quando `tdd_aplicavel: true`
@@ -89,8 +112,16 @@ task continua no comportamento atual.
 
 Formato de `tdd_aplicavel`:
 
-- issue granularizada: campo no frontmatter de `TASK-N.md`
-- issue legada: campo inline no bloco `### Tn` dentro de `## Instructions por Task`
+- user story granularizada: campo no frontmatter de `TASK-N.md`
+- user story legada: campo inline no bloco `### Tn` dentro de `## Instructions por Task`
+
+Formato dos novos metadados de orquestracao:
+
+- `user_story_id`: ID canonico da user story dona da task
+- `depends_on`: lista de `T<N>` dentro da mesma user story
+- `parallel_safe`: `true` ou `false`
+- `write_scope`: lista de caminhos ou superficies concretas; obrigatoria e
+  especifica quando `parallel_safe: true`
 
 ## Criterio de Atomicidade
 
@@ -113,33 +144,41 @@ Uma instruction ruim costuma:
 
 ## Regra de Elegibilidade
 
-- issue com `task_instruction_mode: required` sem detalhamento completo por task no formato escolhido nao e elegivel para execucao
+- user story com `task_instruction_mode: required` sem detalhamento completo por task no formato escolhido nao e elegivel para execucao
 - o agente executor deve responder `BLOQUEADO` em vez de improvisar
 - o bloqueio vale tambem quando houver task sem `TASK-N.md` correspondente, sem bloco correspondente em `## Instructions por Task`, ou com campos minimos ausentes
 - o bloqueio vale tambem quando `tdd_aplicavel: true` estiver sem `testes_red`, sem comando red,
   sem criterio explicito de falha inicial, ou sem `passos_atomicos` na ordem TDD
+- o bloqueio vale tambem quando `depends_on` apontar para task inexistente ou
+  ainda nao encerrada
+- o bloqueio vale tambem quando `parallel_safe: true` estiver sem `write_scope`
+  explicito e verificavel
 
 ## Compatibilidade de Rollout
 
-- issues antigas sem `task_instruction_mode` podem ser tratadas como `optional` ate serem revisadas
+- user stories antigas sem `task_instruction_mode` podem ser tratadas como `optional` ate serem revisadas
 - nao ha retrofit em massa obrigatorio neste rollout
-- qualquer issue nova de alto risco deve nascer com `task_instruction_mode: required`
+- qualquer user story nova de alto risco deve nascer com `task_instruction_mode: required`
 - tasks sem `tdd_aplicavel` continuam compativeis e equivalem a `false`
+- referencias legadas a `issue_id` podem ser lidas como compatibilidade
+  documental, mas o contrato novo usa `user_story_id`
+- antes de `ready_for_review`, a US deve passar em
+  `scripts/framework_governance/validate_us_traceability.py`
 
-## Issue Granularizada (Pasta com TASK-N.md)
+## User Story Granularizada (Pasta com TASK-N.md)
 
-Quando a issue for uma pasta `issues/ISSUE-*/` com `README.md` e `TASK-*.md`:
+Quando a user story for uma pasta `user-stories/US-*/` com `README.md` e `TASK-*.md`:
 
 - cada task vive em arquivo proprio `TASK-N.md`; usar `TEMPLATE-TASK.md` como base
 - o `README.md` contem o manifesto (User Story, Contexto, DoD, Dependencias) e lista de links
   para as tasks
-- issues legadas (arquivo unico `ISSUE-*.md`) continuam validas; o executor detecta o formato
+- user stories legadas (arquivo unico `.md`) continuam validas; o executor detecta o formato
   e aplica o fluxo correto
 
-## Exemplo Canonico - Issue Granularizada Required
+## Exemplo Canonico - User Story Granularizada Required
 
 ```markdown
-issues/ISSUE-F1-01-007-EXEMPLO/
+user-stories/US-1-01-EXEMPLO/
 ├── README.md
 ├── TASK-1.md
 └── TASK-2.md
@@ -149,7 +188,7 @@ issues/ISSUE-F1-01-007-EXEMPLO/
 
 ```markdown
 ---
-doc_id: "ISSUE-F1-01-007-EXEMPLO"
+doc_id: "US-1-01-EXEMPLO"
 version: "1.0"
 status: "todo"
 owner: "PM"
@@ -170,12 +209,17 @@ listados nesta spec.
 ```markdown
 ---
 doc_id: "TASK-1.md"
-issue_id: "ISSUE-F1-02-001-EXEMPLO"
+user_story_id: "US-1-01-EXEMPLO"
 task_id: "T1"
-version: "1.1"
+version: "2.0"
 status: "todo"
 owner: "PM"
 last_updated: "YYYY-MM-DD"
+depends_on: []
+parallel_safe: false
+write_scope:
+  - "backend/app/routers/ativacoes.py"
+  - "backend/tests/test_ativacoes_router.py"
 tdd_aplicavel: true
 ---
 
@@ -224,12 +268,12 @@ Endpoint retorna `slug` normalizado, com cobertura automatizada descrevendo o co
 ## testes_ou_validacoes_obrigatorias
 
 - `cd backend && TESTING=true python -m pytest -q backend/tests/test_ativacoes_router.py`
-- revisar resposta do endpoint contra os criterios de aceitacao da issue
+- revisar resposta do endpoint contra os criterios de aceitacao da user story
 
 ## stop_conditions
 
 - parar se os testes novos passarem antes de qualquer implementacao
-- parar se o contrato atual observado divergir do manifesto da issue
+- parar se o contrato atual observado divergir do manifesto da user story
 ```
 
 ## Exemplo de Compatibilidade - Issue Legada Required
@@ -260,8 +304,8 @@ task_instruction_mode: "required"
 - tdd_aplicavel: false
 - passos_atomicos:
   1. gerar ou criar o arquivo de migration sobre a revision correta
-  2. adicionar as colunas novas no `upgrade()` com nullability e defaults definidos pela issue
-  3. adicionar o `downgrade()` removendo apenas o que esta sendo criado nesta issue
+  2. adicionar as colunas novas no `upgrade()` com nullability e defaults definidos pela issue legada
+  3. adicionar o `downgrade()` removendo apenas o que esta sendo criado nesta issue legada
 - comandos_permitidos:
   - `cd backend && alembic upgrade head`
   - `cd backend && alembic downgrade -1`
@@ -277,7 +321,7 @@ task_instruction_mode: "required"
 
 ```markdown
 ---
-doc_id: "ISSUE-F2-01-005-AJUSTAR-COPY-DO-BADGE.md"
+doc_id: "US-2-01-AJUSTAR-COPY-DO-BADGE.md"
 version: "1.0"
 status: "todo"
 owner: "PM"
@@ -290,11 +334,11 @@ task_instruction_mode: "optional"
 - [ ] T2: atualizar o teste unitario correspondente
 ```
 
-## Exemplo Canonico - Issue Legada Required com TDD
+## Exemplo Canonico - User Story Legada Required com TDD
 
 ```markdown
 ---
-doc_id: "ISSUE-F2-01-010-AJUSTAR-FILTRO-DE-BUSCA.md"
+doc_id: "US-2-01-010-AJUSTAR-FILTRO-DE-BUSCA.md"
 version: "1.0"
 status: "todo"
 owner: "PM"
@@ -336,18 +380,18 @@ task_instruction_mode: "required"
   - validar manualmente que o filtro segue responsivo na tela alvo
 - stop_conditions:
   - parar se os testes novos nao falharem antes da implementacao
-  - parar se o componente real divergir do contrato descrito na issue
+  - parar se o componente real divergir do contrato descrito na user story
 ```
 
 ## Commit apos Cada Task
 
 - apos concluir cada task, o executor deve fazer commit antes de prosseguir
 - formato da mensagem: ver `GOV-COMMIT-POR-TASK.md`
-- a regra aplica-se a issues `optional` e `required`
+- a regra aplica-se a user stories `optional` e `required`
 
 ## Checklist de Consistencia
 
-Antes de marcar uma issue `required` como pronta para execucao, confirme:
+Antes de marcar uma user story `required` como pronta para execucao, confirme:
 
 - [ ] `task_instruction_mode: required` esta no frontmatter
 - [ ] toda task possui detalhamento vinculante no formato escolhido (`TASK-N.md` ou bloco correspondente em `## Instructions por Task`)

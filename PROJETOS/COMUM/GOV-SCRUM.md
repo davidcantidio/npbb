@@ -1,16 +1,16 @@
 ---
 doc_id: "GOV-SCRUM.md"
-version: "2.10"
+version: "3.3"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # GOV-SCRUM
 
 ## Cadeia de Trabalho
 
-`Intake -> PRD -> Features -> User Stories -> Tasks`
+`Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`
 
 ## Unidade Operacional Canonica
 
@@ -34,7 +34,7 @@ last_updated: "2026-03-25"
 - apos o PRD aprovado, os gates de planejamento, revisao pos-user-story,
   auditoria e remediacao pos-hold sao obrigatoriamente executados por um
   `agente senior` independente
-- `agente senior` significa o modelo configurado em `OPENCLAW_AUDITOR_MODEL`,
+- `agente senior` significa o modelo configurado em `FABRICA_AUDITOR_MODEL`,
   acessado via OpenRouter; o default operacional esperado e
   `openrouter/anthropic/claude-opus-4.6`
 - `SESSION-*` continua sendo a superficie interativa escolhida pelo humano,
@@ -70,12 +70,17 @@ last_updated: "2026-03-25"
 - tasks decupadas com `task_instruction_mode` definido
 - handoff de revisao persistido ao concluir execucao
 - `done` somente apos revisao do agente senior aprovada
+- ciclo canonico da user story: `execucao -> ready_for_review -> revisao -> done`
+- `ready_for_review` encerra apenas a execucao local e nao libera dependencias
 
 ### Task
 
 - task rastreavel e documentada no formato canonico definido em `TEMPLATE-TASK.md`
+- `user_story_id`, `depends_on`, `parallel_safe` e `write_scope` preenchidos
 - quando `tdd_aplicavel: true`, ordem TDD e `testes_red` completos conforme `SPEC-TASK-INSTRUCTIONS.md`
 - validacoes obrigatorias executadas antes de encerrar
+- task com dependencia aberta nao e elegivel
+- task marcada como paralelizavel sem `write_scope` verificavel nao e elegivel
 - commit da task realizado conforme `GOV-COMMIT-POR-TASK.md` antes da cascata de fechamento
 
 ### Auditoria
@@ -96,7 +101,9 @@ Regra derivada:
 - `active`: execucao em andamento no nivel atual, ou filho ainda nao encerrado
 - `ready_for_review`: so vale para `user story`; execucao encerrada, tasks
   `done`, DoD de implementacao conferido e handoff de revisao persistido na
-  `README.md`, aguardando veredito do agente senior
+  `README.md`, aguardando veredito do agente senior; esse estado representa
+  trabalho concluido pelo executor, mas ainda nao satisfaz dependencias entre
+  user stories
 - `done`: execucao encerrada e DoD do nivel atual fechado; para `feature`,
   exige todas as user stories `done` ou `cancelled` e gate de auditoria com
   veredito `go` (`audit_gate: approved`)
@@ -104,8 +111,9 @@ Regra derivada:
 
 Regras adicionais:
 
-- `ready_for_review` nao satisfaz dependencias entre user stories; apenas
-  `done` ou `cancelled` liberam a proxima user story dependente
+- apenas `done` ou `cancelled` satisfazem dependencias entre user stories e
+  liberam a proxima user story dependente; `ready_for_review` nao libera
+  dependencia
 - `feature` permanece `active` enquanto existir user story `todo`, `active`
   ou `ready_for_review`
 - `feature` tambem permanece `active` quando todas as user stories ja estao
@@ -147,6 +155,10 @@ esta taxonomia permanece a referencia vigente para o gate da feature.
   task no formato escolhido (`TASK-N.md` na user story granularizada ou
   `## Instructions por Task` na user story em formato legado) nao e elegivel
   para execucao
+- `depends_on` governa ordem entre tasks da mesma user story; so tarefas com
+  predecessoras encerradas podem entrar em execucao
+- `parallel_safe` e apenas declaracao de elegibilidade; a execucao paralela so
+  e permitida quando `write_scope` nao conflitar com outras tasks em voo
 
 ## Commit por Task
 
@@ -175,6 +187,17 @@ incoerente para a proxima leitura.
 3. Nao avancar o `audit_gate` da feature para `pending` por execucao sozinha;
    esse estado so pode existir quando todas as user stories ja estiverem
    `done` ou `cancelled`.
+4. **Gate `REV-US` alinhado ao handoff:** quando existir
+   `REV-US-<N>-<NN>.md` na pasta da user story, o executante local deve
+   preencher o ficheiro com os mesmos parametros reproduziveis ja gravados em
+   `## Handoff para Revisao Pos-User Story` do `README.md` (`base_commit`,
+   `target_commit`, `evidencia`, `round`, etc.), atualizar `last_updated` e
+   `status` conforme o template do `REV-US`. **Nao** promover a US a
+   `ready_for_review` com handoff completo no `README` enquanto o `REV-US`
+   permanecer em stub (`auto`, campos vazios ou incoerentes com o handoff).
+   Objetivo: o revisor senior abre um unico sitio de verdade espelhado entre
+   `README.md` e `REV-US-*.md`. Para edicao estavel destes ficheiros, ver
+   `PROJETOS/COMUM/SPEC-EDITOR-ARTEFACTOS.md`.
 
 ### 2. Ao concluir a revisao pos-user-story
 
@@ -210,11 +233,15 @@ Regras de aplicacao:
 
 ## Review Pos-User-Story
 
+- antes de iniciar `SESSION-REVISAR-US.md`, confirme que `REV-US-<N>-<NN>.md`
+  (quando existir) reflete o handoff do `README.md`; se nao refletir, trate como
+  `BLOQUEADO` ou devolva ao executante local para alinhar conforme o passo 4 de
+  **Procedimento de Review-Ready e Fechamento de User Story**
 - o proximo passo natural apos uma user story chegar em `ready_for_review` e
   uma sessao de revisao do agente senior via `PROJETOS/COMUM/SESSION-REVISAR-US.md`
   (ou o wrapper `SESSION-REVISAR-US.md` do projeto, quando existir)
-- a review pos-user-story altera a cadeia operacional canonica para
-  `Intake -> PRD -> Features -> User Stories -> Tasks -> Revisao -> Auditoria de Feature`
+- a review pos-user-story fecha a cadeia operacional canonica
+  `Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature`
 - a review pos-user-story nao substitui a auditoria formal da feature
 - a review atua como gate de fechamento da user story antes de `done`
 - vereditos canonicos da review: `aprovada`, `correcao_requerida`, `cancelled`

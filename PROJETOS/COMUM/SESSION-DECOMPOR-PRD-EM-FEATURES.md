@@ -3,7 +3,7 @@ doc_id: "SESSION-DECOMPOR-PRD-EM-FEATURES.md"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-DECOMPOR-PRD-EM-FEATURES - Decomposicao PRD para Features
@@ -48,15 +48,24 @@ PRD antes de decompor.
 Se o PRD referenciar adendo aprovado, leia o PRD base indicado antes de propor
 features.
 
-## Pre-condicao operacional: sync do indice derivado
+## Pre-condicao operacional: preflight do runtime e sync do indice derivado Postgres
 
-Antes do primeiro gate desta sessao, sincronize o indice derivado de `PROJETOS/`:
+Antes do primeiro gate desta sessao:
 
-1. rode `./bin/sync-openclaw-projects-db.sh`
-2. consulte no DB o estado atual do projeto e das features ja existentes
-3. compare com o Markdown canonico; o **Markdown prevalece**
-4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate
-5. apos qualquer gravacao em `PROJETOS/` que altere features, execute novo sync
+1. rode `./bin/ensure-fabrica-projects-index-runtime.sh --allow-missing-url`
+2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh`
+3. consulte no DB o estado atual do projeto e das features ja existentes apenas quando o sync tiver corrido
+4. compare com o Markdown canonico; o **Markdown prevalece**
+5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate, incluindo exit code e motivo quando o preflight falhar
+6. apos qualquer gravacao em `PROJETOS/` que altere features, execute novo sync apenas se o preflight permanecer OK
+
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou preflight falho nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; prossiga com
+Markdown + Git conforme a matriz.
 
 ## Contrato operacional pos-PRD (apenas esta etapa)
 
@@ -65,7 +74,7 @@ em User Stories. O agente local produz rascunhos de manifestos de feature; o
 **agente senior** responde com `APROVADO`, `AJUSTAR` ou `REPROVADO`. Nenhum
 arquivo e persistido sem `APROVADO`.
 
-- `agente senior` = modelo configurado em `OPENCLAW_AUDITOR_MODEL`, acessado via
+- `agente senior` = modelo configurado em `FABRICA_AUDITOR_MODEL`, acessado via
   OpenRouter *(quando aplicavel ao teu setup)*
 - divergencia indice vs Markdown e telemetria em `DRIFT_INDICE`; nao substitui
   aderencia ao PRD e a `GOV-PRD.md`

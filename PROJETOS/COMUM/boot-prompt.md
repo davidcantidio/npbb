@@ -19,7 +19,7 @@ unidade elegivel do projeto indicado no comando de invocacao.
 O padrao canonico deste repositorio segue a hierarquia:
 
 ```text
-Intake -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditorias de Feature
+Intake -> Clarificacao -> PRD -> Features -> User Stories -> Tasks -> Execucao -> Review -> Auditoria de Feature
 ```
 
 Principio operacional:
@@ -28,8 +28,13 @@ Principio operacional:
 - `feature-first` organiza a **entrega** sob `features/` (manifestos, US, tasks), nao o corpo do PRD;
   o PRD segue `PROJETOS/COMUM/GOV-PRD.md` (sem lista de Features nem User Stories)
 - a arquitetura existe para viabilizar a feature, nao para virar o eixo principal do projeto
-- **Markdown + Git** sao a fonte de verdade; um **read model Postgres** (pgvector, memoria semantica)
-  pode complementar descoberta quando configurado — ver `PROJETOS/COMUM/SPEC-INDICE-PROJETOS-POSTGRES.md`
+- **Markdown + Git** sao a fonte de verdade; o **read model Postgres** (pgvector, memoria semantica)
+  e a camada operacional obrigatoria do runtime v3.0; SQLite fica restrito a
+  migracao/backfill explicitos — ver `PROJETOS/COMUM/SPEC-INDICE-PROJETOS-POSTGRES.md`
+  e `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md`. Comportamento do sync (entrypoint,
+  variaveis): `scripts/fabrica_projects_index/README.md` — nao re-inferir so por exploracao.
+- leitura de artefatos grandes deve seguir `PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md`;
+  use `python3 scripts/session_tools/read_file.py` por preview/faixa/ancora antes de ler ficheiro inteiro
 
 A entrega executavel canonica vive sob `features/`:
 
@@ -47,7 +52,7 @@ registra sua trilha em `AUDIT-LOG.md`.
   parametros, mas nao aprova checkpoints adicionais apos o PRD
 - apos o PRD aprovado, o fluxo operacional esperado e:
   `planner/builder local -> agente senior -> planner/builder local`
-- o `agente senior` e o modelo configurado em `OPENCLAW_AUDITOR_MODEL`,
+- o `agente senior` e o modelo configurado em `FABRICA_AUDITOR_MODEL`,
   acessado via OpenRouter; o default esperado e
   `openrouter/anthropic/claude-opus-4.6`
 - os gates de planejamento, review pos-user story, auditoria de feature e remediacao
@@ -85,6 +90,13 @@ AGENTS.md
 
 Tudo o que estiver em `AGENTS.md` tem precedencia sobre convencoes gerais.
 
+Se o host de execucao for **Windows**, leia tambem antes de escolher
+interpretador Python ou correr pytest:
+
+```
+PROJETOS/COMUM/RUNTIME-WINDOWS.md
+```
+
 ### Nivel 2 - Governanca
 
 Leia estes arquivos, nesta ordem:
@@ -99,9 +111,12 @@ PROJETOS/COMUM/GOV-WORK-ORDER.md
 PROJETOS/COMUM/GOV-BRANCH-STRATEGY.md
 PROJETOS/COMUM/SPEC-TASK-INSTRUCTIONS.md
 PROJETOS/COMUM/GOV-COMMIT-POR-TASK.md
+PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md
 PROJETOS/COMUM/GOV-INTAKE.md
 PROJETOS/COMUM/GOV-AUDITORIA.md
 PROJETOS/COMUM/GOV-AUDITORIA-FEATURE.md
+PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md
+PROJETOS/COMUM/SPEC-EDITOR-ARTEFACTOS.md
 ```
 
 ### Nivel 3 - Projeto
@@ -198,6 +213,10 @@ Antes de implementar, leia `task_instruction_mode` no frontmatter do
 
 Antes de implementar, leia os ficheiros de codigo explicitamente citados no
 `README.md` da US e na `TASK-N.md` seleccionada.
+
+Se um manifesto ou artefato documental for longo, prefira `scripts/session_tools/read_file.py`
+com `--find`, `--start/--end`, `--head` ou `--tail`; leitura integral so quando
+o trecho minimo nao bastar para a decisao atual.
 
 #### Modo AUDITORIA-FEATURE
 

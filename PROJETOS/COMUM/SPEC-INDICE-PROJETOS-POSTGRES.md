@@ -6,7 +6,7 @@
 
 ## 1. Problema e objetivo
 
-Hoje o índice derivado materializa-se em SQLite (`scripts/openclaw_projects_index/schema.sql`, `PRAGMA user_version = 4`), com FTS5 embutido e `embeddings.embedding` como BLOB. Isso limita:
+Historicamente o índice derivado materializava-se em SQLite (`scripts/fabrica_projects_index/schema.sql`, `PRAGMA user_version = 4`), com FTS5 embutido e `embeddings.embedding` como BLOB. Isso limitava:
 
 - consultas concurrentes e integração com stacks que já usam Postgres;
 - uso nativo de similaridade vetorial (`pgvector`) e operadores ANN;
@@ -21,6 +21,9 @@ Hoje o índice derivado materializa-se em SQLite (`scripts/openclaw_projects_ind
 2. **Postgres é derivado:** pode ser apagado e reconstruído a partir do repositório + regras de parse (idempotência do pipeline de sync).
 3. **Compatibilidade semântica com v4 SQLite:** os mesmos conceitos de `sync.py` (classificação de paths, front matter, documentos globais em `PROJETOS/COMUM/`) mapeiam para linhas Postgres; nomes de colunas podem evoluir com uma camada de migração documentada.
 4. **RAG:** chunks textuais permanecem ligados a `documents`; vetores em `embeddings` usando `vector(dim)` do pgvector, não BLOB opaco.
+
+**Operacao de sync e matriz quando o DB e obrigatorio:** ver
+`SPEC-RUNTIME-POSTGRES-MATRIX.md` e `scripts/fabrica_projects_index/README.md`.
 
 ## 3. Extensões Postgres
 
@@ -177,7 +180,7 @@ Liga **commits Git** (ou revisões) a trabalho de execução/review, sem substit
 2. **Ordem de ingestão:** `projects` → entidades estruturadas (`features`, `user_stories`, `tasks`, `feature_audits`, `project_documents`) → `documents` (conteúdo) → (opcional) rebuild de chunks apenas para documentos alterados.
 3. **Transacções:** uma transação por `sync_run` ou por projeto, conforme tamanho do repo; falhas parciais devem refletir-se em `sync_runs.status = partial` com `error_message`.
 4. **Metadados globais:** substituir `sync_meta` key-value por consultas a `sync_runs` (último sucesso) + colunas em `projects` se necessário; chaves legadas como `last_sync_at` podem ser **VIEW** sobre `sync_runs`.
-5. **Coexistência temporária com SQLite:** durante migração, o mesmo código de classificação/parsing pode alimentar ambos os destinos ou gerar Parquet/JSON intermédio; a spec recomenda **uma única biblioteca de domínio** partilhada para evitar drift.
+5. **Compatibilidade legada controlada:** SQLite só entra em migração/backfill explícitos; durante esses fluxos, o mesmo código de classificação/parsing pode alimentar ambos os destinos ou gerar Parquet/JSON intermédio. A spec recomenda **uma única biblioteca de domínio** partilhada para evitar drift.
 
 ## 6. pgvector e memória do agente
 
@@ -203,11 +206,15 @@ O agente pode ter lojas adicionais (logs, SOUL, notas fora de `PROJETOS/`). O co
 | Variável | Descrição |
 |----------|-----------|
 | `OPENCLAW_REPO_ROOT` | Raiz do clone (contém `PROJETOS/`). |
-| `OPENCLAW_PROJECTS_DATABASE_URL` | URL Postgres (ex.: `postgresql://user:pass@localhost:5432/openclaw_projects`). Preferência sobre host/port/user/db soltos. |
+| `FABRICA_PROJECTS_DATABASE_URL` | URL Postgres (ex.: `postgresql://user:pass@localhost:5432/fabrica_projects`). Preferência sobre host/port/user/db soltos. |
 | `OPENCLAW_PGSSLMODE` | Opcional; default alinhado ao cliente. |
-| `OPENCLAW_PROJECTS_DB` | **Legado SQLite**; durante coexistência, scripts podem exigir um só destino por invocação ou flag `--backend sqlite|postgres`. |
 
-Documentar em `scripts/openclaw_projects_index/README.md` (ou sucessor) o matrix de backends quando implementado.
+Compatibilidade legada de migracao/backfill:
+
+- `FABRICA_PROJECTS_DATABASE_URL` continua sendo a unica variavel operacional do indice.
+- snapshots SQLite historicos, quando ainda precisarem ser importados, devem ser fornecidos por caminho explicito aos utilitarios em `scripts/fabrica_projects_index/legacy/`.
+
+Documentar em `scripts/fabrica_projects_index/README.md` a separacao entre runtime operacional Postgres e compatibilidade legada de migracao.
 
 ## 8. Busca lexical (paridade FTS5)
 
@@ -236,11 +243,12 @@ A spec exige **pelo menos uma** forma de busca full-text ou sub-string indexada 
 
 ## 11. Referências internas
 
-- `scripts/openclaw_projects_index/schema.sql` — paridade semântica SQLite v4.
-- `scripts/openclaw_projects_index/schema_postgres.sql` — DDL Postgres bundle `pg-1` (aplicar com `./bin/apply-openclaw-projects-pg-schema.sh`).
-- `scripts/openclaw_projects_index/mirror_sqlite_to_postgres.py` — espelho opcional SQLite → Postgres após `sync.py`.
-- `scripts/openclaw_projects_index/sync.py` — classificação de paths e campos extraídos (destino atual: SQLite).
-- `scripts/openclaw_projects_index/README.md` — variáveis, coexistência SQLite/Postgres e fluxo operacional.
+- `scripts/fabrica_projects_index/schema.sql` — paridade semântica SQLite v4.
+- `scripts/fabrica_projects_index/schema_postgres.sql` — DDL Postgres bundle `pg-1` (aplicar com `./bin/apply-fabrica-projects-pg-schema.sh`).
+- `scripts/fabrica_projects_index/legacy/mirror_sqlite_to_postgres.py` — espelho opcional SQLite → Postgres em fluxos legados de migracao.
+- `scripts/fabrica_projects_index/legacy/migrate_sqlite_embeddings_to_postgres.py` — migracao opcional de embeddings BLOB historicos para `pgvector`.
+- `scripts/fabrica_projects_index/sync.py` — classificação de paths e campos extraídos; runtime operacional exclusivamente Postgres.
+- `scripts/fabrica_projects_index/README.md` — variáveis operacionais Postgres e fluxos legados de migracao/backfill.
 - `PROJETOS/COMUM/SPEC-PIPELINE-PRD-SEM-FEATURES.md` — contexto da migração normativa do pipeline.
 
 ---

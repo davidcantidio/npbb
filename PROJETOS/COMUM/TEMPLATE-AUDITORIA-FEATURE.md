@@ -1,47 +1,58 @@
 ---
 doc_id: "RELATORIO-AUDITORIA-F<N>-R<NN>.md"
-version: "1.0"
-status: "planned"
+version: "1.2"
+status: "done"
 verdict: "hold"
-feature_id: "F<N>"
+scope_type: "feature"
+scope_ref: "FEATURE-<N>-<NOME>"
+feature_id: "FEATURE-<N>-<NOME>"
 reviewer_model: "<MODEL>"
 base_commit: "<sha>"
+compares_to: "<audit_id-anterior-ou-none>"
 round: 1
 supersedes: "none"
-followup_destination: "issue-local"
+followup_destination: "same-feature"
+decision_refs:
+  - "<decision-id-ou-none>"
 last_updated: "YYYY-MM-DD"
 ---
 
-# RELATORIO-AUDITORIA - <PROJETO> / FEATURE <F<N>> / R<NN>
+# RELATORIO-AUDITORIA - <PROJETO> / <FEATURE_ID> / R<NN>
+
+> Para rodada concluida, usar `status: done`. Use `status: provisional` apenas
+> quando houver `worktree` sujo ou ausencia de SHA valido. Use `status:
+> cancelled` quando a rodada for encerrada sem conclusao valida.
 
 ## Resumo Executivo
 
 > Preencher em no maximo 3 linhas, resumindo escopo auditado, principal risco e
 > recomendacao de gate.
 
-## Escopo Auditado
+## Escopo Auditado e Evidencias
 
 - intake:
 - prd:
 - feature:
+- audit_log:
 - user_stories:
+- tasks:
 - testes:
 - diff/commit:
 - evidencias_relevantes:
 
-## Prestacao de Contas de Follow-ups
+## Prestacao de Contas dos Follow-ups Anteriores
 
 > Preencher apenas quando `round > 1` e a rodada imediatamente anterior tiver
 > veredito `hold`. Omitir completamente em rodada inicial ou quando a rodada
 > anterior nao for `hold`.
 >
-> Usar `feature_id`, `round`, `supersedes` e o `AUDIT-LOG.md` para localizar a
-> rodada de referencia. Listar apenas os follow-ups da rodada `hold`
-> imediatamente anterior. Nao incluir follow-ups de rodadas mais antigas.
+> Usar `feature_id`, `compares_to` e o `AUDIT-LOG.md` para localizar a rodada
+> de referencia. Listar apenas os follow-ups da rodada `hold` imediatamente
+> anterior. Nao incluir follow-ups de rodadas mais antigas.
 
 | Follow-up | Tipo | Destino Final | Status verificado | Arquivo ou registro | Observacoes |
 |---|---|---|---|---|---|
-| B1 | bloqueante | issue-local | done | `README.md` da US corretiva ou `AUDIT-LOG.md` | encerrado |
+| B1 | bloqueante | same-feature | done | `README.md` da US corretiva ou `AUDIT-LOG.md` | encerrado |
 | N1 | nao bloqueante | new-intake | criado | `INTAKE-*.md` | nao bloqueia |
 | C1 | bloqueante | cancelled | registrado no log | `AUDIT-LOG.md` | justificativa registrada |
 
@@ -66,14 +77,32 @@ Resultado da prestacao de contas: `completa` / `parcial - ver observacoes`
 | A-02 | test-gap | medium |  |  |  | nao |
 | A-03 | architecture-drift | medium |  |  |  | nao |
 
-## Analise Estrutural
+## Verificacao de Decisoes Registradas
+
+| Decision Ref | Resultado | Evidencia | Observacoes |
+|---|---|---|---|
+| `dec-...` | aderente |  |  |
+
+## Analise de Complexidade Estrutural
 
 > Usar `SPEC-ANTI-MONOLITO.md` como fonte unica de thresholds para
 > `monolithic-file` e `monolithic-function`.
 
 | ID | Componente | Tipo | Linguagem | Metricas observadas | Threshold de referencia | Tendencia vs rodada anterior | Bloqueante? | Destino sugerido |
 |---|---|---|---|---|---|---|---|---|
-| M-01 |  | monolithic-file |  |  |  |  | nao | issue-local |
+| M-01 |  | monolithic-file |  |  |  |  | nao | same-feature |
+
+## Bugs e Riscos Antecipados
+
+| ID | Categoria | Severidade | Descricao | Evidencia | Correcao sugerida | Bloqueante? |
+|---|---|---|---|---|---|---|
+| A-RISCO-01 | bug | medium |  |  |  | nao |
+
+## Cobertura de Testes
+
+| Funcionalidade | Teste existe? | Tipo | Observacao |
+|---|---|---|---|
+|  |  |  |  |
 
 ## Decisao
 
@@ -82,17 +111,15 @@ Resultado da prestacao de contas: `completa` / `parcial - ver observacoes`
 - gate_da_feature:
 - follow_up_destino_padrao:
 
-## Follow-ups
-
-### Follow-ups Bloqueantes
+## Follow-ups Bloqueantes
 
 1. 
 
-### Follow-ups Nao Bloqueantes
+## Follow-ups Nao Bloqueantes
 
 1. 
 
-### Handoff para Novo Intake
+## Handoff para Novo Intake
 
 > Preencher apenas quando houver remediacao estrutural ou sistemica com destino
 > `new-intake`.

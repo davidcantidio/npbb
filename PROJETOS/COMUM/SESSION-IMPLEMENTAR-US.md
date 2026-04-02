@@ -1,9 +1,9 @@
 ---
 doc_id: "SESSION-IMPLEMENTAR-US.md"
-version: "1.1"
+version: "1.6"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-25"
+last_updated: "2026-03-30"
 ---
 
 # SESSION-IMPLEMENTAR-US - Execucao de User Story em Sessao de Chat
@@ -17,14 +17,43 @@ US_ID:       <US-<N>-<NN>>
 US_PATH:     <caminho completo: arquivo `.md` da US ou pasta US-*/ com README.md>
 TASK_ID:     <opcional: T<N> ou "auto">
 ROUND:       <opcional: 1 na primeira execucao; 2, 3, ... em retomadas por correcao>
+OBJETIVO_EM_UMA_FRASE: <opcional; reduz ambiguidade quando o humano abre so um ficheiro>
+NAO_FAZER:   <opcional; lista curta: ex. "nao alterar ci.yml", "nao criar Docker">
+COMANDOS_VALIDACAO: <opcional; comandos copiaveis que devem passar ao fechar a task>
+COMMIT_BASE_OPCIONAL: <opcional; sha quando a sessao retoma de um ponto fixo>
+WRITE_SCOPE_EFETIVO: <opcional; confirma ou estreita paths face ao TASK-N.md>
+FICHEIROS_PROIBIDOS: <opcional; globs ou paths que nao podem ser tocados>
 ```
+
+Quando usar `imp-N.md` (cabeçalho de sessao por task), o ficheiro deve declarar no
+minimo `TASK_ID`, `US_PATH` e espelhar `OBJETIVO_EM_UMA_FRASE`, `NAO_FAZER`,
+`COMANDOS_VALIDACAO` e limites de escopo alinhados ao `TASK-N.md` — ver
+`PROJETOS/COMUM/TEMPLATE-IMP-SESSAO.md`.
 
 ## Prompt
 
 Voce e um engenheiro senior operando em sessao de chat interativa no papel de
 agente local executor.
 
-Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia apenas:
+## Passo -1 (obrigatorio — no maximo tres comandos antes de ler manifestos)
+
+Antes de abrir `README.md` da user story, `TASK-*.md`, a feature referenciada ou
+ficheiros de codigo citados:
+
+1. executar o preflight canonico: `./bin/ensure-fabrica-projects-index-runtime.sh`
+   na raiz do repositorio (opcional `--json` para saida estruturada);
+2. se o exit code for diferente de `0` **e** a task ou validacao depender
+   explicitamente de Postgres, `sync_runs` ou outro runtime real: responda
+   `BLOQUEADO`, copie o motivo ou stderr para a saida e **nao** elabore plano
+   extenso nem leia artefactos de escopo ate o runtime estar disponivel (ver
+   `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md`);
+3. so apos (1) passar ou (2) nao se aplicar (fluxo apenas documental), prossiga
+   com `boot-prompt` e **leitura minima** conforme
+   `PROJETOS/COMUM/SPEC-LEITURA-MINIMA-EVIDENCIA.md` (e orcamento de exploracao
+   na mesma spec).
+
+Siga `PROJETOS/COMUM/boot-prompt.md`, Niveis 1, 2 e 3. Depois leia apenas (com
+leitura minima para artefactos longos):
 
 - a user story informada
 - a feature referenciada pela user story
@@ -50,24 +79,29 @@ user story.
 Antes do Passo 0, leia `PROJETOS/COMUM/GOV-USER-STORY.md` como fonte normativa de:
 
 - **Limites canonicos de tamanho:** `max_tasks_por_user_story`, `max_story_points_por_user_story` e o criterio de tamanho (`criterio_de_tamanho`)
-- **Elegibilidade para execucao:** US com `task_instruction_mode: required` sem tasks detalhadas, dependencias de outra US ainda nao `done`, e demais criterios do mesmo documento
+- **Elegibilidade para execucao:** US com `task_instruction_mode: required` sem tasks detalhadas, dependencias de outra US ainda nao `done` ou `cancelled`, `ready_for_review` em dependencia a montante, e demais criterios do mesmo documento
 - **Quando `required` e obrigatorio:** fatores listados em GOV-USER-STORY (nao improvisar fora desses limites)
 
 Se a US for inelegivel ou violar esses limites, responda `BLOQUEADO` em vez de estender escopo ou contornar a governanca.
 
-## Pré-condição: Sync do Índice SQLite
+## Pre-condicao: preflight do runtime e sync do indice derivado Postgres
 
-Antes do Passo 0, sincronize o índice SQLite derivado de `PROJETOS/`:
+Antes do Passo 0, execute o preflight do runtime e sincronize o indice derivado de `PROJETOS/` quando elegivel:
 
-1. rode `./bin/sync-openclaw-projects-db.sh`
-2. consulte no DB o estado atual da user story: `status`,
-   `task_instruction_mode`, tasks abertas e feature associada
-3. compare o resultado com o Markdown canonico da user story; o **Markdown
-   prevalece** sempre
-4. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do bloco
-   `ESCOPO DA USER STORY`
-5. apos qualquer gravacao em `PROJETOS/` que altere estado desta user story ou
-   artefatos ligados, execute novo sync
+1. rode `./bin/ensure-fabrica-projects-index-runtime.sh`
+2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh` e consulte no DB o estado atual da user story: `status`, `task_instruction_mode`, tasks abertas e feature associada
+3. se o preflight falhar e a task ou validacao atual depender explicitamente de Postgres, `sync_runs` ou outro runtime real, responda `BLOQUEADO`
+4. compare o resultado com o Markdown canonico da user story; o **Markdown prevalece** sempre
+5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do bloco `ESCOPO DA USER STORY`, incluindo exit code e motivo quando o preflight falhar
+6. apos qualquer gravacao em `PROJETOS/` que altere estado desta user story ou artefatos ligados, execute novo sync apenas se o preflight permanecer OK
+
+Normativa complementar: `PROJETOS/COMUM/SPEC-RUNTIME-POSTGRES-MATRIX.md` (matriz
+quando o sync e obrigatorio ou dispensavel, variaveis, ordem `host.env` / bootstrap / sync).
+
+**URL ausente ou preflight falho nesta sessao:** registe `DRIFT_INDICE` descrevendo
+que o sync nao correu; **nao** instale Postgres, Docker, gestores de pacotes nem
+binarios externos como parte da sessao salvo pedido humano explicito; para fluxo
+documental prossiga com Markdown + Git conforme a matriz; para runtime real, bloqueie cedo.
 
 ## Contrato Operacional Pos-PRD
 
@@ -79,11 +113,14 @@ checkpoint humano adicional durante a execucao da user story.
   local, nao pedidos de permissao
 - o agente local deve reler PRD, feature de origem, user story e task antes de cada
   alteracao material para verificar alinhamento e evitar `scope-drift`
-- divergencia **SQLite vs Markdown** e telemetria operacional em
+- divergencia **indice derivado vs Markdown** e telemetria operacional em
   `DRIFT_INDICE`; isso nao entra no bloco `ALINHAMENTO PRD` e nao substitui a
   leitura canonica do Markdown
 - o gate senior nao acontece no meio da task; ele acontece quando a user story
   chega em `ready_for_review`, salvo ambiguidade critica ou conflito com PRD
+- `ready_for_review` encerra a execucao local e abre o gate de revisao, mas nao
+  satisfaz dependencias de outras user stories; o desbloqueio so acontece em
+  `done` ou `cancelled`
 - se a revisao pedir correcao e ela ainda pertencer ao escopo da user story
   original, o agente senior deve adicionar ou ajustar tasks na propria user story e
   devolver `ready_for_review -> active`
@@ -92,6 +129,9 @@ checkpoint humano adicional durante a execucao da user story.
   redescoberta
 - apos qualquer escrita em `PROJETOS/` que altere estado documental, execute
   novo sync do indice antes de prosseguir
+- antes de promover a US para `ready_for_review`, execute
+  `python3 scripts/framework_governance/validate_us_traceability.py --repo-root . --us-path <US_PATH>`;
+  se o gate falhar, responda `BLOQUEADO`
 - pare apenas em `BLOQUEADO`, ambiguidade material, evidencias conflitantes ou
   conflito com PRD/governanca
 
@@ -164,12 +204,14 @@ altere criterios `Given/When/Then` sem veredito da sessao
 - **US granularizada (pasta):** Liste os `TASK-*.md` em ordem. Se `TASK_ID` foi informado,
   valide que o `TASK-N.md` correspondente existe e esta `todo` ou `active`; se nao estiver,
   responda `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task com `status: todo` ou
-  `active`. Execute apenas essa task; ao concluir, atualize `status: done` no `TASK-N.md`,
+  `active` **e** com todos os itens de `depends_on` ja `done`; se houver dependencia aberta,
+  responda `BLOQUEADO`. Execute apenas essa task; ao concluir, atualize `status: done` no `TASK-N.md`,
   recalcule o status agregado no `README.md` (`active` se ainda houver task aberta; nao use
   `done` diretamente ao fim da execucao), e faca commit; se todas as tasks estiverem done,
   siga para o Passo 3 para preparar o handoff e sincronizar `ready_for_review`. Se a task alvo tiver `tdd_aplicavel: true`, o plano de
   execucao deve explicitar as etapas `red`, `green` e `refactor` antes de qualquer mudanca de
-  codigo.
+  codigo. Se `parallel_safe: true`, valide primeiro que `write_scope` esta preenchido de modo
+  concreto; sessao local continua mono-task e nao usa paralelismo implicito.
 - **US legada (arquivo):** Liste as tasks em ordem. Se `TASK_ID` foi informado, valide que
   existe bloco correspondente e que a task nao esta encerrada; se nao existir, responda
   `BLOQUEADO`. Sem `TASK_ID`, identifique a proxima task elegivel. Em ambos os casos, execute
@@ -198,11 +240,14 @@ Decisao:                    <PROSSEGUIR | BLOQUEADO - motivo>
 Regras do bloco:
 
 - emitir uma vez por task, imediatamente antes do bloco `EXECUTANDO`
-- divergencia **SQLite vs Markdown** regista-se fora deste bloco, em
+- divergencia **indice derivado vs Markdown** regista-se fora deste bloco, em
   `DRIFT_INDICE`; o Markdown prevalece
 - se `Drift detectado` for diferente de `nenhum`, parar e reportar antes de
   alterar qualquer arquivo
 - se `Escopo da task vs PRD: fora`, responder `BLOQUEADO` e nao executar a task
+- se `depends_on` estiver aberto, responder `BLOQUEADO`
+- se `parallel_safe: true` e `write_scope` estiver vazio, generico ou ambiguo,
+  responder `BLOQUEADO`
 
 **Gap de criterio de aceite vs drift de PRD**
 
@@ -300,6 +345,15 @@ Regras obrigatorias do handoff:
   `ROUND` nas retomadas
 - quando a user story estiver voltando para review apos `correcao_requerida`,
   preencher tambem `correcao_requerida_por` e `tasks_corretivas`
+
+**3.1b - Alinhar `REV-US-<N>-<NN>.md` quando existir na pasta da US**
+
+- Copie para o `REV-US` os mesmos valores reproduziveis ja gravados no handoff
+  do `README.md` (`base_commit`, `target_commit`, `evidencia`, `round`, etc.).
+- Atualize o frontmatter do `REV-US` (`last_updated`, `status` deixando de ser
+  stub) conforme `GOV-SCRUM.md` (**Procedimento de Review-Ready**, passo 4).
+- **Nao** finalize o Passo 3 com handoff completo no `README` e `REV-US` ainda
+  com `auto` ou campos vazios incoerentes com o handoff.
 
 ```text
 FECHANDO: {{US_PATH}} (ou README.md da pasta)

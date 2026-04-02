@@ -54,6 +54,29 @@ copy .env.example .env  # Windows
 npm run dev
 ```
 
+## Framework Fabrica
+
+`PROJETOS/COMUM` neste repositório é espelhado da Fabrica. A fonte de verdade operacional fica no clone local em `C:\Users\NPBB\fabrica`.
+
+Comando canônico da CLI da Fabrica para operar o `npbb`:
+```powershell
+C:\Users\NPBB\fabrica\.venv\Scripts\python.exe C:\Users\NPBB\fabrica\scripts\fabrica.py --repo-root C:\Users\NPBB\npbb --help
+```
+
+Para fluxos de sync e pré-validação, defina `FABRICA_PROJECTS_DATABASE_URL` no terminal atual antes de chamar a CLI:
+```powershell
+$env:FABRICA_PROJECTS_DATABASE_URL = "postgresql://USER:PASS@HOST:5432/DB"
+C:\Users\NPBB\fabrica\.venv\Scripts\python.exe C:\Users\NPBB\fabrica\scripts\fabrica.py --repo-root C:\Users\NPBB\npbb sync --dry-run
+```
+
+Atualização de `PROJETOS/COMUM` a partir da Fabrica:
+```powershell
+Get-ChildItem -LiteralPath C:\Users\NPBB\npbb\PROJETOS\COMUM -Force | Remove-Item -Recurse -Force
+robocopy "C:\Users\NPBB\fabrica\PROJETOS\COMUM" "C:\Users\NPBB\npbb\PROJETOS\COMUM" /E /COPY:DAT /R:2 /W:1
+```
+
+`PROJETOS/NPBB` e os demais projetos da aplicação continuam sendo mantidos apenas no `npbb`.
+
 ## Testes
 ```bash
 # backend

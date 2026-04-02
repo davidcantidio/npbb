@@ -1,11 +1,12 @@
 ---
 doc_id: "TEMPLATE-USER-STORY.md"
-version: "1.0"
+version: "1.1"
 status: "todo"
 owner: "PM"
 last_updated: "YYYY-MM-DD"
 task_instruction_mode: "optional"
-feature_id: "<ID_da_Feature_no_PRD>"
+# feature_id: mesmo valor que feature_key do manifesto (ex. FEATURE-1), nao o nome da pasta completa — ver GOV-FEATURE.md
+feature_id: "FEATURE-<N>"
 decision_refs: []
 ---
 
@@ -47,13 +48,17 @@ decision_refs: []
 ## Definition of Done da User Story
 
 - [ ] Todas as tasks em `TASK-*.md` estao `done` ou `cancelled` com justificativa
+- [ ] Todas as tasks tem `depends_on`, `parallel_safe` e `write_scope` coerentes com a ordem de execucao
 - [ ] Criterios Given/When/Then verificados
 - [ ] Handoff de revisao preenchido neste documento quando o fluxo do projeto exigir revisao pos-US
 - [ ] Revisao aprovada conforme `PROJETOS/COMUM/GOV-SCRUM.md` antes de promover a US a `done`
 
 ## Tasks
 
-Desdobre em ate **5** tasks por US (`GOV-USER-STORY.md`). Com `task_instruction_mode: required`, cada task deve ter ficheiro proprio `TASK-N.md` seguindo `PROJETOS/COMUM/TEMPLATE-TASK.md`.
+Desdobre em ate **5** tasks por US (`GOV-USER-STORY.md`). Com `task_instruction_mode: required`, cada task deve ter ficheiro proprio `TASK-N.md` seguindo `PROJETOS/COMUM/TEMPLATE-TASK.md` e declarando `user_story_id`, `depends_on`, `parallel_safe` e `write_scope`.
+
+Opcional: cabecalhos de sessao `imp-<N>.md` por task — `PROJETOS/COMUM/TEMPLATE-IMP-SESSAO.md`
+e parametros em `PROJETOS/COMUM/SESSION-IMPLEMENTAR-US.md`.
 
 - [T1 - <titulo>](./TASK-1.md)
 - [T2 - <titulo>](./TASK-2.md)
@@ -68,8 +73,8 @@ Desdobre em ate **5** tasks por US (`GOV-USER-STORY.md`). Com `task_instruction_
 
 ## Handoff para Revisao
 
-> Mesmo modelo de campos que o `README.md` de issue granularizada em `GOV-ISSUE-FIRST.md`.
-> Preencher ao concluir a execucao da US, antes da revisao senior.
+> Preencher ao concluir a execucao da US, antes da revisao senior, seguindo
+> `GOV-SCRUM.md` e `SESSION-REVISAR-US.md`.
 
 status: nao_iniciado
 base_commit: nao_informado
@@ -84,4 +89,5 @@ limitacoes: []
 
 - [PRD do projeto](../<PROJETO>/PRD-<PROJETO>.md) *(ajustar caminho relativo)*
 - Outras USs: <nenhuma | US-X depende de US-Y `done`>
+- Tasks internas: usar `depends_on` no frontmatter de `TASK-*.md`
 - [GOV-USER-STORY.md](./GOV-USER-STORY.md)

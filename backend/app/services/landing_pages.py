@@ -8,7 +8,6 @@ from sqlmodel import Session, select
 
 from app.models.models import (
     Ativacao,
-    AtivacaoLead,
     Evento,
     EventoLandingCustomizationAudit,
     FormularioLandingTemplate,
@@ -16,7 +15,6 @@ from app.models.models import (
     FormularioLeadConfig,
     Gamificacao,
     LandingAnalyticsEvent,
-    Lead,
     now_utc,
 )
 from app.schemas.landing import LandingPayload
@@ -31,8 +29,6 @@ from app.schemas.landing_public import (
     LandingEventRead,
     LandingFieldRead,
     LandingFormRead,
-    LandingSubmitRequest,
-    LandingSubmitResponse,
 )
 from app.services.formulario_lead_catalog import (
     FORMULARIO_CAMPOS_DEFAULT,
@@ -41,12 +37,9 @@ from app.services.formulario_lead_catalog import (
 )
 from app.services.landing_page_templates import (
     TEMPLATE_REGISTRY,
-    get_allowed_template_overrides,
     get_template_config,
-    normalize_template_override_input,
-    resolve_template_category,
+    normalize_template_override_input,  # noqa: F401
 )
-from app.services.landing_page_submission import submit_landing_lead
 from app.services.qr_code import build_qr_code_data_url
 from app.utils.urls import build_ativacao_public_urls, build_evento_public_urls
 

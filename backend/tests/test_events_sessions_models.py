@@ -14,7 +14,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.models.events_sessions import Event, EventSession, EventSessionType
+from app.models.events_sessions import Event, EventSession, EventSessionType  # noqa: E402
 
 
 def _make_engine():

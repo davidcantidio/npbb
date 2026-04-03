@@ -16,6 +16,8 @@ from app.models.models import (
     Gamificacao,
     LandingAnalyticsEvent,
     Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
     LeadReconhecimentoToken,
     StatusEvento,
     TipoEvento,

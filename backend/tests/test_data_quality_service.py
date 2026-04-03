@@ -10,7 +10,6 @@ from app.models.models import (
     DataQualitySeverity,
     DataQualityStatus,
     EventSessionType,
-    IngestionStatus,
     OptinTransaction,
     SourceKind,
     TicketCategorySegmentMap,

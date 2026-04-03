@@ -17,7 +17,7 @@ from app.modules.eventos.application.evento_write_usecases import (
     criar_evento_usecase,
     excluir_evento_usecase,
 )
-from app.schemas.evento import EventoCreate, EventoListItem, EventoRead, EventoUpdate
+from app.schemas.evento import EventoCreate, EventoRead, EventoUpdate
 from app.services.landing_pages import hydrate_evento_public_urls
 
 from . import _shared

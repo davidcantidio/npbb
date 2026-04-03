@@ -10,7 +10,6 @@ from sqlmodel import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_session
-from app.db.database import get_session
 from app.models.models import Usuario
 from app.modules.eventos.application.evento_csv_parsers import (
     build_evento_payload_from_row,

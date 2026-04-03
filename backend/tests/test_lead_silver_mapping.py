@@ -12,7 +12,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver
-from app.models.models import Evento, Lead, LeadEvento, StatusEvento, Usuario
+from app.models.models import Evento, Lead, StatusEvento, Usuario
 from app.utils.security import hash_password
 
 
@@ -351,7 +351,7 @@ class TestResolveUniqueEventoByName:
     def test_resolve_returns_resolved_when_single_match(self, client, engine):
         """Given unique evento match by name, When resolved, Then returns resolved status with evento_id."""
         with Session(engine) as s:
-            auth = _auth_header(client, s)
+            _auth_header(client, s)
             evento = _seed_evento(s)
             evento_id = evento.id
             evento_nome = evento.nome
@@ -368,7 +368,7 @@ class TestResolveUniqueEventoByName:
     def test_resolve_returns_missing_when_no_event_match(self, client, engine):
         """Given no evento matches the name, When resolved, Then returns missing status."""
         with Session(engine) as s:
-            auth = _auth_header(client, s)
+            _auth_header(client, s)
             _seed_evento(s)
 
         from app.services.lead_event_service import resolve_unique_evento_by_name
@@ -382,7 +382,7 @@ class TestResolveUniqueEventoByName:
     def test_resolve_returns_ambiguous_when_multiple_matches(self, client, engine):
         """Given multiple eventos with same normalized name, When resolved, Then returns ambiguous status."""
         with Session(engine) as s:
-            auth = _auth_header(client, s)
+            _auth_header(client, s)
             status = _seed_status(s)
 
             # Create two eventos with same normalized name
@@ -439,7 +439,7 @@ class TestEnsureCanonicalEventLink:
     def test_creates_lead_evento_when_unique_match(self, client, engine):
         """Given unique evento match, When link is ensured, Then LeadEvento is created."""
         with Session(engine) as s:
-            auth = _auth_header(client, s)
+            _auth_header(client, s)
             evento = _seed_evento(s)
 
             # Create a lead with evento_nome
@@ -470,7 +470,7 @@ class TestEnsureCanonicalEventLink:
     def test_does_not_create_lead_evento_when_ambiguous_match(self, client, engine):
         """Given ambiguous evento match, When link is ensured, Then LeadEvento is NOT created."""
         with Session(engine) as s:
-            auth = _auth_header(client, s)
+            _auth_header(client, s)
             status = _seed_status(s)
 
             # Create two eventos with same normalized name
@@ -517,7 +517,7 @@ class TestEnsureCanonicalEventLink:
     def test_does_not_create_lead_evento_when_no_match(self, client, engine):
         """Given no evento match, When link is ensured, Then LeadEvento is NOT created."""
         with Session(engine) as s:
-            auth = _auth_header(client, s)
+            _auth_header(client, s)
             _seed_evento(s)
 
             # Create a lead with non-existent evento_nome

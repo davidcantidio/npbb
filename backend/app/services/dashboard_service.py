@@ -11,7 +11,7 @@ from sqlalchemy import func as sa_func
 from sqlmodel import Session, select
 
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
-from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, LeadEvento, Usuario, UsuarioTipo, now_utc
+from app.models.models import Evento, Lead, LeadEvento, Usuario, UsuarioTipo, now_utc
 from app.schemas.dashboard import (
     AgeAnalysisQuery,
     AgeAnalysisFilters,

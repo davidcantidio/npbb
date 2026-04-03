@@ -13,10 +13,7 @@ from app.models.models import (
     EventSession,
     EventSessionType,
     FestivalLead,
-    IngestionRun,
-    IngestionStatus,
     OptinTransaction,
-    Source,
     SourceKind,
     TicketCategorySegmentMap,
 )

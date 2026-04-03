@@ -320,7 +320,7 @@ class EventoTag(SQLModel, table=True):
     tag: Optional[Tag] = Relationship(back_populates="eventos")
 
 
-from app.models.lead_public_models import (
+from app.models.lead_public_models import (  # noqa: E402,F401
     EventPublicity,
     ImportAlias,
     Lead,
@@ -515,7 +515,7 @@ class Cupom(SQLModel, table=True):
     lead: Optional[Lead] = Relationship(back_populates="cupons")
 
 
-from app.models.event_support_models import (
+from app.models.event_support_models import (  # noqa: E402,F401
     Convidado,
     Convite,
     CotaCortesia,
@@ -530,7 +530,7 @@ from app.models.event_support_models import (
     QuestionarioRespostaPergunta,
     SolicitacaoIngresso,
 )
-from app.models.tmj_analytics_models import (
+from app.models.tmj_analytics_models import (  # noqa: E402,F401
     AttendanceAccessControl,
     BbRelationshipSegment,
     DataQualityResult,

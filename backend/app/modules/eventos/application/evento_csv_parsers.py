@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.models import Evento, EventoTerritorio, EventoTag, Usuario
+from app.models.models import Evento, Usuario
 
 
 class CsvRowIssue(Exception):

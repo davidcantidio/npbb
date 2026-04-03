@@ -41,4 +41,10 @@ router.include_router(ativacoes_router, prefix="")
 router.include_router(landing_router, prefix="")
 router.include_router(crud_router, prefix="")
 
-__all__ = ["router", "_shared"]
+__all__ = [
+    "router",
+    "_shared",
+    "atualizar_evento",
+    "excluir_evento",
+    "obter_evento",
+]

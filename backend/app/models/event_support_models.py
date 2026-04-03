@@ -1,8 +1,10 @@
 """Modelos auxiliares de eventos: convites, questionario e configuracao de landing."""
 
+from __future__ import annotations
+
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Relationship
@@ -14,6 +16,9 @@ from app.models.models import (
     TipoPergunta,
     now_utc,
 )
+
+if TYPE_CHECKING:
+    from app.models.models import Ativacao, Diretoria, Evento, Funcionario, Lead, Usuario
 
 
 class CotaCortesia(SQLModel, table=True):

@@ -64,3 +64,4 @@ reports/**/*.docx
 **/test-results/
 frontend/playwright-report/
 frontend/test-results/playwright/
+PROJETOS/COMUM/.obsidian/

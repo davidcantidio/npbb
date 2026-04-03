@@ -11,35 +11,63 @@ Plataforma para gestao de eventos, captura de leads, gamificacao e dashboards. O
 - **Relatorios**: dashboard agregado + geracao de DOCX (Festival TMJ 2025).
 
 ## Setup rapido (caminho feliz)
-Backend:
+
+**Banco:** o projeto usa **Supabase** como padrao (`DATABASE_URL` / `DIRECT_URL` no `.env`). PostgreSQL local e opcional.
+
+### Backend — Windows (PowerShell)
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+# edite .env e configure DATABASE_URL/DIRECT_URL (Supabase)
+cd ..
+.\scripts\dev_backend.ps1
+```
+O script `dev_backend.ps1` ja define `PYTHONPATH` e usa `backend\.venv\Scripts\python.exe` (nao e obrigatorio ativar a venv antes). Para ativar a venv no terminal atual: `.\scripts\activate_backend_venv.ps1`.
+
+Se o PowerShell bloquear scripts (`.ps1`), use uma vez: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+**PostgreSQL local no Windows (opcional):** instale pelo instalador em https://www.postgresql.org/download/windows/, crie o banco `npbb` e aponte `DATABASE_URL`/`DIRECT_URL` no `.env`.
+
+### Backend — macOS / Linux
 ```bash
 cd backend
-brew install python@3.12 postgresql@16
-brew services start postgresql@16
-/opt/homebrew/opt/postgresql@16/bin/createdb npbb  # execute uma vez (ignore se ja existir)
-/opt/homebrew/bin/python3.12 -m venv .venv  # macOS/Homebrew
-# python -m venv .venv  # Linux/Windows
-source .venv/bin/activate  # Linux/macOS
-# .\.venv\Scripts\activate  # Windows
+# Opcional: Postgres local (macOS/Homebrew)
+# brew install python@3.12 postgresql@16
+# brew services start postgresql@16
+# /opt/homebrew/opt/postgresql@16/bin/createdb npbb
+/opt/homebrew/bin/python3.12 -m venv .venv   # macOS/Homebrew; em Linux use: python3.12 -m venv .venv
+source .venv/bin/activate
 python -m pip install -r requirements.txt
-copy .env.example .env  # Windows
-# cp .env.example .env  # Linux/macOS
+cp .env.example .env
 # edite .env e configure DATABASE_URL/DIRECT_URL (Supabase)
 PYTHONPATH=.. python -m uvicorn app.main:app --reload
-# alternativa: ./scripts/dev_api.sh
+# alternativa na raiz: ./scripts/dev_backend.sh
+# alternativa em backend/: ./scripts/dev_api.sh
 ```
 
 ## Rodando da raiz do repo
-Comando oficial:
+
+**Linux / macOS (bash):**
 ```bash
 source backend/.venv/bin/activate
 ./scripts/dev_backend.sh
 ```
 
-Comando tecnico alternativo:
-```bash
-source backend/.venv/bin/activate
-PYTHONPATH=. uvicorn app.main:app --reload --app-dir backend
+**Windows (PowerShell, na raiz do repo):**
+```powershell
+.\scripts\dev_backend.ps1
+```
+
+**Alternativa tecnica (mesmo efeito do script):**
+
+- bash: `source backend/.venv/bin/activate` e `PYTHONPATH=. uvicorn app.main:app --reload --app-dir backend`
+- PowerShell:
+```powershell
+$env:PYTHONPATH = "$(Get-Location);$(Get-Location)\backend"
+backend\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --app-dir backend
 ```
 
 Importante:
@@ -49,8 +77,7 @@ Frontend:
 ```bash
 cd frontend
 npm install
-copy .env.example .env  # Windows
-# cp .env.example .env  # Linux/macOS
+# Copie .env: PowerShell: Copy-Item .env.example .env  |  bash: cp .env.example .env
 npm run dev
 ```
 
@@ -79,10 +106,14 @@ robocopy "C:\Users\NPBB\fabrica\PROJETOS\COMUM" "C:\Users\NPBB\npbb\PROJETOS\COM
 
 ## Testes
 ```bash
-# backend
+# backend (com venv ativa, ou use backend/.venv/Scripts/python.exe no Windows)
 cd backend
 python -m pytest -q
+```
 
+Backend com SQLite de teste (como no CI): na pasta `backend`, defina `TESTING=true` e `SECRET_KEY` (veja `docs/SETUP.md` / `AGENTS.md`).
+
+```bash
 # frontend
 cd frontend
 npm test -- --run
@@ -126,10 +157,10 @@ Stack oficial: **Supabase** (plano pago), **Render** (plano pago) e **Cloudflare
 Guia completo: `docs/DEPLOY_RENDER_CLOUDFLARE.md`. Referencia de configuracao do Render: `docs/render.yaml`.
 
 ## Comandos principais
-- Backend (raiz): `./scripts/dev_backend.sh`
-- Backend (pasta backend): `PYTHONPATH=.. python -m uvicorn app.main:app --reload` (ou `./scripts/dev_api.sh`)
-- Migrations: `alembic upgrade head`
-- Seeds (dev): `python scripts/seed_domains.py` / `python scripts/seed_sample.py`
+- Backend (raiz): `./scripts/dev_backend.sh` (bash) ou `.\scripts\dev_backend.ps1` (PowerShell)
+- Backend (pasta `backend/`): `PYTHONPATH=.. python -m uvicorn app.main:app --reload` (bash) ou, no PowerShell, `$env:PYTHONPATH = ".."; python -m uvicorn app.main:app --reload` (ou `./scripts/dev_api.sh` no Git Bash/WSL)
+- Migrations: `alembic upgrade head` (com venv ativa, dentro de `backend/`)
+- Seeds (dev): `python -m scripts.seed_domains` / `python -m scripts.seed_sample` (a partir de `backend/`)
 - Frontend: `npm run dev`
 
 ## Docs

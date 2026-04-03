@@ -39,9 +39,12 @@ Antes de rodar os comandos:
 
 - estar na raiz do repositorio;
 - ter `python` disponivel no `PATH`;
-- ter `FABRICA_PROJECTS_DATABASE_URL` apontando para o Postgres operacional
-  (compatibilidade transitória: `OPENCLAW_PROJECTS_DATABASE_URL`);
+- ter `FABRICA_PROJECTS_DATABASE_URL` apontando para o Postgres operacional;
 - ter o schema do indice Postgres aplicado.
+
+No Windows, os wrappers `.ps1` do indice tambem conseguem ler `host.env` com
+chaves legadas do namespace anterior e remapeiam esses valores para
+`FABRICA_*` apenas no processo atual.
 
 Exemplo em PowerShell:
 
@@ -50,6 +53,12 @@ $env:FABRICA_PROJECTS_DATABASE_URL = "postgresql://user:pass@localhost:5432/fabr
 ```
 
 Se quiser validar manualmente no banco ao fim do fluxo, tenha tambem `psql` no `PATH`.
+
+Bootstrap rapido do indice em PowerShell:
+
+```powershell
+.\bin\bootstrap-fabrica-projects-postgres.ps1 --skip-chunks
+```
 
 ## Passo 1 - Criar o Arquivo da Ideia
 

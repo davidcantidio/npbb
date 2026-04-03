@@ -3,10 +3,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-PYTHON_BIN="${REPO_ROOT}/backend/.venv/bin/python"
+VENV_DIR="${REPO_ROOT}/backend/.venv"
+PYTHON_BIN=""
 
-if [[ ! -x "${PYTHON_BIN}" ]]; then
-  echo "Erro: ${PYTHON_BIN} nao encontrado. Crie a venv em backend/.venv e instale as dependencias." >&2
+if [[ -x "${VENV_DIR}/bin/python" ]]; then
+  PYTHON_BIN="${VENV_DIR}/bin/python"
+elif [[ -f "${VENV_DIR}/Scripts/python.exe" ]]; then
+  PYTHON_BIN="${VENV_DIR}/Scripts/python.exe"
+fi
+
+if [[ -z "${PYTHON_BIN}" ]]; then
+  echo "Erro: venv em ${VENV_DIR} nao encontrada (esperado bin/python ou Scripts/python.exe)." >&2
+  echo "Crie a venv em backend/.venv e instale as dependencias." >&2
   exit 1
 fi
 

@@ -76,7 +76,8 @@ def _get_database_url() -> str:
             f"@{host}:{port}/{dbname}?sslmode={sslmode}"
         )
     raise RuntimeError(
-        "DATABASE_URL nao configurada e fallback SQLite desabilitado para producao/homologacao."
+        "DATABASE_URL obrigatoria (fora de testes): edite backend/.env e preencha DATABASE_URL "
+        "(Supabase ou Postgres local). Copiar .env.example sem substituir o valor deixa a chave vazia e falha ao subir a API."
     )
 
 

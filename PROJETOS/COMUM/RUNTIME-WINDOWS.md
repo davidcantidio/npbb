@@ -35,11 +35,19 @@ Detalhe e precedencia: `AGENTS.md` na raiz do repositorio OpenClaw.
 
 ## Bash e scripts em `bin/*.sh`
 
-- Preferir **Git Bash**: tipicamente `C:\Program Files\Git\bin\bash.exe`.
-- Correr scripts a partir da raiz do clone OpenClaw, por exemplo:
-  `./bin/sync-fabrica-projects-db.sh`, `./bin/verify-openclaw-skill-parity.sh`.
+- Para o indice de projetos, preferir os wrappers PowerShell nativos:
+  - `.\bin\ensure-fabrica-projects-index-runtime.ps1`
+  - `.\bin\sync-fabrica-projects-db.ps1`
+  - `.\bin\apply-fabrica-projects-pg-schema.ps1`
+  - `.\bin\bootstrap-fabrica-projects-postgres.ps1`
+- **Git Bash** continua opcional para os restantes `bin/*.sh`: tipicamente
+  `C:\Program Files\Git\bin\bash.exe`.
+- Correr scripts a partir da raiz canonica `fabrica/`.
 
 ## Postgres / `host.env`
 
 - Configuracao local: `~/.config/nemoclaw-host/host.env` (fora do Git).
 - Variaveis: ver `SPEC-RUNTIME-POSTGRES-MATRIX.md` e `config/host.env.example`.
+- Durante a migracao local no Windows, os wrappers `.ps1` do indice aceitam
+  `host.env` com chaves legadas do namespace anterior e remapeiam esses
+  valores para `FABRICA_*` apenas no processo atual.

@@ -3,6 +3,7 @@
 Esta e a porta de entrada da documentacao do projeto. Se estiver com pressa, siga o **README** e o **SETUP**.
 
 ## Comece por aqui
+- `MANUAL-NPBB.md` - manual consolidado em linguagem simples, com passos praticos e exemplos ficticios
 - `../README.MD` - visao geral + comandos rapidos
 - `SETUP.md` - setup completo (backend + frontend)
 - `DEPLOY_RENDER_CLOUDFLARE.md` - deploy oficial (Render + Cloudflare Pages)

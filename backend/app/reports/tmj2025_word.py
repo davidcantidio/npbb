@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, Sequence
 
 from docx import Document
 from docx.table import Table
@@ -33,10 +33,8 @@ from app.models.models import (
     EventSessionType,
     FestivalLead,
     IngestionRun,
-    IngestionStatus,
     OptinTransaction,
     Source,
-    SourceKind,
     TicketCategorySegmentMap,
     TicketSales,
 )

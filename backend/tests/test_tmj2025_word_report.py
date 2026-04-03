@@ -118,7 +118,7 @@ def test_generate_tmj2025_closing_report_inserts_content_and_sources(tmp_path: P
             session_type=EventSessionType.NOTURNO_SHOW,
             source_of_truth_source_id="SRC_PDF_ACESSO_NOTURNO_TREZE",
         )
-        s14 = get_or_create_tmj2025_session(
+        get_or_create_tmj2025_session(
             session,
             event_id=None,
             session_date=date(2025, 12, 14),

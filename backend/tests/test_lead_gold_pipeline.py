@@ -7,7 +7,7 @@ POST /leads/batches/{id}/executar-pipeline
 from __future__ import annotations
 
 import io
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -69,7 +69,7 @@ def _seed_user(session: Session) -> Usuario:
 
 
 def _seed_status(session: Session) -> StatusEvento:
-    status = session.exec(select(StatusEvento).where(StatusEvento.nome == "Previsto")).first()
+    status = session.exec(sa_select(StatusEvento).where(StatusEvento.nome == "Previsto")).first()
     if not status:
         status = StatusEvento(nome="Previsto")
         session.add(status)
@@ -227,7 +227,7 @@ class TestExecutarPipeline:
         with patch(
             "app.routers.leads.executar_pipeline_gold",
             new_callable=AsyncMock,
-        ) as mock_pipeline:
+        ):
             resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
 
         assert resp.status_code == 202, resp.text

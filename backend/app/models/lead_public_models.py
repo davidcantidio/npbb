@@ -1,14 +1,26 @@
 """Lead, publicidade e staging ligados ao fluxo transacional legado."""
 
+from __future__ import annotations
+
 from datetime import date, datetime, time
 from enum import Enum
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Column, DateTime, Text, UniqueConstraint
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
 from app.models.models import LeadAliasTipo, LeadConversaoTipo, now_utc
+
+if TYPE_CHECKING:
+    from app.models.models import (
+        AtivacaoLead,
+        ConversaoAtivacao,
+        Cupom,
+        Evento,
+        LeadReconhecimentoToken,
+        QuestionarioResposta,
+    )
 
 
 class LeadEventoSourceKind(str, Enum):

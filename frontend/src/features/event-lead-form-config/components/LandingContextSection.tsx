@@ -22,12 +22,16 @@ export function LandingContextSection({
             freeSolo
             options={[...TEMPLATE_OVERRIDE_OPTIONS]}
             value={landingMeta.template_override}
+            inputValue={landingMeta.template_override}
             onChange={(_, value) =>
-              onLandingMetaChange({ template_override: value ?? "" })
+              onLandingMetaChange({
+                template_override: typeof value === "string" ? value : "",
+              })
             }
-            onInputChange={(_, value) =>
-              onLandingMetaChange({ template_override: value })
-            }
+            onInputChange={(_, value, reason) => {
+              if (reason === "reset") return;
+              onLandingMetaChange({ template_override: value });
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}

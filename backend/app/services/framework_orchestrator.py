@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from sqlmodel import Session, select
 

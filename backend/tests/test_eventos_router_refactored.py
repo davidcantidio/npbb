@@ -6,7 +6,6 @@ routers/eventos/ com subrouters por domínio.
 
 from __future__ import annotations
 
-import pytest
 
 
 def test_eventos_router_é_pacote_com_submodulos():

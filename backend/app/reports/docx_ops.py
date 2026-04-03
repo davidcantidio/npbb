@@ -10,7 +10,7 @@ This module provides small, focused helpers for those operations.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Optional
 
 from docx.document import Document as DocxDocument
 from docx.table import Table

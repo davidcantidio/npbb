@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 from sqlalchemy import delete
 from sqlmodel import Session, select

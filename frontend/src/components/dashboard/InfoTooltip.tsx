@@ -8,7 +8,15 @@ type InfoTooltipProps = {
 
 export function InfoTooltip({ label, description, placement = "top" }: InfoTooltipProps) {
   return (
-    <Tooltip title={description} placement={placement} describeChild>
+    <Tooltip
+      title={description}
+      placement={placement}
+      describeChild
+      enterDelay={0}
+      enterNextDelay={0}
+      leaveDelay={0}
+      TransitionProps={{ timeout: 0 }}
+    >
       <IconButton
         size="small"
         aria-label={`Saiba mais sobre ${label}`}

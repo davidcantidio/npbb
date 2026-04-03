@@ -1,5 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { ConsolidadoAgeAnalysis } from "../../../types/dashboard";
@@ -86,30 +85,38 @@ describe("ConsolidatedPanel", () => {
     expect(within(concentracaoBlock).getByText("66,7%")).toBeInTheDocument();
   });
 
-  it("exibe tooltips interpretativos com os textos definidos para media, mediana, concentracao e faixa dominante", async () => {
-    const user = userEvent.setup();
+  it("exibe tooltip interpretativo de media por evento", async () => {
     render(<ConsolidatedPanel data={buildConsolidated()} />);
 
-    await user.hover(screen.getByRole("button", { name: "Saiba mais sobre Media por evento" }));
+    fireEvent.mouseOver(screen.getByRole("button", { name: "Saiba mais sobre Media por evento" }));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Soma dos volumes dividida pela quantidade de eventos",
     );
+  });
 
-    await user.unhover(screen.getByRole("button", { name: "Saiba mais sobre Media por evento" }));
-    await user.hover(screen.getByRole("button", { name: "Saiba mais sobre Mediana por evento" }));
+  it("exibe tooltip interpretativo de mediana por evento", async () => {
+    render(<ConsolidatedPanel data={buildConsolidated()} />);
+
+    fireEvent.mouseOver(screen.getByRole("button", { name: "Saiba mais sobre Mediana por evento" }));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Volume central quando os eventos são ordenados por tamanho. Quando poucos eventos são muito grandes, a mediana é mais representativa do tamanho típico.",
     );
+  });
 
-    await user.unhover(screen.getByRole("button", { name: "Saiba mais sobre Mediana por evento" }));
-    await user.hover(screen.getByRole("button", { name: "Saiba mais sobre Concentracao Top 3" }));
+  it("exibe tooltip interpretativo de concentracao top 3", async () => {
+    render(<ConsolidatedPanel data={buildConsolidated()} />);
+
+    fireEvent.mouseOver(screen.getByRole("button", { name: "Saiba mais sobre Concentracao Top 3" }));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Percentual da base total representada pelos 3 maiores eventos",
     );
+  });
 
-    await user.unhover(screen.getByRole("button", { name: "Saiba mais sobre Concentracao Top 3" }));
+  it("exibe tooltip interpretativo de faixa dominante", async () => {
+    render(<ConsolidatedPanel data={buildConsolidated()} />);
+
     const faixaDominanteButtons = screen.getAllByRole("button", { name: "Saiba mais sobre Faixa dominante" });
-    await user.hover(faixaDominanteButtons[0]);
+    fireEvent.mouseOver(faixaDominanteButtons[0]);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Faixa etária com maior volume de leads neste evento",
     );

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { previewEventoLanding, type LandingPageData, type PreviewEventoLandingPayload } from "../../../services/landing_public";
 import { toApiErrorMessage } from "../../../services/http";
 
+const PREVIEW_REFRESH_DEBOUNCE_MS = import.meta.env.MODE === "test" ? 0 : 250;
+
 export function useLandingPreview(
   token: string | null,
   eventoId: number,
@@ -51,7 +53,7 @@ export function useLandingPreview(
   useEffect(() => {
     if (loading || !configLoaded || !token || !Number.isFinite(eventoId)) return;
 
-    const delayMs = hasLoadedInitialPreviewRef.current ? 250 : 0;
+    const delayMs = hasLoadedInitialPreviewRef.current ? PREVIEW_REFRESH_DEBOUNCE_MS : 0;
     const timer = window.setTimeout(() => {
       void loadPreview();
     }, delayMs);

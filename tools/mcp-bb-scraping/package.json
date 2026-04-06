@@ -1,0 +1,25 @@
+{
+  "name": "mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "scrape": "ts-node src/cli.ts",
+    "auth": "ts-node src/auth.ts",
+    "auth:ig": "ts-node src/auth.ts --platform ig",
+    "auth:x": "ts-node src/auth.ts --platform x",
+    "auth:tiktok": "ts-node src/auth.ts --platform tiktok",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.41.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

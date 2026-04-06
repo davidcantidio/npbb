@@ -1,0 +1,23 @@
+node_modules/
+dist/
+
+# Artefatos de execucao local (CSVs, JSONs, relatorios); nao versionar.
+out/
+
+# Evitar acidentes: variaveis exportadas como nome de ficheiro.
+OPENAI_API_KEY*
+**/OPENAI_API_KEY*
+
+__pycache__/
+**/__pycache__/
+*.pyc
+
+auth/*.json
+auth/chrome_user_data/
+auth/_pw_test_user_data/
+!auth/.gitkeep
+
+data/*
+!data/.gitkeep
+
+data_*/

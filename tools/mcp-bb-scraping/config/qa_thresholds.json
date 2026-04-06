@@ -1,0 +1,10 @@
+{
+  "coverage_min_pct": {
+    "likes": 60,
+    "comments": 60,
+    "views": 40
+  },
+  "min_posts": 30,
+  "definition": "Cobertura = % de posts com valor preenchido para a metrica.",
+  "unit": "percent"
+}

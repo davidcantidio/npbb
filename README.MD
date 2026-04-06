@@ -81,6 +81,10 @@ npm install
 npm run dev
 ```
 
+## Scraper de redes (ferramenta auxiliar)
+
+Existe um pipeline autonomo (Node/Playwright + Python) para coleta de posts em Instagram/X/TikTok e geracao de indicadores relacionados a mencoes ao BB. Codigo e instrucoes: [tools/mcp-bb-scraping/README.md](tools/mcp-bb-scraping/README.md). As saidas locais ficam em `tools/mcp-bb-scraping/out/` e nao sao versionadas.
+
 ## Framework Fabrica
 
 `PROJETOS/COMUM` neste repositório é espelhado da Fabrica. A fonte de verdade operacional fica no clone local em `C:\Users\NPBB\fabrica`.
@@ -89,6 +93,8 @@ Comando canônico da CLI da Fabrica para operar o `npbb`:
 ```powershell
 C:\Users\NPBB\fabrica\.venv\Scripts\python.exe C:\Users\NPBB\fabrica\scripts\fabrica.py --repo-root C:\Users\NPBB\npbb --help
 ```
+
+A CLI carrega automaticamente variáveis de ambiente a partir de `.env` na raiz do npbb e, em seguida, de `backend/.env` (ficheiros gitignored), **sem** substituir variáveis que já estejam definidas no terminal. Use isto para `OPENROUTER_API_KEY`, `FABRICA_FEATURES_PROVIDER_MODEL`, etc.
 
 Para fluxos de sync e pré-validação, defina `FABRICA_PROJECTS_DATABASE_URL` no terminal atual antes de chamar a CLI:
 ```powershell

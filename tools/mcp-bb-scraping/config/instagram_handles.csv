@@ -1,0 +1,32 @@
+name,handle,url,status,notes
+Alison Paz,doc_paz,https://www.instagram.com/doc_paz/,confirmed,user_url
+Augusto Akio,augakio,https://www.instagram.com/augakio/,confirmed,user_handle
+Bob Burnquist,bobburnquist,https://www.instagram.com/bobburnquist/,confirmed,user_handle
+Carol Bastides,carolbastides,https://www.instagram.com/carolbastides/,confirmed,user_handle
+Daniela Victoria,danielavitoriaskt,https://www.instagram.com/danielavitoriaskt/,confirmed,user_url
+Davison Fortunato,davisonfortunato,https://www.instagram.com/davisonfortunato/,confirmed,user_url
+Felipe Gustavo,fgustavoo,https://www.instagram.com/fgustavoo/,confirmed,user_handle
+Felipe Gustavo (tecnico),,,missing_handle,needs_handle
+Felipe Nunes,felipenunesskate,https://www.instagram.com/felipenunesskate/,confirmed,user_handle
+Filipe Mota,filipemotaskate,https://www.instagram.com/filipemotaskate/,confirmed,user_handle
+Filipe Toledo,filipetoledo,https://www.instagram.com/filipetoledo/,confirmed,already_scraped
+Fernando Araujo,skatistacego,https://www.instagram.com/skatistacego/,confirmed,user_url
+Gabriel Assuncao,ngabrielnascimento01,https://www.instagram.com/ngabrielnascimento01/,confirmed,user_url
+Giovanni Viana,giovanni_vianna,https://www.instagram.com/giovanni_vianna/,confirmed,user_url
+Helena Laurino,helena.laurino,https://www.instagram.com/helena.laurino/,confirmed,user_url
+Isaquias Queiroz,isaquias_lx,https://www.instagram.com/isaquias_lx/,confirmed,user_handle
+Italo Ferreira,italoferreira,https://www.instagram.com/italoferreira/,confirmed,user_handle
+Lorrane Souza,lorrane_c1,https://www.instagram.com/lorrane_c1/,confirmed,user_url
+Luana Silva,luanasilva,https://www.instagram.com/luanasilva/,needs_confirmation,user_guess
+Maria Eduarda,mariaeduardasurf,https://www.instagram.com/mariaeduardasurf/,confirmed,user_url
+Marina Gabriela,marinaskater,https://www.instagram.com/marinaskater/,confirmed,user_url
+Narciso Inacio,,,missing_handle,needs_handle
+Raicca Ventura,raicca.ventura,https://www.instagram.com/raicca.ventura/,confirmed,user_url
+Rayssa Leal,rayssalealsk8,https://www.instagram.com/rayssalealsk8/,confirmed,user_handle
+Rony Gomes,ronygomes,https://www.instagram.com/ronygomes/,confirmed,user_handle
+Taina Hinckel,tainahinckel,https://www.instagram.com/tainahinckel/,confirmed,scrape_due_2026-01-13
+Tati Weston,tatiwest,https://www.instagram.com/tatiwest/,needs_confirmation,user_guess
+Isaquias Queiroz,isaquias,https://www.instagram.com/isaquias/,alias,legacy_handle
+Lorrane Souza,lorranesouza,https://www.instagram.com/lorranesouza/,alias,legacy_handle
+Rayssa Leal,rayssaleal,https://www.instagram.com/rayssaleal/,alias,legacy_handle
+Tati Weston,tatiweston,https://www.instagram.com/tatiweston/,alias,legacy_handle

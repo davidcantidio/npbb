@@ -8,10 +8,11 @@ import pytest
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
+from app.models.lead_batch import LeadBatch
 from app.models.models import Usuario
 from app.utils.security import hash_password
 
@@ -98,6 +99,12 @@ class TestPostLeadsBatches:
         assert body["plataforma_origem"] == "email"
         assert body["id"] is not None
 
+        with Session(engine) as s:
+            row = s.get(LeadBatch, body["id"])
+            assert row is not None
+            assert row.arquivo_bronze == CSV_CONTENT
+            assert row.stage.value == "bronze"
+
     def test_upload_xlsx_creates_batch(self, client, engine):
         with Session(engine) as s:
             headers = _auth_header(client, s)
@@ -140,6 +147,49 @@ class TestPostLeadsBatches:
             data={"plataforma_origem": "email", "data_envio": "2026-03-01T10:00:00"},
         )
         assert resp.status_code == 400
+
+    def test_rejects_blank_plataforma_origem(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+            before = len(s.exec(select(LeadBatch)).all())
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={"plataforma_origem": "", "data_envio": "2026-03-01T10:00:00"},
+        )
+        # Campo vazio pode falhar na validacao do framework (422) ou no handler (400).
+        assert resp.status_code in (400, 422)
+
+        with Session(engine) as s:
+            assert len(s.exec(select(LeadBatch)).all()) == before
+
+    def test_rejects_whitespace_only_plataforma_origem(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={"plataforma_origem": "   \t  ", "data_envio": "2026-03-01T10:00:00"},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "MISSING_PLATFORM"
+
+    def test_rejects_invalid_data_envio(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={"plataforma_origem": "email", "data_envio": "not-a-date"},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "INVALID_DATE"
 
     def test_requires_auth(self, client):
         resp = client.post(

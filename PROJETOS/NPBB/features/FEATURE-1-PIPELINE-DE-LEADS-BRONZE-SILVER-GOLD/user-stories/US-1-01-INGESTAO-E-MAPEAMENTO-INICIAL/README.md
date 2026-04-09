@@ -56,7 +56,7 @@ minimos para tornar o lote auditavel antes da promocao para Gold.
 
 ## Tasks
 
-- [T1 - Estruturar lote Bronze e mapeamento Silver inicial](./TASK-1.md)
+- [x] [T1 - Estruturar lote Bronze e mapeamento Silver inicial](./TASK-1.md)
 
 ## Arquivos Reais Envolvidos
 
@@ -76,13 +76,16 @@ minimos para tornar o lote auditavel antes da promocao para Gold.
 
 ## Handoff para Revisao Pos-User Story
 
-status: nao_iniciado
+status: pronto_para_revisao_tecnica
 base_commit: nao_informado
 target_commit: nao_informado
-evidencia: nao_informado
+evidencia: Validacao de metadados obrigatorios no POST /leads/batches (plataforma_origem nao vazia apos trim); testes de lote Bronze cobrindo persistencia do arquivo bruto, rejeicao de plataforma em branco/espacos e data_envio invalida.
 commits_execucao: []
-validacoes_executadas: []
-arquivos_de_codigo_relevantes: []
+validacoes_executadas:
+  - pytest tests/test_lead_batch_endpoints.py (TESTING=true, PYTHONPATH backend+core)
+arquivos_de_codigo_relevantes:
+  - backend/app/routers/leads.py
+  - backend/tests/test_lead_batch_endpoints.py
 limitacoes: []
 
 ## Dependencias

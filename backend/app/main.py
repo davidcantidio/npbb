@@ -21,6 +21,7 @@ from app.routers.landing_public import router as landing_public_router
 from app.routers.leads import router as leads_router
 from app.routers.publicidade import router as publicidade_router
 from app.routers.ingressos import router as ingressos_router
+from app.routers.ingressos_v2 import router as ingressos_v2_router
 from app.routers.revisao_humana import router as revisao_humana_router
 from app.routers.usuarios import router as usuarios_router
 from app.routers.ingestion_registry import router as ingestion_registry_router
@@ -179,6 +180,7 @@ app.include_router(ativacao_router)
 app.include_router(eventos_ativacao_router)
 app.include_router(ativos_router)
 app.include_router(ingressos_router)
+app.include_router(ingressos_v2_router)
 app.include_router(leads_router)
 app.include_router(publicidade_router)
 app.include_router(landing_public_router)

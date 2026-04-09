@@ -60,6 +60,8 @@ Crie um Web Service no Render (**Instance Type: Free** no dashboard, ou use o Bl
 - `GET https://npbb-api.onrender.com/health` deve retornar `{"status":"ok"}`
 - `GET https://npbb-api.onrender.com/docs` deve responder `200`
 
+No plano **Free** do Render o primeiro request apos hibernacao pode levar mais de um minuto; use timeout alto, por exemplo: `curl --max-time 180 -sS https://npbb-api.onrender.com/health`
+
 ### Estado operacional validado (F3)
 
 O runtime do backend foi validado contra o Supabase como banco unico (ISSUE-F3-01-001):

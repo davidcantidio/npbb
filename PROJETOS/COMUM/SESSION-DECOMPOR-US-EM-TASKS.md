@@ -55,8 +55,8 @@ sugerir codigo de aplicacao. O output permitido e apenas ficheiros
 
 Antes do primeiro gate desta sessao:
 
-1. rode `./bin/ensure-fabrica-projects-index-runtime.sh --allow-missing-url`
-2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh`
+1. rode `../fabrica/bin/ensure-fabrica-projects-index-runtime.sh --allow-missing-url`
+2. se o preflight devolver exit `0`, rode `python3 ../fabrica/scripts/fabrica.py --repo-root . sync`
 3. consulte o estado da US e das tasks ja existentes no projeto apenas quando o sync tiver corrido
 4. compare com o Markdown canonico; o **Markdown prevalece**
 5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do primeiro gate, incluindo exit code e motivo quando o preflight falhar

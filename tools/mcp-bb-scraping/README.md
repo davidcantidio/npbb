@@ -4,6 +4,7 @@ Projeto para coletar posts de Instagram/X/TikTok com Playwright, gerar indicador
 
 ## Visao geral
 - Scrape multi-plataforma (IG/X/TikTok) com login manual quando necessario.
+- `--max` define quantos itens sao coletados por plataforma (incluindo posts fixados fora do periodo). `--since` e `--until` filtram apenas o resumo (`summary`), os indicadores e o relatorio deterministico; os CSVs brutos mantem ate `max` linhas com as datas reais de cada publicacao.
 - Instagram: gera posts enriquecidos, indicadores tabulados e relatorio deterministico automaticamente (Python).
 - Interpretacao opcional via IA usando o indicadores.json.
 - Saidas em CSV com separador ";" e BOM (Excel pt-BR).
@@ -133,6 +134,7 @@ npm run scrape -- --profile <handle> --since 2024-01-01 --until 2024-01-31 --out
 ```bash
 python report/append_indicator.py --handle <handle> --csv "out/<dir>/<arquivo_posts>.csv" --out "out/<dir>/indicadores_<handle>.csv"
 ```
+Opcional: `--since` e `--until` (YYYY-MM-DD) para recortar as linhas antes de calcular indicadores (mesma semantica do scrape).
 
 3) Relatorio deterministico:
 - Executa automaticamente no fim do scraping do Instagram (requer Python + pandas).
@@ -140,7 +142,7 @@ python report/append_indicator.py --handle <handle> --csv "out/<dir>/<arquivo_po
 ```bash
 python generate_report.py --file "out/<dir>/<arquivo_posts>.csv" --user "<handle>" --out "out/<dir>"
 ```
-Opcional: `--since "YYYY-MM-DD"` para forcar recorte. Se omitido, usa o inicio da base.
+Opcional: `--since` e `--until` (YYYY-MM-DD) para forcar recorte. Se `--since` for omitido, usa o inicio da base. Opcional: `--report-snapshot-dir "out/relatorios/YYYY-MM-DD"` e `--report-file-prefix "<prefixo_sanitizado>"` para gravar copias nomeadas na pasta agregada (use ambos juntos).
 
 4) Interpretacao por IA (opcional):
 ```bash
@@ -167,6 +169,7 @@ python report/consolidate_indicators.py
 - `out/<dir>/summary_<handle>.csv`, `out/<dir>/top_hashtags_bb_<handle>.csv`, `out/<dir>/top_mentions_bb_<handle>.csv`.
 - `out/<dir>/run_<handle>.csv` e `out/<dir>/run_<handle>.log`: log da execucao.
 - `out/<dir>/texto_relatorio.md`, `out/<dir>/indicadores.json` e `out/<dir>/tabelas.md` (quando o relatorio deterministico roda).
+- Copia agregada por data (fuso local da maquina no momento do relatorio): `out/relatorios/YYYY-MM-DD/<prefixo>_texto_relatorio.md`, `<prefixo>_tabelas.md` e `<prefixo>_indicadores.json`, onde `<prefixo>` e o nome do atleta sanitizado (ou o handle se nao houver nome no CSV). Nova execucao no mesmo dia para o mesmo atleta substitui esses ficheiros.
 
 ## Flags principais (scrape)
 - `--profile <handle>` / `--perfil <handle>`

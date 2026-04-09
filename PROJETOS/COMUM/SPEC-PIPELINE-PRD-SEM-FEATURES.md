@@ -86,7 +86,7 @@ flowchart LR
 | **PM / agentes** | Planejamento em **tres sessoes** (ou router) em vez de um unico bloco monolitico. |
 | **Skills e automacao** | Referencias a «PRD com features» ou «SESSION-PLANEJAR como unica decomposicao» devem ser atualizadas. |
 | **Projetos existentes** | PRDs historicos com Features/US no corpo **nao** invalidam o repo; novos PRDs seguem `GOV-PRD.md`. Migracao de conteudo legado e opcional por projeto. |
-| **Indice** | Cutover operacional concluido em Postgres; SQLite fica restrito a migracao/backfill explicitos documentados em `SPEC-INDICE-PROJETOS-POSTGRES.md` e `scripts/openclaw_projects_index/README.md`. |
+| **Indice** | Cutover operacional concluido em Postgres; SQLite fica restrito a migracao/backfill explicitos documentados em `SPEC-INDICE-PROJETOS-POSTGRES.md` e `scripts/fabrica_projects_index/README.md`. |
 
 ## 4. Estrategia de migracao
 
@@ -111,7 +111,7 @@ flowchart LR
 - [x] Entrypoints (`AGENTS.md`, `SESSION-MAPA.md`, `boot-prompt.md`, `GOV-FRAMEWORK-MASTER.md`) declaram a cadeia completa e o PRD sem backlog estruturado.
 - [x] O framework declara **Postgres** como read model alvo (spec + README do indice); Markdown permanece fonte de verdade.
 - [x] SPEC Postgres cobre tabelas obrigatorias incl. `execution_commits` e `sync_runs`.
-- [x] DDL Postgres base (`schema_postgres.sql`) e espelho opcional SQLite → Postgres (`legacy/mirror_sqlite_to_postgres.py`) publicados em `scripts/openclaw_projects_index/`.
+- [x] DDL Postgres base (`schema_postgres.sql`) e espelho opcional SQLite -> Postgres (`legacy/mirror_sqlite_to_postgres.py`) publicados em `scripts/fabrica_projects_index/`.
 
 ## 7. Riscos e mitigacao
 
@@ -126,6 +126,6 @@ flowchart LR
 
 - [`LEGADO/SPEC-T1-ESTADO-ATUAL-FRAMEWORK-OPENCLAW.md`](LEGADO/SPEC-T1-ESTADO-ATUAL-FRAMEWORK-OPENCLAW.md) — baseline historico pre-migracao.
 - [`SPEC-INDICE-PROJETOS-POSTGRES.md`](SPEC-INDICE-PROJETOS-POSTGRES.md) — contrato tecnico do read model.
-- [`schema_postgres.sql`](../../scripts/openclaw_projects_index/schema_postgres.sql) — DDL Postgres bundle `pg-1`.
-- [`scripts/openclaw_projects_index/README.md`](../../scripts/openclaw_projects_index/README.md) — runtime operacional Postgres e fluxos legados de migracao/backfill.
+- [`schema_postgres.sql`](../../scripts/fabrica_projects_index/schema_postgres.sql) — DDL Postgres bundle `pg-1`.
+- [`scripts/fabrica_projects_index/README.md`](../../scripts/fabrica_projects_index/README.md) — runtime operacional Postgres e fluxos legados de migracao/backfill.
 - [`GOV-FRAMEWORK-MASTER.md`](GOV-FRAMEWORK-MASTER.md) — mapa mestre do repositorio.

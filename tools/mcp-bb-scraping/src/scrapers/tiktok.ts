@@ -10,8 +10,6 @@ import { extractHandleFromProfileUrl } from "../utils/profile";
 export interface TikTokScrapeOptions {
   profileUrl: string;
   max: number;
-  since: Date | null;
-  until: Date | null;
   logger: Logger;
   timeoutMs: number;
   debug: boolean;
@@ -24,16 +22,6 @@ export interface TikTokScrapeResult {
   debug: {
     links: string[];
   };
-}
-
-function isInDateRange(datetime: string | null, since: Date | null, until: Date | null): boolean {
-  if (!since && !until) return true;
-  if (!datetime) return false;
-  const dt = new Date(datetime).getTime();
-  if (!Number.isFinite(dt)) return false;
-  if (since && dt < since.getTime()) return false;
-  if (until && dt > until.getTime()) return false;
-  return true;
 }
 
 export async function scrapeTikTok(context: BrowserContext, options: TikTokScrapeOptions): Promise<TikTokScrapeResult> {
@@ -86,7 +74,6 @@ export async function scrapeTikTok(context: BrowserContext, options: TikTokScrap
         if (videos.length >= options.max) break;
         const item = await safeScrapeVideo(videoPage, url, options.logger, options.timeoutMs);
         if (!item) continue;
-        if (!isInDateRange(item.datetime, options.since, options.until)) continue;
         videos.push(item);
         await sleepBetween(700, 1900);
       }

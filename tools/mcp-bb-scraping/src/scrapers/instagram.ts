@@ -10,8 +10,6 @@ import { extractInstagramProfileHandle } from "../utils/profile";
 export interface InstagramScrapeOptions {
   profileUrl: string;
   max: number;
-  since: Date | null;
-  until: Date | null;
   logger: Logger;
   timeoutMs: number;
   debug: boolean;
@@ -33,16 +31,6 @@ export interface InstagramScrapeResult {
   debug: {
     links: string[];
   };
-}
-
-function isInDateRange(datetime: string | null, since: Date | null, until: Date | null): boolean {
-  if (!since && !until) return true;
-  if (!datetime) return false;
-  const dt = new Date(datetime).getTime();
-  if (!Number.isFinite(dt)) return false;
-  if (since && dt < since.getTime()) return false;
-  if (until && dt > until.getTime()) return false;
-  return true;
 }
 
 export async function scrapeInstagram(context: BrowserContext, options: InstagramScrapeOptions): Promise<InstagramScrapeResult> {
@@ -110,8 +98,6 @@ export async function scrapeInstagram(context: BrowserContext, options: Instagra
         );
         if (!result) continue;
         const { post: enriched, isBbLegacy } = result;
-
-        if (!isInDateRange(enriched.datetime, options.since, options.until)) continue;
 
         enrichedPosts.push(enriched);
         posts.push({

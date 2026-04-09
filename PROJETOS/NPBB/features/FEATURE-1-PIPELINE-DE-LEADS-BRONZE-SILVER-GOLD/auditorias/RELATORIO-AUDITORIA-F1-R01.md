@@ -29,7 +29,7 @@ permanece sem veredito material ate haver auditoria real.
 - prd: [PRD-NPBB.md](../../../PRD-NPBB.md)
 - feature: [Feature piloto](../FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD.md)
 - user stories: [US piloto](../user-stories/US-1-01-INGESTAO-E-MAPEAMENTO-INICIAL/README.md)
-- testes: `tests/test_criar_projeto.py`, `tests/test_openclaw_projects_index.py`
+- testes: `tests/test_criar_projeto.py`, `tests/test_fabrica_boundary.py`
 - diff/commit: nao aplicavel ainda
 
 ## Conformidades

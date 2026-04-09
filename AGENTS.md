@@ -34,5 +34,5 @@ See `docs/SETUP.md` for full details and `Makefile` target `ci-quality` for the 
 - `PROJETOS/COMUM/boot-prompt.md` is the canonical autonomous entrypoint for the local OpenClaw governance flow.
 - `PROJETOS/COMUM/SESSION-MAPA.md` is the canonical interactive entrypoint.
 - The active governance chain in this repo is `Intake -> PRD -> Feature -> User Story -> Task -> Execucao -> Review -> Auditoria de Feature`.
-- `PROJETOS/**/*.md` is the source of truth for governance artifacts. The derived index under `.openclaw/openclaw-projects.sqlite` is read-only operational state.
+- `PROJETOS/**/*.md` is the source of truth for governance artifacts. The derived index is owned by the sibling `fabrica` runtime via `python ..\\fabrica\\scripts\\fabrica.py --repo-root . sync` with `FABRICA_PROJECTS_DATABASE_URL`.
 - New project work must use the canonical layout `PROJETOS/<PROJETO>/features/FEATURE-*/user-stories/US-*/TASK-*.md`.

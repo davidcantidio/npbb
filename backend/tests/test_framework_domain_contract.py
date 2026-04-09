@@ -30,6 +30,7 @@ from app.schemas.framework import (
     FrameworkIntakeRead,
     FrameworkIntakeStructuredPayload,
     FrameworkIntakeUpdate,
+    FrameworkProjectRead,
     FrameworkIntakeVersionEntry,
     FrameworkPRDCreate,
     FrameworkPRDRead,
@@ -115,6 +116,7 @@ def test_framework_enum_domains_match_canonical_contract() -> None:
 
 def test_framework_models_materialize_canonical_ids_and_controlled_taxonomies() -> None:
     assert {"canonical_name", "status", "agent_mode"} <= set(FrameworkProject.__table__.columns.keys())
+    assert {"current_intake_id", "current_prd_id"}.isdisjoint(FrameworkProject.__table__.columns.keys())
     assert {"canonical_id", "audit_gate", "definition_of_done_json"} <= set(
         FrameworkPhase.__table__.columns.keys()
     )
@@ -139,6 +141,8 @@ def test_framework_models_materialize_canonical_ids_and_controlled_taxonomies() 
     assert {"target_ref", "human_approval", "evidence_ref"} <= set(
         AgentExecution.__table__.columns.keys()
     )
+    assert "is_current" in FrameworkIntake.__table__.columns.keys()
+    assert "is_current" in FrameworkPRD.__table__.columns.keys()
 
     _assert_sqlalchemy_enum(
         FrameworkProject.__table__,
@@ -223,6 +227,10 @@ def test_framework_schemas_use_controlled_types_for_intake_and_prd_contracts() -
             == expected_source_mode
         )
 
+    assert {"current_intake_id", "current_prd_id"}.isdisjoint(FrameworkProjectRead.model_fields)
+    assert FrameworkIntakeRead.model_fields["is_current"].annotation is bool
+    assert FrameworkPRDRead.model_fields["is_current"].annotation is bool
+
 
 def test_framework_intake_contract_exposes_typed_payload_gaps_checklist_and_versions() -> None:
     assert isinstance(FrameworkIntake.structured_payload, property)
@@ -252,7 +260,7 @@ def test_framework_intake_contract_exposes_typed_payload_gaps_checklist_and_vers
     )
 
 
-def test_framework_initial_revision_reflects_the_canonical_contract() -> None:
+def test_framework_initial_revision_preserves_legacy_current_pointer_contract_for_backfill() -> None:
     backend_dir = Path(__file__).resolve().parents[1]
     revision_path = (
         backend_dir
@@ -269,6 +277,7 @@ def test_framework_initial_revision_reflects_the_canonical_contract() -> None:
     assert "sa.Column('approval_status'" in intake_block
     assert "sa.Column('intake_kind'" in intake_block
     assert "sa.Column('source_mode'" in intake_block
+    assert "is_current" not in intake_block
     assert "sa.Column('validated'" not in intake_block
     assert "sa.Column('content', sa.Text()" not in intake_block
 
@@ -277,6 +286,7 @@ def test_framework_initial_revision_reflects_the_canonical_contract() -> None:
     assert "sa.Column('title'" in prd_block
     assert "sa.Column('content_md'" in prd_block
     assert "sa.Column('approval_status'" in prd_block
+    assert "is_current" not in prd_block
     assert "sa.Column('approved'" not in prd_block
     assert "sa.Column('content', sa.Text()" not in prd_block
 
@@ -343,3 +353,25 @@ def test_framework_initial_revision_reflects_the_canonical_contract() -> None:
     assert "sa.Column('instruction_payload_json'" in task_block
     assert "sa.Column('document_path'" in task_block
     assert "sa.Column('instruction', sa.Text()" not in task_block
+
+
+def test_framework_alignment_revision_moves_current_artifact_state_to_children() -> None:
+    backend_dir = Path(__file__).resolve().parents[1]
+    revision_path = (
+        backend_dir
+        / "alembic"
+        / "versions"
+        / "84e74e67a3c1_align_framework_current_artifacts_to_.py"
+    )
+    contents = revision_path.read_text(encoding="utf-8")
+
+    assert 'revision = "84e74e67a3c1"' in contents
+    assert 'down_revision = "17e2fd99b4fe"' in contents
+    assert 'sa.Column("is_current", sa.Boolean(), nullable=False, server_default=sa.false())' in contents
+    assert 'op.create_index(' in contents
+    assert '"uq_framework_intake_current_project"' in contents
+    assert '"uq_framework_prd_current_project"' in contents
+    assert 'project.current_intake_id = intake.id' in contents
+    assert 'project.current_prd_id = prd.id' in contents
+    assert 'op.drop_column("framework_project", "current_intake_id")' in contents
+    assert 'op.drop_column("framework_project", "current_prd_id")' in contents

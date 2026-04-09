@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.models import models as _legacy_models  # noqa: F401
-from app.models.framework_models import ApprovalStatus, FrameworkIntake
+from app.models.framework_models import ApprovalStatus, FrameworkIntake, FrameworkPRD
 from app.schemas.framework import (
     FrameworkIntakeCreate,
     FrameworkIntakeGenerateRequest,
@@ -204,6 +204,7 @@ def test_framework_intake_generation_from_raw_context_persists_structured_payloa
     assert intake.doc_id == "INTAKE-FW5-INTAKE-FLOW"
     assert intake.structured_payload["problem_statement"].startswith("O PM")
     assert intake.structured_payload["primary_audience"] == "PM"
+    assert intake.is_current is True
     assert intake.ready_for_prd is True
     assert intake.known_gaps == []
     assert intake.readiness_checklist[0]["completed"] is True
@@ -244,6 +245,7 @@ def test_framework_intake_read_round_trips_typed_contract_from_model_helpers() -
         title="FW5 Intake",
         content_md="# Intake",
         approval_status=ApprovalStatus.PENDING,
+        is_current=True,
         updated_at=datetime(2026, 3, 19, 12, 0, tzinfo=timezone.utc),
         checklist_status_json={
             "ready_for_prd": False,
@@ -264,3 +266,127 @@ def test_framework_intake_read_round_trips_typed_contract_from_model_helpers() -
     assert read_model.version_history[0].version_number == 1
     assert read_model.ready_for_prd is False
     assert read_model.approval_status == ApprovalStatus.PENDING
+    assert read_model.is_current is True
+
+
+def test_framework_process_intake_switches_the_single_current_intake(db_session: Session) -> None:
+    project = _create_project(db_session, canonical_name="fw5-intake-switch")
+    orchestrator = AgentOrchestrator(db_session)
+
+    first_intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake V1",
+            doc_id="INTAKE-FW5-V1",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+    second_intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake V2",
+            doc_id="INTAKE-FW5-V2",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+
+    all_intakes = db_session.exec(
+        select(FrameworkIntake)
+        .where(FrameworkIntake.project_id == project.id)
+        .order_by(FrameworkIntake.id)
+    ).all()
+    current_intakes = [intake for intake in all_intakes if intake.is_current]
+
+    assert [intake.id for intake in all_intakes] == [first_intake.id, second_intake.id]
+    assert first_intake.id != second_intake.id
+    assert len(current_intakes) == 1
+    assert current_intakes[0].id == second_intake.id
+    assert all_intakes[0].is_current is False
+    assert all_intakes[1].is_current is True
+
+
+def test_framework_generate_prd_uses_the_current_intake_instead_of_latest_created(db_session: Session) -> None:
+    project = _create_project(db_session, canonical_name="fw5-prd-current-intake")
+    orchestrator = AgentOrchestrator(db_session)
+
+    first_intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake V1",
+            doc_id="INTAKE-FW5-V1",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+    second_intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake V2",
+            doc_id="INTAKE-FW5-V2",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+
+    second_intake.is_current = False
+    db_session.add(second_intake)
+    db_session.commit()
+
+    first_intake.is_current = True
+    db_session.add(first_intake)
+    db_session.commit()
+
+    prd = orchestrator.generate_prd(project.id)
+
+    assert prd.intake_id == first_intake.id
+    assert prd.doc_id == "PRD-FW5-V1"
+    assert prd.is_current is True
+
+
+def test_framework_generate_prd_switches_the_single_current_prd(db_session: Session) -> None:
+    project = _create_project(db_session, canonical_name="fw5-prd-switch")
+    orchestrator = AgentOrchestrator(db_session)
+
+    first_intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake V1",
+            doc_id="INTAKE-FW5-V1",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+    first_prd = orchestrator.generate_prd(project.id)
+
+    second_intake = orchestrator.process_intake(
+        project.id,
+        FrameworkIntakeGenerateRequest(
+            title="FW5 Intake V2",
+            doc_id="INTAKE-FW5-V2",
+            raw_context=_complete_raw_context(),
+            intake_kind=IntakeKind.NEW_CAPABILITY,
+            source_mode=SourceMode.ORIGINAL,
+        ),
+    )
+    second_prd = orchestrator.generate_prd(project.id, auto_approve=True)
+
+    all_prds = db_session.exec(
+        select(FrameworkPRD)
+        .where(FrameworkPRD.project_id == project.id)
+        .order_by(FrameworkPRD.id)
+    ).all()
+    current_prds = [prd for prd in all_prds if prd.is_current]
+
+    assert first_prd.intake_id == first_intake.id
+    assert second_prd.intake_id == second_intake.id
+    assert len(current_prds) == 1
+    assert current_prds[0].id == second_prd.id
+    assert all_prds[0].is_current is False
+    assert all_prds[1].is_current is True

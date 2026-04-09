@@ -71,7 +71,7 @@ Nao re-inferir comportamento do pipeline a partir de sessoes: a descricao
 canonica atual do entrypoint, preflight, determinismo e precedencia do Markdown
 esta em `scripts/fabrica_projects_index/README.md`, no wrapper
 `bin/ensure-fabrica-projects-index-runtime.sh` e em
-`bin/sync-openclaw-projects-db.sh`.
+`bin/sync-fabrica-projects-db.sh`.
 
 ## 6. Documentos relacionados
 

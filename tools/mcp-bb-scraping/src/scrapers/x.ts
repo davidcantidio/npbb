@@ -8,8 +8,6 @@ import { sleep } from "../utils/sleep";
 export interface XScrapeOptions {
   profileUrl: string;
   max: number;
-  since: Date | null;
-  until: Date | null;
   logger: Logger;
   timeoutMs: number;
 }
@@ -17,16 +15,6 @@ export interface XScrapeOptions {
 export interface XScrapeResult {
   profile: ProfileSnapshot;
   tweets: XTweet[];
-}
-
-function isInDateRange(datetime: string | null, since: Date | null, until: Date | null): boolean {
-  if (!since && !until) return true;
-  if (!datetime) return false;
-  const dt = new Date(datetime).getTime();
-  if (!Number.isFinite(dt)) return false;
-  if (since && dt < since.getTime()) return false;
-  if (until && dt > until.getTime()) return false;
-  return true;
 }
 
 export async function scrapeX(context: BrowserContext, options: XScrapeOptions): Promise<XScrapeResult> {
@@ -89,8 +77,6 @@ async function collectTweets(page: Page, options: XScrapeOptions): Promise<XTwee
         likes: parseCompactNumber(item.likes_text ?? ""),
         views: parseCompactNumber(item.views_text ?? ""),
       };
-
-      if (!isInDateRange(tweet.datetime, options.since, options.until)) continue;
 
       tweets.push(tweet);
       added += 1;

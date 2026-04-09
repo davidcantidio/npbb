@@ -58,6 +58,7 @@ Thumbs.db
 backend/app.db
 localhost.har
 issues.zip
+.openclaw/*.sqlite
 reports/**/*.docx
 **/.ruff_cache/
 **/.pytest_cache/

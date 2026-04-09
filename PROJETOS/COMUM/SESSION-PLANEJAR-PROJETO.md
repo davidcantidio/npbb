@@ -85,7 +85,7 @@ OBSERVACOES:   <restricoes adicionais ou "nenhuma">
 
 Antes do primeiro gate de planejamento na etapa em curso, sincronize o indice
 operacional conforme o processo canônico vigente em `GOV-FRAMEWORK-MASTER.md`
-(por exemplo `./bin/sync-fabrica-projects-db.sh` com
+(por exemplo `python3 ../fabrica/scripts/fabrica.py --repo-root . sync` com
 `FABRICA_PROJECTS_DATABASE_URL` apontando para o Postgres local-first canônico;
 ver `SPEC-INDICE-PROJETOS-POSTGRES.md`).
 

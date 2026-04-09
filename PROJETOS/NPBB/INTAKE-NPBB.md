@@ -178,7 +178,7 @@ Descreva o fluxo ponta a ponta em etapas curtas:
   `NPBB-LEADS` descrevem o pipeline Bronze -> Silver -> Gold como necessidade
   concreta de negocio
 - componente(s) afetado(s): `PROJETOS/NPBB`, `scripts/criar_projeto.py`,
-  `scripts/openclaw_projects_index/`, `backend`, `frontend` e `lead_pipeline`
+  runtime canonico da `fabrica`, `backend`, `frontend` e `lead_pipeline`
 - riscos de nao agir: o framework atual nao sera provado em producao real do
   projeto e a ingestao de leads continuara com rastreabilidade fraca
 

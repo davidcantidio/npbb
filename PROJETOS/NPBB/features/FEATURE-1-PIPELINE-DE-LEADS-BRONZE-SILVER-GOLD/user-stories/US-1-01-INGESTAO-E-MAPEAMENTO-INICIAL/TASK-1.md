@@ -43,7 +43,7 @@ registro de metadados e persistencia do mapeamento inicial para Silver.
 ## comandos_permitidos
 
 - `rg -n "lead_batches|leads_silver|upload|importacao|silver|bronze|gold" backend frontend lead_pipeline`
-- `pytest -q tests/test_criar_projeto.py tests/test_openclaw_projects_index.py`
+- `pytest -q tests/test_criar_projeto.py tests/test_fabrica_boundary.py`
 - `git status --short`
 
 ## resultado_esperado

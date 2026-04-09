@@ -55,7 +55,7 @@ Leia tambem antes de qualquer acao:
 
 Antes do Passo 0, sincronize o indice derivado de `PROJETOS/`:
 
-1. rode `./bin/sync-fabrica-projects-db.sh`
+1. rode `python3 ../fabrica/scripts/fabrica.py --repo-root . sync`
 2. consulte no DB o estado atual da feature, das user stories nao encerradas e
    do relatorio mais recente
 3. compare o resultado com o Markdown canonico da feature, do relatorio e do

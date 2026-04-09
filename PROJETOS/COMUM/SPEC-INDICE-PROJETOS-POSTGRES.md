@@ -40,7 +40,7 @@ Todas as tabelas abaixo **devem** existir no schema alvo. Tipos concretos são i
 
 **Inventário explícito (requisito normativo T14):** o read model Postgres prevê **obrigatoriamente** as relações nomeadas:
 
-`projects`, `project_documents`, `features`, `user_stories`, `tasks`, `feature_audits`, `documents`, `document_chunks`, `embeddings`, `execution_commits`, `sync_runs`.
+`projects`, `intakes`, `prds`, `features`, `user_stories`, `tasks`, `feature_audits`, `documents`, `document_chunks`, `embeddings`, `execution_commits`, `sync_runs`.
 
 Cada uma tem secção dedicada em §4 (§4.2–§4.8; `features` … `feature_audits` em §4.4).
 
@@ -74,7 +74,35 @@ Registo append-only de cada execução do sync (observabilidade, debugging, SLAs
 
 Critério de inclusão em `projects` mantém-se alinhado ao índice atual (presença de artefatos canónicos do projeto, cf. `README.md` do índice).
 
-### 4.3 `project_documents`
+### 4.3 `intakes` / `prds`
+**Contrato vigente:** `audit_log` e `closing_report` permanecem apenas em `documents`. Intake e PRD usam tabelas canÃ´nicas prÃ³prias:
+
+**`intakes`**
+
+| Coluna | Tipo sugerido | Notas |
+|--------|----------------|-------|
+| `id` | `bigserial` PK | |
+| `project_id` | `bigint` NOT NULL FK para `projects(id)` ON DELETE CASCADE | |
+| `document_id` | `bigint` NOT NULL UNIQUE FK para `documents(id)` ON DELETE CASCADE | |
+| `doc_id` | `text` NOT NULL | `doc_id` canÃ´nico do front matter |
+| `status` | `text` | |
+| `intake_kind`, `source_mode`, `intake_slug` | `text` | metadados canÃ´nicos do intake |
+| `path_relative` | `text` NOT NULL UNIQUE | path POSIX relativo Ã  raiz do repo |
+| `created_at` / `updated_at` | `timestamptz` | |
+
+**`prds`**
+
+| Coluna | Tipo sugerido | Notas |
+|--------|----------------|-------|
+| `id` | `bigserial` PK | |
+| `project_id` | `bigint` NOT NULL FK para `projects(id)` ON DELETE CASCADE | |
+| `document_id` | `bigint` NOT NULL UNIQUE FK para `documents(id)` ON DELETE CASCADE | |
+| `doc_id` | `text` NOT NULL | `doc_id` canÃ´nico do front matter |
+| `status` | `text` | |
+| `intake_kind`, `source_mode` | `text` | rastreabilidade herdada do intake |
+| `path_relative` | `text` NOT NULL UNIQUE | path POSIX relativo Ã  raiz do repo |
+| `created_at` / `updated_at` | `timestamptz` | |
+
 
 Metadados de documentos **ao nível do projeto** (PRD, intake, audit log, encerramento, etc.), sem duplicar o corpo — corpo em `documents`.
 
@@ -100,6 +128,7 @@ Estrutura análoga a `schema.sql` v4:
 **Unicidade:** reproduzir as UNIQUE do SQLite para evitar duplicados no mesmo projeto/feature.
 
 ### 4.5 `documents`
+`audit_log` e `closing_report` continuam somente nesta tabela, identificados por `kind`, sem tabela-resumo paralela.
 
 Tabela unificada de conteúdo indexado (corpo + front matter serializado).
 
@@ -176,8 +205,10 @@ Liga **commits Git** (ou revisões) a trabalho de execução/review, sem substit
 
 ## 5. Estratégia de sync (filesystem → Postgres)
 
+**Atualização vigente:** a ingestão canônica usa `documents` como corpo-fonte para `intakes` e `prds`; `project_documents` sai do runtime Postgres e da migração legada.
+
 1. **Deteção de alterações:** comparar `content_hash` e/ou `file_mtime` com linhas existentes em `documents`; paths removidos no Git → DELETE em cascata nas FKs (ou marcação `tombstone` se se preferir arquivo — documentar escolha).
-2. **Ordem de ingestão:** `projects` → entidades estruturadas (`features`, `user_stories`, `tasks`, `feature_audits`, `project_documents`) → `documents` (conteúdo) → (opcional) rebuild de chunks apenas para documentos alterados.
+2. **Ordem de ingestão:** `projects` → entidades estruturadas (`features`, `user_stories`, `tasks`, `feature_audits`) → `documents` (conteúdo) → entidades canônicas de projeto (`intakes`, `prds`) → (opcional) rebuild de chunks apenas para documentos alterados.
 3. **Transacções:** uma transação por `sync_run` ou por projeto, conforme tamanho do repo; falhas parciais devem refletir-se em `sync_runs.status = partial` com `error_message`.
 4. **Metadados globais:** substituir `sync_meta` key-value por consultas a `sync_runs` (último sucesso) + colunas em `projects` se necessário; chaves legadas como `last_sync_at` podem ser **VIEW** sobre `sync_runs`.
 5. **Compatibilidade legada controlada:** SQLite só entra em migração/backfill explícitos; durante esses fluxos, o mesmo código de classificação/parsing pode alimentar ambos os destinos ou gerar Parquet/JSON intermédio. A spec recomenda **uma única biblioteca de domínio** partilhada para evitar drift.
@@ -205,16 +236,16 @@ O agente pode ter lojas adicionais (logs, SOUL, notas fora de `PROJETOS/`). O co
 
 | Variável | Descrição |
 |----------|-----------|
-| `OPENCLAW_REPO_ROOT` | Raiz do clone (contém `PROJETOS/`). |
+| `FABRICA_REPO_ROOT` | Raiz do clone (contém `PROJETOS/`). |
 | `FABRICA_PROJECTS_DATABASE_URL` | URL Postgres (ex.: `postgresql://user:pass@localhost:5432/fabrica_projects`). Preferência sobre host/port/user/db soltos. |
-| `OPENCLAW_PGSSLMODE` | Opcional; default alinhado ao cliente. |
+| `FABRICA_PGSSLMODE` | Opcional; default alinhado ao cliente. |
 
 Compatibilidade legada de migracao/backfill:
 
 - `FABRICA_PROJECTS_DATABASE_URL` continua sendo a unica variavel operacional do indice.
-- snapshots SQLite historicos, quando ainda precisarem ser importados, devem ser fornecidos por caminho explicito aos utilitarios em `scripts/fabrica_projects_index/legacy/`.
+- snapshots SQLite historicos, quando ainda precisarem ser importados, devem ser fornecidos por caminho explicito aos utilitarios em `../fabrica/scripts/fabrica_projects_index/legacy/`.
 
-Documentar em `scripts/fabrica_projects_index/README.md` a separacao entre runtime operacional Postgres e compatibilidade legada de migracao.
+Documentar em `../fabrica/scripts/fabrica_projects_index/README.md` a separacao entre runtime operacional Postgres e compatibilidade legada de migracao.
 
 ## 8. Busca lexical (paridade FTS5)
 
@@ -234,7 +265,9 @@ A spec exige **pelo menos uma** forma de busca full-text ou sub-string indexada 
 
 ## 10. Critérios de aceite (esta spec)
 
-- [ ] **T14 — tabelas nomeadas:** o DDL alvo materializa as onze relações: `sync_runs`, `projects`, `project_documents`, `features`, `user_stories`, `tasks`, `feature_audits`, `documents`, `document_chunks`, `embeddings`, `execution_commits`.
+- [ ] **T14 atualizado:** o DDL alvo materializa doze relações: `sync_runs`, `projects`, `intakes`, `prds`, `features`, `user_stories`, `tasks`, `feature_audits`, `documents`, `document_chunks`, `embeddings`, `execution_commits`.
+
+- [ ] **T14 — tabelas nomeadas:** o DDL alvo materializa as doze relações: `sync_runs`, `projects`, `intakes`, `prds`, `features`, `user_stories`, `tasks`, `feature_audits`, `documents`, `document_chunks`, `embeddings`, `execution_commits`.
 - [ ] Todas as entidades listadas em §4 existem com FKs e unicidades alinhadas ao modelo v4 onde aplicável.
 - [ ] `embeddings` usa tipo `vector` (pgvector), não BLOB genérico.
 - [ ] `sync_runs` permite auditar cada corrida de indexação.
@@ -243,12 +276,12 @@ A spec exige **pelo menos uma** forma de busca full-text ou sub-string indexada 
 
 ## 11. Referências internas
 
-- `scripts/fabrica_projects_index/schema.sql` — paridade semântica SQLite v4.
-- `scripts/fabrica_projects_index/schema_postgres.sql` — DDL Postgres bundle `pg-1` (aplicar com `./bin/apply-fabrica-projects-pg-schema.sh`).
-- `scripts/fabrica_projects_index/legacy/mirror_sqlite_to_postgres.py` — espelho opcional SQLite → Postgres em fluxos legados de migracao.
-- `scripts/fabrica_projects_index/legacy/migrate_sqlite_embeddings_to_postgres.py` — migracao opcional de embeddings BLOB historicos para `pgvector`.
-- `scripts/fabrica_projects_index/sync.py` — classificação de paths e campos extraídos; runtime operacional exclusivamente Postgres.
-- `scripts/fabrica_projects_index/README.md` — variáveis operacionais Postgres e fluxos legados de migracao/backfill.
+- `../fabrica/scripts/fabrica_projects_index/schema.sql` — paridade semântica SQLite v4.
+- `../fabrica/scripts/fabrica_projects_index/schema_postgres.sql` — DDL Postgres bundle `pg-1` (aplicar com `../fabrica/bin/apply-fabrica-projects-pg-schema.sh`).
+- `../fabrica/scripts/fabrica_projects_index/legacy/mirror_sqlite_to_postgres.py` — espelho opcional SQLite → Postgres em fluxos legados de migracao.
+- `../fabrica/scripts/fabrica_projects_index/legacy/migrate_sqlite_embeddings_to_postgres.py` — migracao opcional de embeddings BLOB historicos para `pgvector`.
+- `../fabrica/scripts/fabrica_projects_index/sync.py` — classificação de paths e campos extraídos; runtime operacional exclusivamente Postgres.
+- `../fabrica/scripts/fabrica_projects_index/README.md` — variáveis operacionais Postgres e fluxos legados de migracao/backfill.
 - `PROJETOS/COMUM/SPEC-PIPELINE-PRD-SEM-FEATURES.md` — contexto da migração normativa do pipeline.
 
 ---

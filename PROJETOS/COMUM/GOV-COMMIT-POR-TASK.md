@@ -100,7 +100,7 @@ python3 scripts/framework_governance/scan_us_traceability.py --repo-root .
 
 - Se **nenhuma** US estiver nesse estado, o passo termina logo (exit `0`).
 - Para desligar o passo num clone ou job experimental:
-  `OPENCLAW_SKIP_US_TRACEABILITY_SCAN=1`.
+  `FABRICA_SKIP_US_TRACEABILITY_SCAN=1`.
 
 ## Escopo de Aplicacao
 

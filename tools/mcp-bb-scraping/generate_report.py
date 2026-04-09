@@ -72,6 +72,15 @@ def resolve_path(value: str) -> Path:
     return (ROOT / path).resolve()
 
 
+def sanitize_report_file_prefix(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return "perfil"
+    safe = re.sub(r"[^a-z0-9._-]+", "_", raw, flags=re.IGNORECASE)
+    safe = re.sub(r"^_+|_+$", "", safe)
+    return safe.lower() if safe else "perfil"
+
+
 KEYWORDS_BY_FIELD = {
     "date": [
         "datetime",
@@ -876,8 +885,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=None,
         help="Data inicio (YYYY-MM-DD). Opcional; quando ausente, usa o inicio da base.",
     )
+    parser.add_argument(
+        "--until",
+        default=None,
+        help="Data fim (YYYY-MM-DD, inclusiva, fim do dia UTC). Opcional.",
+    )
     parser.add_argument("--out", default="out", help="Diretorio de saida.")
+    parser.add_argument(
+        "--report-snapshot-dir",
+        default=None,
+        help="Opcional: pasta agregada (ex: out/relatorios/YYYY-MM-DD). Com --report-file-prefix.",
+    )
+    parser.add_argument(
+        "--report-file-prefix",
+        default=None,
+        help="Opcional: prefixo dos ficheiros no snapshot (ex: rony_gomes). Com --report-snapshot-dir.",
+    )
     args = parser.parse_args(argv)
+
+    snap_dir_arg = (args.report_snapshot_dir or "").strip()
+    snap_prefix_arg = (args.report_file_prefix or "").strip()
+    if bool(snap_dir_arg) ^ bool(snap_prefix_arg):
+        raise SystemExit("Use --report-snapshot-dir e --report-file-prefix juntos, ou omita ambos.")
 
     file_path = resolve_path(args.file)
     if not file_path.exists():
@@ -899,6 +928,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if pd.isna(since_dt):
             raise SystemExit("Data --since invalida. Use YYYY-MM-DD.")
 
+    until_raw = (args.until or "").strip()
+    until_end = None
+    if until_raw:
+        until_start = pd.to_datetime(until_raw, errors="coerce", utc=True)
+        if pd.isna(until_start):
+            raise SystemExit("Data --until invalida. Use YYYY-MM-DD.")
+        until_end = until_start.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    if since_dt is not None and until_end is not None and since_dt > until_end:
+        raise SystemExit("Intervalo invalido: --since deve ser menor ou igual a --until.")
+
     data = df.copy()
     date_series = parse_datetime(data[colmap.date]) if colmap.date else pd.Series([pd.NaT] * len(data))
     data["_post_dt"] = date_series
@@ -908,6 +948,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         data = data[~data["_post_dt"].isna()]
         if since_dt is not None:
             data = data[data["_post_dt"] >= since_dt]
+        if until_end is not None:
+            data = data[data["_post_dt"] <= until_end]
 
     total_rows = int(len(data))
     date_min = data["_post_dt"].min() if total_rows else None
@@ -930,18 +972,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     since_effective = since_raw or None
     if bb_first_dt is not None:
         bb_first_str = fmt_date(bb_first_dt.to_pydatetime() if hasattr(bb_first_dt, "to_pydatetime") else bb_first_dt)
-        if bb_first_str:
-            since_effective = bb_first_str
-        if date_min is None or bb_first_dt > date_min:
-            data = data[data["_post_dt"] >= bb_first_dt]
-            total_rows = int(len(data))
-            date_min = data["_post_dt"].min() if total_rows else None
-            date_max = data["_post_dt"].max() if total_rows else None
-            if date_min is not None and pd.isna(date_min):
-                date_min = None
-            if date_max is not None and pd.isna(date_max):
-                date_max = None
-            features = build_post_features(data, colmap, aliases)
+    # Nunca recortar pela primeira menção BB: indicadores e texto usam todo o recorte (since/until ou base inteira).
     if since_effective is None and date_min is not None:
         since_effective = fmt_date(date_min.to_pydatetime() if hasattr(date_min, "to_pydatetime") else date_min)
     bb_first_date = bb_first_str
@@ -1316,6 +1347,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "principal_handle": f"@{principal_handle}" if principal_handle else None,
             "since": since_effective,
             "since_input": since_raw or None,
+            "until_input": until_raw or None,
             "bb_first_date": bb_first_date,
             "rows_total_input": int(len(df)),
             "rows_missing_date": missing_date_count,
@@ -1436,6 +1468,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"Texto: {texto_path}")
     if tables_md:
         print(f"Tabelas: {tabelas_path}")
+
+    if snap_dir_arg and snap_prefix_arg:
+        snap_dir = resolve_path(snap_dir_arg)
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        snap_pre = sanitize_report_file_prefix(snap_prefix_arg)
+        snap_json = snap_dir / f"{snap_pre}_indicadores.json"
+        snap_txt = snap_dir / f"{snap_pre}_texto_relatorio.md"
+        snap_json.write_text(json.dumps(indicadores, ensure_ascii=True, indent=2), encoding="utf-8")
+        snap_txt.write_text(texto, encoding="utf-8")
+        print(f"Snapshot indicadores: {snap_json}")
+        print(f"Snapshot texto: {snap_txt}")
+        if tables_md:
+            snap_tab = snap_dir / f"{snap_pre}_tabelas.md"
+            snap_tab.write_text(tables_md, encoding="utf-8")
+            print(f"Snapshot tabelas: {snap_tab}")
+
     return 0
 
 

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, List, Optional
 
-from sqlalchemy import JSON, Column, DateTime, Enum as SQLEnum, Text, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, Enum as SQLEnum, Index, Text, UniqueConstraint, text
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
@@ -118,8 +118,6 @@ class FrameworkProject(SQLModel, table=True):
     source_of_truth: str = Field(default="markdown_primary", max_length=40)
     project_root_path: Optional[str] = Field(default=None, max_length=500)
     audit_log_path: Optional[str] = Field(default=None, max_length=500)
-    current_intake_id: Optional[int] = Field(default=None, index=True)
-    current_prd_id: Optional[int] = Field(default=None, index=True)
     created_by: str = Field(max_length=100)
     owner: str = Field(max_length=100)
     metadata_json: Optional[dict[str, Any]] = Field(
@@ -148,7 +146,16 @@ class FrameworkIntake(SQLModel, table=True):
     """Persisted intake document state."""
 
     __tablename__ = "framework_intake"
-    __table_args__ = (UniqueConstraint("project_id", "doc_id", name="uq_framework_intake_doc"),)
+    __table_args__ = (
+        UniqueConstraint("project_id", "doc_id", name="uq_framework_intake_doc"),
+        Index(
+            "uq_framework_intake_current_project",
+            "project_id",
+            unique=True,
+            postgresql_where=text("is_current"),
+            sqlite_where=text("is_current = 1"),
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="framework_project.id", index=True)
@@ -170,6 +177,7 @@ class FrameworkIntake(SQLModel, table=True):
         default=None,
         sa_column=Column(SQLEnum(SourceMode, name="framework_source_mode", values_callable=_lowercase_enum_values), nullable=True),
     )
+    is_current: bool = Field(default=False)
     content_md: str = Field(sa_column=Column(Text, nullable=False))
     file_path: Optional[str] = Field(default=None, max_length=500)
     checklist_status_json: Optional[dict[str, Any]] = Field(
@@ -219,7 +227,16 @@ class FrameworkPRD(SQLModel, table=True):
     """Persisted PRD document state."""
 
     __tablename__ = "framework_prd"
-    __table_args__ = (UniqueConstraint("project_id", "doc_id", name="uq_framework_prd_doc"),)
+    __table_args__ = (
+        UniqueConstraint("project_id", "doc_id", name="uq_framework_prd_doc"),
+        Index(
+            "uq_framework_prd_current_project",
+            "project_id",
+            unique=True,
+            postgresql_where=text("is_current"),
+            sqlite_where=text("is_current = 1"),
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="framework_project.id", index=True)
@@ -234,6 +251,7 @@ class FrameworkPRD(SQLModel, table=True):
         default=ApprovalStatus.PENDING,
         sa_column=Column(SQLEnum(ApprovalStatus, name="framework_approval_status", values_callable=_lowercase_enum_values), nullable=False),
     )
+    is_current: bool = Field(default=False)
     content_md: str = Field(sa_column=Column(Text, nullable=False))
     file_path: Optional[str] = Field(default=None, max_length=500)
     metadata_json: Optional[dict[str, Any]] = Field(

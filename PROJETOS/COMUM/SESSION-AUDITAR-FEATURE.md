@@ -43,8 +43,8 @@ puder ser lido, responda `BLOQUEADO` e pare.
 
 Antes do Passo 0, sincronize o indice derivado de `PROJETOS/`:
 
-1. rode `./bin/ensure-fabrica-projects-index-runtime.sh`
-2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh`
+1. rode `../fabrica/bin/ensure-fabrica-projects-index-runtime.sh`
+2. se o preflight devolver exit `0`, rode `python3 ../fabrica/scripts/fabrica.py --repo-root . sync`
 3. consulte no DB o estado atual da feature: `status`, `audit_gate` e user
    stories abertas relevantes para a rodada apenas quando o sync tiver corrido
 4. compare o resultado com o Markdown canonico da feature e do `AUDIT-LOG.md`;

@@ -40,7 +40,7 @@ agente local executor.
 Antes de abrir `README.md` da user story, `TASK-*.md`, a feature referenciada ou
 ficheiros de codigo citados:
 
-1. executar o preflight canonico: `./bin/ensure-fabrica-projects-index-runtime.sh`
+1. executar o preflight canonico: `../fabrica/bin/ensure-fabrica-projects-index-runtime.sh`
    na raiz do repositorio (opcional `--json` para saida estruturada);
 2. se o exit code for diferente de `0` **e** a task ou validacao depender
    explicitamente de Postgres, `sync_runs` ou outro runtime real: responda
@@ -88,8 +88,8 @@ Se a US for inelegivel ou violar esses limites, responda `BLOQUEADO` em vez de e
 
 Antes do Passo 0, execute o preflight do runtime e sincronize o indice derivado de `PROJETOS/` quando elegivel:
 
-1. rode `./bin/ensure-fabrica-projects-index-runtime.sh`
-2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh` e consulte no DB o estado atual da user story: `status`, `task_instruction_mode`, tasks abertas e feature associada
+1. rode `../fabrica/bin/ensure-fabrica-projects-index-runtime.sh`
+2. se o preflight devolver exit `0`, rode `python3 ../fabrica/scripts/fabrica.py --repo-root . sync` e consulte no DB o estado atual da user story: `status`, `task_instruction_mode`, tasks abertas e feature associada
 3. se o preflight falhar e a task ou validacao atual depender explicitamente de Postgres, `sync_runs` ou outro runtime real, responda `BLOQUEADO`
 4. compare o resultado com o Markdown canonico da user story; o **Markdown prevalece** sempre
 5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do bloco `ESCOPO DA USER STORY`, incluindo exit code e motivo quando o preflight falhar

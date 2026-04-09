@@ -43,7 +43,7 @@ agente senior revisor.
 Antes de abrir `README.md` da user story, `TASK-*.md`, a feature referenciada ou
 ficheiros citados pela evidencia:
 
-1. executar o preflight canonico: `./bin/ensure-fabrica-projects-index-runtime.sh`
+1. executar o preflight canonico: `../fabrica/bin/ensure-fabrica-projects-index-runtime.sh`
    na raiz do repositorio (opcional `--json`);
 2. se o exit code for diferente de `0` **e** a revisao exigir `sync_runs`,
    comparacao DB real ou outro runtime operacional: responda `BLOQUEADO`, copie
@@ -104,8 +104,8 @@ handoff; se nao for possivel decidir com seguranca, responda `BLOQUEADO`.
 
 Antes do Passo 0, execute o preflight do runtime e sincronize o indice derivado de `PROJETOS/` quando elegivel:
 
-1. rode `./bin/ensure-fabrica-projects-index-runtime.sh`
-2. se o preflight devolver exit `0`, rode `./bin/sync-fabrica-projects-db.sh` e consulte no DB o estado atual da user story: `status`, `task_instruction_mode`, tasks abertas, feature associada
+1. rode `../fabrica/bin/ensure-fabrica-projects-index-runtime.sh`
+2. se o preflight devolver exit `0`, rode `python3 ../fabrica/scripts/fabrica.py --repo-root . sync` e consulte no DB o estado atual da user story: `status`, `task_instruction_mode`, tasks abertas, feature associada
 3. se o preflight falhar e a revisao exigir `sync_runs`, comparacao DB real ou outro runtime operacional, responda `BLOQUEADO`
 4. compare o resultado com o Markdown canonico; o **Markdown prevalece**
 5. registre `DRIFT_INDICE: <nenhuma | descricao>` antes do bloco `REVISAO POS-USER-STORY`, incluindo exit code e motivo quando o preflight falhar

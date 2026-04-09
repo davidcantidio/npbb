@@ -1,5 +1,22 @@
 import type { InstagramPost, Summary, SummaryTopItem, TikTokVideo, XTweet } from "./types";
 
+/** True if post datetime falls in [since, until] (inclusive), matching CLI --since/--until semantics. */
+export function isInReportPeriod(datetime: string | null, since: Date | null, until: Date | null): boolean {
+  if (!since && !until) return true;
+  if (!datetime) return false;
+  const dt = new Date(datetime).getTime();
+  if (!Number.isFinite(dt)) return false;
+  if (since && dt < since.getTime()) return false;
+  if (until && dt > until.getTime()) return false;
+  return true;
+}
+
+/** Filter items for summary stats; full CSVs stay unfiltered. */
+export function filterByReportPeriod<T extends { datetime: string | null }>(items: T[], since: Date | null, until: Date | null): T[] {
+  if (!since && !until) return items;
+  return items.filter((item) => isInReportPeriod(item.datetime, since, until));
+}
+
 export function buildSummary(instagramPosts: InstagramPost[], xTweets: XTweet[], tiktokVideos: TikTokVideo[]): Summary {
   const total_itens_ig = instagramPosts.length;
   const total_itens_x = xTweets.length;

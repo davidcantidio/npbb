@@ -137,4 +137,52 @@ export interface RunConfig {
   scrapeInstagram: boolean;
   scrapeX: boolean;
   scrapeTikTok: boolean;
+  publishEnabled: boolean;
+  npbbApiBaseUrl: string | null;
+  npbbApiToken: string | null;
+  npbbApiEndpoint: string;
+  publishTimeoutMs?: number;
+}
+
+// NPBB direct ingestion contracts
+export interface ScrapingIngestionMeta {
+  handle: string | null;
+  athleteName: string | null;
+  since: IsoDateTimeString | null;
+  until: IsoDateTimeString | null;
+  max: number;
+  runStartedAt: IsoDateTimeString;
+  runFinishedAt: IsoDateTimeString;
+  generatedAt: IsoDateTimeString;
+  scrapeInstagram: boolean;
+  scrapeX: boolean;
+  scrapeTikTok: boolean;
+}
+
+export interface ScrapingIngestionPlatforms {
+  instagramPosts: InstagramPostEnriched[];
+  xTweets: XTweet[];
+  tiktokVideos: TikTokVideo[];
+}
+
+export interface ScrapingIngestionProfiles {
+  instagram: ProfileSnapshot | null;
+  x: ProfileSnapshot | null;
+  tiktok: TikTokProfileSnapshot | null;
+}
+
+export interface ScrapingIngestionPayload {
+  meta: ScrapingIngestionMeta;
+  platforms: ScrapingIngestionPlatforms;
+  profiles: ScrapingIngestionProfiles;
+  summary: Summary;
+  raw?: Record<string, unknown>;
+}
+
+export interface PublishResult {
+  ok: boolean;
+  status: number | null;
+  ingestionId?: string | number | null;
+  message?: string | null;
+  errorCode?: string | null;
 }

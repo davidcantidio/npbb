@@ -250,6 +250,54 @@ class AgentOrchestrator:
 
         return project
 
+    def _get_current_intake(self, project_id: int) -> FrameworkIntake | None:
+        return self.db.exec(
+            select(FrameworkIntake)
+            .where(
+                FrameworkIntake.project_id == project_id,
+                FrameworkIntake.is_current.is_(True),
+            )
+            .order_by(FrameworkIntake.id.desc())
+        ).first()
+
+    def _get_current_prd(self, project_id: int) -> FrameworkPRD | None:
+        return self.db.exec(
+            select(FrameworkPRD)
+            .where(
+                FrameworkPRD.project_id == project_id,
+                FrameworkPRD.is_current.is_(True),
+            )
+            .order_by(FrameworkPRD.id.desc())
+        ).first()
+
+    def _set_current_intake(self, intake: FrameworkIntake) -> None:
+        current_intakes = self.db.exec(
+            select(FrameworkIntake).where(
+                FrameworkIntake.project_id == intake.project_id,
+                FrameworkIntake.id != intake.id,
+                FrameworkIntake.is_current.is_(True),
+            )
+        ).all()
+        for current_intake in current_intakes:
+            current_intake.is_current = False
+            self.db.add(current_intake)
+        intake.is_current = True
+        self.db.add(intake)
+
+    def _set_current_prd(self, prd: FrameworkPRD) -> None:
+        current_prds = self.db.exec(
+            select(FrameworkPRD).where(
+                FrameworkPRD.project_id == prd.project_id,
+                FrameworkPRD.id != prd.id,
+                FrameworkPRD.is_current.is_(True),
+            )
+        ).all()
+        for current_prd in current_prds:
+            current_prd.is_current = False
+            self.db.add(current_prd)
+        prd.is_current = True
+        self.db.add(prd)
+
     def process_intake(
         self,
         project_id: int,
@@ -340,13 +388,12 @@ class AgentOrchestrator:
             intake.approved_by = None
             intake.approved_at = None
 
-        self.db.commit()
-        self.db.refresh(intake)
-
-        project.current_intake_id = intake.id
+        self.db.flush()
+        self._set_current_intake(intake)
         project.status = ProjectStatus.INTAKE
         self.db.add(project)
         self.db.commit()
+        self.db.refresh(intake)
         self.db.refresh(project)
 
         self._log_execution(
@@ -358,41 +405,60 @@ class AgentOrchestrator:
 
         return intake
 
-    def generate_prd(self, intake_id: int, auto_approve: bool = False) -> FrameworkPRD:
-        """Gera PRD a partir do intake."""
-        intake = self.db.get(FrameworkIntake, intake_id)
+    def generate_prd(self, project_id: int, auto_approve: bool = False) -> FrameworkPRD:
+        """Gera PRD a partir do intake corrente do projeto."""
+        project = self.db.get(FrameworkProject, project_id)
+        if not project:
+            raise LookupError(f"Projeto {project_id} nao encontrado")
+
+        intake = self._get_current_intake(project_id)
         if not intake:
-            raise LookupError("Intake nao encontrado")
+            raise LookupError(f"Intake corrente nao encontrado para o projeto {project_id}")
 
         prd_content = (
             f"# PRD gerado automaticamente a partir de {intake.doc_id}\n\n"
             "[Conteudo gerado por LLM baseado no intake]"
         )
+        prd_doc_id = f"PRD-{intake.doc_id.removeprefix('INTAKE-')}"
 
-        prd = FrameworkPRD(
-            project_id=intake.project_id,
-            intake_id=intake_id,
-            doc_id=f"PRD-{intake.doc_id.removeprefix('INTAKE-')}",
-            title=f"PRD - {intake.title}",
-            content_md=prd_content,
-            status=ArtifactStatus.DRAFT,
-            approval_status=ApprovalStatus.AUTO_APPROVED if auto_approve else ApprovalStatus.PENDING,
-            approved_at=datetime.now() if auto_approve else None,
-            approved_by="system" if auto_approve else None,
-        )
+        prd = self.db.exec(
+            select(FrameworkPRD).where(
+                FrameworkPRD.project_id == project_id,
+                FrameworkPRD.doc_id == prd_doc_id,
+            )
+        ).first()
+        if prd is None:
+            prd = FrameworkPRD(
+                project_id=project_id,
+                intake_id=intake.id,
+                doc_id=prd_doc_id,
+                title=f"PRD - {intake.title}",
+                content_md=prd_content,
+                status=ArtifactStatus.DRAFT,
+                approval_status=ApprovalStatus.AUTO_APPROVED if auto_approve else ApprovalStatus.PENDING,
+                approved_at=datetime.now() if auto_approve else None,
+                approved_by="system" if auto_approve else None,
+            )
+            self.db.add(prd)
+        else:
+            prd.intake_id = intake.id
+            prd.title = f"PRD - {intake.title}"
+            prd.content_md = prd_content
+            prd.status = ArtifactStatus.DRAFT
+            prd.approval_status = ApprovalStatus.AUTO_APPROVED if auto_approve else ApprovalStatus.PENDING
+            prd.approved_at = datetime.now() if auto_approve else None
+            prd.approved_by = "system" if auto_approve else None
 
-        self.db.add(prd)
+        self.db.flush()
+        self._set_current_prd(prd)
+        project.status = ProjectStatus.PRD
+        self.db.add(project)
         self.db.commit()
         self.db.refresh(prd)
-
-        project = self.db.get(FrameworkProject, intake.project_id)
-        if project:
-            project.current_prd_id = prd.id
-            self.db.add(project)
-            self.db.commit()
+        self.db.refresh(project)
 
         self._log_execution(
-            intake.project_id,
+            project_id,
             "prd_generation",
             "PRD gerado automaticamente",
             success=True,
@@ -451,8 +517,8 @@ class AgentOrchestrator:
             "name": project.canonical_name,
             "status": project.status.value,
             "agent_mode": project.agent_mode.value,
-            "has_intake": bool(project.current_intake_id),
-            "has_prd": bool(project.current_prd_id),
+            "has_intake": self._get_current_intake(project_id) is not None,
+            "has_prd": self._get_current_prd(project_id) is not None,
             "progress": "45%",
             "next_action": self._determine_next_action(project),
         }

@@ -57,7 +57,7 @@ Se quiser validar manualmente no banco ao fim do fluxo, tenha tambem `psql` no `
 Bootstrap rapido do indice em PowerShell:
 
 ```powershell
-.\bin\bootstrap-fabrica-projects-postgres.ps1 --skip-chunks
+..\fabrica\bin\bootstrap-fabrica-projects-postgres.ps1 --skip-chunks
 ```
 
 ## Passo 1 - Criar o Arquivo da Ideia
@@ -235,7 +235,7 @@ Os comandos de escrita ja rodam sync no final.
 Mesmo assim, voce pode rodar sync isoladamente:
 
 ```powershell
-python .\scripts\fabrica.py sync
+python ..\fabrica\scripts\fabrica.py --repo-root . sync
 ```
 
 Use isso quando:
@@ -280,7 +280,7 @@ Resultado esperado:
 ### 10.2 Verificar os documentos de projeto
 
 ```powershell
-psql $env:FABRICA_PROJECTS_DATABASE_URL -c "select pd.doc_type, pd.path_relative from project_documents pd join projects p on p.id = pd.project_id where p.slug = 'ACME-PEDIDOS' order by pd.doc_type, pd.path_relative;"
+psql $env:FABRICA_PROJECTS_DATABASE_URL -c "select 'intake' as artifact_kind, i.path_relative from intakes i join projects p on p.id = i.project_id where p.slug = 'ACME-PEDIDOS' union all select 'prd' as artifact_kind, pr.path_relative from prds pr join projects p on p.id = pr.project_id where p.slug = 'ACME-PEDIDOS' union all select d.kind as artifact_kind, d.path_relative from documents d join projects p on p.id = d.project_id where p.slug = 'ACME-PEDIDOS' and d.kind in ('audit_log', 'closing_report') order by artifact_kind, path_relative;"
 ```
 
 Voce deve ver pelo menos:
@@ -342,7 +342,7 @@ python .\scripts\fabrica.py generate prd --project ACME-PEDIDOS
 python .\scripts\fabrica.py generate features --project ACME-PEDIDOS
 python .\scripts\fabrica.py generate stories --project ACME-PEDIDOS --feature FEATURE-1
 python .\scripts\fabrica.py generate tasks --project ACME-PEDIDOS --story US-1-01
-python .\scripts\fabrica.py sync
+python ..\fabrica\scripts\fabrica.py --repo-root . sync
 ```
 
 ## Quando Parar e Revisar Manualmente

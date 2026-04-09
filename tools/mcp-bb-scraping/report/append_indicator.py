@@ -389,6 +389,35 @@ def read_rows(csv_path: str) -> List[PostRow]:
     return rows
 
 
+def parse_cli_date_start_utc(value: str) -> datetime:
+    return datetime.strptime(value.strip(), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+
+def end_of_day_utc(start: datetime) -> datetime:
+    return start.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+
+def filter_rows_by_report_period(
+    rows: List[PostRow],
+    since: Optional[datetime],
+    until_end: Optional[datetime],
+) -> List[PostRow]:
+    if since is None and until_end is None:
+        return rows
+    out: List[PostRow] = []
+    for r in rows:
+        dt = r.dt_utc
+        if dt is None:
+            continue
+        dt_utc = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+        if since is not None and dt_utc < since:
+            continue
+        if until_end is not None and dt_utc > until_end:
+            continue
+        out.append(r)
+    return out
+
+
 def fmt_pct(n: int, d: int) -> str:
     if d <= 0:
         return "N/A"
@@ -1256,6 +1285,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--csv", dest="csv_path", default=None, help="Caminho do CSV (separador ';').")
     parser.add_argument("--handle", "--profile", dest="handle", default=None, help="Handle do perfil (ex: tainahinckel).")
     parser.add_argument("--out", dest="out_path", default=None, help="Caminho do CSV de saida.")
+    parser.add_argument(
+        "--since",
+        default=None,
+        help="Data inicio (YYYY-MM-DD, UTC). Filtra linhas antes dos indicadores; opcional.",
+    )
+    parser.add_argument(
+        "--until",
+        default=None,
+        help="Data fim (YYYY-MM-DD, inclusiva, fim do dia UTC). Filtra linhas antes dos indicadores; opcional.",
+    )
     args = parser.parse_args(argv)
 
     selected = parse_indicator_args(args.indicator)
@@ -1279,7 +1318,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not Path(csv_path).exists():
         raise SystemExit(f"CSV nao encontrado: {csv_path}")
 
+    since_raw = (args.since or "").strip()
+    until_raw = (args.until or "").strip()
+    since_filter: Optional[datetime] = None
+    until_end: Optional[datetime] = None
+    if since_raw:
+        try:
+            since_filter = parse_cli_date_start_utc(since_raw)
+        except ValueError:
+            raise SystemExit("Data --since invalida. Use YYYY-MM-DD.")
+    if until_raw:
+        try:
+            until_end = end_of_day_utc(parse_cli_date_start_utc(until_raw))
+        except ValueError:
+            raise SystemExit("Data --until invalida. Use YYYY-MM-DD.")
+    if since_filter is not None and until_end is not None and since_filter > until_end:
+        raise SystemExit("Intervalo invalido: --since deve ser menor ou igual a --until.")
+
     rows = read_rows(csv_path)
+    rows = filter_rows_by_report_period(rows, since_filter, until_end)
     values, monthly_rows = collect_indicator_values(rows, sorted(selected), handle)
     write_indicators_csv(out_path, values)
 

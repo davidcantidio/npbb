@@ -1,19 +1,17 @@
 import { existsSync } from "node:fs";
-import { unlink } from "node:fs/promises";
-import { resolve, join, basename } from "node:path";
+import { resolve, basename, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { chromium, type BrowserContext } from "playwright";
 import { launchBrowser, newContext } from "./browser";
-import { Logger } from "./logger";
+import type { Logger as ScraperLogger } from "./logger";
 import { scrapeInstagram } from "./scrapers/instagram";
 import { scrapeTikTok } from "./scrapers/tiktok";
 import { scrapeX } from "./scrapers/x";
-import { buildSummary } from "./summary";
-import type { InstagramPost, ProfileSnapshot, RunConfig, TikTokProfileSnapshot, TikTokVideo, XTweet } from "./types";
+import { buildSummary, filterByReportPeriod } from "./summary";
+import type { InstagramPost, InstagramPostEnriched, ProfileSnapshot, RunConfig, Summary, TikTokProfileSnapshot, TikTokVideo, XTweet } from "./types";
 import { parseArgs, parseIntArg, stringArg, dateArg } from "./utils/args";
-import { validateOutDir } from "./utils/fs";
-import { outputPath, outputPostsPath, sanitizeHandle, sanitizeLabel } from "./utils/output";
+import { sanitizeHandle, sanitizeLabel, outputPostsPath } from "./utils/output";
 import { listAthleteHandles, lookupAthleteName } from "./utils/athletes";
 import { resolvePipelineRoot } from "./utils/root";
 import {
@@ -22,23 +20,83 @@ import {
   buildXProfileUrl,
   normalizeProfileHandle,
 } from "./utils/profile";
-import {
-  writeInstagramPostsCsv,
-  writeInstagramPostsEnrichedCsv,
-  writeInstagramPostsEnrichedJson,
-  writeInstagramProfileCsv,
-  writeInstagramProfileJson,
-  writeUnifiedPostsCsv,
-  writeIgLinksCsv,
-  writeSummaryCsv,
-  writeTikTokLinksCsv,
-  writeTikTokVideosCsv,
-  writeTikTokProfileCsv,
-  writeXTweetsCsv,
-  writeXProfileCsv,
-} from "./writers";
+import { writeInstagramPostsEnrichedCsv } from "./writers";
 
 const execFileAsync = promisify(execFile);
+
+const DEFAULT_NPBB_ENDPOINT = "/internal/scraping/ingestions";
+
+type LogLevel = "INFO" | "WARN" | "ERROR";
+
+interface OperationalLogLine {
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+}
+
+interface NpbbIngestionPayload {
+  execution: {
+    handle: string | null;
+    athleteName: string | null;
+    since: string | null;
+    until: string | null;
+    max: number;
+    started_at: string;
+    finished_at: string;
+  };
+  platforms: {
+    instagram: {
+      posts: InstagramPost[];
+      profile: ProfileSnapshot | null;
+    };
+    x: {
+      posts: XTweet[];
+      profile: ProfileSnapshot | null;
+    };
+    tiktok: {
+      posts: TikTokVideo[];
+      profile: TikTokProfileSnapshot | null;
+    };
+  };
+  summary: Summary;
+  logs: OperationalLogLine[];
+}
+
+class OperationalLogger {
+  private readonly logs: OperationalLogLine[] = [];
+
+  info(message: string): void {
+    this.write("INFO", message);
+  }
+
+  warn(message: string): void {
+    this.write("WARN", message);
+  }
+
+  error(message: string): void {
+    this.write("ERROR", message);
+  }
+
+  close(): void {
+    // Logger em memoria; nada para fechar.
+  }
+
+  asScraperLogger(): ScraperLogger {
+    return this as unknown as ScraperLogger;
+  }
+
+  snapshot(limit = 120): OperationalLogLine[] {
+    return this.logs.slice(-limit);
+  }
+
+  private write(level: LogLevel, message: string): void {
+    const timestamp = new Date().toISOString();
+    const line = `${timestamp} [${level}] ${normalizeLogMessage(message)}`;
+    process.stdout.write(`${line}\n`);
+    this.logs.push({ timestamp, level, message: normalizeLogMessage(message) });
+    if (this.logs.length > 500) this.logs.shift();
+  }
+}
 
 export async function run(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
@@ -117,14 +175,13 @@ async function runAllAthletes(argv: string[], args: Map<string, string | null>):
 }
 
 async function runSingle(config: RunConfig): Promise<void> {
-  await validateOutDir(config.outDir);
-  await removeLegacyJsonOutputs(config.outDir);
-  const logger = await Logger.create(config.outDir, config.outputHandle);
+  const logger = new OperationalLogger();
   for (const warning of config.authWarnings) {
     logger.warn(warning);
   }
+  const startedAt = new Date().toISOString();
   logger.info(
-    `Iniciando scraping: out=${config.outDir}, max=${config.max}, since=${config.since ? config.since.toISOString() : "null"}, until=${config.until ? config.until.toISOString() : "null"}`,
+    `Iniciando scraping: max=${config.max}, since=${config.since ? config.since.toISOString() : "null"}, until=${config.until ? config.until.toISOString() : "null"}`,
   );
 
   const useCdp = config.cdpEndpoint != null;
@@ -140,12 +197,18 @@ async function runSingle(config: RunConfig): Promise<void> {
     logger.info(`Conectado via CDP: ${config.cdpEndpoint}`);
   }
   let didAny = false;
+  const scrapeLogger = logger.asScraperLogger();
 
   try {
     let instagramPosts: InstagramPost[] = [];
+    let instagramProfile: ProfileSnapshot | null = null;
     let xTweets: XTweet[] = [];
+    let xProfile: ProfileSnapshot | null = null;
     let tiktokVideos: TikTokVideo[] = [];
+    let tiktokProfile: TikTokProfileSnapshot | null = null;
     const nowIso = new Date().toISOString();
+
+    let enrichedInstagramPosts: InstagramPostEnriched[] = [];
 
     if (config.scrapeInstagram) {
       try {
@@ -159,9 +222,7 @@ async function runSingle(config: RunConfig): Promise<void> {
         const { posts, enrichedPosts, profile, debug } = await scrapeInstagram(context, {
           profileUrl: config.instagramProfileUrl,
           max: config.max,
-          since: config.since,
-          until: config.until,
-          logger,
+          logger: scrapeLogger,
           timeoutMs: config.timeoutMs,
           debug: config.debug,
           hasAuth: sharedContext != null || config.instagramStorageStatePath != null,
@@ -170,21 +231,24 @@ async function runSingle(config: RunConfig): Promise<void> {
         if (!sharedContext) await context.close();
 
         instagramPosts = posts;
-        await writeInstagramPostsCsv(config.outDir, posts, config.outputHandle);
-        await writeInstagramPostsEnrichedCsv(config.outDir, enrichedPosts, config.outputHandle, config.athleteName);
-        await writeInstagramPostsEnrichedJson(config.outDir, enrichedPosts, config.outputHandle, config.athleteName);
-        await writeInstagramProfileCsv(config.outDir, profile, config.outputHandle);
-        await writeInstagramProfileJson(config.outDir, profile, config.outputHandle);
-        if (config.debug) await writeIgLinksCsv(config.outDir, debug.links, config.outputHandle);
+        enrichedInstagramPosts = enrichedPosts;
+        instagramProfile = profile;
+        if (config.debug) logger.info(`Instagram: debug links coletados=${debug.links.length}`);
+        logger.info(`Instagram: posts coletados=${posts.length}, enriquecidos=${enrichedPosts.length}`);
+
+        try {
+          await writeInstagramPostsEnrichedCsv(config.outDir, enrichedPosts, config.outputHandle, config.athleteName);
+          logger.info(`Instagram: CSV enriquecido salvo em ${config.outDir}`);
+        } catch (writeError) {
+          logger.warn(`Instagram: falha ao salvar CSV enriquecido: ${String(writeError)}`);
+        }
 
         didAny = true;
       } catch (error) {
         logger.error(`Instagram: erro geral: ${String(error)}`);
-        await writeInstagramPostsCsv(config.outDir, [], config.outputHandle);
-        await writeInstagramPostsEnrichedCsv(config.outDir, [], config.outputHandle, config.athleteName);
-        await writeInstagramPostsEnrichedJson(config.outDir, [], config.outputHandle, config.athleteName);
-        await writeInstagramProfileCsv(config.outDir, emptyProfile(config.instagramProfileUrl, nowIso), config.outputHandle);
-        await writeInstagramProfileJson(config.outDir, emptyProfile(config.instagramProfileUrl, nowIso), config.outputHandle);
+        instagramPosts = [];
+        enrichedInstagramPosts = [];
+        instagramProfile = emptyProfile(config.instagramProfileUrl, nowIso);
       }
     }
 
@@ -200,25 +264,22 @@ async function runSingle(config: RunConfig): Promise<void> {
         const { tweets, profile } = await scrapeX(context, {
           profileUrl: config.xProfileUrl,
           max: config.max,
-          since: config.since,
-          until: config.until,
-          logger,
+          logger: scrapeLogger,
           timeoutMs: config.timeoutMs,
         });
         if (!sharedContext) await context.close();
 
         xTweets = tweets;
-        await writeXTweetsCsv(config.outDir, tweets, config.outputHandle);
-        await writeXProfileCsv(config.outDir, profile, config.outputHandle);
+        xProfile = profile;
+        logger.info(`X: tweets coletados=${tweets.length}`);
         didAny = true;
       } catch (error) {
         logger.error(`X: erro geral: ${String(error)}`);
-        await writeXTweetsCsv(config.outDir, [], config.outputHandle);
-        await writeXProfileCsv(config.outDir, emptyProfile(config.xProfileUrl, nowIso), config.outputHandle);
+        xTweets = [];
+        xProfile = emptyProfile(config.xProfileUrl, nowIso);
       }
     }
 
-    let tiktokProfile: TikTokProfileSnapshot | null = null;
     if (config.scrapeTikTok) {
       try {
         const context =
@@ -231,9 +292,7 @@ async function runSingle(config: RunConfig): Promise<void> {
         const { videos, profile, debug } = await scrapeTikTok(context, {
           profileUrl: config.tiktokProfileUrl,
           max: config.max,
-          since: config.since,
-          until: config.until,
-          logger,
+          logger: scrapeLogger,
           timeoutMs: config.timeoutMs,
           debug: config.debug,
           hasAuth: sharedContext != null || config.tiktokStorageStatePath != null,
@@ -242,30 +301,118 @@ async function runSingle(config: RunConfig): Promise<void> {
 
         tiktokVideos = videos;
         tiktokProfile = profile;
-        await writeTikTokVideosCsv(config.outDir, videos, config.outputHandle);
-        await writeTikTokProfileCsv(config.outDir, profile, config.outputHandle);
-        if (config.debug) await writeTikTokLinksCsv(config.outDir, debug.links, config.outputHandle);
+        if (config.debug) logger.info(`TikTok: debug links coletados=${debug.links.length}`);
+        logger.info(`TikTok: videos coletados=${videos.length}`);
         didAny = true;
       } catch (error) {
         logger.error(`TikTok: erro geral: ${String(error)}`);
-        await writeTikTokVideosCsv(config.outDir, [], config.outputHandle);
-        await writeTikTokProfileCsv(config.outDir, emptyTikTokProfile(config.tiktokProfileUrl, nowIso), config.outputHandle);
+        tiktokVideos = [];
+        tiktokProfile = emptyTikTokProfile(config.tiktokProfileUrl, nowIso);
       }
     }
 
-    await writeUnifiedPostsCsv(config.outDir, instagramPosts, xTweets, tiktokVideos, config.outputHandle);
-    const summary = buildSummary(instagramPosts, xTweets, tiktokVideos);
-    await writeSummaryCsv(config.outDir, summary, config.outputHandle);
-    await runIndicators(config, logger);
-    await runDeterministicReport(config, logger);
-    verifyInstagramOutputs(config, logger);
+    const summary = buildSummary(
+      filterByReportPeriod(instagramPosts, config.since, config.until),
+      filterByReportPeriod(xTweets, config.since, config.until),
+      filterByReportPeriod(tiktokVideos, config.since, config.until),
+    );
+
+    const finishedAt = new Date().toISOString();
+    const payload = buildNpbbPayload(
+      config,
+      {
+        instagramPosts,
+        instagramProfile,
+        xTweets,
+        xProfile,
+        tiktokVideos,
+        tiktokProfile,
+      },
+      summary,
+      startedAt,
+      finishedAt,
+      logger.snapshot(),
+    );
+
+    if (!config.publishEnabled) {
+      logger.info(`Publicacao NPBB desativada por --no-publish. Endpoint alvo: ${config.npbbApiEndpoint}`);
+    } else {
+      if (!config.npbbApiBaseUrl || !config.npbbApiToken) {
+        logger.warn("Publicacao NPBB: --npbb-url ou --npbb-token ausentes. Pulando publicacao.");
+      } else {
+        await publishToNpbb(config, payload, logger);
+      }
+    }
+
+    await runDeterministicReport(config, enrichedInstagramPosts, logger);
   } finally {
     await browser.close();
     logger.close();
   }
 
-  printOutputs(config);
   if (!didAny) process.exitCode = 1;
+}
+
+async function runDeterministicReport(
+  config: RunConfig,
+  enrichedPosts: InstagramPostEnriched[],
+  logger: OperationalLogger,
+): Promise<void> {
+  if (!config.scrapeInstagram) return;
+  if (enrichedPosts.length === 0) {
+    logger.warn("Relatorio: nenhum post enriquecido disponivel; pulando geracao.");
+    return;
+  }
+
+  const pipelineRoot = resolvePipelineRoot();
+  const outDir = resolve(config.outDir);
+  const scriptPath = resolve(pipelineRoot, "generate_report.py");
+
+  if (!existsSync(scriptPath)) {
+    logger.warn(`Relatorio: script nao encontrado: ${scriptPath}`);
+    return;
+  }
+
+  const csvPath = outputPostsPath(outDir, config.athleteName, config.outputHandle, "csv");
+  if (!existsSync(csvPath)) {
+    logger.warn(`Relatorio: CSV enriquecido nao encontrado: ${csvPath}`);
+    return;
+  }
+
+  const baseArgs = [scriptPath, "--file", csvPath, "--user", config.outputHandle ?? "", "--out", outDir];
+  const since = formatDateOnly(config.since);
+  if (since) baseArgs.push("--since", since);
+  const until = formatDateOnly(config.until);
+  if (until) baseArgs.push("--until", until);
+
+  // Snapshot agregado por data em out/relatorios/YYYY-MM-DD
+  const athleteDirName = sanitizeLabel(config.athleteName) ?? sanitizeHandle(config.outputHandle) ?? "perfil";
+  const todayLocal = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD no fuso local
+  const snapshotDir = resolve(pipelineRoot, "out", "relatorios", todayLocal);
+  baseArgs.push("--report-snapshot-dir", snapshotDir, "--report-file-prefix", athleteDirName);
+
+  const runners = [
+    { cmd: "python", args: baseArgs },
+    { cmd: "py", args: ["-3", ...baseArgs] },
+  ];
+
+  let lastError: unknown = null;
+  for (const runner of runners) {
+    try {
+      const { stdout, stderr } = await execFileAsync(runner.cmd, runner.args, { windowsHide: true, encoding: "utf8" });
+      const stdOut = String(stdout ?? "").replace(/\s+/g, " ").trim();
+      const stdErr = String(stderr ?? "").replace(/\s+/g, " ").trim();
+      if (stdOut) logger.info(`Relatorio: ${stdOut}`);
+      if (stdErr) logger.warn(`Relatorio: ${stdErr}`);
+      logger.info(`Relatorio: gerado em ${outDir} e snapshot em ${snapshotDir}`);
+      return;
+    } catch (error) {
+      lastError = error;
+      logger.warn(`Relatorio: falha com ${runner.cmd} (${String(error)})`);
+    }
+  }
+
+  logger.warn(`Relatorio: falha ao executar generate_report.py (${String(lastError)})`);
 }
 
 function parseRunConfig(argv: string[]): RunConfig {
@@ -392,6 +539,25 @@ function parseRunConfig(argv: string[]): RunConfig {
     }
   }
 
+  const publishEnabled = !args.has("no-publish");
+  const npbbUrlArg = args.get("npbb-url");
+  const npbbTokenArg = args.get("npbb-token");
+  const npbbEndpointArg = args.get("npbb-endpoint");
+
+  if (args.has("npbb-url") && !(npbbUrlArg ?? "").trim()) {
+    throw new Error("Valor invalido em --npbb-url: vazio. Informe a URL base do backend NPBB.");
+  }
+  if (args.has("npbb-token") && !(npbbTokenArg ?? "").trim()) {
+    throw new Error("Valor invalido em --npbb-token: vazio. Informe o token Bearer.");
+  }
+  if (args.has("npbb-endpoint") && !(npbbEndpointArg ?? "").trim()) {
+    throw new Error("Valor invalido em --npbb-endpoint: vazio. Informe o path de ingestao.");
+  }
+
+  const npbbApiBaseUrl = stringArg(npbbUrlArg, "").trim() || null;
+  const npbbApiToken = stringArg(npbbTokenArg, "").trim() || null;
+  const npbbApiEndpoint = normalizeEndpoint(stringArg(npbbEndpointArg, DEFAULT_NPBB_ENDPOINT));
+
   return {
     max,
     outDir,
@@ -415,6 +581,10 @@ function parseRunConfig(argv: string[]): RunConfig {
     scrapeInstagram,
     scrapeX,
     scrapeTikTok,
+    npbbApiBaseUrl,
+    npbbApiToken,
+    npbbApiEndpoint,
+    publishEnabled,
   };
 }
 
@@ -460,10 +630,10 @@ function printUsage(): void {
       "  npm run scrape -- --all-athletes --no-x --no-tiktok --since 2026-02-01 --until 2026-02-15 --out out",
       "",
       "Opcoes:",
-      "  --max <n>         Maximo de itens por plataforma (default: 150)",
-      "  --out <dir>       Diretorio base de saida (default: out)",
-      "  --since <date>    Data minima (YYYY-MM-DD) para filtrar (opcional)",
-      "  --until <date>    Data maxima (YYYY-MM-DD, inclusiva) para filtrar (opcional)",
+      "  --max <n>         Maximo de itens coletados por plataforma (default: 150); nao depende do periodo",
+      "  --out <dir>       Diretorio legado de saida (default: out, nao obrigatorio para publicacao NPBB)",
+      "  --since <date>    Data minima (YYYY-MM-DD) para resumo, indicadores e relatorio (opcional)",
+      "  --until <date>    Data maxima (YYYY-MM-DD, inclusiva, fim do dia UTC) para resumo/indicadores/relatorio (opcional)",
       "  --profile <h>     Perfil base (handle) para IG/X/TikTok (alias: --perfil)",
       "  --all-athletes    Roda em lote para todos os handles de config/instagram_handles.csv",
       "  --all-status <l>  Filtro de status no lote (csv, ex: confirmed,needs_confirmation)",
@@ -482,61 +652,12 @@ function printUsage(): void {
       "  --ig-url <url>    URL do perfil Instagram (override do --profile)",
       "  --x-url <url>     URL do perfil X (override do --profile)",
       "  --tiktok-url <url> URL do perfil TikTok (override do --profile)",
+      "  --npbb-url <url>  URL base do backend NPBB para publicacao HTTP",
+      "  --npbb-token <t>  Token Bearer para autenticacao no NPBB",
+      `  --npbb-endpoint <p> Path de ingestao NPBB (default: ${DEFAULT_NPBB_ENDPOINT})`,
+      "  --no-publish      Nao envia para NPBB (modo debug da coleta/payload)",
     ].join("\n") + "\n",
   );
-}
-
-function printOutputs(config: RunConfig): void {
-  const outDir = resolve(config.outDir);
-  const handle = config.outputHandle;
-  const files: string[] = [];
-  files.push(outputPath(outDir, "posts", "csv", handle));
-  if (config.scrapeInstagram) {
-    files.push(outputPath(outDir, "instagram_posts", "csv", handle));
-    files.push(outputPostsPath(outDir, config.athleteName, handle, "csv"));
-    files.push(outputPostsPath(outDir, config.athleteName, handle, "json"));
-    files.push(outputPath(outDir, "instagram_profile", "csv", handle));
-    files.push(outputPath(outDir, "instagram_profile", "json", handle));
-    files.push(outputPath(outDir, "indicadores", "csv", handle));
-    files.push(outputPath(outDir, "indicadores_bb_por_mes", "csv", handle));
-    files.push(join(outDir, "indicadores.json"));
-    files.push(join(outDir, "texto_relatorio.md"));
-    files.push(join(outDir, "tabelas.md"));
-  }
-  if (config.scrapeX) {
-    files.push(outputPath(outDir, "x_tweets", "csv", handle));
-    files.push(outputPath(outDir, "x_profile", "csv", handle));
-  }
-  if (config.scrapeTikTok) {
-    files.push(outputPath(outDir, "tiktok_videos", "csv", handle));
-    files.push(outputPath(outDir, "tiktok_profile", "csv", handle));
-  }
-  files.push(
-    outputPath(outDir, "summary", "csv", handle),
-    outputPath(outDir, "top_hashtags_bb", "csv", handle),
-    outputPath(outDir, "top_mentions_bb", "csv", handle),
-    outputPath(outDir, "run", "csv", handle),
-    outputPath(outDir, "run", "log", handle),
-  );
-  process.stdout.write("\nArquivos (esperados) em:\n");
-  for (const file of files) process.stdout.write(`- ${file}\n`);
-  if (config.debug && config.scrapeInstagram) process.stdout.write(`- ${outputPath(outDir, "ig_links", "csv", handle)}\n`);
-  if (config.debug && config.scrapeTikTok) process.stdout.write(`- ${outputPath(outDir, "tiktok_links", "csv", handle)}\n`);
-}
-
-function verifyInstagramOutputs(config: RunConfig, logger: Logger): void {
-  if (!config.scrapeInstagram) return;
-  const outDir = resolve(config.outDir);
-  const handle = config.outputHandle;
-  const required = [
-    outputPath(outDir, "instagram_posts", "csv", handle),
-    outputPostsPath(outDir, config.athleteName, handle, "csv"),
-    outputPath(outDir, "instagram_profile", "csv", handle),
-  ];
-  const missing = required.filter((path) => !existsSync(path));
-  if (missing.length > 0) {
-    logger.warn(`IG: arquivos esperados nao encontrados: ${missing.join("; ")}`);
-  }
 }
 
 function emptyProfile(url: string, nowIso: string): ProfileSnapshot {
@@ -552,22 +673,6 @@ function emptyProfile(url: string, nowIso: string): ProfileSnapshot {
       posts: null,
     },
   };
-}
-
-async function removeLegacyJsonOutputs(outDir: string): Promise<void> {
-  const legacyFiles = [
-    "instagram_profile.json",
-    "x_profile.json",
-    "tiktok_profile.json",
-    "summary.json",
-    "ig_links.json",
-    "tiktok_links.json",
-    "run.log",
-  ];
-
-  for (const file of legacyFiles) {
-    await unlink(join(outDir, file)).catch(() => undefined);
-  }
 }
 
 function emptyTikTokProfile(url: string, nowIso: string): TikTokProfileSnapshot {
@@ -589,93 +694,111 @@ function emptyTikTokProfile(url: string, nowIso: string): TikTokProfileSnapshot 
   };
 }
 
-async function runIndicators(config: RunConfig, logger: Logger): Promise<void> {
-  if (!config.scrapeInstagram) return;
-
-  const pipelineRoot = resolvePipelineRoot();
-  const outDir = resolve(config.outDir);
-  const csvPath = outputPostsPath(outDir, config.athleteName, config.outputHandle, "csv");
-  const outPath = outputPath(outDir, "indicadores", "csv", config.outputHandle);
-  const scriptPath = resolve(pipelineRoot, "report", "append_indicator.py");
-
-  if (!existsSync(scriptPath)) {
-    logger.warn(`Indicadores: script nao encontrado: ${scriptPath}`);
-    return;
-  }
-  if (!existsSync(csvPath)) {
-    logger.warn(`Indicadores: CSV nao encontrado: ${csvPath}`);
-    return;
-  }
-
-  const baseArgs = [scriptPath, "--csv", csvPath, "--out", outPath];
-  if (config.outputHandle) baseArgs.push("--handle", config.outputHandle);
-
-  const runners = [
-    { cmd: "python", args: baseArgs },
-    { cmd: "py", args: ["-3", ...baseArgs] },
-  ];
-
-  let lastError: unknown = null;
-  for (const runner of runners) {
-    try {
-      const { stdout, stderr } = await execFileAsync(runner.cmd, runner.args, { windowsHide: true, encoding: "utf8" });
-      const stdOut = String(stdout ?? "").replace(/\s+/g, " ").trim();
-      const stdErr = String(stderr ?? "").replace(/\s+/g, " ").trim();
-      if (stdOut) logger.info(`Indicadores: ${stdOut}`);
-      if (stdErr) logger.warn(`Indicadores: ${stdErr}`);
-      logger.info(`Indicadores: gerado ${outPath}`);
-      return;
-    } catch (error) {
-      lastError = error;
-      logger.warn(`Indicadores: falha com ${runner.cmd} (${String(error)})`);
-    }
-  }
-
-  logger.warn(`Indicadores: falha ao executar append_indicator (${String(lastError)})`);
+function buildNpbbPayload(
+  config: RunConfig,
+  data: {
+    instagramPosts: InstagramPost[];
+    instagramProfile: ProfileSnapshot | null;
+    xTweets: XTweet[];
+    xProfile: ProfileSnapshot | null;
+    tiktokVideos: TikTokVideo[];
+    tiktokProfile: TikTokProfileSnapshot | null;
+  },
+  summary: Summary,
+  startedAt: string,
+  finishedAt: string,
+  logs: OperationalLogLine[],
+): NpbbIngestionPayload {
+  return {
+    execution: {
+      handle: config.outputHandle,
+      athleteName: config.athleteName,
+      since: formatDateOnly(config.since),
+      until: formatDateOnly(config.until),
+      max: config.max,
+      started_at: startedAt,
+      finished_at: finishedAt,
+    },
+    platforms: {
+      instagram: {
+        posts: data.instagramPosts,
+        profile: data.instagramProfile,
+      },
+      x: {
+        posts: data.xTweets,
+        profile: data.xProfile,
+      },
+      tiktok: {
+        posts: data.tiktokVideos,
+        profile: data.tiktokProfile,
+      },
+    },
+    summary,
+    logs,
+  };
 }
 
-async function runDeterministicReport(config: RunConfig, logger: Logger): Promise<void> {
-  if (!config.scrapeInstagram) return;
-
-  const pipelineRoot = resolvePipelineRoot();
-  const outDir = resolve(config.outDir);
-  const csvPath = outputPostsPath(outDir, config.athleteName, config.outputHandle, "csv");
-  const scriptPath = resolve(pipelineRoot, "generate_report.py");
-
-  if (!existsSync(scriptPath)) {
-    logger.warn(`Relatorio: script nao encontrado: ${scriptPath}`);
-    return;
-  }
-  if (!existsSync(csvPath)) {
-    logger.warn(`Relatorio: CSV nao encontrado: ${csvPath}`);
-    return;
+async function publishToNpbb(config: RunConfig, payload: NpbbIngestionPayload, logger: OperationalLogger): Promise<void> {
+  if (!config.npbbApiBaseUrl || !config.npbbApiToken) {
+    throw new Error("Configuracao invalida: informe --npbb-url e --npbb-token (ou use --no-publish).");
   }
 
-  const baseArgs = [scriptPath, "--file", csvPath, "--user", config.outputHandle ?? "", "--out", outDir];
-  const since = formatDateOnly(config.since);
-  if (since) baseArgs.push("--since", since);
+  const targetUrl = buildNpbbIngestionUrl(config.npbbApiBaseUrl, config.npbbApiEndpoint);
+  logger.info(`Iniciando publicacao NPBB: ${targetUrl}`);
 
-  const runners = [
-    { cmd: "python", args: baseArgs },
-    { cmd: "py", args: ["-3", ...baseArgs] },
-  ];
-
-  let lastError: unknown = null;
-  for (const runner of runners) {
-    try {
-      const { stdout, stderr } = await execFileAsync(runner.cmd, runner.args, { windowsHide: true, encoding: "utf8" });
-      const stdOut = String(stdout ?? "").replace(/\s+/g, " ").trim();
-      const stdErr = String(stderr ?? "").replace(/\s+/g, " ").trim();
-      if (stdOut) logger.info(`Relatorio: ${stdOut}`);
-      if (stdErr) logger.warn(`Relatorio: ${stdErr}`);
-      logger.info(`Relatorio: gerado ${join(outDir, "indicadores.json")}`);
-      return;
-    } catch (error) {
-      lastError = error;
-      logger.warn(`Relatorio: falha com ${runner.cmd} (${String(error)})`);
-    }
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.npbbApiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    logger.error(`Falha de rede na publicacao NPBB: ${String(error)}`);
+    throw new Error(`Publicacao NPBB falhou por erro de rede: ${String(error)}`);
   }
 
-  logger.warn(`Relatorio: falha ao executar generate_report (${String(lastError)})`);
+  const responseBody = truncateText(await safeResponseText(response), 600);
+  if (!response.ok) {
+    logger.error(`Falha publicacao NPBB: status=${response.status}, resposta=${responseBody || "<vazia>"}`);
+    throw new Error(`Publicacao NPBB retornou status ${response.status}.`);
+  }
+
+  logger.info(`Publicacao NPBB concluida com sucesso: status=${response.status}`);
+}
+
+async function safeResponseText(response: Response): Promise<string> {
+  try {
+    return normalizeLogMessage(await response.text());
+  } catch {
+    return "";
+  }
+}
+
+function normalizeEndpoint(rawEndpoint: string): string {
+  const trimmed = rawEndpoint.trim();
+  if (!trimmed) return DEFAULT_NPBB_ENDPOINT;
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function buildNpbbIngestionUrl(baseUrl: string, endpoint: string): string {
+  try {
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+    return new URL(endpoint, normalizedBase).toString();
+  } catch {
+    throw new Error(`Valor invalido em --npbb-url: ${baseUrl}`);
+  }
+}
+
+function truncateText(value: string, maxLen: number): string {
+  if (value.length <= maxLen) return value;
+  return `${value.slice(0, maxLen)}...`;
+}
+
+function normalizeLogMessage(message: string): string {
+  return String(message ?? "").replace(/\s+/g, " ").trim();
 }
 

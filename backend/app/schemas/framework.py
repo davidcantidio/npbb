@@ -57,8 +57,6 @@ class FrameworkProjectRead(BaseModel):
     source_of_truth: str
     project_root_path: str | None = None
     audit_log_path: str | None = None
-    current_intake_id: int | None = None
-    current_prd_id: int | None = None
     created_by: str
     owner: str
     metadata_json: dict[str, Any] | None = None
@@ -169,6 +167,7 @@ class FrameworkIntakeRead(BaseModel):
     approval_status: ApprovalStatus
     intake_kind: IntakeKind | None = None
     source_mode: SourceMode | None = None
+    is_current: bool
     content_md: str
     structured_payload: FrameworkIntakeStructuredPayload
     known_gaps: list[FrameworkIntakeKnownGap] = Field(default_factory=list)
@@ -213,6 +212,7 @@ class FrameworkPRDRead(BaseModel):
     title: str
     status: ArtifactStatus
     approval_status: ApprovalStatus
+    is_current: bool
     content_md: str
     file_path: str | None = None
     metadata_json: dict[str, Any] | None = None

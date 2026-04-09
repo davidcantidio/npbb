@@ -38,7 +38,7 @@ com Postgres como unico backend operacional do indice derivado.
 2. `AGENTS.md`, `PROJETOS/COMUM/boot-prompt.md`, `PROJETOS/COMUM/SESSION-MAPA.md`
 3. templates e sessoes de Clarificacao / PRD / Feature / User Story / Task / auditoria
 4. skills em `.codex/skills/`
-5. scripts e runtime do indice em `scripts/openclaw_projects_index/` e `bin/`
+5. scripts e runtime do indice em `scripts/fabrica_projects_index/`, `scripts/fabrica_domain/` e `bin/`
 6. `config/host.env.example`, `README.md`
 7. testes afetados em `tests/`
 
@@ -91,8 +91,8 @@ com Postgres como unico backend operacional do indice derivado.
    a cadeia ativa.
 7. Se o runtime operacional do indice e realmente Postgres:
    - `FABRICA_PROJECTS_DATABASE_URL` tratado como variavel operacional
-   - ausencia de dependencia operacional de `OPENCLAW_PROJECTS_DB`
-   - ausencia de dependencia operacional de `OPENCLAW_PROJECTS_INDEX_BACKEND`
+   - ausencia de dependencia operacional de aliases legados para URL do indice
+   - ausencia de dependencia operacional de seletores legados de backend do indice
    - smokes/deploys/validacoes usando `sync_runs`, nao `sync_meta`
    - SQLite, se existir, restrito a importacao/migracao historica explicita
 8. Se skills, docs e scripts estao convergentes entre si e nao se contradizem.

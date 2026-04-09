@@ -4,7 +4,6 @@ from typing import Optional
 
 from app.db.session import get_db
 from app.models.framework_models import (
-    FrameworkIntake,
     FrameworkProject,
 )
 from app.services.framework_orchestrator import AgentOrchestrator
@@ -67,22 +66,14 @@ def submit_intake(
 def generate_prd(
     project_id: int,
     auto_approve: bool = False,
-    db: Session = Depends(get_db),
     orchestrator: AgentOrchestrator = Depends(get_orchestrator)
 ):
-    """Gera PRD a partir do intake (integra com lógica de governança)."""
-    # Buscar intake mais recente do projeto
-    intake = db.exec(
-        select(FrameworkIntake)
-        .where(FrameworkIntake.project_id == project_id)
-        .order_by(FrameworkIntake.created_at.desc())
-    ).first()
-    
-    if not intake:
-        raise HTTPException(status_code=404, detail="Intake não encontrado para este projeto")
-    
-    prd = orchestrator.generate_prd(intake.id, auto_approve)
-    return {"message": "PRD gerado", "prd_id": prd.id, "auto_approved": auto_approve}
+    """Gera PRD a partir do intake corrente do projeto."""
+    try:
+        prd = orchestrator.generate_prd(project_id, auto_approve)
+        return {"message": "PRD gerado", "prd_id": prd.id, "auto_approved": auto_approve}
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/projects/{project_id}/plan")

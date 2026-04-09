@@ -1,6 +1,18 @@
 # Deploy: Render (API) + Cloudflare Pages (Frontend)
 
-Guia oficial para publicar o NPBB: backend FastAPI no Render e frontend React/Vite no Cloudflare Pages. O banco de dados e o Postgres do Supabase (plano pago).
+Guia oficial para publicar o NPBB com stack **gratuita**: Postgres no **Supabase (plano Free)**, API FastAPI no **Render (plano Free)** e frontend estatico no **Cloudflare Pages (Free)**. As variaveis sao as mesmas de um ambiente pago; mudam apenas **limites** (tamanho do banco, pausa por inatividade, cold start na API, minutos de build no Pages).
+
+### Limites uteis do plano Free
+
+- **Supabase**: armazenamento e conexoes limitados; use `DATABASE_URL` via **pooler** (transaction, porta **6543**) no runtime da API. Ver [backend/.env.example](../backend/.env.example).
+- **Render**: o servico web pode **hibernar**; a primeira requisicao apos idle costuma ser mais lenta. Blueprint de referencia: [render.yaml](./render.yaml) com `plan: free`.
+- **Cloudflare Pages**: definir `NODE_VERSION=20` nas variaveis de build do projeto.
+
+### Onde obter `DATABASE_URL` e `DIRECT_URL` (Supabase)
+
+1. Dashboard Supabase → **Project Settings** → **Database**.
+2. **Connection string** modo **Transaction** (pooler) → cole no Render como `DATABASE_URL`, ajustando o esquema SQLAlchemy para `postgresql+psycopg2://...` como no exemplo do `.env.example`.
+3. **Connection string** modo **URI** direto (host `db.<project_ref>.supabase.co`, porta **5432**) → `DIRECT_URL` (migrations e `alembic upgrade head` no deploy).
 
 ## Dominio publico de producao
 
@@ -10,7 +22,7 @@ Guia oficial para publicar o NPBB: backend FastAPI no Render e frontend React/Vi
 
 ## 1) Backend no Render
 
-Crie um Web Service no Render com:
+Crie um Web Service no Render (**Instance Type: Free** no dashboard, ou use o Blueprint com `plan: free`) com:
 
 - Name: `npbb-api`
 - Repository: `davidcantidio/npbb`
@@ -30,6 +42,8 @@ Crie um Web Service no Render com:
 - `FRONTEND_ORIGIN=https://app.npbb.com.br`
 - `PUBLIC_APP_BASE_URL=https://app.npbb.com.br`
 - `EMAIL_BACKEND=console`
+
+**Previews Cloudflare Pages:** se precisar chamar a API a partir de `https://<projeto>.pages.dev`, inclua esse origin em `FRONTEND_ORIGIN` (lista separada por virgula) ou defina `CORS_ALLOW_ORIGIN_REGEX` (veja [backend/.env.example](../backend/.env.example)).
 
 ### Variaveis recomendadas (Render)
 

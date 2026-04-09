@@ -36,6 +36,45 @@ class SolicitacaoIngressoTipo(str, Enum):
     TERCEIRO = "TERCEIRO"
 
 
+class TipoIngresso(str, Enum):
+    PISTA = "pista"
+    PISTA_PREMIUM = "pista_premium"
+    CAMAROTE = "camarote"
+
+
+class ModoFornecimento(str, Enum):
+    INTERNO_EMITIDO_COM_QR = "interno_emitido_com_qr"
+    EXTERNO_RECEBIDO = "externo_recebido"
+
+
+class StatusInventario(str, Enum):
+    PLANEJADO = "planejado"
+    RECEBIDO_CONFIRMADO = "recebido_confirmado"
+    BLOQUEADO_POR_RECEBIMENTO = "bloqueado_por_recebimento"
+    DISPONIVEL = "disponivel"
+    DISTRIBUIDO = "distribuido"
+
+
+class StatusDestinatario(str, Enum):
+    ENVIADO = "enviado"
+    CONFIRMADO = "confirmado"
+    UTILIZADO = "utilizado"
+    CANCELADO = "cancelado"
+
+
+class TipoOcorrencia(str, Enum):
+    ENTREGA_ERRADA = "entrega_errada"
+    QUANTIDADE_DIVERGENTE = "quantidade_divergente"
+    DESTINATARIO_INVALIDO = "destinatario_invalido"
+    OUTRO = "outro"
+
+
+class TipoAjuste(str, Enum):
+    AUMENTO = "aumento"
+    REDUCAO = "reducao"
+    REMANEJAMENTO = "remanejamento"
+
+
 class Usuario(SQLModel, table=True):
     __tablename__ = "usuario"
 
@@ -529,6 +568,17 @@ from app.models.event_support_models import (
     QuestionarioRespostaOpcao,
     QuestionarioRespostaPergunta,
     SolicitacaoIngresso,
+)
+from app.models.ingressos_v2_models import (
+    AjusteIngresso,
+    AuditoriaIngressoEvento,
+    ConfiguracaoIngressoEvento,
+    ConfiguracaoIngressoEventoTipo,
+    DistribuicaoIngresso,
+    InventarioIngresso,
+    OcorrenciaIngresso,
+    PrevisaoIngresso,
+    RecebimentoIngresso,
 )
 from app.models.tmj_analytics_models import (
     AttendanceAccessControl,

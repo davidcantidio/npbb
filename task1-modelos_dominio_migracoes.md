@@ -205,4 +205,3 @@ Fora desta task: APIs, serviços de conciliação/bloqueio automático, PDF/QR, 
 
 
 Transição: nenhuma FK obrigatória de ingresso_* para cota_cortesia no v1; ligação futura pode ser campo opcional ou camada de aplicação.
-

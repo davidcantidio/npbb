@@ -1,0 +1,5 @@
+# Cloudflare Pages — referencia para deploy (Git CI ou `wrangler pages deploy`).
+# No Dashboard, use o mesmo root `frontend`, output `dist` e variaveis NODE_VERSION / VITE_API_BASE_URL.
+name = "npbb"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "dist"

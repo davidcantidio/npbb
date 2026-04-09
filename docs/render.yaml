@@ -2,7 +2,7 @@ services:
   - type: web
     name: npbb-api
     runtime: python
-    plan: starter
+    plan: free
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt

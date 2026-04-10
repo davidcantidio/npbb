@@ -1430,6 +1430,15 @@ def criar_batch(
             field="file",
         )
 
+    plataforma = plataforma_origem.strip() if plataforma_origem else ""
+    if not plataforma:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="MISSING_PLATFORM",
+            message="plataforma_origem e obrigatoria",
+            field="plataforma_origem",
+        )
+
     raw = file.file.read()
     if len(raw) == 0:
         raise_http_error(
@@ -1460,7 +1469,7 @@ def criar_batch(
 
     batch = LeadBatch(
         enviado_por=int(current_user.id),
-        plataforma_origem=plataforma_origem.strip(),
+        plataforma_origem=plataforma,
         data_envio=parsed_data_envio,
         nome_arquivo_original=filename,
         arquivo_bronze=raw,

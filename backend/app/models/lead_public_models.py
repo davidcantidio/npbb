@@ -4,11 +4,15 @@ from datetime import date, datetime, time
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, Enum as SQLEnum, Text, UniqueConstraint
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
 from app.models.models import LeadAliasTipo, LeadConversaoTipo, now_utc
+
+
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
 
 
 class LeadEventoSourceKind(str, Enum):
@@ -17,6 +21,17 @@ class LeadEventoSourceKind(str, Enum):
     LEAD_BATCH = "lead_batch"
     EVENT_NAME_BACKFILL = "evento_nome_backfill"
     MANUAL_RECONCILED = "manual_reconciled"
+
+
+class TipoLead(str, Enum):
+    BILHETERIA = "bilheteria"
+    ENTRADA_EVENTO = "entrada_evento"
+    ATIVACAO = "ativacao"
+
+
+class TipoResponsavel(str, Enum):
+    PROPONENTE = "proponente"
+    AGENCIA = "agencia"
 
 
 class Lead(SQLModel, table=True):
@@ -86,6 +101,22 @@ class LeadEvento(SQLModel, table=True):
     __tablename__ = "lead_evento"
     __table_args__ = (
         UniqueConstraint("lead_id", "evento_id", name="uq_lead_evento_lead_id_evento_id"),
+        CheckConstraint(
+            "tipo_lead IS NULL OR tipo_lead != 'ativacao' OR "
+            "(responsavel_tipo IS NOT NULL AND responsavel_tipo = 'agencia')",
+            name="tipo_lead_ativacao_agencia",
+        ),
+        CheckConstraint(
+            "responsavel_tipo IS NULL OR "
+            "(responsavel_nome IS NOT NULL AND length(trim(responsavel_nome)) > 0)",
+            name="responsavel_nome_required",
+        ),
+        CheckConstraint(
+            "responsavel_tipo IS NULL OR "
+            "(responsavel_tipo = 'agencia' AND responsavel_agencia_id IS NOT NULL) OR "
+            "(responsavel_tipo = 'proponente' AND responsavel_agencia_id IS NULL)",
+            name="responsavel_agencia_consistency",
+        ),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -93,6 +124,28 @@ class LeadEvento(SQLModel, table=True):
     evento_id: int = Field(foreign_key="evento.id", index=True)
     source_kind: LeadEventoSourceKind = Field(index=True)
     source_ref_id: Optional[int] = Field(default=None, index=True)
+    tipo_lead: Optional[TipoLead] = Field(
+        default=None,
+        sa_column=Column(
+            SQLEnum(TipoLead, name="tipolead", values_callable=_enum_values),
+            nullable=True,
+            index=True,
+        ),
+    )
+    responsavel_tipo: Optional[TipoResponsavel] = Field(
+        default=None,
+        sa_column=Column(
+            SQLEnum(TipoResponsavel, name="tiporesponsavel", values_callable=_enum_values),
+            nullable=True,
+            index=True,
+        ),
+    )
+    responsavel_nome: Optional[str] = Field(default=None, max_length=150)
+    responsavel_agencia_id: Optional[int] = Field(
+        default=None,
+        foreign_key="agencia.id",
+        index=True,
+    )
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
@@ -100,6 +153,7 @@ class LeadEvento(SQLModel, table=True):
 
     lead: Optional["Lead"] = Relationship(back_populates="lead_eventos")
     evento: Optional["Evento"] = Relationship(back_populates="lead_eventos")
+    responsavel_agencia: Optional["Agencia"] = Relationship()
 
 
 class LeadConversao(SQLModel, table=True):

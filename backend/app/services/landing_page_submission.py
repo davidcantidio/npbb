@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.models import (
+    Agencia,
     Ativacao,
     AtivacaoLead,
     ConversaoAtivacao,
@@ -14,6 +15,8 @@ from app.models.models import (
     LandingAnalyticsEvent,
     Lead,
     LeadEventoSourceKind,
+    TipoLead,
+    TipoResponsavel,
 )
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
 from app.services.lead_event_service import ensure_lead_event
@@ -21,6 +24,42 @@ from app.services.landing_page_templates import TEMPLATE_REGISTRY, get_template_
 from app.services.reconhecimento import gerar_token
 
 ANALYTICS_EVENT_SUBMIT_SUCCESS = "submit_success"
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _resolve_event_agencia_nome(session: Session, evento: Evento) -> str | None:
+    if evento.agencia_id is None:
+        return None
+    if evento.agencia is not None:
+        return evento.agencia.nome
+    agencia = session.get(Agencia, evento.agencia_id)
+    return agencia.nome if agencia else None
+
+
+def _lead_event_origin_kwargs(
+    session: Session,
+    *,
+    evento: Evento,
+    ativacao: Ativacao | None,
+) -> dict[str, object]:
+    if ativacao is None:
+        return {"tipo_lead": TipoLead.ENTRADA_EVENTO}
+
+    if evento.agencia_id is None:
+        return {}
+
+    return {
+        "tipo_lead": TipoLead.ATIVACAO,
+        "responsavel_tipo": TipoResponsavel.AGENCIA,
+        "responsavel_nome": _resolve_event_agencia_nome(session, evento),
+        "responsavel_agencia_id": evento.agencia_id,
+    }
 
 
 def get_public_lead_success_message(
@@ -141,17 +180,25 @@ def ensure_ativacao_lead_link(
     *,
     ativacao: Ativacao | None,
     lead: Lead,
+    nome_ativacao: str | None = None,
 ) -> AtivacaoLead | None:
     if ativacao is None or ativacao.id is None or lead.id is None:
         return None
 
+    resolved_nome_ativacao = _normalize_optional_text(
+        nome_ativacao if nome_ativacao is not None else ativacao.nome
+    )
     ativacao_lead = session.exec(
         select(AtivacaoLead)
         .where(AtivacaoLead.ativacao_id == ativacao.id)
         .where(AtivacaoLead.lead_id == lead.id)
     ).first()
     if ativacao_lead is None:
-        ativacao_lead = AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id)
+        ativacao_lead = AtivacaoLead(
+            ativacao_id=ativacao.id,
+            lead_id=lead.id,
+            nome_ativacao=resolved_nome_ativacao,
+        )
         try:
             with session.begin_nested():
                 session.add(ativacao_lead)
@@ -164,6 +211,9 @@ def ensure_ativacao_lead_link(
             ).first()
             if ativacao_lead is None:
                 raise
+    elif not _normalize_optional_text(ativacao_lead.nome_ativacao) and resolved_nome_ativacao:
+        ativacao_lead.nome_ativacao = resolved_nome_ativacao
+        session.add(ativacao_lead)
     return ativacao_lead
 
 
@@ -272,13 +322,25 @@ def submit_public_lead(
             .where(AtivacaoLead.ativacao_id == duplicate_conversao.ativacao_id)
             .where(AtivacaoLead.lead_id == duplicate_conversao.lead_id)
         ).first()
+        if (
+            ativacao_lead is not None
+            and ativacao is not None
+            and not _normalize_optional_text(ativacao_lead.nome_ativacao)
+        ):
+            ativacao_lead.nome_ativacao = _normalize_optional_text(ativacao.nome)
+            session.add(ativacao_lead)
         if evento.id is not None:
             ensure_lead_event(
                 session,
                 lead_id=duplicate_conversao.lead_id,
                 evento_id=evento.id,
-                source_kind=LeadEventoSourceKind.ACTIVATION if ativacao is not None else LeadEventoSourceKind.EVENT_DIRECT,
+                source_kind=(
+                    LeadEventoSourceKind.ACTIVATION
+                    if ativacao is not None
+                    else LeadEventoSourceKind.EVENT_DIRECT
+                ),
                 source_ref_id=ativacao.id if ativacao else evento.id,
+                **_lead_event_origin_kwargs(session, evento=evento, ativacao=ativacao),
             )
         token_reconhecimento: str | None = None
         if ativacao is not None and evento.id is not None:
@@ -311,8 +373,13 @@ def submit_public_lead(
             session,
             lead_id=lead.id,
             evento_id=evento.id,
-            source_kind=LeadEventoSourceKind.ACTIVATION if ativacao is not None else LeadEventoSourceKind.EVENT_DIRECT,
+            source_kind=(
+                LeadEventoSourceKind.ACTIVATION
+                if ativacao is not None
+                else LeadEventoSourceKind.EVENT_DIRECT
+            ),
             source_ref_id=ativacao.id if ativacao else evento.id,
+            **_lead_event_origin_kwargs(session, evento=evento, ativacao=ativacao),
         )
     ativacao_lead = ensure_ativacao_lead_link(
         session,
@@ -326,7 +393,12 @@ def submit_public_lead(
         cpf=cpf_for_conversion,
     )
     token_reconhecimento: str | None = None
-    if ativacao is not None and lead.id is not None and evento.id is not None and conversao_registrada:
+    if (
+        ativacao is not None
+        and lead.id is not None
+        and evento.id is not None
+        and conversao_registrada
+    ):
         token_reconhecimento = gerar_token(session, lead_id=lead.id, evento_id=evento.id)
     _track_submit_success_analytics_if_needed(
         session,

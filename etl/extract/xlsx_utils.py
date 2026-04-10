@@ -51,6 +51,26 @@ class XlsxColumnsResult:
     lineage: XlsxLineageMetadata
 
 
+@dataclass(frozen=True)
+class XlsxHeaderColumn:
+    """Cleaned value found in one candidate XLSX header cell."""
+
+    column_index: int
+    column_letter: str
+    source_value: str
+
+
+@dataclass(frozen=True)
+class HeaderNotFound:
+    """Soft-failure result returned when header matching is inconclusive."""
+
+    message: str
+    required_terms: tuple[str, ...]
+    scanned_rows: int
+    forced_row: int | None = None
+    columns: tuple[XlsxHeaderColumn, ...] = ()
+
+
 def _clean_text(value: object) -> str:
     """Convert any cell value into a compact one-line string."""
     if value is None:
@@ -90,6 +110,53 @@ def _row_non_empty_values(ws: Worksheet, row: int, max_col: int) -> list[str]:
     return values
 
 
+def _row_header_columns(ws: Worksheet, row: int, max_col: int) -> tuple[XlsxHeaderColumn, ...]:
+    """Return cleaned non-empty header cells for one row with coordinates."""
+    columns: list[XlsxHeaderColumn] = []
+    for col in range(1, max_col + 1):
+        cleaned = _clean_text(_cell_value_with_merged_fallback(ws, row, col))
+        if not cleaned:
+            continue
+        columns.append(
+            XlsxHeaderColumn(
+                column_index=col,
+                column_letter=get_column_letter(col),
+                source_value=cleaned,
+            )
+        )
+    return tuple(columns)
+
+
+def _required_term_candidates(
+    required_terms: Sequence[str],
+    term_aliases: Mapping[str, Sequence[str]] | None,
+) -> list[tuple[str, ...]]:
+    """Build per-term match candidates without mutating the existing alias sources."""
+    alias_map = term_aliases or {}
+    candidates: list[tuple[str, ...]] = []
+    for term in required_terms:
+        canonical = term.strip()
+        if not canonical:
+            continue
+        values = [canonical]
+        for key in (canonical, canonical.lower(), canonical.upper()):
+            values.extend(alias_map.get(key, ()))
+        normalized = tuple(
+            dict.fromkeys(value.strip().lower() for value in values if value and value.strip())
+        )
+        if normalized:
+            candidates.append(normalized)
+    return candidates
+
+
+def _row_matches_required_terms(values: Sequence[str], term_candidates: Sequence[Sequence[str]]) -> bool:
+    """Return True when each required term has at least one matching cell."""
+    if not term_candidates:
+        return False
+    lowered = [value.lower() for value in values]
+    return all(any(candidate in cell for cell in lowered for candidate in candidates) for candidates in term_candidates)
+
+
 def _infer_last_used_column(ws: Worksheet, *, header_row: int, header_depth: int) -> int:
     """Infer last used column based on header rows, falling back to sheet max column."""
     last_col = 0
@@ -108,9 +175,13 @@ def find_header_row(
     ws: Worksheet,
     *,
     required_terms: Sequence[str] | None = None,
+    term_aliases: Mapping[str, Sequence[str]] | None = None,
+    forced_row: int | None = None,
+    soft_fail: bool = False,
+    promote_merged_header: bool = True,
     max_scan_rows: int = 30,
     min_non_empty_cells: int = 2,
-) -> int:
+) -> int | HeaderNotFound:
     """Find the most likely header row in one worksheet.
 
     Heuristics:
@@ -121,18 +192,59 @@ def find_header_row(
     Args:
         ws: OpenPyXL worksheet object.
         required_terms: Optional terms that must appear in header row cells.
+        term_aliases: Optional alias candidates keyed by required term.
+        forced_row: Optional 1-based row selected by the caller for validation.
+        soft_fail: If True, return HeaderNotFound instead of raising ValueError.
+        promote_merged_header: If True, keep legacy promotion to previous merged row.
         max_scan_rows: Maximum number of top rows scanned.
         min_non_empty_cells: Minimum non-empty cells to consider a row a header candidate.
 
     Returns:
-        1-based header row index.
+        1-based header row index, or HeaderNotFound when `soft_fail=True`.
 
     Raises:
         ValueError: If no candidate header row is found.
     """
 
     scan_limit = min(max_scan_rows, ws.max_row)
-    terms = [term.strip().lower() for term in (required_terms or []) if term and term.strip()]
+    terms = tuple(term.strip() for term in (required_terms or []) if term and term.strip())
+    term_candidates = _required_term_candidates(terms, term_aliases)
+
+    if forced_row is not None:
+        if forced_row < 1 or forced_row > ws.max_row:
+            not_found = HeaderNotFound(
+                message=f"Forced header row is outside worksheet bounds: {forced_row}.",
+                required_terms=terms,
+                scanned_rows=scan_limit,
+                forced_row=forced_row,
+            )
+            if soft_fail:
+                return not_found
+            raise ValueError(not_found.message)
+        values = _row_non_empty_values(ws, forced_row, ws.max_column)
+        if term_candidates and not _row_matches_required_terms(values, term_candidates):
+            not_found = HeaderNotFound(
+                message="Forced header row does not contain the required terms.",
+                required_terms=terms,
+                scanned_rows=scan_limit,
+                forced_row=forced_row,
+                columns=_row_header_columns(ws, forced_row, ws.max_column),
+            )
+            if soft_fail:
+                return not_found
+            raise ValueError(not_found.message)
+        if len(values) < min_non_empty_cells:
+            not_found = HeaderNotFound(
+                message="Forced header row does not contain enough non-empty cells.",
+                required_terms=terms,
+                scanned_rows=scan_limit,
+                forced_row=forced_row,
+                columns=_row_header_columns(ws, forced_row, ws.max_column),
+            )
+            if soft_fail:
+                return not_found
+            raise ValueError(not_found.message)
+        return forced_row
 
     best_row = 0
     best_score = -10_000
@@ -143,8 +255,7 @@ def find_header_row(
         if len(values) < min_non_empty_cells:
             continue
 
-        lowered = [value.lower() for value in values]
-        if terms and all(any(term in cell for cell in lowered) for term in terms):
+        if term_candidates and _row_matches_required_terms(values, term_candidates):
             required_match_row = row
             break
 
@@ -155,12 +266,25 @@ def find_header_row(
             best_score = score
             best_row = row
 
+    if term_candidates and required_match_row <= 0 and soft_fail:
+        return HeaderNotFound(
+            message="Header row could not be identified with the required terms.",
+            required_terms=terms,
+            scanned_rows=scan_limit,
+        )
+
     header_row = required_match_row or best_row
     if header_row <= 0:
+        if soft_fail:
+            return HeaderNotFound(
+                message="Header row could not be identified in worksheet.",
+                required_terms=terms,
+                scanned_rows=scan_limit,
+            )
         raise ValueError("Header row could not be identified in worksheet.")
 
     previous_row = header_row - 1
-    if previous_row >= 1 and _row_has_horizontal_merge(ws, previous_row):
+    if promote_merged_header and previous_row >= 1 and _row_has_horizontal_merge(ws, previous_row):
         previous_values = _row_non_empty_values(ws, previous_row, ws.max_column)
         if previous_values:
             return previous_row

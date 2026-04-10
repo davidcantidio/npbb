@@ -15,6 +15,7 @@ from app.services.imports.contracts import ImportPreviewResult
 
 ALLOWED_IMPORT_EXTENSIONS = {".csv", ".xlsx"}
 DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024
+BYTES_PER_MEGABYTE = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -68,9 +69,10 @@ def inspect_upload(
     filename = file.filename or ""
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        accepted_extensions = ", ".join(sorted(ALLOWED_IMPORT_EXTENSIONS))
         raise ImportFileError(
             code="INVALID_FILE_TYPE",
-            message="Formato de arquivo invalido (use .csv ou .xlsx)",
+            message=f"Arquivo '{ext}' não é suportado. Extensões aceitas: {accepted_extensions}",
             field="file",
         )
 
@@ -80,7 +82,10 @@ def inspect_upload(
     if size > max_bytes:
         raise ImportFileError(
             code="FILE_TOO_LARGE",
-            message="Arquivo excede o tamanho maximo permitido",
+            message=(
+                f"Arquivo muito grande: {size / BYTES_PER_MEGABYTE:.1f} MB. "
+                f"Limite permitido: {max_bytes / BYTES_PER_MEGABYTE:.1f} MB"
+            ),
             field="file",
             extra={"max_bytes": max_bytes},
         )

@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from app.models.models import LeadImportEtlPreviewSession
 
 from .contracts import EtlCommitResult, EtlPreviewDQItem, EtlPreviewRow, EtlPreviewSnapshot
+from .dq_report_policy import compute_has_warnings
 from .exceptions import EtlPreviewSessionNotFoundError
 
 
@@ -105,6 +106,7 @@ def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
     entity = session.get(LeadImportEtlPreviewSession, session_token)
     if entity is None:
         raise EtlPreviewSessionNotFoundError(f"Preview session not found: {session_token}")
+    dq_report = _deserialize_dq(entity.dq_report_json)
     return EtlPreviewSnapshot(
         session_token=entity.session_token,
         filename=entity.filename,
@@ -116,11 +118,11 @@ def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
         invalid_rows=entity.invalid_rows,
         approved_rows=_deserialize_rows(entity.approved_rows_json),
         rejected_rows=_deserialize_rows(entity.rejected_rows_json),
-        dq_report=_deserialize_dq(entity.dq_report_json),
+        dq_report=dq_report,
         status=entity.status,  # type: ignore[arg-type]
         idempotency_key=entity.idempotency_key,
         has_validation_errors=entity.has_validation_errors,
-        has_warnings=any(item.severity == "warning" and item.affected_rows > 0 for item in _deserialize_dq(entity.dq_report_json)),
+        has_warnings=compute_has_warnings(dq_report),
     )
 
 

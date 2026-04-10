@@ -35,6 +35,7 @@ describe("leads_import ETL service", () => {
         text: () =>
           Promise.resolve(
             JSON.stringify({
+              status: "previewed",
               session_token: "session-123",
               total_rows: 4,
               valid_rows: 3,
@@ -63,6 +64,7 @@ describe("leads_import ETL service", () => {
       }),
     );
     expect(result).toEqual({
+      status: "previewed",
       session_token: "session-123",
       total_rows: 4,
       valid_rows: 3,
@@ -76,6 +78,37 @@ describe("leads_import ETL service", () => {
         },
       ],
     });
+  });
+
+  it("previewLeadImportEtl sends optional header fallback fields", async () => {
+    const fetchMock = mockFetchSequence([
+      {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              status: "cpf_column_required",
+              message: "Selecione CPF",
+              header_row: 2,
+              required_fields: ["cpf"],
+              columns: [{ column_index: 2, column_letter: "B", source_value: "Documento" }],
+            }),
+          ),
+      },
+    ]);
+
+    const file = new File(["xlsx"], "leads.xlsx");
+    const result = await previewLeadImportEtl("token-123", file, 42, false, {
+      headerRow: 2,
+      fieldAliases: { cpf: { column_index: 2, source_value: "Documento" } },
+    });
+
+    const form = fetchMock.mock.calls[0][1].body as FormData;
+    expect(form.get("header_row")).toBe("2");
+    expect(form.get("field_aliases_json")).toBe(JSON.stringify({ cpf: { column_index: 2, source_value: "Documento" } }));
+    expect(result.status).toBe("cpf_column_required");
   });
 
   it("commitLeadImportEtl posts the public payload and returns the backend contract unchanged", async () => {

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from openpyxl import Workbook
 
-from etl.extract.xlsx_utils import build_columns_with_metadata, find_header_row
+from etl.extract.xlsx_utils import HeaderNotFound, build_columns_with_metadata, find_header_row
 from etl.transform.column_normalize import ColumnNormalizationConfig, normalize_column_names
 
 
@@ -43,6 +43,67 @@ def test_find_header_row_detects_group_header_above_required_terms() -> None:
     header_row = find_header_row(ws, required_terms=["CPF", "Opt In"], max_scan_rows=10)
 
     assert header_row == 4
+
+
+def test_find_header_row_soft_fail_returns_header_not_found_for_missing_terms() -> None:
+    """Soft-fail mode should return details instead of raising for missing required terms."""
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Relatorio"])
+    ws.append(["Nome", "Documento", "Sessao"])
+
+    result = find_header_row(ws, required_terms=["CPF"], max_scan_rows=10, soft_fail=True)
+
+    assert isinstance(result, HeaderNotFound)
+    assert result.required_terms == ("CPF",)
+    assert result.scanned_rows == 2
+
+
+def test_find_header_row_forced_row_validates_required_aliases() -> None:
+    """Forced header row should honor explicit term aliases."""
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Relatorio"])
+    ws.append(["Nome", "Documento", "Sessao"])
+
+    result = find_header_row(
+        ws,
+        required_terms=["CPF"],
+        term_aliases={"CPF": ["Documento"]},
+        forced_row=2,
+        soft_fail=True,
+    )
+
+    assert result == 2
+
+
+def test_find_header_row_forced_row_without_cpf_returns_columns() -> None:
+    """Forced row soft-fail should include the columns found in that row."""
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Relatorio"])
+    ws.append(["Nome", "Documento", "Sessao"])
+
+    result = find_header_row(ws, required_terms=["CPF"], forced_row=2, soft_fail=True)
+
+    assert isinstance(result, HeaderNotFound)
+    assert result.forced_row == 2
+    assert [column.source_value for column in result.columns] == ["Nome", "Documento", "Sessao"]
+    assert [column.column_letter for column in result.columns] == ["A", "B", "C"]
+
+
+def test_find_header_row_default_still_raises_when_no_candidate_exists() -> None:
+    """Legacy hard-fail behavior remains the default when no candidate row exists."""
+    wb = Workbook()
+    ws = wb.active
+    ws["A1"] = ""
+
+    try:
+        find_header_row(ws, required_terms=["CPF"], max_scan_rows=10)
+    except ValueError as exc:
+        assert "Header row could not be identified" in str(exc)
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("find_header_row should raise when no candidate exists")
 
 
 def test_build_columns_with_metadata_handles_merged_headers_and_lineage() -> None:

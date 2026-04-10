@@ -46,6 +46,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead,
     persist_lead_batch,
 )
+from app.services.imports.file_reader import ImportFileError
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
 from app.services.lead_pipeline_service import executar_pipeline_gold
 from app.schemas.lead_batch import (
@@ -59,7 +60,14 @@ from app.schemas.lead_batch import (
 )
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
-from app.schemas.lead_import_etl import ImportEtlCommitRequest, ImportEtlPreviewResponse, ImportEtlResult
+from app.schemas.lead_import_etl import (
+    ImportEtlCommitRequest,
+    ImportEtlCpfColumnRequiredResponse,
+    ImportEtlHeaderRequiredResponse,
+    ImportEtlPreviewResponse,
+    ImportEtlPreviewResponseUnion,
+    ImportEtlResult,
+)
 from app.schemas.lead_list import LeadListItemRead, LeadListQuery, LeadListResponse
 from app.schemas.landing_public import LandingSubmitRequest, LandingSubmitResponse
 from app.schemas.reconhecimento import LeadRecognitionRead
@@ -629,12 +637,49 @@ def _map_etl_import_error(exc: Exception) -> None:
             code="ETL_INVALID_INPUT",
             message=str(exc),
         )
+    if isinstance(exc, ImportFileError):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code=exc.code,
+            message=exc.message,
+            field=exc.field,
+            extra=exc.extra,
+        )
+    if isinstance(exc, ValueError):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="ETL_INVALID_INPUT",
+            message=str(exc),
+        )
     raise exc
 
 
-def _serialize_etl_preview_response(result) -> ImportEtlPreviewResponse:
+def _serialize_etl_preview_response(
+    result,
+) -> ImportEtlPreviewResponse | ImportEtlHeaderRequiredResponse | ImportEtlCpfColumnRequiredResponse:
+    if getattr(result, "status", None) == "header_required":
+        return ImportEtlHeaderRequiredResponse.model_validate(
+            {
+                "status": result.status,
+                "message": result.message,
+                "max_row": result.max_row,
+                "scanned_rows": result.scanned_rows,
+                "required_fields": list(result.required_fields),
+            }
+        )
+    if getattr(result, "status", None) == "cpf_column_required":
+        return ImportEtlCpfColumnRequiredResponse.model_validate(
+            {
+                "status": result.status,
+                "message": result.message,
+                "header_row": result.header_row,
+                "columns": [column.__dict__ for column in result.columns],
+                "required_fields": list(result.required_fields),
+            }
+        )
     return ImportEtlPreviewResponse.model_validate(
         {
+            "status": "previewed",
             "session_token": result.session_token,
             "total_rows": result.total_rows,
             "valid_rows": result.valid_rows,
@@ -1244,12 +1289,14 @@ def preview_import(
     )
 
 
-@router.post("/import/etl/preview", response_model=ImportEtlPreviewResponse)
-@router.post("/import/etl/preview/", response_model=ImportEtlPreviewResponse)
+@router.post("/import/etl/preview", response_model=ImportEtlPreviewResponseUnion)
+@router.post("/import/etl/preview/", response_model=ImportEtlPreviewResponseUnion)
 async def preview_import_etl(
     file: UploadFile = File(...),
     evento_id: int = Form(...),
     strict: bool = Form(False),
+    header_row: int | None = Form(None),
+    field_aliases_json: str | None = Form(None),
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -1260,6 +1307,8 @@ async def preview_import_etl(
             evento_id=evento_id,
             db=session,
             strict=strict,
+            header_row=header_row,
+            field_aliases_json=field_aliases_json,
         )
     except Exception as exc:
         _map_etl_import_error(exc)

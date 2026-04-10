@@ -7,7 +7,7 @@ from sqlmodel import Session
 from app.services.imports.file_reader import DEFAULT_IMPORT_MAX_BYTES
 
 from .etl_import.commit_service import commit_preview_session
-from .etl_import.contracts import EtlCommitResult, EtlPreviewSnapshot
+from .etl_import.contracts import EtlCommitResult, EtlCpfColumnRequired, EtlHeaderRequired, EtlPreviewSnapshot
 from .etl_import.preview_service import create_preview_snapshot
 
 
@@ -16,13 +16,17 @@ async def import_leads_with_etl(
     evento_id: int,
     db: Session,
     strict: bool = False,
-) -> EtlPreviewSnapshot:
+    header_row: int | None = None,
+    field_aliases_json: str | None = None,
+) -> EtlPreviewSnapshot | EtlHeaderRequired | EtlCpfColumnRequired:
     return create_preview_snapshot(
         file=file,
         evento_id=evento_id,
         strict=strict,
         db=db,
         max_bytes=DEFAULT_IMPORT_MAX_BYTES,
+        header_row=header_row,
+        field_aliases_json=field_aliases_json,
     )
 
 

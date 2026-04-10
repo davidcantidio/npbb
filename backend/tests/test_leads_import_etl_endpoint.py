@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 from io import BytesIO
+import json
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
@@ -12,7 +14,8 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Evento, Lead, StatusEvento, Usuario
+from app.models.models import Evento, ImportAlias, Lead, StatusEvento, Usuario
+from app.routers.leads import _map_etl_import_error
 from app.schemas.lead_import_etl import ImportEtlPreviewResponse, ImportEtlResult
 from app.utils.security import hash_password
 
@@ -143,6 +146,188 @@ def test_preview_etl_invalid_extension_uses_router_error_shape(client: TestClien
     detail = res.json()["detail"]
     assert detail["code"] == "ETL_INVALID_INPUT"
     assert "xlsx" in detail["message"].lower()
+
+
+def test_preview_etl_import_file_error_maps_to_400_with_exception_message(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("leads.txt", b"email\nfoo@example.com\n", "text/plain")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+
+    assert res.status_code == 400
+    detail = res.json()["detail"]
+    assert detail["code"] == "INVALID_FILE_TYPE"
+    assert detail["field"] == "file"
+    assert ".txt" in detail["message"]
+
+
+def test_map_etl_import_error_value_error_maps_to_400_with_exception_message() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        _map_etl_import_error(ValueError("campo invalido"))
+
+    err = exc_info.value
+    assert err.status_code == 400
+    assert err.detail == {
+        "code": "ETL_INVALID_INPUT",
+        "message": "campo invalido",
+    }
+
+
+def test_preview_etl_requests_header_row_when_cpf_header_is_not_detected(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Relatorio de Leads"],
+            ["Nome", "Documento", "Sessao"],
+            ["Alice", "529.982.247-25", "Show 1"],
+        ]
+    )
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("sem-cpf.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["status"] == "header_required"
+    assert "session_token" not in payload
+    assert payload["required_fields"] == ["cpf"]
+
+
+def test_preview_etl_accepts_forced_header_row_with_cpf(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Relatorio de Leads"],
+            ["Nome", "CPF", "Sessao"],
+            ["Alice", "529.982.247-25", "Show 1"],
+        ]
+    )
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("cpf-forcado.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false", "header_row": "2"},
+    )
+
+    assert res.status_code == 200
+    payload = ImportEtlPreviewResponse.model_validate(res.json())
+    assert payload.status == "previewed"
+    assert payload.session_token
+    assert payload.total_rows == 1
+
+
+def test_preview_etl_forced_header_row_without_cpf_returns_columns(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Relatorio de Leads"],
+            ["Nome", "Documento", "Sessao"],
+            ["Alice", "529.982.247-25", "Show 1"],
+        ]
+    )
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("cpf-a-mapear.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false", "header_row": "2"},
+    )
+
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["status"] == "cpf_column_required"
+    assert payload["header_row"] == 2
+    assert payload["columns"][1] == {
+        "column_index": 2,
+        "column_letter": "B",
+        "source_value": "Documento",
+    }
+
+
+def test_preview_etl_persists_cpf_header_alias_and_reuses_it(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Relatorio de Leads"],
+            ["Nome", "Documento", "Sessao"],
+            ["Alice", "529.982.247-25", "Show 1"],
+        ]
+    )
+
+    first = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("alias-cpf.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={
+            "evento_id": str(evento.id),
+            "strict": "false",
+            "header_row": "2",
+            "field_aliases_json": json.dumps({"cpf": {"column_index": 2, "source_value": "Documento"}}),
+        },
+    )
+
+    assert first.status_code == 200
+    first_payload = ImportEtlPreviewResponse.model_validate(first.json())
+    assert first_payload.status == "previewed"
+
+    with Session(engine) as session:
+        alias = session.exec(
+            select(ImportAlias).where(
+                ImportAlias.domain == "lead_import_etl_header",
+                ImportAlias.field_name == "cpf",
+                ImportAlias.source_value == "Documento",
+            )
+        ).first()
+        assert alias is not None
+        assert alias.canonical_value == "cpf"
+
+    second = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("alias-cpf.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+
+    assert second.status_code == 200
+    second_payload = ImportEtlPreviewResponse.model_validate(second.json())
+    assert second_payload.status == "previewed"
+
+    commit = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": second_payload.session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+
+    assert commit.status_code == 200
+    assert ImportEtlResult.model_validate(commit.json()).status == "committed"
 
 
 def test_commit_etl_blocks_warnings_until_force_confirmation(client: TestClient, engine) -> None:

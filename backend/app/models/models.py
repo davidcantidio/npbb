@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import Column, DateTime, Index, Numeric, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, Index, Numeric, Text, UniqueConstraint
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
@@ -369,6 +369,8 @@ from app.models.lead_public_models import (
     LeadEventoSourceKind,
     LeadImportEtlPreviewSession,
     PublicityImportStaging,
+    TipoLead,
+    TipoResponsavel,
 )
 
 
@@ -460,6 +462,10 @@ class AtivacaoLead(SQLModel, table=True):
     __tablename__ = "ativacao_lead"
     __table_args__ = (
         UniqueConstraint("ativacao_id", "lead_id", name="uq_ativacao_lead_ativacao_id_lead_id"),
+        CheckConstraint(
+            "nome_ativacao IS NULL OR length(trim(nome_ativacao)) > 0",
+            name="nome_ativacao_not_blank",
+        ),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -471,6 +477,7 @@ class AtivacaoLead(SQLModel, table=True):
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )
+    nome_ativacao: Optional[str] = Field(default=None, max_length=150)
 
     ativacao: Optional[Ativacao] = Relationship(back_populates="ativacao_leads")
     lead: Optional[Lead] = Relationship(back_populates="ativacoes")

@@ -39,7 +39,14 @@ export type LeadImportEtlDQCheckResult = {
   message?: string | null;
 };
 
-export type LeadImportEtlPreview = {
+export type LeadImportEtlHeaderColumn = {
+  column_index: number;
+  column_letter: string;
+  source_value: string;
+};
+
+export type LeadImportEtlPreviewReady = {
+  status: "previewed";
   session_token: string;
   total_rows: number;
   valid_rows: number;
@@ -47,8 +54,39 @@ export type LeadImportEtlPreview = {
   dq_report: LeadImportEtlDQCheckResult[];
 };
 
+export type LeadImportEtlHeaderRequired = {
+  status: "header_required";
+  message: string;
+  max_row: number;
+  scanned_rows: number;
+  required_fields: string[];
+};
+
+export type LeadImportEtlCpfColumnRequired = {
+  status: "cpf_column_required";
+  message: string;
+  header_row: number;
+  columns: LeadImportEtlHeaderColumn[];
+  required_fields: string[];
+};
+
+export type LeadImportEtlPreview =
+  | LeadImportEtlPreviewReady
+  | LeadImportEtlHeaderRequired
+  | LeadImportEtlCpfColumnRequired;
+
 // Kept for compatibility with existing imports/tests.
 export type LeadImportEtlPreviewResponse = LeadImportEtlPreview;
+
+export type LeadImportEtlFieldAliasSelection = {
+  column_index?: number;
+  source_value?: string | null;
+};
+
+export type LeadImportEtlPreviewOptions = {
+  headerRow?: number;
+  fieldAliases?: Record<string, LeadImportEtlFieldAliasSelection>;
+};
 
 export type LeadImportEtlResult = {
   session_token: string;
@@ -223,11 +261,18 @@ export async function previewLeadImportEtl(
   file: File,
   eventoId: number,
   strict = false,
+  options?: LeadImportEtlPreviewOptions,
 ): Promise<LeadImportEtlPreview> {
   const form = new FormData();
   form.append("file", file);
   form.append("evento_id", String(eventoId));
   form.append("strict", String(strict));
+  if (options?.headerRow) {
+    form.append("header_row", String(options.headerRow));
+  }
+  if (options?.fieldAliases && Object.keys(options.fieldAliases).length > 0) {
+    form.append("field_aliases_json", JSON.stringify(options.fieldAliases));
+  }
 
   const res = await fetchWithAuth("/leads/import/etl/preview", {
     method: "POST",

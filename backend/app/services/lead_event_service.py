@@ -8,7 +8,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.lead_batch import LeadBatch
-from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, LeadEvento, LeadEventoSourceKind
+from app.models.models import (
+    Ativacao,
+    AtivacaoLead,
+    Evento,
+    Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
+    TipoLead,
+    TipoResponsavel,
+)
 
 _SOURCE_PRIORITY: dict[LeadEventoSourceKind, int] = {
     LeadEventoSourceKind.EVENT_NAME_BACKFILL: 1,
@@ -75,6 +84,42 @@ def _should_upgrade_source(
     return _SOURCE_PRIORITY[incoming] > _SOURCE_PRIORITY[current]
 
 
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _apply_lead_origin_metadata(
+    lead_evento: LeadEvento,
+    *,
+    tipo_lead: TipoLead | None,
+    responsavel_tipo: TipoResponsavel | None,
+    responsavel_nome: str | None,
+    responsavel_agencia_id: int | None,
+) -> bool:
+    changed = False
+    if tipo_lead is not None and lead_evento.tipo_lead != tipo_lead:
+        lead_evento.tipo_lead = tipo_lead
+        changed = True
+    if responsavel_tipo is not None and lead_evento.responsavel_tipo != responsavel_tipo:
+        lead_evento.responsavel_tipo = responsavel_tipo
+        changed = True
+    if responsavel_nome is not None:
+        normalized_responsavel_nome = _normalize_optional_text(responsavel_nome)
+        if lead_evento.responsavel_nome != normalized_responsavel_nome:
+            lead_evento.responsavel_nome = normalized_responsavel_nome
+            changed = True
+    if (
+        responsavel_agencia_id is not None
+        and lead_evento.responsavel_agencia_id != responsavel_agencia_id
+    ):
+        lead_evento.responsavel_agencia_id = responsavel_agencia_id
+        changed = True
+    return changed
+
+
 def ensure_lead_event(
     session: Session,
     *,
@@ -82,6 +127,10 @@ def ensure_lead_event(
     evento_id: int,
     source_kind: LeadEventoSourceKind,
     source_ref_id: int | None = None,
+    tipo_lead: TipoLead | None = None,
+    responsavel_tipo: TipoResponsavel | None = None,
+    responsavel_nome: str | None = None,
+    responsavel_agencia_id: int | None = None,
 ) -> LeadEventoEnsureResult:
     existing = session.exec(
         select(LeadEvento)
@@ -97,6 +146,16 @@ def ensure_lead_event(
         elif existing.source_ref_id is None and source_ref_id is not None:
             existing.source_ref_id = source_ref_id
             changed = True
+        changed = (
+            _apply_lead_origin_metadata(
+                existing,
+                tipo_lead=tipo_lead,
+                responsavel_tipo=responsavel_tipo,
+                responsavel_nome=responsavel_nome,
+                responsavel_agencia_id=responsavel_agencia_id,
+            )
+            or changed
+        )
         if changed:
             session.add(existing)
             return LeadEventoEnsureResult(lead_evento=existing, action="updated")
@@ -107,6 +166,10 @@ def ensure_lead_event(
         evento_id=evento_id,
         source_kind=source_kind,
         source_ref_id=source_ref_id,
+        tipo_lead=tipo_lead,
+        responsavel_tipo=responsavel_tipo,
+        responsavel_nome=_normalize_optional_text(responsavel_nome),
+        responsavel_agencia_id=responsavel_agencia_id,
     )
     try:
         with session.begin_nested():
@@ -120,6 +183,15 @@ def ensure_lead_event(
         ).first()
         if existing is None:
             raise
+        if _apply_lead_origin_metadata(
+            existing,
+            tipo_lead=tipo_lead,
+            responsavel_tipo=responsavel_tipo,
+            responsavel_nome=responsavel_nome,
+            responsavel_agencia_id=responsavel_agencia_id,
+        ):
+            session.add(existing)
+            return LeadEventoEnsureResult(lead_evento=existing, action="updated")
         return LeadEventoEnsureResult(lead_evento=existing, action="existing")
     return LeadEventoEnsureResult(lead_evento=lead_evento, action="created")
 

@@ -27,6 +27,37 @@ class EtlPreviewRow:
 
 
 @dataclass(frozen=True)
+class EtlHeaderColumn:
+    column_index: int
+    column_letter: str
+    source_value: str
+
+
+@dataclass(frozen=True)
+class EtlFieldAliasSelection:
+    column_index: int | None = None
+    source_value: str | None = None
+
+
+@dataclass(frozen=True)
+class EtlHeaderRequired:
+    status: Literal["header_required"]
+    message: str
+    max_row: int
+    scanned_rows: int
+    required_fields: tuple[str, ...] = ("cpf",)
+
+
+@dataclass(frozen=True)
+class EtlCpfColumnRequired:
+    status: Literal["cpf_column_required"]
+    message: str
+    header_row: int
+    columns: tuple[EtlHeaderColumn, ...]
+    required_fields: tuple[str, ...] = ("cpf",)
+
+
+@dataclass(frozen=True)
 class EtlPreviewSnapshot:
     session_token: str
     filename: str

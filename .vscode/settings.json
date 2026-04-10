@@ -1,12 +1,3 @@
 {
-  "terminal.integrated.env.windows": {
-    "NODE_OPTIONS": "--disable-warning=DEP0040"
-  },
-  "terminal.integrated.env.linux": {
-    "NODE_OPTIONS": "--disable-warning=DEP0040"
-  },
-  "terminal.integrated.env.osx": {
-    "NODE_OPTIONS": "--disable-warning=DEP0040"
-  },
-  "chatgpt.runCodexInWindowsSubsystemForLinux": true
+  "task.allowAutomaticTasks": "on"
 }

@@ -329,18 +329,49 @@ def upgrade() -> None:
     op.drop_column('cota_cortesia', 'alterado_em')
     op.drop_constraint('cupom_codigo_key', 'cupom', type_='unique')
     op.create_unique_constraint(op.f('uq_cupom_codigo'), 'cupom', ['codigo'])
-    op.alter_column('data_quality_result', 'scope',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('STAGING', 'CANONICAL', 'MARTS', name='dataqualityscope'),
-               existing_nullable=False)
-    op.alter_column('data_quality_result', 'severity',
-               existing_type=sa.VARCHAR(length=10),
-               type_=sa.Enum('WARN', 'ERROR', name='dataqualityseverity'),
-               existing_nullable=False)
-    op.alter_column('data_quality_result', 'status',
-               existing_type=sa.VARCHAR(length=10),
-               type_=sa.Enum('PASS', 'FAIL', 'SKIP', name='dataqualitystatus'),
-               existing_nullable=False)
+    # Garantir tipos ENUM no Postgres (alter_column com sa.Enum nao os cria sozinhos aqui).
+    op.execute(
+        sa.text(
+            "DO $$ BEGIN CREATE TYPE dataqualityscope AS ENUM "
+            "('STAGING', 'CANONICAL', 'MARTS'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DO $$ BEGIN CREATE TYPE dataqualityseverity AS ENUM "
+            "('WARN', 'ERROR'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DO $$ BEGIN CREATE TYPE dataqualitystatus AS ENUM "
+            "('PASS', 'FAIL', 'SKIP'); EXCEPTION WHEN duplicate_object THEN NULL; END $$"
+        )
+    )
+    op.alter_column(
+        "data_quality_result",
+        "scope",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM("STAGING", "CANONICAL", "MARTS", name="dataqualityscope", create_type=False),
+        existing_nullable=False,
+        postgresql_using="scope::dataqualityscope",
+    )
+    op.alter_column(
+        "data_quality_result",
+        "severity",
+        existing_type=sa.VARCHAR(length=10),
+        type_=postgresql.ENUM("WARN", "ERROR", name="dataqualityseverity", create_type=False),
+        existing_nullable=False,
+        postgresql_using="severity::dataqualityseverity",
+    )
+    op.alter_column(
+        "data_quality_result",
+        "status",
+        existing_type=sa.VARCHAR(length=10),
+        type_=postgresql.ENUM("PASS", "FAIL", "SKIP", name="dataqualitystatus", create_type=False),
+        existing_nullable=False,
+        postgresql_using="status::dataqualitystatus",
+    )
     op.alter_column('data_quality_result', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),

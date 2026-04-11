@@ -16,6 +16,7 @@ _DROP_VIEWS_FOR_TABLE_ALLOWED = frozenset({"data_quality_result", "event_session
 def _drop_views_for_table(table_name: str) -> None:
     if table_name not in _DROP_VIEWS_FOR_TABLE_ALLOWED:
         raise ValueError(f"unsupported table for view drop: {table_name}")
+    # pg_depend cobre dependencias que information_schema.view_table_usage omite.
     op.execute(
         sa.text(
             f"""
@@ -23,10 +24,15 @@ def _drop_views_for_table(table_name: str) -> None:
             DECLARE r RECORD;
             BEGIN
               FOR r IN (
-                SELECT DISTINCT view_schema, view_name
-                FROM information_schema.view_table_usage
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-                  AND table_name = '{table_name}'
+                SELECT DISTINCT n.nspname AS view_schema, v.relname AS view_name
+                FROM pg_depend d
+                JOIN pg_rewrite rw ON rw.oid = d.objid
+                JOIN pg_class v ON v.oid = rw.ev_class AND v.relkind = 'v'
+                JOIN pg_namespace n ON n.oid = v.relnamespace
+                JOIN pg_class t ON t.oid = d.refobjid AND t.relkind = 'r'
+                JOIN pg_namespace tn ON tn.oid = t.relnamespace
+                WHERE t.relname = '{table_name}'
+                  AND tn.nspname = ANY (current_schemas(false))
               ) LOOP
                 EXECUTE format('DROP VIEW IF EXISTS %I.%I CASCADE', r.view_schema, r.view_name);
               END LOOP;

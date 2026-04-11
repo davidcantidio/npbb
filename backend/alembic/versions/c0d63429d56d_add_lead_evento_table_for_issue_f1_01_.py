@@ -10,6 +10,402 @@ import sqlalchemy as sa
 import sqlmodel
 from sqlalchemy.dialects import postgresql
 
+_DROP_VIEWS_FOR_TABLE_ALLOWED = frozenset({"data_quality_result", "event_sessions"})
+
+
+def _drop_views_for_table(table_name: str) -> None:
+    if table_name not in _DROP_VIEWS_FOR_TABLE_ALLOWED:
+        raise ValueError(f"unsupported table for view drop: {table_name}")
+    op.execute(
+        sa.text(
+            f"""
+            DO $$
+            DECLARE r RECORD;
+            BEGIN
+              FOR r IN (
+                SELECT DISTINCT view_schema, view_name
+                FROM information_schema.view_table_usage
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                  AND table_name = '{table_name}'
+              ) LOOP
+                EXECUTE format('DROP VIEW IF EXISTS %I.%I CASCADE', r.view_schema, r.view_name);
+              END LOOP;
+            END $$;
+            """
+        )
+    )
+
+
+def _recreate_mart_report_views() -> None:
+    """Recria marts TMJ removidas antes de ALTER em event_sessions (7e3c2b1a9f0d + d2f4c6a8b0e1)."""
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_attendance_by_session AS
+SELECT
+  es.id AS session_id,
+  es.event_id AS event_id,
+  es.session_key,
+  es.session_name,
+  es.session_type,
+  es.session_date,
+  MAX(ac.source_id) AS source_id,
+  MAX(ac.ingestion_id) AS ingestion_id,
+  MAX(ac.ingressos_validos) AS ingressos_validos,
+  MAX(ac.presentes) AS presentes,
+  MAX(ac.ausentes) AS ausentes,
+  MAX(ac.invalidos) AS invalidos,
+  MAX(ac.bloqueados) AS bloqueados,
+  CASE
+    WHEN MAX(ac.ingressos_validos) IS NOT NULL
+      AND MAX(ac.ingressos_validos) > 0
+      AND MAX(ac.presentes) IS NOT NULL
+    THEN (CAST(MAX(ac.presentes) AS FLOAT) * 100.0) / CAST(MAX(ac.ingressos_validos) AS FLOAT)
+    ELSE NULL
+  END AS comparecimento_pct_calc
+FROM event_sessions es
+LEFT JOIN attendance_access_control ac ON ac.session_id = es.id
+GROUP BY es.id, es.event_id, es.session_key, es.session_name, es.session_type, es.session_date
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_optin_by_session AS
+SELECT
+  es.id AS session_id,
+  es.event_id AS event_id,
+  es.session_key,
+  es.session_name,
+  es.session_type,
+  es.session_date,
+  COUNT(ot.id) AS tx_count,
+  SUM(COALESCE(ot.ticket_qty, 0)) AS tickets_qty,
+  COUNT(DISTINCT ot.person_key_hash) AS unique_people
+FROM event_sessions es
+LEFT JOIN optin_transactions ot ON ot.session_id = es.id
+GROUP BY es.id, es.event_id, es.session_key, es.session_name, es.session_type, es.session_date
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_bb_share_by_session AS
+WITH base AS (
+  SELECT
+    es.id AS session_id,
+    es.session_key,
+    es.session_date,
+    COALESCE(m.segment::text, 'DESCONHECIDO') AS segment,
+    SUM(COALESCE(ot.ticket_qty, 0)) AS tickets_qty
+  FROM event_sessions es
+  LEFT JOIN optin_transactions ot ON ot.session_id = es.id
+  LEFT JOIN ticket_category_segment_map m ON m.ticket_category_norm = ot.ticket_category_norm
+  GROUP BY es.id, es.session_key, es.session_date, COALESCE(m.segment::text, 'DESCONHECIDO')
+),
+tot AS (
+  SELECT session_id, SUM(tickets_qty) AS session_total
+  FROM base
+  GROUP BY session_id
+)
+SELECT
+  base.session_id,
+  base.session_key,
+  base.session_date,
+  base.segment,
+  base.tickets_qty,
+  CASE
+    WHEN tot.session_total > 0
+    THEN (CAST(base.tickets_qty AS FLOAT) * 100.0) / CAST(tot.session_total AS FLOAT)
+    ELSE NULL
+  END AS share_pct
+FROM base
+JOIN tot ON tot.session_id = base.session_id
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_sales_curve_daily AS
+SELECT
+  es.id AS session_id,
+  es.session_key,
+  es.session_date AS session_date,
+  ot.purchase_date,
+  SUM(COALESCE(ot.ticket_qty, 0)) AS tickets_qty
+FROM optin_transactions ot
+JOIN event_sessions es ON es.id = ot.session_id
+WHERE ot.purchase_date IS NOT NULL
+GROUP BY es.id, es.session_key, es.session_date, ot.purchase_date
+ORDER BY es.session_key, ot.purchase_date
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_sales_curve_cum AS
+SELECT
+  d.session_id,
+  d.session_key,
+  d.session_date,
+  d.purchase_date,
+  d.tickets_qty,
+  SUM(d.tickets_qty) OVER (
+    PARTITION BY d.session_key
+    ORDER BY d.purchase_date
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS tickets_qty_cum
+FROM mart_report_sales_curve_daily d
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_leads_by_day AS
+SELECT
+  fl.session_id AS session_id,
+  es.session_key,
+  fl.lead_created_date AS day,
+  COUNT(fl.id) AS leads_count,
+  COUNT(DISTINCT fl.person_key_hash) AS unique_people
+FROM festival_leads fl
+LEFT JOIN event_sessions es ON es.id = fl.session_id
+WHERE fl.lead_created_date IS NOT NULL
+GROUP BY fl.session_id, es.session_key, fl.lead_created_date
+ORDER BY fl.lead_created_date
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_audience_ruler_by_session AS
+SELECT
+  es.id AS session_id,
+  es.session_key,
+  es.session_date,
+  es.session_type,
+  att.ingressos_validos AS ingressos_validos,
+  att.presentes AS entradas_validadas,
+  opt.tx_count AS optin_tx_count,
+  opt.tickets_qty AS optin_tickets_qty,
+  opt.unique_people AS optin_unique_people,
+  ts.sold_total AS ingressos_vendidos_total,
+  ts.net_sold_total AS ingressos_vendidos_liquidos
+FROM event_sessions es
+LEFT JOIN (
+  SELECT
+    session_id,
+    MAX(ingressos_validos) AS ingressos_validos,
+    MAX(presentes) AS presentes
+  FROM attendance_access_control
+  GROUP BY session_id
+) att ON att.session_id = es.id
+LEFT JOIN (
+  SELECT
+    session_id,
+    COUNT(id) AS tx_count,
+    SUM(COALESCE(ticket_qty, 0)) AS tickets_qty,
+    COUNT(DISTINCT person_key_hash) AS unique_people
+  FROM optin_transactions
+  GROUP BY session_id
+) opt ON opt.session_id = es.id
+LEFT JOIN (
+  SELECT
+    session_id,
+    MAX(sold_total) AS sold_total,
+    MAX(net_sold_total) AS net_sold_total
+  FROM ticket_sales
+  GROUP BY session_id
+) ts ON ts.session_id = es.id
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_session_coverage AS
+SELECT
+  es.id AS session_id,
+  es.session_key,
+  es.session_name,
+  es.session_type,
+  es.session_date,
+  CASE WHEN EXISTS (SELECT 1 FROM optin_transactions ot WHERE ot.session_id = es.id) THEN 1 ELSE 0 END AS has_optin,
+  CASE WHEN EXISTS (SELECT 1 FROM attendance_access_control ac WHERE ac.session_id = es.id) THEN 1 ELSE 0 END AS has_access_control,
+  CASE WHEN EXISTS (SELECT 1 FROM festival_leads fl WHERE fl.session_id = es.id) THEN 1 ELSE 0 END AS has_leads
+FROM event_sessions es
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_report_show_day_summary AS
+WITH expected AS (
+  SELECT '2025-12-12' AS show_date
+  UNION ALL SELECT '2025-12-13'
+  UNION ALL SELECT '2025-12-14'
+),
+expected_keys AS (
+  SELECT
+    show_date,
+    ('TMJ2025_' || REPLACE(CAST(show_date AS TEXT), '-', '') || '_SHOW') AS session_key_expected
+  FROM expected
+),
+sess AS (
+  SELECT
+    ek.show_date,
+    ek.session_key_expected,
+    es.id AS session_id,
+    es.session_name,
+    es.session_type,
+    es.session_date
+  FROM expected_keys ek
+  LEFT JOIN event_sessions es ON es.session_key = ek.session_key_expected
+),
+opt AS (
+  SELECT
+    session_id,
+    COUNT(id) AS optin_tx_count,
+    SUM(COALESCE(ticket_qty, 0)) AS optin_tickets_qty,
+    COUNT(DISTINCT person_key_hash) AS optin_unique_people
+  FROM optin_transactions
+  GROUP BY session_id
+),
+att AS (
+  SELECT
+    session_id,
+    MAX(ingressos_validos) AS ingressos_validos,
+    MAX(presentes) AS entradas_validadas
+  FROM attendance_access_control
+  GROUP BY session_id
+),
+sales AS (
+  SELECT
+    session_id,
+    MAX(sold_total) AS sold_total,
+    MAX(net_sold_total) AS net_sold_total
+  FROM ticket_sales
+  GROUP BY session_id
+),
+base AS (
+  SELECT
+    sess.show_date,
+    sess.session_key_expected,
+    sess.session_id,
+    sess.session_name,
+    sess.session_type,
+    sess.session_date,
+    CASE WHEN sess.session_id IS NOT NULL THEN 1 ELSE 0 END AS has_session,
+    COALESCE(opt.optin_tx_count, 0) AS optin_tx_count,
+    COALESCE(opt.optin_tickets_qty, 0) AS optin_tickets_qty,
+    COALESCE(opt.optin_unique_people, 0) AS optin_unique_people,
+    att.ingressos_validos AS ingressos_validos,
+    att.entradas_validadas AS entradas_validadas,
+    sales.sold_total AS sold_total,
+    sales.net_sold_total AS net_sold_total,
+    CASE WHEN COALESCE(opt.optin_tickets_qty, 0) > 0 THEN 1 ELSE 0 END AS has_optin,
+    CASE WHEN COALESCE(att.entradas_validadas, 0) > 0 THEN 1 ELSE 0 END AS has_access_control,
+    CASE WHEN sales.sold_total IS NOT NULL OR sales.net_sold_total IS NOT NULL THEN 1 ELSE 0 END AS has_ticket_sales,
+    CASE
+      WHEN att.entradas_validadas IS NOT NULL
+        AND att.ingressos_validos IS NOT NULL
+        AND att.entradas_validadas > att.ingressos_validos
+      THEN 1
+      WHEN sales.net_sold_total IS NOT NULL
+        AND sales.sold_total IS NOT NULL
+        AND sales.net_sold_total > sales.sold_total
+      THEN 1
+      WHEN opt.optin_unique_people IS NOT NULL
+        AND opt.optin_tickets_qty IS NOT NULL
+        AND opt.optin_unique_people > opt.optin_tickets_qty
+      THEN 1
+      ELSE 0
+    END AS has_inconsistency,
+    TRIM(
+      COALESCE(
+        (CASE
+          WHEN att.entradas_validadas IS NOT NULL
+            AND att.ingressos_validos IS NOT NULL
+            AND att.entradas_validadas > att.ingressos_validos
+          THEN 'acesso_presentes_maior_que_validos; '
+          ELSE ''
+        END) ||
+        (CASE
+          WHEN sales.net_sold_total IS NOT NULL
+            AND sales.sold_total IS NOT NULL
+            AND sales.net_sold_total > sales.sold_total
+          THEN 'vendas_liquidas_maior_que_total; '
+          ELSE ''
+        END) ||
+        (CASE
+          WHEN opt.optin_unique_people IS NOT NULL
+            AND opt.optin_tickets_qty IS NOT NULL
+            AND opt.optin_unique_people > opt.optin_tickets_qty
+          THEN 'optin_unicos_maior_que_tickets; '
+          ELSE ''
+        END)
+      , '')
+    ) AS inconsistency_details
+  FROM sess
+  LEFT JOIN opt ON opt.session_id = sess.session_id
+  LEFT JOIN att ON att.session_id = sess.session_id
+  LEFT JOIN sales ON sales.session_id = sess.session_id
+)
+SELECT
+  show_date,
+  session_key_expected,
+  session_id,
+  session_name,
+  session_type,
+  session_date,
+  has_session,
+  has_optin,
+  has_access_control,
+  has_ticket_sales,
+  optin_tx_count,
+  optin_tickets_qty,
+  optin_unique_people,
+  ingressos_validos,
+  entradas_validadas,
+  sold_total,
+  net_sold_total,
+  has_inconsistency,
+  inconsistency_details,
+  TRIM(
+    COALESCE(
+      (CASE WHEN has_session = 0 THEN 'sessao_ausente; optin; acesso; vendas; ' ELSE '' END) ||
+      (CASE WHEN has_session = 1 AND has_optin = 0 THEN 'optin; ' ELSE '' END) ||
+      (CASE WHEN has_session = 1 AND has_access_control = 0 THEN 'acesso; ' ELSE '' END) ||
+      (CASE WHEN has_session = 1 AND has_ticket_sales = 0 THEN 'vendas; ' ELSE '' END)
+    , '')
+  ) AS missing_flags,
+  CASE
+    WHEN has_session = 0 THEN 'GAP'
+    WHEN has_inconsistency = 1 THEN 'INCONSISTENTE'
+    WHEN has_optin = 1 AND has_access_control = 1 AND has_ticket_sales = 1 THEN 'OK'
+    ELSE 'GAP'
+  END AS status,
+  CASE
+    WHEN has_session = 0 THEN 'Solicitar agenda master da sessao (show) e fontes minimas (acesso, vendas, opt-in).'
+    WHEN has_optin = 0 AND has_access_control = 0 AND has_ticket_sales = 0 THEN 'Solicitar: XLSX opt-in aceitos (Eventim); PDF controle de acesso (show) por sessao; base de vendas total/liquida por sessao.'
+    WHEN has_optin = 0 THEN 'Solicitar: XLSX opt-in aceitos (Eventim) por sessao.'
+    WHEN has_access_control = 0 THEN 'Solicitar: PDF controle de acesso (show) com ingressos_validos/presentes por sessao.'
+    WHEN has_ticket_sales = 0 THEN 'Solicitar: base de vendas (sold_total/net_sold_total) por sessao.'
+    ELSE ''
+  END AS request_needed
+FROM base
+ORDER BY show_date
+"""
+        )
+    )
+
 
 def upgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
@@ -331,24 +727,7 @@ def upgrade() -> None:
     op.create_unique_constraint(op.f('uq_cupom_codigo'), 'cupom', ['codigo'])
     # Qualquer vista sobre data_quality_result bloqueia ALTER TYPE nas colunas.
     # mart_dq_ingestion_summary nao referencia scope; por isso scope alterava e severity falhava.
-    op.execute(
-        sa.text(
-            """
-            DO $$
-            DECLARE r RECORD;
-            BEGIN
-              FOR r IN (
-                SELECT DISTINCT view_schema, view_name
-                FROM information_schema.view_table_usage
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-                  AND table_name = 'data_quality_result'
-              ) LOOP
-                EXECUTE format('DROP VIEW IF EXISTS %I.%I CASCADE', r.view_schema, r.view_name);
-              END LOOP;
-            END $$;
-            """
-        )
-    )
+    _drop_views_for_table("data_quality_result")
     # Garantir tipos ENUM no Postgres (alter_column com sa.Enum nao os cria sozinhos aqui).
     op.execute(
         sa.text(
@@ -480,6 +859,8 @@ GROUP BY session_id
     op.drop_index('ix_event_publicity_linked_at', table_name='event_publicity')
     op.create_index(op.f('ix_event_publicity_event_publicity_event_id'), 'event_publicity', ['event_id'], unique=False)
     op.create_index(op.f('ix_event_publicity_event_publicity_linked_at'), 'event_publicity', ['linked_at'], unique=False)
+    # mart_report_* referenciam event_sessions.session_type (VARCHAR->ENUM bloqueia se vistas existirem).
+    _drop_views_for_table("event_sessions")
     # sa.Enum em alter_column nao cria o tipo no Postgres; um execute multiplo pode falhar no driver.
     _pg_enum_ddl = (
         (
@@ -976,6 +1357,7 @@ GROUP BY session_id
     op.drop_column('usuario', 'aprovado_em')
     op.drop_column('usuario', 'email_confirmacao_enviado')
     op.drop_column('usuario', 'aprovado_por')
+    _recreate_mart_report_views()
     # ### end Alembic commands ###
 
 
@@ -1317,6 +1699,7 @@ def downgrade() -> None:
                existing_type=sa.DateTime(),
                type_=postgresql.TIMESTAMP(timezone=True),
                existing_nullable=False)
+    _drop_views_for_table("event_sessions")
     op.alter_column('event_sessions', 'session_type',
                existing_type=sa.Enum('DIURNO_GRATUITO', 'NOTURNO_SHOW', 'OUTRO', name='eventsessiontype'),
                type_=sa.VARCHAR(length=30),
@@ -1336,24 +1719,7 @@ def downgrade() -> None:
     op.create_unique_constraint('divisao_demandante_nome_key', 'divisao_demandante', ['nome'], postgresql_nulls_not_distinct=False)
     op.drop_constraint(op.f('uq_diretoria_nome'), 'diretoria', type_='unique')
     op.create_unique_constraint('diretoria_nome_key', 'diretoria', ['nome'], postgresql_nulls_not_distinct=False)
-    op.execute(
-        sa.text(
-            """
-            DO $$
-            DECLARE r RECORD;
-            BEGIN
-              FOR r IN (
-                SELECT DISTINCT view_schema, view_name
-                FROM information_schema.view_table_usage
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-                  AND table_name = 'data_quality_result'
-              ) LOOP
-                EXECUTE format('DROP VIEW IF EXISTS %I.%I CASCADE', r.view_schema, r.view_name);
-              END LOOP;
-            END $$;
-            """
-        )
-    )
+    _drop_views_for_table("data_quality_result")
     op.drop_index(op.f('ix_data_quality_result_data_quality_result_status'), table_name='data_quality_result')
     op.drop_index(op.f('ix_data_quality_result_data_quality_result_source_id'), table_name='data_quality_result')
     op.drop_index(op.f('ix_data_quality_result_data_quality_result_severity'), table_name='data_quality_result')

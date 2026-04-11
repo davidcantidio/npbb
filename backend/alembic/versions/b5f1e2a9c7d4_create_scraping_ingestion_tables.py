@@ -41,29 +41,32 @@ bb_connection_type_enum = sa.Enum(
 
 
 def upgrade() -> None:
-    op.create_table(
-        "scraping_sponsors",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("slug", sa.String(length=160), nullable=False),
-        sa.Column("name", sa.String(length=240), nullable=True),
-        sa.Column("instagram_handle", sa.String(length=160), nullable=True),
-        sa.Column("instagram_url", sa.String(length=1000), nullable=True),
-        sa.Column("status", sa.String(length=80), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("source_row_json", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("slug", name="uq_scraping_sponsors_slug"),
-        sa.UniqueConstraint("instagram_handle", name="uq_scraping_sponsors_instagram_handle"),
-    )
-    op.create_index("ix_scraping_sponsors_slug", "scraping_sponsors", ["slug"], unique=False)
-    op.create_index(
-        "ix_scraping_sponsors_instagram_handle",
-        "scraping_sponsors",
-        ["instagram_handle"],
-        unique=False,
-    )
+    insp = sa.inspect(op.get_bind())
+    # scraping_sponsors pode existir fora do Alembic (create_all); evita DuplicateTable.
+    if not insp.has_table("scraping_sponsors"):
+        op.create_table(
+            "scraping_sponsors",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("slug", sa.String(length=160), nullable=False),
+            sa.Column("name", sa.String(length=240), nullable=True),
+            sa.Column("instagram_handle", sa.String(length=160), nullable=True),
+            sa.Column("instagram_url", sa.String(length=1000), nullable=True),
+            sa.Column("status", sa.String(length=80), nullable=True),
+            sa.Column("notes", sa.Text(), nullable=True),
+            sa.Column("source_row_json", sa.Text(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("slug", name="uq_scraping_sponsors_slug"),
+            sa.UniqueConstraint("instagram_handle", name="uq_scraping_sponsors_instagram_handle"),
+        )
+        op.create_index("ix_scraping_sponsors_slug", "scraping_sponsors", ["slug"], unique=False)
+        op.create_index(
+            "ix_scraping_sponsors_instagram_handle",
+            "scraping_sponsors",
+            ["instagram_handle"],
+            unique=False,
+        )
 
     op.create_table(
         "scraping_runs",

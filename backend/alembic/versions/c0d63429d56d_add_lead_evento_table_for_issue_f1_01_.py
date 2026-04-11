@@ -1081,36 +1081,19 @@ def upgrade() -> None:
                type_=sa.DateTime(),
                existing_nullable=False)
     op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN stage DROP DEFAULT"))
-    op.alter_column(
-        "lead_batches",
-        "stage",
-        existing_type=sa.VARCHAR(length=10),
-        type_=postgresql.ENUM(
-            "BRONZE",
-            "SILVER",
-            "GOLD",
-            name="batchstage",
-            create_type=False,
-        ),
-        existing_nullable=False,
-        postgresql_using="upper(stage)::batchstage",
+    op.execute(
+        sa.text(
+            "ALTER TABLE lead_batches ALTER COLUMN stage TYPE batchstage "
+            "USING upper(stage)::batchstage"
+        )
     )
     op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN stage SET DEFAULT 'BRONZE'::batchstage"))
     op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN pipeline_status DROP DEFAULT"))
-    op.alter_column(
-        "lead_batches",
-        "pipeline_status",
-        existing_type=sa.VARCHAR(length=20),
-        type_=postgresql.ENUM(
-            "PENDING",
-            "PASS",
-            "PASS_WITH_WARNINGS",
-            "FAIL",
-            name="pipelinestatus",
-            create_type=False,
-        ),
-        existing_nullable=False,
-        postgresql_using="upper(replace(pipeline_status, '-', '_'))::pipelinestatus",
+    op.execute(
+        sa.text(
+            "ALTER TABLE lead_batches ALTER COLUMN pipeline_status TYPE pipelinestatus "
+            "USING upper(replace(pipeline_status, '-', '_'))::pipelinestatus"
+        )
     )
     op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN pipeline_status SET DEFAULT 'PENDING'::pipelinestatus"))
     op.alter_column('lead_batches', 'created_at',

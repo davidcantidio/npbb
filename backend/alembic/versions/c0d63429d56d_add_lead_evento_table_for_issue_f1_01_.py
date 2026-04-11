@@ -266,88 +266,25 @@ def upgrade() -> None:
     op.create_index(op.f('ix_lead_evento_lead_evento_lead_id'), 'lead_evento', ['lead_id'], unique=False)
     op.create_index(op.f('ix_lead_evento_lead_evento_source_kind'), 'lead_evento', ['source_kind'], unique=False)
     op.create_index(op.f('ix_lead_evento_lead_evento_source_ref_id'), 'lead_evento', ['source_ref_id'], unique=False)
-    op.drop_index('ix_stg_access_control_sessions_event_id', table_name='stg_access_control_sessions')
-    op.drop_index('ix_stg_access_control_sessions_ingestion_id', table_name='stg_access_control_sessions')
-    op.drop_index('ix_stg_access_control_sessions_lineage_ref_id', table_name='stg_access_control_sessions')
-    op.drop_index('ix_stg_access_control_sessions_pdf_page', table_name='stg_access_control_sessions')
-    op.drop_index('ix_stg_access_control_sessions_session_id', table_name='stg_access_control_sessions')
-    op.drop_index('ix_stg_access_control_sessions_session_name', table_name='stg_access_control_sessions')
-    op.drop_index('ix_stg_access_control_sessions_source_id', table_name='stg_access_control_sessions')
-    op.drop_table('stg_access_control_sessions')
-    op.drop_index('ix_stg_mtc_metrics_ingestion_id', table_name='stg_mtc_metrics')
-    op.drop_index('ix_stg_mtc_metrics_lineage_ref_id', table_name='stg_mtc_metrics')
-    op.drop_index('ix_stg_mtc_metrics_metric_key', table_name='stg_mtc_metrics')
-    op.drop_index('ix_stg_mtc_metrics_pdf_page', table_name='stg_mtc_metrics')
-    op.drop_index('ix_stg_mtc_metrics_source_id', table_name='stg_mtc_metrics')
-    op.drop_index('ix_stg_mtc_metrics_status', table_name='stg_mtc_metrics')
-    op.drop_table('stg_mtc_metrics')
-    op.drop_index('ix_stg_dimac_metrics_ingestion_id', table_name='stg_dimac_metrics')
-    op.drop_index('ix_stg_dimac_metrics_lineage_ref_id', table_name='stg_dimac_metrics')
-    op.drop_index('ix_stg_dimac_metrics_metric_key', table_name='stg_dimac_metrics')
-    op.drop_index('ix_stg_dimac_metrics_pdf_page', table_name='stg_dimac_metrics')
-    op.drop_index('ix_stg_dimac_metrics_source_id', table_name='stg_dimac_metrics')
-    op.drop_index('ix_stg_dimac_metrics_status', table_name='stg_dimac_metrics')
-    op.drop_table('stg_dimac_metrics')
-    # ingestions is referenced by lineage_refs, attendance_access_control, optin_transactions,
-    # ticket_sales, etc. Dropping FKs out-of-order caused DependentObjectsStillExist on Render.
-    op.execute(sa.text("DROP TABLE IF EXISTS ingestions CASCADE"))
-    op.drop_index('ix_stg_leads_cpf_hash', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_cpf_promotor_hash', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_email_hash', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_ingestion_id', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_lineage_ref_id', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_person_key_hash', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_sheet_name', table_name='stg_leads')
-    op.drop_index('ix_stg_leads_source_id', table_name='stg_leads')
-    op.drop_table('stg_leads')
-    op.drop_index('ix_stg_social_metrics_event_id', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_ingestion_id', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_lineage_ref_id', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_metric_name', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_platform', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_session_id', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_slide_number', table_name='stg_social_metrics')
-    op.drop_index('ix_stg_social_metrics_source_id', table_name='stg_social_metrics')
-    op.drop_table('stg_social_metrics')
-    op.drop_index('ix_sources_kind', table_name='sources')
-    op.drop_index('ix_sources_source_id', table_name='sources')
-    op.drop_table('sources')
-    op.drop_index('ix_events_event_key', table_name='events')
-    op.drop_index('ix_events_event_name', table_name='events')
-    op.drop_table('events')
-    op.drop_index('ix_lineage_refs_ingestion_id', table_name='lineage_refs')
-    op.drop_index('ix_lineage_refs_location_type', table_name='lineage_refs')
-    op.drop_index('ix_lineage_refs_source_id', table_name='lineage_refs')
-    op.drop_table('lineage_refs')
-    op.drop_index('ix_stg_optin_transactions_cpf_hash', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_email_hash', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_event_id', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_ingestion_id', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_lineage_ref_id', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_session_id', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_sheet_name', table_name='stg_optin_transactions')
-    op.drop_index('ix_stg_optin_transactions_source_id', table_name='stg_optin_transactions')
-    op.drop_table('stg_optin_transactions')
-    op.drop_index('ix_stg_lead_actions_action_norm', table_name='stg_lead_actions')
-    op.drop_index('ix_stg_lead_actions_ingestion_id', table_name='stg_lead_actions')
-    op.drop_index('ix_stg_lead_actions_lead_id', table_name='stg_lead_actions')
-    op.drop_index('ix_stg_lead_actions_lineage_ref_id', table_name='stg_lead_actions')
-    op.drop_index('ix_stg_lead_actions_source_id', table_name='stg_lead_actions')
-    op.drop_table('stg_lead_actions')
-    op.drop_index('ix_dq_check_result_check_id', table_name='dq_check_result')
-    op.drop_index('ix_dq_check_result_ingestion_id', table_name='dq_check_result')
-    op.drop_index('ix_dq_check_result_lineage_ref_id', table_name='dq_check_result')
-    op.drop_index('ix_dq_check_result_severity', table_name='dq_check_result')
-    op.drop_index('ix_dq_check_result_source_id', table_name='dq_check_result')
-    op.drop_index('ix_dq_check_result_status', table_name='dq_check_result')
-    op.drop_table('dq_check_result')
-    op.drop_index('ix_dq_inconsistency_check_id', table_name='dq_inconsistency')
-    op.drop_index('ix_dq_inconsistency_dataset_id', table_name='dq_inconsistency')
-    op.drop_index('ix_dq_inconsistency_ingestion_id', table_name='dq_inconsistency')
-    op.drop_index('ix_dq_inconsistency_metric_key', table_name='dq_inconsistency')
-    op.drop_index('ix_dq_inconsistency_severity', table_name='dq_inconsistency')
-    op.drop_index('ix_dq_inconsistency_status', table_name='dq_inconsistency')
-    op.drop_table('dq_inconsistency')
+    # Staging/ETL tables and views have cross-FKs and marts views; sequential drop_index+drop_table
+    # fails on production (Render) with DependentObjectsStillExist. CASCADE removes dependent views/FKs.
+    _etl_drop_order = (
+        "stg_access_control_sessions",
+        "stg_mtc_metrics",
+        "stg_dimac_metrics",
+        "ingestions",
+        "stg_leads",
+        "stg_social_metrics",
+        "sources",
+        "events",
+        "lineage_refs",
+        "stg_optin_transactions",
+        "stg_lead_actions",
+        "dq_check_result",
+        "dq_inconsistency",
+    )
+    for _tbl in _etl_drop_order:
+        op.execute(sa.text(f'DROP TABLE IF EXISTS "{_tbl}" CASCADE'))
     op.alter_column('ativacao', 'updated_at',
                existing_type=postgresql.TIMESTAMP(),
                type_=sa.DateTime(timezone=True),

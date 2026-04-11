@@ -1080,6 +1080,7 @@ def upgrade() -> None:
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),
                existing_nullable=False)
+    op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN stage DROP DEFAULT"))
     op.alter_column(
         "lead_batches",
         "stage",
@@ -1092,9 +1093,10 @@ def upgrade() -> None:
             create_type=False,
         ),
         existing_nullable=False,
-        existing_server_default=sa.text("'bronze'::character varying"),
         postgresql_using="upper(stage)::batchstage",
     )
+    op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN stage SET DEFAULT 'BRONZE'::batchstage"))
+    op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN pipeline_status DROP DEFAULT"))
     op.alter_column(
         "lead_batches",
         "pipeline_status",
@@ -1108,9 +1110,9 @@ def upgrade() -> None:
             create_type=False,
         ),
         existing_nullable=False,
-        existing_server_default=sa.text("'pending'::character varying"),
         postgresql_using="upper(replace(pipeline_status, '-', '_'))::pipelinestatus",
     )
+    op.execute(sa.text("ALTER TABLE lead_batches ALTER COLUMN pipeline_status SET DEFAULT 'PENDING'::pipelinestatus"))
     op.alter_column('lead_batches', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),

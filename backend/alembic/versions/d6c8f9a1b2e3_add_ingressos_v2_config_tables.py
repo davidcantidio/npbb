@@ -7,6 +7,7 @@ Create Date: 2026-04-09
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -16,14 +17,16 @@ branch_labels = None
 depends_on = None
 
 
-tipo_ingresso_enum = sa.Enum(
+# postgresql.ENUM(create_type=False) não dispara _on_table_create, ao contrário
+# de sa.Enum(create_type=False) que em SQLAlchemy 2.x ainda tenta CREATE TYPE.
+tipo_ingresso_enum = postgresql.ENUM(
     "pista",
     "pista_premium",
     "camarote",
     name="tipoingresso",
     create_type=False,
 )
-modo_fornecimento_enum = sa.Enum(
+modo_fornecimento_enum = postgresql.ENUM(
     "interno_emitido_com_qr",
     "externo_recebido",
     name="modofornecimento",

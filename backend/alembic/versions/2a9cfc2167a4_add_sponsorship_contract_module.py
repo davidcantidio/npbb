@@ -58,9 +58,9 @@ def upgrade() -> None:
             sa.Column("platform", sa.String(60), nullable=False),
             sa.Column("handle", sa.String(120), nullable=False),
             sa.Column("url", sa.String(500), nullable=True),
-            sa.Column("is_primary", sa.Boolean(), nullable=False, server_default=sa.false_()),
-            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-            sa.Index("ix_social_profile_owner", "owner_type", "owner_id"),
+            sa.Column("is_primary", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Index("ix_social_profile_owner", "owner_type", "owner_id"),
         )
 
     # 4. sponsorship_group
@@ -136,7 +136,7 @@ def upgrade() -> None:
             sa.Column("clause_id", sa.Integer(), sa.ForeignKey("contract_clause.id"), nullable=False, index=True),
             sa.Column("requirement_type", sa.String(120), nullable=False),
             sa.Column("description", sa.Text(), nullable=False),
-            sa.Column("is_recurring", sa.Boolean(), nullable=False, server_default=sa.false_()),
+            sa.Column("is_recurring", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("period_type", sa.String(), nullable=True),
             sa.Column("period_rule_description", sa.Text(), nullable=True),
             sa.Column("expected_occurrences", sa.Integer(), nullable=True),
@@ -173,7 +173,7 @@ def upgrade() -> None:
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column("occurrence_id", sa.Integer(), sa.ForeignKey("requirement_occurrence.id"), nullable=False, index=True),
             sa.Column("member_id", sa.Integer(), sa.ForeignKey("group_member.id"), nullable=False, index=True),
-            sa.Column("is_primary", sa.Boolean(), nullable=False, server_default=sa.false_()),
+            sa.Column("is_primary", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("role_description", sa.String(200), nullable=True),
         )
 

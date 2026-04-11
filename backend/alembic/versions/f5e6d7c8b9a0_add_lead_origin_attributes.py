@@ -7,6 +7,7 @@ Create Date: 2026-04-10
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -16,14 +17,14 @@ branch_labels = None
 depends_on = None
 
 
-tipo_lead_enum = sa.Enum(
+tipo_lead_enum = postgresql.ENUM(
     "bilheteria",
     "entrada_evento",
     "ativacao",
     name="tipolead",
     create_type=False,
 )
-tipo_responsavel_enum = sa.Enum(
+tipo_responsavel_enum = postgresql.ENUM(
     "proponente",
     "agencia",
     name="tiporesponsavel",

@@ -288,10 +288,9 @@ def upgrade() -> None:
     op.drop_index('ix_stg_dimac_metrics_source_id', table_name='stg_dimac_metrics')
     op.drop_index('ix_stg_dimac_metrics_status', table_name='stg_dimac_metrics')
     op.drop_table('stg_dimac_metrics')
-    op.drop_index('ix_ingestions_source_pk', table_name='ingestions')
-    op.drop_index('ix_ingestions_started_at', table_name='ingestions')
-    op.drop_index('ix_ingestions_status', table_name='ingestions')
-    op.drop_table('ingestions')
+    # ingestions is referenced by lineage_refs, attendance_access_control, optin_transactions,
+    # ticket_sales, etc. Dropping FKs out-of-order caused DependentObjectsStillExist on Render.
+    op.execute(sa.text("DROP TABLE IF EXISTS ingestions CASCADE"))
     op.drop_index('ix_stg_leads_cpf_hash', table_name='stg_leads')
     op.drop_index('ix_stg_leads_cpf_promotor_hash', table_name='stg_leads')
     op.drop_index('ix_stg_leads_email_hash', table_name='stg_leads')
@@ -370,7 +369,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_attendance_access_control_attendance_access_control_source_id'), 'attendance_access_control', ['source_id'], unique=False)
     op.create_index(op.f('ix_attendance_access_control_attendance_access_control_session_id'), 'attendance_access_control', ['session_id'], unique=False)
     op.drop_constraint('fk_attendance_access_control_source_id_sources', 'attendance_access_control', type_='foreignkey')
-    op.drop_constraint('fk_attendance_access_control_ingestion_id_ingestions', 'attendance_access_control', type_='foreignkey')
     op.drop_constraint('fk_attendance_access_control_lineage_ref_id_lineage_refs', 'attendance_access_control', type_='foreignkey')
     op.drop_column('attendance_access_control', 'lineage_ref_id')
     op.alter_column('conversao_ativacao', 'created_at',
@@ -666,7 +664,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_optin_transactions_optin_transactions_session_id'), 'optin_transactions', ['session_id'], unique=False)
     op.create_index(op.f('ix_optin_transactions_optin_transactions_source_id'), 'optin_transactions', ['source_id'], unique=False)
     op.create_index(op.f('ix_optin_transactions_optin_transactions_ticket_category_norm'), 'optin_transactions', ['ticket_category_norm'], unique=False)
-    op.drop_constraint('fk_optin_transactions_ingestion_id_ingestions', 'optin_transactions', type_='foreignkey')
     op.drop_constraint('fk_optin_transactions_lineage_ref_id_lineage_refs', 'optin_transactions', type_='foreignkey')
     op.drop_constraint('fk_optin_transactions_source_id_sources', 'optin_transactions', type_='foreignkey')
     op.drop_column('optin_transactions', 'optin_status')
@@ -758,7 +755,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_ticket_sales_ticket_sales_source_id'), 'ticket_sales', ['source_id'], unique=False)
     op.drop_constraint('fk_ticket_sales_lineage_ref_id_lineage_refs', 'ticket_sales', type_='foreignkey')
     op.drop_constraint('fk_ticket_sales_source_id_sources', 'ticket_sales', type_='foreignkey')
-    op.drop_constraint('fk_ticket_sales_ingestion_id_ingestions', 'ticket_sales', type_='foreignkey')
     op.drop_column('ticket_sales', 'lineage_ref_id')
     op.drop_constraint('tipo_evento_nome_key', 'tipo_evento', type_='unique')
     op.create_unique_constraint(op.f('uq_tipo_evento_nome'), 'tipo_evento', ['nome'])

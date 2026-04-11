@@ -329,10 +329,26 @@ def upgrade() -> None:
     op.drop_column('cota_cortesia', 'alterado_em')
     op.drop_constraint('cupom_codigo_key', 'cupom', type_='unique')
     op.create_unique_constraint(op.f('uq_cupom_codigo'), 'cupom', ['codigo'])
-    # Views DQ referenciam colunas de data_quality_result; e preciso remove-las antes de ALTER TYPE.
-    op.execute(sa.text("DROP VIEW IF EXISTS mart_dq_ingestion_with_summary CASCADE"))
-    op.execute(sa.text("DROP VIEW IF EXISTS mart_dq_ingestion_summary CASCADE"))
-    op.execute(sa.text("DROP VIEW IF EXISTS mart_dq_session_summary CASCADE"))
+    # Qualquer vista sobre data_quality_result bloqueia ALTER TYPE nas colunas.
+    # mart_dq_ingestion_summary nao referencia scope; por isso scope alterava e severity falhava.
+    op.execute(
+        sa.text(
+            """
+            DO $$
+            DECLARE r RECORD;
+            BEGIN
+              FOR r IN (
+                SELECT DISTINCT view_schema, view_name
+                FROM information_schema.view_table_usage
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                  AND table_name = 'data_quality_result'
+              ) LOOP
+                EXECUTE format('DROP VIEW IF EXISTS %I.%I CASCADE', r.view_schema, r.view_name);
+              END LOOP;
+            END $$;
+            """
+        )
+    )
     # Garantir tipos ENUM no Postgres (alter_column com sa.Enum nao os cria sozinhos aqui).
     op.execute(
         sa.text(
@@ -394,6 +410,61 @@ def upgrade() -> None:
     op.create_index(op.f('ix_data_quality_result_data_quality_result_severity'), 'data_quality_result', ['severity'], unique=False)
     op.create_index(op.f('ix_data_quality_result_data_quality_result_source_id'), 'data_quality_result', ['source_id'], unique=False)
     op.create_index(op.f('ix_data_quality_result_data_quality_result_status'), 'data_quality_result', ['status'], unique=False)
+    # Recriar vistas operacionais (mesmo SQL que c9d4a1b2e3f4_add_data_quality_tables_and_views).
+    op.execute(
+        sa.text(
+            """
+CREATE VIEW mart_dq_ingestion_summary AS
+SELECT
+  ingestion_id,
+  source_id,
+  SUM(CASE WHEN severity = 'ERROR' AND status = 'FAIL' THEN 1 ELSE 0 END) AS error_fail_count,
+  SUM(CASE WHEN severity = 'WARN' AND status = 'FAIL' THEN 1 ELSE 0 END) AS warn_fail_count,
+  SUM(CASE WHEN status = 'PASS' THEN 1 ELSE 0 END) AS pass_count,
+  COUNT(*) AS total_count,
+  MAX(created_at) AS last_checked_at
+FROM data_quality_result
+GROUP BY ingestion_id, source_id
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE VIEW mart_dq_ingestion_with_summary AS
+SELECT
+  i.id AS ingestion_id,
+  i.source_id AS source_id,
+  i.pipeline AS pipeline,
+  i.status AS ingestion_status,
+  i.started_at AS started_at,
+  i.finished_at AS finished_at,
+  COALESCE(s.error_fail_count, 0) AS error_fail_count,
+  COALESCE(s.warn_fail_count, 0) AS warn_fail_count,
+  COALESCE(s.pass_count, 0) AS pass_count,
+  COALESCE(s.total_count, 0) AS total_count,
+  s.last_checked_at AS last_checked_at
+FROM ingestion i
+LEFT JOIN mart_dq_ingestion_summary s ON s.ingestion_id = i.id
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE VIEW mart_dq_session_summary AS
+SELECT
+  session_id,
+  SUM(CASE WHEN severity = 'ERROR' AND status = 'FAIL' THEN 1 ELSE 0 END) AS error_fail_count,
+  SUM(CASE WHEN severity = 'WARN' AND status = 'FAIL' THEN 1 ELSE 0 END) AS warn_fail_count,
+  COUNT(*) AS total_count,
+  MAX(created_at) AS last_checked_at
+FROM data_quality_result
+WHERE session_id IS NOT NULL
+GROUP BY session_id
+"""
+        )
+    )
     op.drop_constraint('diretoria_nome_key', 'diretoria', type_='unique')
     op.create_unique_constraint(op.f('uq_diretoria_nome'), 'diretoria', ['nome'])
     op.drop_constraint('divisao_demandante_nome_key', 'divisao_demandante', type_='unique')
@@ -1120,6 +1191,24 @@ def downgrade() -> None:
     op.create_unique_constraint('divisao_demandante_nome_key', 'divisao_demandante', ['nome'], postgresql_nulls_not_distinct=False)
     op.drop_constraint(op.f('uq_diretoria_nome'), 'diretoria', type_='unique')
     op.create_unique_constraint('diretoria_nome_key', 'diretoria', ['nome'], postgresql_nulls_not_distinct=False)
+    op.execute(
+        sa.text(
+            """
+            DO $$
+            DECLARE r RECORD;
+            BEGIN
+              FOR r IN (
+                SELECT DISTINCT view_schema, view_name
+                FROM information_schema.view_table_usage
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                  AND table_name = 'data_quality_result'
+              ) LOOP
+                EXECUTE format('DROP VIEW IF EXISTS %I.%I CASCADE', r.view_schema, r.view_name);
+              END LOOP;
+            END $$;
+            """
+        )
+    )
     op.drop_index(op.f('ix_data_quality_result_data_quality_result_status'), table_name='data_quality_result')
     op.drop_index(op.f('ix_data_quality_result_data_quality_result_source_id'), table_name='data_quality_result')
     op.drop_index(op.f('ix_data_quality_result_data_quality_result_severity'), table_name='data_quality_result')

@@ -309,30 +309,6 @@ export async function commitLeadImportEtl(
 }
 
 /**
- * Validates selected mappings before import execution.
- * @param token Bearer token used for authorization.
- * @param mappings Mapping suggestions confirmed by the user.
- * @returns Validation result from backend.
- * @throws Error When mappings are invalid or request fails.
- */
-export async function validateLeadMapping(
-  token: string,
-  mappings: LeadImportSuggestion[],
-): Promise<{ ok: boolean }> {
-  const res = await fetchWithAuth("/leads/import/validate", {
-    method: "POST",
-    token,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(mappings),
-    retries: 0,
-  });
-  return handleApiResponse<{ ok: boolean }>(res);
-}
-
-/**
-/**
  * Evento option returned by the reference endpoint — includes date for label formatting.
  */
 export type ReferenciaEvento = {
@@ -350,99 +326,6 @@ export type ReferenciaEvento = {
 export async function listReferenciaEventos(token: string): Promise<ReferenciaEvento[]> {
   const res = await fetchWithAuth("/leads/referencias/eventos", { token });
   return handleApiResponse<ReferenciaEvento[]>(res);
-}
-
-/**
- * Lists reference cities available for mapping helpers.
- * @param token Bearer token used for authorization.
- * @returns City reference values.
- * @throws Error When request fails.
- */
-export async function listReferenciaCidades(token: string): Promise<string[]> {
-  const res = await fetchWithAuth("/leads/referencias/cidades", { token });
-  return handleApiResponse<string[]>(res);
-}
-
-/**
- * Lists reference states (UF) available for mapping helpers.
- * @param token Bearer token used for authorization.
- * @returns State reference values.
- * @throws Error When request fails.
- */
-export async function listReferenciaEstados(token: string): Promise<string[]> {
-  const res = await fetchWithAuth("/leads/referencias/estados", { token });
-  return handleApiResponse<string[]>(res);
-}
-
-/**
- * Lists reference genders available for mapping helpers.
- * @param token Bearer token used for authorization.
- * @returns Gender reference values.
- * @throws Error When request fails.
- */
-export async function listReferenciaGeneros(token: string): Promise<string[]> {
-  const res = await fetchWithAuth("/leads/referencias/generos", { token });
-  return handleApiResponse<string[]>(res);
-}
-
-/**
- * Persists an alias confirmed during mapping review.
- * @param token Bearer token used for authorization.
- * @param payload Alias payload to persist.
- * @returns Persisted alias entity from backend.
- * @throws Error When request fails.
- */
-export async function createLeadAlias(
-  token: string,
-  payload: { tipo: string; valor_origem: string; canonical_value?: string | null; evento_id?: number | null },
-): Promise<{
-  id: number;
-  tipo: string;
-  valor_origem: string;
-  valor_normalizado: string;
-  canonical_value?: string | null;
-  evento_id?: number | null;
-}> {
-  const res = await fetchWithAuth("/leads/aliases", {
-    method: "POST",
-    token,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    retries: 0,
-  });
-  return handleApiResponse(res);
-}
-
-/**
- * Executes assisted lead import with confirmed mappings.
- * @param token Bearer token used for authorization.
- * @param file Source CSV/XLSX file to import.
- * @param mappings Mapping definitions validated by user.
- * @param fonte_origem Optional source label associated to imported leads.
- * @returns Import summary with created/updated/skipped counters.
- * @throws Error When import request fails.
- */
-export async function runLeadImport(
-  token: string,
-  file: File,
-  mappings: LeadImportSuggestion[],
-  fonte_origem?: string,
-): Promise<{ filename: string; created: number; updated: number; skipped: number }> {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("mappings_json", JSON.stringify(mappings));
-  if (fonte_origem) form.append("fonte_origem", fonte_origem);
-
-  const res = await fetchWithAuth("/leads/import", {
-    method: "POST",
-    token,
-    body: form,
-    timeoutMs: 60_000,
-    retries: 0,
-  });
-  return handleApiResponse<{ filename: string; created: number; updated: number; skipped: number }>(res);
 }
 
 // ---------------------------------------------------------------------------

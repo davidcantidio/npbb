@@ -72,8 +72,8 @@ def test_import_leads_with_etl_preview_and_commit_idempotent(engine) -> None:
         file = _make_upload_file(
             [
                 ["Email", "CPF", "Nome", "Sessao"],
-                ["etl@example.com", "12345678901", "Lead ETL", "Show 1"],
-                ["etl@example.com", "12345678901", "Lead ETL Atualizado", "Show 1"],
+                ["etl@example.com", "52998224725", "Lead ETL", "Show 1"],
+                ["etl@example.com", "52998224725", "Lead ETL Atualizado", "Show 1"],
             ]
         )
 
@@ -90,7 +90,6 @@ def test_import_leads_with_etl_preview_and_commit_idempotent(engine) -> None:
                 session_token=preview.session_token,
                 evento_id=int(evento.id),
                 db=session,
-                strict=False,
                 force_warnings=True,
             )
         )
@@ -99,7 +98,6 @@ def test_import_leads_with_etl_preview_and_commit_idempotent(engine) -> None:
                 session_token=preview.session_token,
                 evento_id=int(evento.id),
                 db=session,
-                strict=False,
                 force_warnings=True,
             )
         )
@@ -136,7 +134,6 @@ def test_import_leads_with_etl_strict_blocks_invalid_rows(engine) -> None:
                     session_token=preview.session_token,
                     evento_id=int(evento.id),
                     db=session,
-                    strict=True,
                     force_warnings=True,
                 )
             )
@@ -166,7 +163,6 @@ def test_import_leads_with_etl_non_strict_persists_only_approved_rows(engine) ->
                 session_token=preview.session_token,
                 evento_id=int(evento.id),
                 db=session,
-                strict=False,
                 force_warnings=True,
             )
         )

@@ -129,7 +129,7 @@ def test_preview_etl_returns_session_token_and_dq_report(client: TestClient, eng
     assert {item.severity for item in payload.dq_report} <= {"info", "warning", "error"}
 
 
-def test_preview_etl_invalid_extension_uses_router_error_shape(client: TestClient, engine) -> None:
+def test_preview_etl_accepts_csv_with_semicolon_delimiter(client: TestClient, engine) -> None:
     seed_statuses(engine)
     user = seed_user(engine)
     evento = seed_event(engine)
@@ -138,14 +138,21 @@ def test_preview_etl_invalid_extension_uses_router_error_shape(client: TestClien
     res = client.post(
         "/leads/import/etl/preview",
         headers={"Authorization": f"Bearer {token}"},
-        files={"file": ("lead_import_sample.csv", b"email\nfoo@example.com\n", "text/csv")},
+        files={
+            "file": (
+                "lead_import_sample.csv",
+                b"Email;CPF;Nome;Sessao\ncsv@example.com;529.982.247-25;Lead CSV;Show 1\n",
+                "text/csv",
+            )
+        },
         data={"evento_id": str(evento.id), "strict": "false"},
     )
 
-    assert res.status_code == 400
-    detail = res.json()["detail"]
-    assert detail["code"] == "ETL_INVALID_INPUT"
-    assert "xlsx" in detail["message"].lower()
+    assert res.status_code == 200
+    payload = ImportEtlPreviewResponse.model_validate(res.json())
+    assert payload.status == "previewed"
+    assert payload.total_rows == 1
+    assert payload.valid_rows == 1
 
 
 def test_preview_etl_import_file_error_maps_to_400_with_exception_message(client: TestClient, engine) -> None:
@@ -339,8 +346,8 @@ def test_commit_etl_blocks_warnings_until_force_confirmation(client: TestClient,
     warning_xlsx = make_xlsx_payload(
         [
             ["Email", "CPF", "Data Nascimento"],
-            ["warning@example.com", "12345678901", "01/01/1990"],
-            ["warning@example.com", "12345678901", "01/01/1990"],
+            ["warning@example.com", "52998224725", "01/01/1990"],
+            ["warning@example.com", "52998224725", "01/01/1990"],
         ]
     )
     preview = client.post(
@@ -487,6 +494,42 @@ def test_commit_etl_strict_blocks_preview_with_validation_errors(client: TestCli
 
     assert res.status_code == 409
     assert res.json()["detail"]["code"] == "ETL_COMMIT_BLOCKED"
+
+
+def test_preview_etl_reports_invalid_email_and_cpf_validation_errors(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine, nome="ETL-EVENTO-VALIDATORS")
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    invalid_xlsx = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["mal formado", "11111111111", "Lead Invalido", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("invalid-fields.xlsx", invalid_xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "true"},
+    )
+
+    assert preview.status_code == 200
+    payload = ImportEtlPreviewResponse.model_validate(preview.json())
+    assert payload.valid_rows == 0
+    assert payload.invalid_rows == 1
+
+    rejected_rows = [
+        item for item in payload.dq_report if item.check_id == "dq.preview.rejected_rows"
+    ]
+    assert rejected_rows
+    assert rejected_rows[0].sample == [
+        {
+            "row_number": 2,
+            "errors": ["email malformado", "CPF inválido"],
+        }
+    ]
 
 
 def test_commit_etl_blocks_validation_errors_even_with_force_warnings(client: TestClient, engine) -> None:

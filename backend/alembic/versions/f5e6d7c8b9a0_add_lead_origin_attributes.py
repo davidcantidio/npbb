@@ -81,10 +81,14 @@ def upgrade() -> None:
             ["responsavel_agencia_id"],
             ["id"],
         )
-        batch_op.create_index("ix_lead_evento_tipo_lead", ["tipo_lead"], unique=False)
-        batch_op.create_index("ix_lead_evento_responsavel_tipo", ["responsavel_tipo"], unique=False)
+        batch_op.create_index("ix_lead_evento_lead_evento_tipo_lead", ["tipo_lead"], unique=False)
         batch_op.create_index(
-            "ix_lead_evento_responsavel_agencia_id",
+            "ix_lead_evento_lead_evento_responsavel_tipo",
+            ["responsavel_tipo"],
+            unique=False,
+        )
+        batch_op.create_index(
+            "ix_lead_evento_lead_evento_responsavel_agencia_id",
             ["responsavel_agencia_id"],
             unique=False,
         )
@@ -122,9 +126,9 @@ def downgrade() -> None:
         batch_op.drop_constraint("ck_lead_evento_responsavel_agencia_consistency", type_="check")
         batch_op.drop_constraint("ck_lead_evento_responsavel_nome_required", type_="check")
         batch_op.drop_constraint("ck_lead_evento_tipo_lead_ativacao_agencia", type_="check")
-        batch_op.drop_index("ix_lead_evento_responsavel_agencia_id")
-        batch_op.drop_index("ix_lead_evento_responsavel_tipo")
-        batch_op.drop_index("ix_lead_evento_tipo_lead")
+        batch_op.drop_index("ix_lead_evento_lead_evento_responsavel_agencia_id")
+        batch_op.drop_index("ix_lead_evento_lead_evento_responsavel_tipo")
+        batch_op.drop_index("ix_lead_evento_lead_evento_tipo_lead")
         batch_op.drop_constraint(
             "fk_lead_evento_responsavel_agencia_id_agencia",
             type_="foreignkey",

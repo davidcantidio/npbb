@@ -29,6 +29,9 @@ const MapeamentoPage = lazy(() => import("../pages/leads/MapeamentoPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
 const PipelineStatusPage = lazy(() => import("../pages/leads/PipelineStatusPage"));
 const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
+const PatrocinadosListPage = lazy(() => import("../features/patrocinados/PatrocinadosListPage"));
+const PatrocinadorNewPage = lazy(() => import("../features/patrocinados/PatrocinadorNewPage"));
+const PatrocinadorDetailPage = lazy(() => import("../features/patrocinados/PatrocinadorDetailPage"));
 
 export default function AppRoutes() {
   const withSuspense = (element: React.ReactNode) => (
@@ -111,6 +114,9 @@ export default function AppRoutes() {
           <Route path="/leads/mapeamento" element={withSuspense(<MapeamentoPage />)} />
           <Route path="/leads/pipeline" element={withSuspense(<PipelineStatusPage />)} />
           <Route path="/publicidade" element={<PublicidadeImport />} />
+          <Route path="/patrocinados" element={withSuspense(<PatrocinadosListPage />)} />
+          <Route path="/patrocinados/novo" element={withSuspense(<PatrocinadorNewPage />)} />
+          <Route path="/patrocinados/:id" element={withSuspense(<PatrocinadorDetailPage />)} />
           <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
         </Route>
       </Route>

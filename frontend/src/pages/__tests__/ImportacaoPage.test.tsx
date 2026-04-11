@@ -216,7 +216,7 @@ describe("ImportacaoPage", () => {
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("combobox", { name: /fluxo de processamento/i }));
-    await user.click(await screen.findByRole("option", { name: "ETL XLSX" }));
+    await user.click(await screen.findByRole("option", { name: "ETL CSV/XLSX" }));
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const xlsxFile = createXlsxFile();
@@ -228,6 +228,34 @@ describe("ImportacaoPage", () => {
 
     expect(await screen.findByLabelText("Linha do cabecalho")).toBeInTheDocument();
     expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", xlsxFile, 42, false, undefined);
+  });
+
+  it("sends CSV files through the ETL preview flow", async () => {
+    mockedPreviewLeadImportEtl.mockResolvedValue({
+      status: "previewed",
+      session_token: "session-csv",
+      total_rows: 1,
+      valid_rows: 1,
+      invalid_rows: 0,
+      dq_report: [],
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("combobox", { name: /fluxo de processamento/i }));
+    await user.click(await screen.findByRole("option", { name: "ETL CSV/XLSX" }));
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(await screen.findByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+    await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
+
+    await screen.findByText("Linhas: 1 | Validas: 1 | Invalidas: 0");
+    expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", csvFile, 42, false, undefined);
   });
 
   it("sends the selected CPF alias when ETL asks for a CPF column", async () => {
@@ -255,7 +283,7 @@ describe("ImportacaoPage", () => {
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("combobox", { name: /fluxo de processamento/i }));
-    await user.click(await screen.findByRole("option", { name: "ETL XLSX" }));
+    await user.click(await screen.findByRole("option", { name: "ETL CSV/XLSX" }));
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const xlsxFile = createXlsxFile();

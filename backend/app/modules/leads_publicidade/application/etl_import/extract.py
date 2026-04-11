@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import re
 from typing import Any
 
 from fastapi import UploadFile
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from sqlmodel import Session, select
@@ -37,6 +38,7 @@ _DEFAULT_COLUMN_ALIASES: dict[str, str] = {
     "email": "email",
     "e_mail": "email",
 }
+ExtractRowsResult = tuple[list[dict[str, Any]], dict[str, Any]] | EtlHeaderRequired | EtlCpfColumnRequired
 
 
 def read_upload_bytes(file: UploadFile, *, max_bytes: int) -> tuple[str, str, bytes]:
@@ -62,6 +64,36 @@ def _clean_cell_text(value: object) -> str:
     if not text:
         return ""
     return _SPACE_RE.sub(" ", text)
+
+
+def _decode_csv_payload(payload: bytes) -> str:
+    try:
+        return payload.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return payload.decode("latin-1")
+
+
+def _detect_csv_delimiter(sample_text: str) -> str:
+    first_line = sample_text.splitlines()[0] if sample_text else ""
+    comma_count = first_line.count(",")
+    semicolon_count = first_line.count(";")
+    return ";" if semicolon_count > comma_count else ","
+
+
+def _load_csv_worksheet(payload: bytes) -> Worksheet:
+    text = _decode_csv_payload(payload)
+    delimiter = _detect_csv_delimiter(text[:4096])
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+
+    workbook = Workbook()
+    ws = workbook.active
+    ws.title = "CSV"
+    try:
+        for row in reader:
+            ws.append([cell.strip() for cell in row])
+    except csv.Error as exc:
+        raise EtlImportContractError("CSV invalido para importacao ETL.") from exc
+    return ws
 
 
 def _header_columns(ws: Worksheet, header_row: int) -> tuple[EtlHeaderColumn, ...]:
@@ -174,15 +206,13 @@ def _persist_manual_aliases(session: Session, manual_alias_values: dict[str, str
         )
 
 
-def extract_xlsx_rows(
-    payload: bytes,
+def _extract_worksheet_rows(
+    ws: Worksheet,
     *,
     db: Session,
     header_row: int | None = None,
     field_aliases: dict[str, EtlFieldAliasSelection] | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, Any]] | EtlHeaderRequired | EtlCpfColumnRequired:
-    workbook = load_workbook(io.BytesIO(payload), read_only=False, data_only=True)
-    ws = workbook.worksheets[0]
+) -> ExtractRowsResult:
     if header_row is not None and header_row < 1:
         raise EtlImportContractError("header_row deve ser 1-indexed e positivo.")
 
@@ -268,3 +298,34 @@ def extract_xlsx_rows(
         "used_range": columns_result.lineage.used_range,
         "applied_field_aliases": manual_alias_values,
     }
+
+
+def extract_xlsx_rows(
+    payload: bytes,
+    *,
+    db: Session,
+    header_row: int | None = None,
+    field_aliases: dict[str, EtlFieldAliasSelection] | None = None,
+) -> ExtractRowsResult:
+    workbook = load_workbook(io.BytesIO(payload), read_only=False, data_only=True)  # Normal mode has ws.merged_cells.
+    return _extract_worksheet_rows(
+        workbook.worksheets[0],
+        db=db,
+        header_row=header_row,
+        field_aliases=field_aliases,
+    )
+
+
+def extract_csv_rows(
+    payload: bytes,
+    *,
+    db: Session,
+    header_row: int | None = None,
+    field_aliases: dict[str, EtlFieldAliasSelection] | None = None,
+) -> ExtractRowsResult:
+    return _extract_worksheet_rows(
+        _load_csv_worksheet(payload),
+        db=db,
+        header_row=header_row,
+        field_aliases=field_aliases,
+    )

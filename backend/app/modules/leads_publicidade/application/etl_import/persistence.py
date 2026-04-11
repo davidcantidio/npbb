@@ -13,6 +13,8 @@ from app.models.models import Lead, LeadEventoSourceKind
 from app.services.lead_event_service import ensure_lead_event, resolve_unique_evento_by_name
 from app.utils.log_sanitize import sanitize_exception
 
+from .validators import format_validation_reasons, validate_normalized_lead_payload
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,6 +134,10 @@ def persist_lead_batch(
     if not effective_items:
         return LeadBatchPersistenceResult()
 
+    effective_items, validation_failed_rows = _filter_invalid_rows(effective_items)
+    if not effective_items:
+        return LeadBatchPersistenceResult(failed_rows=validation_failed_rows)
+
     _ensure_outer_transaction(session)
 
     try:
@@ -144,16 +150,64 @@ def persist_lead_batch(
         )
         result = _persist_lead_batch_row_by_row(session, effective_items)
         result = _ensure_attempted_rows_are_reported(result, effective_items)
-        return _commit_or_failure(session, result, effective_items)
+        result = _commit_or_failure(session, result, effective_items)
+        return _with_failed_rows(result, validation_failed_rows)
 
     result = LeadBatchPersistenceResult(created=created, updated=updated)
     result = _ensure_attempted_rows_are_reported(result, effective_items)
-    return _commit_or_failure(session, result, effective_items)
+    result = _commit_or_failure(session, result, effective_items)
+    return _with_failed_rows(result, validation_failed_rows)
+
+
+def _filter_invalid_rows(
+    batch: list[tuple[dict[str, object], int]],
+) -> tuple[list[tuple[dict[str, object], int]], list[LeadPersistenceFailedRow]]:
+    valid_items: list[tuple[dict[str, object], int]] = []
+    failed_rows: list[LeadPersistenceFailedRow] = []
+
+    for payload, row_number in batch:
+        reasons = validate_normalized_lead_payload(payload)
+        if reasons:
+            failed_rows.append(
+                LeadPersistenceFailedRow(
+                    row_index=row_number,
+                    reason=format_validation_reasons(reasons),
+                )
+            )
+            continue
+        valid_items.append((payload, row_number))
+
+    return valid_items, failed_rows
+
+
+def _with_failed_rows(
+    result: LeadBatchPersistenceResult,
+    failed_rows: list[LeadPersistenceFailedRow],
+) -> LeadBatchPersistenceResult:
+    if not failed_rows:
+        return result
+    return LeadBatchPersistenceResult(
+        created=result.created,
+        updated=result.updated,
+        failed_rows=sorted(
+            [*result.failed_rows, *failed_rows],
+            key=lambda row: row.row_index,
+        ),
+        skipped_rows=result.skipped_rows,
+    )
 
 
 def _ensure_outer_transaction(session: Session) -> None:
-    if not session.in_transaction():
-        session.begin()
+    bind = session.get_bind()
+    if bind.dialect.name != "sqlite":
+        if not session.in_transaction():
+            session.begin()
+        return
+
+    connection = session.connection()
+    driver_connection = getattr(connection.connection, "driver_connection", None)
+    if driver_connection is not None and not getattr(driver_connection, "in_transaction", True):
+        connection.exec_driver_sql("BEGIN")
 
 
 def _persist_lead_batch_bulk(

@@ -36,6 +36,7 @@ import { useAuth } from "../../store/auth";
 
 /** Synthetic option id used to trigger the quick-create modal. */
 const QUICK_CREATE_ID = -1;
+const EVENTOS_LOAD_ERROR = "Não foi possível carregar os eventos. Tente recarregar a página.";
 
 const CANONICAL_FIELDS = [
   "nome",
@@ -79,6 +80,7 @@ export default function MapeamentoPage() {
   const [loadingColunas, setLoadingColunas] = useState(false);
   const [loadingEventos, setLoadingEventos] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [eventosError, setEventosError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ silver_count: number } | null>(null);
 
@@ -99,9 +101,16 @@ export default function MapeamentoPage() {
       .finally(() => setLoadingColunas(false));
 
     setLoadingEventos(true);
+    setEventosError(null);
     listReferenciaEventos(token)
-      .then(setEventos)
-      .catch(() => setEventos([]))
+      .then((data) => {
+        setEventos(data);
+        setEventosError(null);
+      })
+      .catch(() => {
+        setEventos([]);
+        setEventosError(EVENTOS_LOAD_ERROR);
+      })
       .finally(() => setLoadingEventos(false));
   }, [token, batchId]);
 
@@ -139,7 +148,11 @@ export default function MapeamentoPage() {
         evento_id: Number(eventoId),
         mapeamento: activeMapeamento,
       });
+      if (!Number.isFinite(res.batch_id) || res.batch_id <= 0) {
+        throw new Error("Resposta de confirmação não retornou batch_id.");
+      }
       setResult({ silver_count: res.silver_count });
+      navigate(`/leads/pipeline?batch_id=${res.batch_id}`);
     } catch (err) {
       setError(toApiErrorMessage(err, "Falha ao confirmar mapeamento."));
     } finally {
@@ -196,6 +209,11 @@ export default function MapeamentoPage() {
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
                 Evento de referência
               </Typography>
+              {eventosError ? (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setEventosError(null)}>
+                  {eventosError}
+                </Alert>
+              ) : null}
               {loadingEventos ? (
                 <CircularProgress size={20} />
               ) : (

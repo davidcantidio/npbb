@@ -23,6 +23,7 @@ import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumbe
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
+import VolunteerActivismRoundedIcon from "@mui/icons-material/VolunteerActivismRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
@@ -90,6 +91,11 @@ export default function AppLayout() {
       },
       { label: "Leads", to: "/leads", icon: <PeopleAltRoundedIcon /> },
       { label: "Publicidade", to: "/publicidade", icon: <CampaignRoundedIcon /> },
+      {
+        label: "Patrocinados",
+        to: "/patrocinados",
+        icon: <VolunteerActivismRoundedIcon />,
+      },
       { label: "Cupons", to: "/cupons", icon: <LocalOfferRoundedIcon /> },
     ],
     [],

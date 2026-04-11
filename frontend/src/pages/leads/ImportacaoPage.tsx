@@ -81,14 +81,14 @@ export default function ImportacaoPage() {
       .finally(() => setLoadingEventos(false));
   }, [importFlow, token]);
 
-  const isXlsxFile = Boolean(file?.name.toLowerCase().endsWith(".xlsx"));
+  const isEtlFile = Boolean(file && hasAllowedExtension(file));
 
   const canSubmit = useMemo(() => {
     if (importFlow === "etl") {
-      return Boolean(quemEnviou.trim() && file && isXlsxFile && eventoId && !loadingSubmit && !loadingEtlPreview);
+      return Boolean(quemEnviou.trim() && file && isEtlFile && eventoId && !loadingSubmit && !loadingEtlPreview);
     }
     return Boolean(quemEnviou.trim() && plataformaOrigem && dataEnvio && file && !loadingSubmit);
-  }, [dataEnvio, eventoId, file, importFlow, isXlsxFile, loadingEtlPreview, loadingSubmit, plataformaOrigem, quemEnviou]);
+  }, [dataEnvio, eventoId, file, importFlow, isEtlFile, loadingEtlPreview, loadingSubmit, plataformaOrigem, quemEnviou]);
 
   const handleSelectFile = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0] ?? null;
@@ -142,10 +142,6 @@ export default function ImportacaoPage() {
     }
 
     if (importFlow === "etl") {
-      if (!isXlsxFile) {
-        setError("O fluxo ETL aceita apenas arquivos XLSX.");
-        return;
-      }
       if (!eventoId) {
         setError("Selecione o evento de referencia para o preview ETL.");
         return;
@@ -283,7 +279,7 @@ export default function ImportacaoPage() {
                 fullWidth
               >
                 <MenuItem value="bronze">Bronze + mapeamento</MenuItem>
-                <MenuItem value="etl">ETL XLSX</MenuItem>
+                <MenuItem value="etl">ETL CSV/XLSX</MenuItem>
               </TextField>
 
               <TextField
@@ -328,7 +324,7 @@ export default function ImportacaoPage() {
                   required
                   fullWidth
                   disabled={loadingEventos}
-                  helperText={isXlsxFile || !file ? "Obrigatorio para o preview ETL." : "O fluxo ETL aceita apenas arquivos XLSX."}
+                  helperText={isEtlFile || !file ? "Obrigatorio para o preview ETL." : "Use CSV ou XLSX no preview ETL."}
                 >
                   <MenuItem value="">
                     <em>Selecione o evento</em>

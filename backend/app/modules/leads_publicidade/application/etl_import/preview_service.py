@@ -14,7 +14,7 @@ from .contracts import EtlCpfColumnRequired, EtlFieldAliasSelection, EtlHeaderRe
 from .dq_report_mapper import map_check_report
 from .dq_report_policy import compute_has_warnings
 from .exceptions import EtlImportContractError
-from .extract import compute_file_fingerprint, extract_xlsx_rows, read_upload_bytes
+from .extract import compute_file_fingerprint, extract_csv_rows, extract_xlsx_rows, read_upload_bytes
 from .preview_session_repository import create_snapshot
 from .transform_validate import run_preview_validation
 
@@ -70,16 +70,23 @@ def create_preview_snapshot(
         raise EtlImportContractError(f"Evento inexistente: {evento_id}")
 
     filename, ext, payload = read_upload_bytes(file, max_bytes=max_bytes)
-    if ext != ".xlsx":
-        raise EtlImportContractError("Fluxo ETL suporta apenas arquivos .xlsx nesta fase.")
-
     field_aliases = _parse_field_aliases_json(field_aliases_json)
-    extracted = extract_xlsx_rows(
-        payload,
-        db=db,
-        header_row=header_row,
-        field_aliases=field_aliases,
-    )
+    if ext == ".xlsx":
+        extracted = extract_xlsx_rows(
+            payload,
+            db=db,
+            header_row=header_row,
+            field_aliases=field_aliases,
+        )
+    elif ext == ".csv":
+        extracted = extract_csv_rows(
+            payload,
+            db=db,
+            header_row=header_row,
+            field_aliases=field_aliases,
+        )
+    else:
+        raise EtlImportContractError("Fluxo ETL suporta apenas arquivos .csv ou .xlsx.")
     if isinstance(extracted, (EtlHeaderRequired, EtlCpfColumnRequired)):
         return extracted
 

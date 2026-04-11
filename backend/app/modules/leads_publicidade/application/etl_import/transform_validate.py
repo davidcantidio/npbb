@@ -13,6 +13,7 @@ from core.leads_etl.transform.column_normalize import normalize_column_name
 from core.leads_etl.validate.framework import Check, CheckContext, CheckReport, CheckResult, CheckRunner, CheckStatus, Severity
 
 from .contracts import EtlPreviewRow
+from .validators import validate_normalized_lead_payload
 
 
 @dataclass(frozen=True)
@@ -113,10 +114,21 @@ def build_preview_state(raw_rows: list[dict[str, Any]], *, evento_nome: str) -> 
                 )
             )
             continue
+        payload = lead_row.model_dump(mode="python")
+        validation_errors = validate_normalized_lead_payload(payload)
+        if validation_errors:
+            rejected_rows.append(
+                EtlPreviewRow(
+                    row_number=row_number,
+                    payload=payload,
+                    errors=validation_errors,
+                )
+            )
+            continue
         approved_rows.append(
             EtlPreviewRow(
                 row_number=row_number,
-                payload=lead_row.model_dump(mode="python"),
+                payload=payload,
                 errors=[],
             )
         )

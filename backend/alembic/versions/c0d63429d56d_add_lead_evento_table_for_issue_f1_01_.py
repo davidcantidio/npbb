@@ -276,8 +276,6 @@ def upgrade() -> None:
         "ingestions",
         "stg_leads",
         "stg_social_metrics",
-        "sources",
-        "events",
         "lineage_refs",
         "stg_optin_transactions",
         "stg_lead_actions",
@@ -694,6 +692,9 @@ def upgrade() -> None:
     op.drop_constraint('fk_ticket_sales_lineage_ref_id_lineage_refs', 'ticket_sales', type_='foreignkey')
     op.drop_constraint('fk_ticket_sales_source_id_sources', 'ticket_sales', type_='foreignkey')
     op.drop_column('ticket_sales', 'lineage_ref_id')
+    # sources/events: drop only after all FK drops above; CASCADE in the ETL loop would remove these FKs too early.
+    op.execute(sa.text('DROP TABLE IF EXISTS "events" CASCADE'))
+    op.execute(sa.text('DROP TABLE IF EXISTS "sources" CASCADE'))
     op.drop_constraint('tipo_evento_nome_key', 'tipo_evento', type_='unique')
     op.create_unique_constraint(op.f('uq_tipo_evento_nome'), 'tipo_evento', ['nome'])
     op.alter_column('usuario', 'status_aprovacao',

@@ -329,6 +329,10 @@ def upgrade() -> None:
     op.drop_column('cota_cortesia', 'alterado_em')
     op.drop_constraint('cupom_codigo_key', 'cupom', type_='unique')
     op.create_unique_constraint(op.f('uq_cupom_codigo'), 'cupom', ['codigo'])
+    # Views DQ referenciam colunas de data_quality_result; e preciso remove-las antes de ALTER TYPE.
+    op.execute(sa.text("DROP VIEW IF EXISTS mart_dq_ingestion_with_summary CASCADE"))
+    op.execute(sa.text("DROP VIEW IF EXISTS mart_dq_ingestion_summary CASCADE"))
+    op.execute(sa.text("DROP VIEW IF EXISTS mart_dq_session_summary CASCADE"))
     # Garantir tipos ENUM no Postgres (alter_column com sa.Enum nao os cria sozinhos aqui).
     op.execute(
         sa.text(

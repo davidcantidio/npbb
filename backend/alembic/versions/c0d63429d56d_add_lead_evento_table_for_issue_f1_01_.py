@@ -480,34 +480,44 @@ GROUP BY session_id
     op.drop_index('ix_event_publicity_linked_at', table_name='event_publicity')
     op.create_index(op.f('ix_event_publicity_event_publicity_event_id'), 'event_publicity', ['event_id'], unique=False)
     op.create_index(op.f('ix_event_publicity_event_publicity_linked_at'), 'event_publicity', ['linked_at'], unique=False)
-    # sa.Enum em alter_column nao cria o tipo no Postgres; garantir tipos antes dos USING.
-    op.execute(
-        sa.text(
-            """
-            DO $$ BEGIN CREATE TYPE eventsessiontype AS ENUM ('DIURNO_GRATUITO', 'NOTURNO_SHOW', 'OUTRO');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE ingestionstatus AS ENUM ('RUNNING', 'SUCCEEDED', 'FAILED', 'SKIPPED');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE leadaliastipo AS ENUM ('EVENTO', 'CIDADE', 'ESTADO', 'GENERO');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE batchstage AS ENUM ('BRONZE', 'SILVER', 'GOLD');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE pipelinestatus AS ENUM ('PENDING', 'PASS', 'PASS_WITH_WARNINGS', 'FAIL');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE leadconversaotipo AS ENUM ('COMPRA_INGRESSO', 'ACAO_EVENTO');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE solicitacaoingressotipo AS ENUM ('SELF', 'TERCEIRO');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE solicitacaoingressostatus AS ENUM ('SOLICITADO', 'CANCELADO');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE sourcekind AS ENUM ('DOCX', 'PDF', 'XLSX', 'PPTX', 'CSV', 'MANUAL', 'OTHER');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            DO $$ BEGIN CREATE TYPE bbrelationshipsegment AS ENUM (
-              'CLIENTE_BB', 'CARTAO_BB', 'FUNCIONARIO_BB', 'PUBLICO_GERAL', 'OUTRO', 'DESCONHECIDO');
-            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-            """
-        )
+    # sa.Enum em alter_column nao cria o tipo no Postgres; um execute multiplo pode falhar no driver.
+    _pg_enum_ddl = (
+        (
+            "eventsessiontype",
+            "'DIURNO_GRATUITO', 'NOTURNO_SHOW', 'OUTRO'",
+        ),
+        (
+            "ingestionstatus",
+            "'RUNNING', 'SUCCEEDED', 'FAILED', 'SKIPPED'",
+        ),
+        (
+            "leadaliastipo",
+            "'EVENTO', 'CIDADE', 'ESTADO', 'GENERO'",
+        ),
+        ("batchstage", "'BRONZE', 'SILVER', 'GOLD'"),
+        (
+            "pipelinestatus",
+            "'PENDING', 'PASS', 'PASS_WITH_WARNINGS', 'FAIL'",
+        ),
+        ("leadconversaotipo", "'COMPRA_INGRESSO', 'ACAO_EVENTO'"),
+        ("solicitacaoingressotipo", "'SELF', 'TERCEIRO'"),
+        ("solicitacaoingressostatus", "'SOLICITADO', 'CANCELADO'"),
+        (
+            "sourcekind",
+            "'DOCX', 'PDF', 'XLSX', 'PPTX', 'CSV', 'MANUAL', 'OTHER'",
+        ),
+        (
+            "bbrelationshipsegment",
+            "'CLIENTE_BB', 'CARTAO_BB', 'FUNCIONARIO_BB', 'PUBLICO_GERAL', 'OUTRO', 'DESCONHECIDO'",
+        ),
     )
+    for _enum_name, _labels in _pg_enum_ddl:
+        op.execute(
+            sa.text(
+                f"DO $$ BEGIN CREATE TYPE {_enum_name} AS ENUM ({_labels}); "
+                "EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
+            )
+        )
     op.alter_column(
         "event_sessions",
         "session_type",

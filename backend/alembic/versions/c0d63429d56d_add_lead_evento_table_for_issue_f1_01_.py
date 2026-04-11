@@ -305,7 +305,12 @@ def upgrade() -> None:
     op.create_index(op.f('ix_attendance_access_control_attendance_access_control_source_id'), 'attendance_access_control', ['source_id'], unique=False)
     op.create_index(op.f('ix_attendance_access_control_attendance_access_control_session_id'), 'attendance_access_control', ['session_id'], unique=False)
     op.drop_constraint('fk_attendance_access_control_source_id_sources', 'attendance_access_control', type_='foreignkey')
-    op.drop_constraint('fk_attendance_access_control_lineage_ref_id_lineage_refs', 'attendance_access_control', type_='foreignkey')
+    op.execute(
+        sa.text(
+            "ALTER TABLE attendance_access_control DROP CONSTRAINT IF EXISTS "
+            "fk_attendance_access_control_lineage_ref_id_lineage_refs"
+        )
+    )
     op.drop_column('attendance_access_control', 'lineage_ref_id')
     op.alter_column('conversao_ativacao', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
@@ -600,7 +605,12 @@ def upgrade() -> None:
     op.create_index(op.f('ix_optin_transactions_optin_transactions_session_id'), 'optin_transactions', ['session_id'], unique=False)
     op.create_index(op.f('ix_optin_transactions_optin_transactions_source_id'), 'optin_transactions', ['source_id'], unique=False)
     op.create_index(op.f('ix_optin_transactions_optin_transactions_ticket_category_norm'), 'optin_transactions', ['ticket_category_norm'], unique=False)
-    op.drop_constraint('fk_optin_transactions_lineage_ref_id_lineage_refs', 'optin_transactions', type_='foreignkey')
+    op.execute(
+        sa.text(
+            "ALTER TABLE optin_transactions DROP CONSTRAINT IF EXISTS "
+            "fk_optin_transactions_lineage_ref_id_lineage_refs"
+        )
+    )
     op.drop_constraint('fk_optin_transactions_source_id_sources', 'optin_transactions', type_='foreignkey')
     op.drop_column('optin_transactions', 'optin_status')
     op.drop_column('optin_transactions', 'optin_flag')
@@ -689,7 +699,12 @@ def upgrade() -> None:
     op.create_index(op.f('ix_ticket_sales_ticket_sales_ingestion_id'), 'ticket_sales', ['ingestion_id'], unique=False)
     op.create_index(op.f('ix_ticket_sales_ticket_sales_session_id'), 'ticket_sales', ['session_id'], unique=False)
     op.create_index(op.f('ix_ticket_sales_ticket_sales_source_id'), 'ticket_sales', ['source_id'], unique=False)
-    op.drop_constraint('fk_ticket_sales_lineage_ref_id_lineage_refs', 'ticket_sales', type_='foreignkey')
+    op.execute(
+        sa.text(
+            "ALTER TABLE ticket_sales DROP CONSTRAINT IF EXISTS "
+            "fk_ticket_sales_lineage_ref_id_lineage_refs"
+        )
+    )
     op.drop_constraint('fk_ticket_sales_source_id_sources', 'ticket_sales', type_='foreignkey')
     op.drop_column('ticket_sales', 'lineage_ref_id')
     # sources/events: drop only after all FK drops above; CASCADE in the ETL loop would remove these FKs too early.

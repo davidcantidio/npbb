@@ -480,10 +480,48 @@ GROUP BY session_id
     op.drop_index('ix_event_publicity_linked_at', table_name='event_publicity')
     op.create_index(op.f('ix_event_publicity_event_publicity_event_id'), 'event_publicity', ['event_id'], unique=False)
     op.create_index(op.f('ix_event_publicity_event_publicity_linked_at'), 'event_publicity', ['linked_at'], unique=False)
-    op.alter_column('event_sessions', 'session_type',
-               existing_type=sa.VARCHAR(length=30),
-               type_=sa.Enum('DIURNO_GRATUITO', 'NOTURNO_SHOW', 'OUTRO', name='eventsessiontype'),
-               existing_nullable=False)
+    # sa.Enum em alter_column nao cria o tipo no Postgres; garantir tipos antes dos USING.
+    op.execute(
+        sa.text(
+            """
+            DO $$ BEGIN CREATE TYPE eventsessiontype AS ENUM ('DIURNO_GRATUITO', 'NOTURNO_SHOW', 'OUTRO');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE ingestionstatus AS ENUM ('RUNNING', 'SUCCEEDED', 'FAILED', 'SKIPPED');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE leadaliastipo AS ENUM ('EVENTO', 'CIDADE', 'ESTADO', 'GENERO');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE batchstage AS ENUM ('BRONZE', 'SILVER', 'GOLD');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE pipelinestatus AS ENUM ('PENDING', 'PASS', 'PASS_WITH_WARNINGS', 'FAIL');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE leadconversaotipo AS ENUM ('COMPRA_INGRESSO', 'ACAO_EVENTO');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE solicitacaoingressotipo AS ENUM ('SELF', 'TERCEIRO');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE solicitacaoingressostatus AS ENUM ('SOLICITADO', 'CANCELADO');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE sourcekind AS ENUM ('DOCX', 'PDF', 'XLSX', 'PPTX', 'CSV', 'MANUAL', 'OTHER');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            DO $$ BEGIN CREATE TYPE bbrelationshipsegment AS ENUM (
+              'CLIENTE_BB', 'CARTAO_BB', 'FUNCIONARIO_BB', 'PUBLICO_GERAL', 'OUTRO', 'DESCONHECIDO');
+            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+            """
+        )
+    )
+    op.alter_column(
+        "event_sessions",
+        "session_type",
+        existing_type=sa.VARCHAR(length=30),
+        type_=postgresql.ENUM(
+            "DIURNO_GRATUITO",
+            "NOTURNO_SHOW",
+            "OUTRO",
+            name="eventsessiontype",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="session_type::eventsessiontype",
+    )
     op.alter_column('event_sessions', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),
@@ -553,10 +591,21 @@ GROUP BY session_id
                nullable=True)
     op.drop_index('ix_import_alias_canonical_ref_id', table_name='import_alias')
     op.create_index(op.f('ix_import_alias_import_alias_canonical_ref_id'), 'import_alias', ['canonical_ref_id'], unique=False)
-    op.alter_column('ingestion', 'status',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('RUNNING', 'SUCCEEDED', 'FAILED', 'SKIPPED', name='ingestionstatus'),
-               existing_nullable=False)
+    op.alter_column(
+        "ingestion",
+        "status",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM(
+            "RUNNING",
+            "SUCCEEDED",
+            "FAILED",
+            "SKIPPED",
+            name="ingestionstatus",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="status::ingestionstatus",
+    )
     op.alter_column('ingestion', 'started_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),
@@ -610,24 +659,56 @@ GROUP BY session_id
     op.create_index(op.f('ix_lead_lead_is_cliente_bb'), 'lead', ['is_cliente_bb'], unique=False)
     op.create_index(op.f('ix_lead_lead_is_cliente_estilo'), 'lead', ['is_cliente_estilo'], unique=False)
     op.create_unique_constraint(op.f('uq_lead_id_salesforce'), 'lead', ['id_salesforce'])
-    op.alter_column('lead_alias', 'tipo',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('EVENTO', 'CIDADE', 'ESTADO', 'GENERO', name='leadaliastipo'),
-               existing_nullable=False)
+    op.alter_column(
+        "lead_alias",
+        "tipo",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM(
+            "EVENTO",
+            "CIDADE",
+            "ESTADO",
+            "GENERO",
+            name="leadaliastipo",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="tipo::leadaliastipo",
+    )
     op.alter_column('lead_batches', 'data_upload',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),
                existing_nullable=False)
-    op.alter_column('lead_batches', 'stage',
-               existing_type=sa.VARCHAR(length=10),
-               type_=sa.Enum('BRONZE', 'SILVER', 'GOLD', name='batchstage'),
-               existing_nullable=False,
-               existing_server_default=sa.text("'bronze'::character varying"))
-    op.alter_column('lead_batches', 'pipeline_status',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('PENDING', 'PASS', 'PASS_WITH_WARNINGS', 'FAIL', name='pipelinestatus'),
-               existing_nullable=False,
-               existing_server_default=sa.text("'pending'::character varying"))
+    op.alter_column(
+        "lead_batches",
+        "stage",
+        existing_type=sa.VARCHAR(length=10),
+        type_=postgresql.ENUM(
+            "BRONZE",
+            "SILVER",
+            "GOLD",
+            name="batchstage",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        existing_server_default=sa.text("'bronze'::character varying"),
+        postgresql_using="upper(stage)::batchstage",
+    )
+    op.alter_column(
+        "lead_batches",
+        "pipeline_status",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM(
+            "PENDING",
+            "PASS",
+            "PASS_WITH_WARNINGS",
+            "FAIL",
+            name="pipelinestatus",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        existing_server_default=sa.text("'pending'::character varying"),
+        postgresql_using="upper(replace(pipeline_status, '-', '_'))::pipelinestatus",
+    )
     op.alter_column('lead_batches', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),
@@ -650,10 +731,19 @@ GROUP BY session_id
     op.drop_index('ix_lead_column_aliases_plataforma_origem', table_name='lead_column_aliases')
     op.create_index(op.f('ix_lead_column_aliases_lead_column_aliases_criado_por'), 'lead_column_aliases', ['criado_por'], unique=False)
     op.create_index(op.f('ix_lead_column_aliases_lead_column_aliases_plataforma_origem'), 'lead_column_aliases', ['plataforma_origem'], unique=False)
-    op.alter_column('lead_conversao', 'tipo',
-               existing_type=sa.VARCHAR(length=30),
-               type_=sa.Enum('COMPRA_INGRESSO', 'ACAO_EVENTO', name='leadconversaotipo'),
-               existing_nullable=False)
+    op.alter_column(
+        "lead_conversao",
+        "tipo",
+        existing_type=sa.VARCHAR(length=30),
+        type_=postgresql.ENUM(
+            "COMPRA_INGRESSO",
+            "ACAO_EVENTO",
+            name="leadconversaotipo",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="tipo::leadconversaotipo",
+    )
     op.drop_index('idx_lead_conversao_evento_id', table_name='lead_conversao')
     op.drop_index('idx_lead_conversao_lead_id', table_name='lead_conversao')
     op.drop_index('idx_lead_conversao_tipo', table_name='lead_conversao')
@@ -737,14 +827,32 @@ GROUP BY session_id
     op.create_index(op.f('ix_publicity_import_staging_publicity_import_staging_imported_at'), 'publicity_import_staging', ['imported_at'], unique=False)
     op.create_index(op.f('ix_publicity_import_staging_publicity_import_staging_source_file'), 'publicity_import_staging', ['source_file'], unique=False)
     op.create_index(op.f('ix_publicity_import_staging_publicity_import_staging_source_row_hash'), 'publicity_import_staging', ['source_row_hash'], unique=False)
-    op.alter_column('solicitacao_ingresso', 'tipo',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('SELF', 'TERCEIRO', name='solicitacaoingressotipo'),
-               existing_nullable=False)
-    op.alter_column('solicitacao_ingresso', 'status',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('SOLICITADO', 'CANCELADO', name='solicitacaoingressostatus'),
-               existing_nullable=False)
+    op.alter_column(
+        "solicitacao_ingresso",
+        "tipo",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM(
+            "SELF",
+            "TERCEIRO",
+            name="solicitacaoingressotipo",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="tipo::solicitacaoingressotipo",
+    )
+    op.alter_column(
+        "solicitacao_ingresso",
+        "status",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM(
+            "SOLICITADO",
+            "CANCELADO",
+            name="solicitacaoingressostatus",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="status::solicitacaoingressostatus",
+    )
     op.drop_index('idx_solicitacao_cota_id', table_name='solicitacao_ingresso')
     op.drop_index('idx_solicitacao_diretoria_id', table_name='solicitacao_ingresso')
     op.drop_index('idx_solicitacao_evento_id', table_name='solicitacao_ingresso')
@@ -759,10 +867,24 @@ GROUP BY session_id
     op.drop_column('solicitacao_ingresso', 'solicitante_area_codigo')
     op.drop_column('solicitacao_ingresso', 'beneficiario_nome')
     op.drop_column('solicitacao_ingresso', 'beneficiario_data_nascimento')
-    op.alter_column('source', 'kind',
-               existing_type=sa.VARCHAR(length=20),
-               type_=sa.Enum('DOCX', 'PDF', 'XLSX', 'PPTX', 'CSV', 'MANUAL', 'OTHER', name='sourcekind'),
-               existing_nullable=False)
+    op.alter_column(
+        "source",
+        "kind",
+        existing_type=sa.VARCHAR(length=20),
+        type_=postgresql.ENUM(
+            "DOCX",
+            "PDF",
+            "XLSX",
+            "PPTX",
+            "CSV",
+            "MANUAL",
+            "OTHER",
+            name="sourcekind",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="kind::sourcekind",
+    )
     op.alter_column('source', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),
@@ -779,10 +901,23 @@ GROUP BY session_id
     op.create_unique_constraint(op.f('uq_termo_uso_ativacao_ativacao_id'), 'termo_uso_ativacao', ['ativacao_id'])
     op.drop_constraint('territorio_nome_key', 'territorio', type_='unique')
     op.create_unique_constraint(op.f('uq_territorio_nome'), 'territorio', ['nome'])
-    op.alter_column('ticket_category_segment_map', 'segment',
-               existing_type=sa.VARCHAR(length=30),
-               type_=sa.Enum('CLIENTE_BB', 'CARTAO_BB', 'FUNCIONARIO_BB', 'PUBLICO_GERAL', 'OUTRO', 'DESCONHECIDO', name='bbrelationshipsegment'),
-               existing_nullable=False)
+    op.alter_column(
+        "ticket_category_segment_map",
+        "segment",
+        existing_type=sa.VARCHAR(length=30),
+        type_=postgresql.ENUM(
+            "CLIENTE_BB",
+            "CARTAO_BB",
+            "FUNCIONARIO_BB",
+            "PUBLICO_GERAL",
+            "OUTRO",
+            "DESCONHECIDO",
+            name="bbrelationshipsegment",
+            create_type=False,
+        ),
+        existing_nullable=False,
+        postgresql_using="segment::bbrelationshipsegment",
+    )
     op.alter_column('ticket_category_segment_map', 'created_at',
                existing_type=postgresql.TIMESTAMP(timezone=True),
                type_=sa.DateTime(),

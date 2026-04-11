@@ -10,7 +10,7 @@ import sqlalchemy as sa
 import sqlmodel
 from sqlalchemy.dialects import postgresql
 
-_DROP_VIEWS_FOR_TABLE_ALLOWED = frozenset({"data_quality_result", "event_sessions"})
+_DROP_VIEWS_FOR_TABLE_ALLOWED = frozenset({"data_quality_result", "event_sessions", "ingestion"})
 
 
 def _drop_views_for_table(table_name: str) -> None:
@@ -38,6 +38,64 @@ def _drop_views_for_table(table_name: str) -> None:
               END LOOP;
             END $$;
             """
+        )
+    )
+
+
+def _recreate_mart_dq_views() -> None:
+    """Recria vistas DQ (c9d4a1b2e3f4); mart_dq_ingestion_with_summary depende de ingestion.status."""
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_dq_ingestion_summary AS
+SELECT
+  ingestion_id,
+  source_id,
+  SUM(CASE WHEN severity = 'ERROR' AND status = 'FAIL' THEN 1 ELSE 0 END) AS error_fail_count,
+  SUM(CASE WHEN severity = 'WARN' AND status = 'FAIL' THEN 1 ELSE 0 END) AS warn_fail_count,
+  SUM(CASE WHEN status = 'PASS' THEN 1 ELSE 0 END) AS pass_count,
+  COUNT(*) AS total_count,
+  MAX(created_at) AS last_checked_at
+FROM data_quality_result
+GROUP BY ingestion_id, source_id
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_dq_ingestion_with_summary AS
+SELECT
+  i.id AS ingestion_id,
+  i.source_id AS source_id,
+  i.pipeline AS pipeline,
+  i.status AS ingestion_status,
+  i.started_at AS started_at,
+  i.finished_at AS finished_at,
+  COALESCE(s.error_fail_count, 0) AS error_fail_count,
+  COALESCE(s.warn_fail_count, 0) AS warn_fail_count,
+  COALESCE(s.pass_count, 0) AS pass_count,
+  COALESCE(s.total_count, 0) AS total_count,
+  s.last_checked_at AS last_checked_at
+FROM ingestion i
+LEFT JOIN mart_dq_ingestion_summary s ON s.ingestion_id = i.id
+"""
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+CREATE OR REPLACE VIEW mart_dq_session_summary AS
+SELECT
+  session_id,
+  SUM(CASE WHEN severity = 'ERROR' AND status = 'FAIL' THEN 1 ELSE 0 END) AS error_fail_count,
+  SUM(CASE WHEN severity = 'WARN' AND status = 'FAIL' THEN 1 ELSE 0 END) AS warn_fail_count,
+  COUNT(*) AS total_count,
+  MAX(created_at) AS last_checked_at
+FROM data_quality_result
+WHERE session_id IS NOT NULL
+GROUP BY session_id
+"""
         )
     )
 
@@ -795,61 +853,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_data_quality_result_data_quality_result_severity'), 'data_quality_result', ['severity'], unique=False)
     op.create_index(op.f('ix_data_quality_result_data_quality_result_source_id'), 'data_quality_result', ['source_id'], unique=False)
     op.create_index(op.f('ix_data_quality_result_data_quality_result_status'), 'data_quality_result', ['status'], unique=False)
-    # Recriar vistas operacionais (mesmo SQL que c9d4a1b2e3f4_add_data_quality_tables_and_views).
-    op.execute(
-        sa.text(
-            """
-CREATE VIEW mart_dq_ingestion_summary AS
-SELECT
-  ingestion_id,
-  source_id,
-  SUM(CASE WHEN severity = 'ERROR' AND status = 'FAIL' THEN 1 ELSE 0 END) AS error_fail_count,
-  SUM(CASE WHEN severity = 'WARN' AND status = 'FAIL' THEN 1 ELSE 0 END) AS warn_fail_count,
-  SUM(CASE WHEN status = 'PASS' THEN 1 ELSE 0 END) AS pass_count,
-  COUNT(*) AS total_count,
-  MAX(created_at) AS last_checked_at
-FROM data_quality_result
-GROUP BY ingestion_id, source_id
-"""
-        )
-    )
-    op.execute(
-        sa.text(
-            """
-CREATE VIEW mart_dq_ingestion_with_summary AS
-SELECT
-  i.id AS ingestion_id,
-  i.source_id AS source_id,
-  i.pipeline AS pipeline,
-  i.status AS ingestion_status,
-  i.started_at AS started_at,
-  i.finished_at AS finished_at,
-  COALESCE(s.error_fail_count, 0) AS error_fail_count,
-  COALESCE(s.warn_fail_count, 0) AS warn_fail_count,
-  COALESCE(s.pass_count, 0) AS pass_count,
-  COALESCE(s.total_count, 0) AS total_count,
-  s.last_checked_at AS last_checked_at
-FROM ingestion i
-LEFT JOIN mart_dq_ingestion_summary s ON s.ingestion_id = i.id
-"""
-        )
-    )
-    op.execute(
-        sa.text(
-            """
-CREATE VIEW mart_dq_session_summary AS
-SELECT
-  session_id,
-  SUM(CASE WHEN severity = 'ERROR' AND status = 'FAIL' THEN 1 ELSE 0 END) AS error_fail_count,
-  SUM(CASE WHEN severity = 'WARN' AND status = 'FAIL' THEN 1 ELSE 0 END) AS warn_fail_count,
-  COUNT(*) AS total_count,
-  MAX(created_at) AS last_checked_at
-FROM data_quality_result
-WHERE session_id IS NOT NULL
-GROUP BY session_id
-"""
-        )
-    )
+    # mart_dq_* com ingestion so no fim do upgrade (apos ALTER em ingestion.status).
     op.drop_constraint('diretoria_nome_key', 'diretoria', type_='unique')
     op.create_unique_constraint(op.f('uq_diretoria_nome'), 'diretoria', ['nome'])
     op.drop_constraint('divisao_demandante_nome_key', 'divisao_demandante', type_='unique')
@@ -988,6 +992,7 @@ GROUP BY session_id
                nullable=True)
     op.drop_index('ix_import_alias_canonical_ref_id', table_name='import_alias')
     op.create_index(op.f('ix_import_alias_import_alias_canonical_ref_id'), 'import_alias', ['canonical_ref_id'], unique=False)
+    _drop_views_for_table("ingestion")
     op.alter_column(
         "ingestion",
         "status",
@@ -1363,6 +1368,7 @@ GROUP BY session_id
     op.drop_column('usuario', 'aprovado_em')
     op.drop_column('usuario', 'email_confirmacao_enviado')
     op.drop_column('usuario', 'aprovado_por')
+    _recreate_mart_dq_views()
     _recreate_mart_report_views()
     # ### end Alembic commands ###
 
@@ -1632,6 +1638,7 @@ def downgrade() -> None:
                existing_type=sa.DateTime(),
                type_=postgresql.TIMESTAMP(timezone=True),
                existing_nullable=False)
+    _drop_views_for_table("ingestion")
     op.alter_column('ingestion', 'status',
                existing_type=sa.Enum('RUNNING', 'SUCCEEDED', 'FAILED', 'SKIPPED', name='ingestionstatus'),
                type_=sa.VARCHAR(length=20),

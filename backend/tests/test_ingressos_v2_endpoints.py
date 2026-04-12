@@ -1,20 +1,34 @@
 from datetime import date
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
-from app.main import app
 from app.models.ingressos_v2_models import (
+    AuditoriaDesbloqueioInventario,
     AuditoriaIngressoEvento,
     ConfiguracaoIngressoEvento,
     ConfiguracaoIngressoEventoTipo,
+    DesbloqueioManualInventario,
+    InventarioIngresso,
     PrevisaoIngresso,
+    RecebimentoIngresso,
 )
-from app.models.models import Agencia, Diretoria, Evento, Funcionario, StatusEvento, Usuario
+from app.models.models import Agencia, Diretoria, Evento, Funcionario, StatusEvento, TipoIngresso, Usuario
+from app.routers.auth import router as auth_router
+from app.routers.ingressos_v2 import router as ingressos_v2_router
+from app.services.inventario_ingressos import calcular_inventario
 from app.utils.security import hash_password
+
+
+def create_test_app() -> FastAPI:
+    app = FastAPI()
+    app.include_router(auth_router)
+    app.include_router(ingressos_v2_router)
+    return app
 
 
 def make_engine():
@@ -40,6 +54,8 @@ def engine(monkeypatch):
 
 @pytest.fixture
 def client(engine):
+    app = create_test_app()
+
     def override_get_session():
         with Session(engine) as session:
             yield session
@@ -357,6 +373,51 @@ def test_patch_configuracao_modo_gera_auditoria(client, engine):
         assert audits[0].usuario_id == user.id
 
 
+def test_patch_configuracao_modo_igual_nao_cria_auditoria(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Same", "same.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-same")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Same Mode",
+        )
+        user = seed_npbb_user(session, "npbb-v2-same@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.commit()
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.patch(
+        f"/ingressos/v2/eventos/{evento_id}/configuracao",
+        json={"modo_fornecimento": "externo_recebido"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["modo_fornecimento"] == "externo_recebido"
+
+    with Session(engine) as session:
+        audits = session.exec(
+            select(AuditoriaIngressoEvento).where(
+                AuditoriaIngressoEvento.evento_id == evento_id
+            )
+        ).all()
+        assert audits == []
+
+
 def test_patch_configuracao_sem_payload_retorna_400(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session, "Agencia Empty", "empty.com.br")
@@ -480,6 +541,97 @@ def test_previsao_upsert_e_listagem_com_filtros(client, engine):
     assert filtered_resp.json()[0]["diretoria_id"] == diretoria_b_id
 
 
+def test_post_previsao_recalcula_snapshot_e_liberta_surplus(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Surplus", "surplus.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-surplus")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Surplus",
+        )
+        user = seed_npbb_user(session, "npbb-v2-surplus@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        diretoria_id = int(diretoria.id)
+
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.commit()
+
+        session.add(
+            PrevisaoIngresso(
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso="pista",
+                quantidade=100,
+            )
+        )
+        session.commit()
+        session.add(
+            RecebimentoIngresso(
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso="pista",
+                quantidade=120,
+            )
+        )
+        session.commit()
+
+        inventario = calcular_inventario(
+            session,
+            evento_id=evento_id,
+            diretoria_id=diretoria_id,
+            tipo_ingresso=TipoIngresso.PISTA,
+        )
+        session.commit()
+
+        assert inventario.bloqueado == 20
+        assert inventario.disponivel == 100
+        inventario_id = int(inventario.id)
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/previsoes",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 120,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 201
+    assert resp.json()["quantidade"] == 120
+
+    with Session(engine) as session:
+        inventario = session.exec(
+            select(InventarioIngresso).where(
+                InventarioIngresso.evento_id == evento_id,
+                InventarioIngresso.diretoria_id == diretoria_id,
+                InventarioIngresso.tipo_ingresso == TipoIngresso.PISTA,
+            )
+        ).first()
+
+        assert inventario is not None
+        assert int(inventario.id) == inventario_id
+        assert inventario.planejado == 120
+        assert inventario.recebido_confirmado == 120
+        assert inventario.bloqueado == 0
+        assert inventario.disponivel == 120
+
+
 def test_previsao_rejeita_tipo_inativo(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session, "Agencia Tipo", "tipo.com.br")
@@ -591,6 +743,343 @@ def test_previsao_sem_configuracao_retorna_404(client, engine):
     assert resp.json()["detail"]["code"] == "CONFIGURACAO_INGRESSO_NOT_FOUND"
 
 
+def test_post_recebimento_retorna_recebimento_e_inventario_atualizado(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Receb", "receb.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-receb")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Recebimento",
+        )
+        user = seed_npbb_user(session, "npbb-v2-receb@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        diretoria_id = int(diretoria.id)
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.add(
+            PrevisaoIngresso(
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso="pista",
+                quantidade=100,
+            )
+        )
+        session.commit()
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/recebimentos",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 50,
+            "artifact_link": "https://drive.example/recibo",
+            "correlation_id": "99999999-8888-7777-6666-555555555555",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 201
+    payload = resp.json()
+    assert payload["recebimento"]["quantidade"] == 50
+    assert payload["recebimento"]["artifact_link"] == "https://drive.example/recibo"
+    assert payload["recebimento"]["correlation_id"] == "99999999-8888-7777-6666-555555555555"
+    assert payload["inventario"]["planejado"] == 100
+    assert payload["inventario"]["recebido_confirmado"] == 50
+    assert payload["inventario"]["bloqueado"] == 50
+    assert payload["inventario"]["disponivel"] == 50
+
+
+def test_recebimento_sem_configuracao_retorna_404(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Receb No Config", "recebnoconfig.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-receb-no-config")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Receb Sem Config",
+        )
+        user = seed_npbb_user(session, "npbb-v2-receb-no-config@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        diretoria_id = int(diretoria.id)
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/recebimentos",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 1,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "CONFIGURACAO_INGRESSO_NOT_FOUND"
+
+
+def test_recebimento_rejeita_tipo_inativo(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Receb Tipo", "recebtipo.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-receb-tipo")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Receb Tipo Inativo",
+        )
+        user = seed_npbb_user(session, "npbb-v2-receb-tipo@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        diretoria_id = int(diretoria.id)
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.commit()
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/recebimentos",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "camarote",
+            "quantidade": 1,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "TIPO_INGRESSO_INVALID_FOR_EVENT"
+
+
+def test_listar_inventario_retorna_snapshots_e_aplica_filtros(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Inv", "inventario.com.br")
+        diretoria_a = seed_diretoria(session, "dir-v2-inv-a")
+        diretoria_b = seed_diretoria(session, "dir-v2-inv-b")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria_a.id),
+            nome="Evento Inventario",
+        )
+        user = seed_npbb_user(session, "npbb-v2-inventario@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.add_all(
+            [
+                PrevisaoIngresso(
+                    evento_id=evento_id,
+                    diretoria_id=int(diretoria_a.id),
+                    tipo_ingresso="pista",
+                    quantidade=100,
+                ),
+                PrevisaoIngresso(
+                    evento_id=evento_id,
+                    diretoria_id=int(diretoria_b.id),
+                    tipo_ingresso="pista",
+                    quantidade=40,
+                ),
+                RecebimentoIngresso(
+                    evento_id=evento_id,
+                    diretoria_id=int(diretoria_a.id),
+                    tipo_ingresso="pista",
+                    quantidade=80,
+                ),
+                RecebimentoIngresso(
+                    evento_id=evento_id,
+                    diretoria_id=int(diretoria_b.id),
+                    tipo_ingresso="pista",
+                    quantidade=40,
+                ),
+            ]
+        )
+        session.commit()
+
+        calcular_inventario(
+            session,
+            evento_id=evento_id,
+            diretoria_id=int(diretoria_a.id),
+            tipo_ingresso=TipoIngresso.PISTA,
+        )
+        calcular_inventario(
+            session,
+            evento_id=evento_id,
+            diretoria_id=int(diretoria_b.id),
+            tipo_ingresso=TipoIngresso.PISTA,
+        )
+        session.commit()
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get(f"/ingressos/v2/eventos/{evento_id}/inventario", headers=headers)
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert len(payload) == 2
+
+    filtered = client.get(
+        f"/ingressos/v2/eventos/{evento_id}/inventario",
+        params={"diretoria_id": int(diretoria_b.id), "tipo_ingresso": "pista"},
+        headers=headers,
+    )
+    assert filtered.status_code == 200
+    filtered_payload = filtered.json()
+    assert len(filtered_payload) == 1
+    assert filtered_payload[0]["diretoria_id"] == int(diretoria_b.id)
+    assert filtered_payload[0]["bloqueado"] == 0
+    assert filtered_payload[0]["disponivel"] == 40
+
+
+def test_listar_inventario_sem_configuracao_retorna_404(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Inv No Config", "invnoconfig.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-inv-no-config")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Inventario Sem Config",
+        )
+        user = seed_npbb_user(session, "npbb-v2-inv-no-config@example.com", "Senha123!")
+        evento_id = int(evento.id)
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.get(
+        f"/ingressos/v2/eventos/{evento_id}/inventario",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "CONFIGURACAO_INGRESSO_NOT_FOUND"
+
+
+def test_post_desbloqueio_manual_atualiza_inventario_e_grava_auditoria(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Desbloq", "desbloq.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-desbloq")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Desbloqueio",
+        )
+        user = seed_npbb_user(session, "npbb-v2-desbloq@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        diretoria_id = int(diretoria.id)
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.add(
+            PrevisaoIngresso(
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso="pista",
+                quantidade=100,
+            )
+        )
+        session.add(
+            RecebimentoIngresso(
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso="pista",
+                quantidade=50,
+            )
+        )
+        session.commit()
+        calcular_inventario(
+            session,
+            evento_id=evento_id,
+            diretoria_id=diretoria_id,
+            tipo_ingresso=TipoIngresso.PISTA,
+        )
+        session.commit()
+
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/inventario/desbloqueio-manual",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 20,
+            "motivo": "Liberacao controlada",
+            "correlation_id": "12121212-3434-5656-7878-909090909090",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["quantidade"] == 20
+    assert payload["bloqueado_antes"] == 50
+    assert payload["bloqueado_depois"] == 30
+    assert payload["correlation_id"] == "12121212-3434-5656-7878-909090909090"
+    assert payload["inventario"]["bloqueado"] == 30
+    assert payload["inventario"]["disponivel"] == 70
+
+    with Session(engine) as session:
+        audit = session.exec(
+            select(AuditoriaDesbloqueioInventario).where(
+                AuditoriaDesbloqueioInventario.evento_id == evento_id
+            )
+        ).first()
+        assert audit is not None
+        assert audit.quantidade == 20
+        assert audit.usuario_id == int(user.id)
+
+        override = session.exec(
+            select(DesbloqueioManualInventario).where(
+                DesbloqueioManualInventario.evento_id == evento_id,
+                DesbloqueioManualInventario.diretoria_id == diretoria_id,
+                DesbloqueioManualInventario.tipo_ingresso == TipoIngresso.PISTA,
+            )
+        ).first()
+        assert override is not None
+        assert override.quantidade_restante == 20
+
+
 def test_escrita_v2_exige_usuario_npbb(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session, "Agencia Auth", "auth.com.br")
@@ -642,6 +1131,73 @@ def test_escrita_v2_exige_usuario_npbb(client, engine):
         )
         assert previsao_resp.status_code == 403
         assert previsao_resp.json()["detail"]["code"] == "FORBIDDEN"
+
+        recebimento_resp = client.post(
+            f"/ingressos/v2/eventos/{evento_id}/recebimentos",
+            json={
+                "diretoria_id": int(diretoria.id),
+                "tipo_ingresso": "pista",
+                "quantidade": 1,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert recebimento_resp.status_code == 403
+        assert recebimento_resp.json()["detail"]["code"] == "FORBIDDEN"
+
+        desbloqueio_resp = client.post(
+            f"/ingressos/v2/eventos/{evento_id}/inventario/desbloqueio-manual",
+            json={
+                "diretoria_id": int(diretoria.id),
+                "tipo_ingresso": "pista",
+                "quantidade": 1,
+                "motivo": "Nao autorizado",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert desbloqueio_resp.status_code == 403
+        assert desbloqueio_resp.json()["detail"]["code"] == "FORBIDDEN"
+
+
+def test_patch_configuracao_exige_usuario_npbb(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia PatchAuth", "patchauth.com.br")
+        diretoria = seed_diretoria(session, "dir-v2-patch-auth")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome="Evento Patch RBAC",
+        )
+        config = ConfiguracaoIngressoEvento(
+            evento_id=int(evento.id),
+            modo_fornecimento="externo_recebido",
+        )
+        session.add(config)
+        session.commit()
+        agencia_user = seed_agencia_user(
+            session,
+            email="agency-v2-patch@patchauth.com.br",
+            password="Senha123!",
+            agencia_id=int(agencia.id),
+        )
+        bb_user = seed_bb_user(
+            session,
+            email="bb-v2-patch@bb.com.br",
+            password="Senha123!",
+            diretoria_id=int(diretoria.id),
+            matricula="PATCH01",
+        )
+        evento_id = int(evento.id)
+
+    for user in (agencia_user, bb_user):
+        token = login_and_get_token(client, user.email, "Senha123!")
+        resp = client.patch(
+            f"/ingressos/v2/eventos/{evento_id}/configuracao",
+            json={"modo_fornecimento": "interno_emitido_com_qr"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"]["code"] == "FORBIDDEN"
 
 
 def test_leitura_v2_respeita_visibilidade_da_agencia(client, engine):
@@ -697,3 +1253,137 @@ def test_leitura_v2_respeita_visibilidade_da_agencia(client, engine):
     )
     assert hidden_resp.status_code == 404
     assert hidden_resp.json()["detail"]["code"] == "EVENTO_NOT_FOUND"
+
+
+def _setup_desbloqueio_scenario(engine, *, modo="externo_recebido", recebimento_qty=50):
+    """Helper: cria evento com config, previsao=100, recebimento opcional, e retorna ids."""
+    with Session(engine) as session:
+        agencia = seed_agencia(session, f"Ag-{modo[:6]}-{recebimento_qty}", f"desbloq-{modo[:6]}-{recebimento_qty}.com.br")
+        diretoria = seed_diretoria(session, f"dir-desbloq-{modo[:6]}-{recebimento_qty}")
+        evento = seed_evento(
+            session,
+            agencia_id=int(agencia.id),
+            diretoria_id=int(diretoria.id),
+            nome=f"Evento Desbloq {modo[:6]} {recebimento_qty}",
+        )
+        user = seed_npbb_user(session, f"npbb-desbloq-{modo[:6]}-{recebimento_qty}@example.com", "Senha123!")
+        evento_id = int(evento.id)
+        diretoria_id = int(diretoria.id)
+
+        config = ConfiguracaoIngressoEvento(
+            evento_id=evento_id,
+            modo_fornecimento=modo,
+        )
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+        session.add(
+            ConfiguracaoIngressoEventoTipo(
+                configuracao_id=int(config.id),
+                tipo_ingresso="pista",
+            )
+        )
+        session.add(
+            PrevisaoIngresso(
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso="pista",
+                quantidade=100,
+            )
+        )
+        session.commit()
+
+        if modo == "externo_recebido" and recebimento_qty > 0:
+            session.add(
+                RecebimentoIngresso(
+                    evento_id=evento_id,
+                    diretoria_id=diretoria_id,
+                    tipo_ingresso="pista",
+                    quantidade=recebimento_qty,
+                )
+            )
+            session.commit()
+            calcular_inventario(
+                session,
+                evento_id=evento_id,
+                diretoria_id=diretoria_id,
+                tipo_ingresso=TipoIngresso.PISTA,
+            )
+            session.commit()
+
+    return evento_id, diretoria_id, user
+
+
+def test_desbloqueio_manual_modo_interno_retorna_400(client, engine):
+    evento_id, diretoria_id, user = _setup_desbloqueio_scenario(
+        engine, modo="interno_emitido_com_qr", recebimento_qty=0
+    )
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/inventario/desbloqueio-manual",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 1,
+            "motivo": "Nao deveria funcionar",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "DESBLOQUEIO_MANUAL_INVALID_MODE"
+
+
+def test_desbloqueio_manual_sem_bloqueio_retorna_409(client, engine):
+    evento_id, diretoria_id, user = _setup_desbloqueio_scenario(
+        engine, recebimento_qty=100
+    )
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/inventario/desbloqueio-manual",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 1,
+            "motivo": "Sem bloqueio ativo",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "DESBLOQUEIO_MANUAL_SEM_BLOQUEIO"
+
+
+def test_desbloqueio_manual_excede_bloqueio_retorna_409(client, engine):
+    evento_id, diretoria_id, user = _setup_desbloqueio_scenario(
+        engine, recebimento_qty=50
+    )
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/inventario/desbloqueio-manual",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 999,
+            "motivo": "Excede o bloqueado",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "DESBLOQUEIO_MANUAL_EXCEDE_BLOQUEIO"
+
+
+def test_desbloqueio_manual_motivo_vazio_retorna_422(client, engine):
+    evento_id, diretoria_id, user = _setup_desbloqueio_scenario(
+        engine, recebimento_qty=50
+    )
+    token = login_and_get_token(client, user.email, "Senha123!")
+    resp = client.post(
+        f"/ingressos/v2/eventos/{evento_id}/inventario/desbloqueio-manual",
+        json={
+            "diretoria_id": diretoria_id,
+            "tipo_ingresso": "pista",
+            "quantidade": 10,
+            "motivo": "",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422

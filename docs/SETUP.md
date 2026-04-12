@@ -160,14 +160,16 @@ copy .env.example .env  # Windows
 # cp .env.example .env  # Linux/macOS
 ```
 
-Exemplo:
+Exemplo (alinhe com `frontend/.env.example`):
 ```env
 VITE_API_BASE_URL=/api
+VITE_SPONSORSHIP_USE_API=true
 ```
 
 Observacao:
 - Em dev local, o Vite faz proxy de `/api/*` para `http://localhost:8000/*` (com rewrite de prefixo).  
 - Se `VITE_API_BASE_URL` nao for definido, o frontend usa `/api` por padrao.
+- Patrocinados exige `VITE_SPONSORSHIP_USE_API=true` (sem isso, a UI mostra aviso e nao usa a API `/sponsorship`).
 
 ### 3) Rodar o front
 ```bash

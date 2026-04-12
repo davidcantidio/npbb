@@ -29,9 +29,17 @@ const MapeamentoPage = lazy(() => import("../pages/leads/MapeamentoPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
 const PipelineStatusPage = lazy(() => import("../pages/leads/PipelineStatusPage"));
 const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
-const PatrocinadosListPage = lazy(() => import("../features/patrocinados/PatrocinadosListPage"));
-const PatrocinadorNewPage = lazy(() => import("../features/patrocinados/PatrocinadorNewPage"));
-const PatrocinadorDetailPage = lazy(() => import("../features/patrocinados/PatrocinadorDetailPage"));
+const PatrocinadosPage = lazy(() => import("../features/patrocinados/PatrocinadosPage"));
+const PatrocinadosEntryPage = lazy(() => import("../features/patrocinados/PatrocinadosEntryPage"));
+const SponsoredPersonNewPage = lazy(() => import("../features/patrocinados/SponsoredPersonNewPage"));
+const SponsoredInstitutionNewPage = lazy(() => import("../features/patrocinados/SponsoredInstitutionNewPage"));
+const SponsorshipGroupNewPage = lazy(() => import("../features/patrocinados/SponsorshipGroupNewPage"));
+const SponsoredPersonDetailPage = lazy(() => import("../features/patrocinados/SponsoredPersonDetailPage"));
+const SponsoredInstitutionDetailPage = lazy(() => import("../features/patrocinados/SponsoredInstitutionDetailPage"));
+const SponsorshipGroupPage = lazy(() => import("../features/patrocinados/SponsorshipGroupPage"));
+const LegacySponsorshipGroupRedirect = lazy(
+  () => import("../features/patrocinados/LegacySponsorshipGroupRedirect"),
+);
 
 export default function AppRoutes() {
   const withSuspense = (element: React.ReactNode) => (
@@ -114,9 +122,18 @@ export default function AppRoutes() {
           <Route path="/leads/mapeamento" element={withSuspense(<MapeamentoPage />)} />
           <Route path="/leads/pipeline" element={withSuspense(<PipelineStatusPage />)} />
           <Route path="/publicidade" element={<PublicidadeImport />} />
-          <Route path="/patrocinados" element={withSuspense(<PatrocinadosListPage />)} />
-          <Route path="/patrocinados/novo" element={withSuspense(<PatrocinadorNewPage />)} />
-          <Route path="/patrocinados/:id" element={withSuspense(<PatrocinadorDetailPage />)} />
+          <Route path="/patrocinados" element={withSuspense(<PatrocinadosPage />)} />
+          <Route path="/patrocinados/novo" element={withSuspense(<PatrocinadosEntryPage />)} />
+          <Route path="/patrocinados/pessoas/novo" element={withSuspense(<SponsoredPersonNewPage />)} />
+          <Route path="/patrocinados/instituicoes/novo" element={withSuspense(<SponsoredInstitutionNewPage />)} />
+          <Route path="/patrocinados/grupos/novo" element={withSuspense(<SponsorshipGroupNewPage />)} />
+          <Route path="/patrocinados/pessoas/:id" element={withSuspense(<SponsoredPersonDetailPage />)} />
+          <Route
+            path="/patrocinados/instituicoes/:id"
+            element={withSuspense(<SponsoredInstitutionDetailPage />)}
+          />
+          <Route path="/patrocinados/grupos/:id" element={withSuspense(<SponsorshipGroupPage />)} />
+          <Route path="/patrocinados/:id" element={withSuspense(<LegacySponsorshipGroupRedirect />)} />
           <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
         </Route>
       </Route>

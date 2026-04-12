@@ -1,4 +1,4 @@
-"""Ingressos v2 configuration and planned quantities endpoints."""
+"""Ingressos v2 configuration, receipts, and inventory endpoints."""
 
 from __future__ import annotations
 
@@ -10,10 +10,13 @@ from sqlmodel import Session, select
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.ingressos_v2_models import (
+    AuditoriaDesbloqueioInventario,
     AuditoriaIngressoEvento,
     ConfiguracaoIngressoEvento,
     ConfiguracaoIngressoEventoTipo,
+    InventarioIngresso,
     PrevisaoIngresso,
+    RecebimentoIngresso,
 )
 from app.models.models import Diretoria, TipoIngresso, Usuario, now_utc
 from app.platform.security.rbac import require_npbb_user
@@ -22,8 +25,29 @@ from app.schemas.ingressos_v2 import (
     ConfiguracaoIngressoEventoCreate,
     ConfiguracaoIngressoEventoRead,
     ConfiguracaoIngressoEventoUpdate,
+    DesbloqueioManualInventarioCreate,
+    DesbloqueioManualInventarioResponse,
+    InventarioIngressoRead,
     PrevisaoIngressoCreate,
     PrevisaoIngressoRead,
+    RecebimentoIngressoCreate,
+    RecebimentoIngressoRead,
+    RecebimentoIngressoResponse,
+)
+from app.services.inventario_ingressos import (
+    MSG_CONFIG_NOT_FOUND,
+    MSG_DESBLOQUEIO_EXCEDE_BLOQUEIO,
+    MSG_DESBLOQUEIO_MODO_INVALIDO,
+    MSG_DESBLOQUEIO_MOTIVO_OBRIGATORIO,
+    MSG_DESBLOQUEIO_QUANTIDADE_INVALIDA,
+    MSG_DESBLOQUEIO_SEM_BLOQUEIO,
+    MSG_DESBLOQUEIO_USUARIO_OBRIGATORIO,
+    MSG_RECEBIMENTO_MODO_INVALIDO,
+    MSG_RECEBIMENTO_QUANTIDADE_INVALIDA,
+    MSG_TIPO_INATIVO,
+    calcular_inventario,
+    desbloqueio_manual,
+    registrar_recebimento,
 )
 from app.utils.http_errors import raise_http_error
 
@@ -109,6 +133,103 @@ def _ensure_tipo_ingresso_ativo(
             code="TIPO_INGRESSO_INVALID_FOR_EVENT",
             message="Tipo de ingresso nao esta ativo para o evento",
         )
+
+
+def _translate_inventario_service_error(exc: ValueError) -> None:
+    message = str(exc)
+    if message == MSG_CONFIG_NOT_FOUND:
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="CONFIGURACAO_INGRESSO_NOT_FOUND",
+            message=message,
+        )
+    if message == MSG_TIPO_INATIVO:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="TIPO_INGRESSO_INVALID_FOR_EVENT",
+            message=message,
+        )
+    if message == MSG_RECEBIMENTO_QUANTIDADE_INVALIDA:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="RECEBIMENTO_QUANTIDADE_INVALIDA",
+            message=message,
+        )
+    if message == MSG_RECEBIMENTO_MODO_INVALIDO:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="RECEBIMENTO_INVALID_MODE",
+            message=message,
+        )
+    if message == MSG_DESBLOQUEIO_QUANTIDADE_INVALIDA:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="DESBLOQUEIO_MANUAL_QUANTIDADE_INVALIDA",
+            message=message,
+        )
+    if message == MSG_DESBLOQUEIO_MODO_INVALIDO:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="DESBLOQUEIO_MANUAL_INVALID_MODE",
+            message=message,
+        )
+    if message == MSG_DESBLOQUEIO_MOTIVO_OBRIGATORIO:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="DESBLOQUEIO_MANUAL_MOTIVO_OBRIGATORIO",
+            message=message,
+        )
+    if message == MSG_DESBLOQUEIO_USUARIO_OBRIGATORIO:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="DESBLOQUEIO_MANUAL_USUARIO_OBRIGATORIO",
+            message=message,
+        )
+    if message == MSG_DESBLOQUEIO_SEM_BLOQUEIO:
+        raise_http_error(
+            status.HTTP_409_CONFLICT,
+            code="DESBLOQUEIO_MANUAL_SEM_BLOQUEIO",
+            message=message,
+        )
+    if message == MSG_DESBLOQUEIO_EXCEDE_BLOQUEIO:
+        raise_http_error(
+            status.HTTP_409_CONFLICT,
+            code="DESBLOQUEIO_MANUAL_EXCEDE_BLOQUEIO",
+            message=message,
+        )
+    raise_http_error(
+        status.HTTP_400_BAD_REQUEST,
+        code="INGRESSOS_V2_INVALID_OPERATION",
+        message=message,
+    )
+
+
+def _serialize_recebimento_response(
+    recebimento: RecebimentoIngresso, inventario: InventarioIngresso
+) -> RecebimentoIngressoResponse:
+    return RecebimentoIngressoResponse(
+        recebimento=RecebimentoIngressoRead.model_validate(recebimento),
+        inventario=InventarioIngressoRead.model_validate(inventario),
+    )
+
+
+def _serialize_desbloqueio_response(
+    auditoria: AuditoriaDesbloqueioInventario, inventario: InventarioIngresso
+) -> DesbloqueioManualInventarioResponse:
+    return DesbloqueioManualInventarioResponse(
+        auditoria_id=int(auditoria.id),
+        evento_id=int(auditoria.evento_id),
+        diretoria_id=int(auditoria.diretoria_id),
+        tipo_ingresso=auditoria.tipo_ingresso,
+        usuario_id=auditoria.usuario_id,
+        quantidade=int(auditoria.quantidade),
+        bloqueado_antes=int(auditoria.bloqueado_antes),
+        bloqueado_depois=int(auditoria.bloqueado_depois),
+        motivo=auditoria.motivo,
+        correlation_id=auditoria.correlation_id,
+        created_at=auditoria.created_at,
+        inventario=InventarioIngressoRead.model_validate(inventario),
+    )
 
 
 @router.post(
@@ -198,7 +319,12 @@ def atualizar_configuracao_ingresso_evento(
     changed = False
     if "modo_fornecimento" in effective_fields:
         novo_modo = payload.modo_fornecimento
-        assert novo_modo is not None
+        if novo_modo is None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="VALIDATION_ERROR_INVALID_FIELD",
+                message="modo_fornecimento nao pode ser nulo quando enviado",
+            )
         if novo_modo != configuracao.modo_fornecimento:
             session.add(
                 AuditoriaIngressoEvento(
@@ -212,7 +338,14 @@ def atualizar_configuracao_ingresso_evento(
             changed = True
 
     if "tipos_ingresso" in effective_fields:
-        assert payload.tipos_ingresso is not None
+        if payload.tipos_ingresso is None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="VALIDATION_ERROR_INVALID_FIELD",
+                message="tipos_ingresso nao pode ser nulo quando enviado",
+            )
+        # Existing PrevisaoIngresso rows for removed tipos are intentionally kept:
+        # they become inert (no new previsoes allowed) but remain for audit history.
         _replace_config_tipos(session, int(configuracao.id), payload.tipos_ingresso)
         changed = True
 
@@ -262,6 +395,13 @@ def criar_ou_atualizar_previsao_ingresso(
         previsao.updated_at = now_utc()
         session.add(previsao)
 
+    session.flush()
+    calcular_inventario(
+        session,
+        evento_id=evento_id,
+        diretoria_id=payload.diretoria_id,
+        tipo_ingresso=payload.tipo_ingresso,
+    )
     session.commit()
     session.refresh(previsao)
     return PrevisaoIngressoRead.model_validate(previsao)
@@ -295,3 +435,109 @@ def listar_previsoes_ingresso(
         )
     ).all()
     return [PrevisaoIngressoRead.model_validate(row) for row in rows]
+
+
+@router.post(
+    "/eventos/{evento_id}/recebimentos",
+    response_model=RecebimentoIngressoResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def criar_recebimento_ingresso(
+    evento_id: int,
+    payload: RecebimentoIngressoCreate,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(require_npbb_user),
+):
+    eventos_shared._check_evento_visible_or_404(session, evento_id, current_user)
+    configuracao = _get_config_or_404(session, evento_id)
+    _ensure_diretoria_exists(session, payload.diretoria_id)
+    _ensure_tipo_ingresso_ativo(session, int(configuracao.id), payload.tipo_ingresso)
+
+    try:
+        recebimento, inventario = registrar_recebimento(
+            session,
+            evento_id=evento_id,
+            diretoria_id=payload.diretoria_id,
+            tipo_ingresso=payload.tipo_ingresso,
+            quantidade=payload.quantidade,
+            artifact_file_path=payload.artifact_file_path,
+            artifact_link=payload.artifact_link,
+            artifact_instructions=payload.artifact_instructions,
+            correlation_id=payload.correlation_id,
+        )
+    except ValueError as exc:
+        _translate_inventario_service_error(exc)
+
+    session.commit()
+    session.refresh(recebimento)
+    session.refresh(inventario)
+    return _serialize_recebimento_response(recebimento, inventario)
+
+
+@router.get(
+    "/eventos/{evento_id}/inventario",
+    response_model=list[InventarioIngressoRead],
+)
+def listar_inventario_ingresso(
+    evento_id: int,
+    diretoria_id: int | None = Query(None, ge=1),
+    tipo_ingresso: TipoIngresso | None = Query(None),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    eventos_shared._check_evento_visible_or_404(session, evento_id, current_user)
+    configuracao = _get_config_or_404(session, evento_id)
+    if diretoria_id is not None:
+        _ensure_diretoria_exists(session, diretoria_id)
+    if tipo_ingresso is not None:
+        _ensure_tipo_ingresso_ativo(session, int(configuracao.id), tipo_ingresso)
+
+    query = select(InventarioIngresso).where(InventarioIngresso.evento_id == evento_id)
+    if diretoria_id is not None:
+        query = query.where(InventarioIngresso.diretoria_id == diretoria_id)
+    if tipo_ingresso is not None:
+        query = query.where(InventarioIngresso.tipo_ingresso == tipo_ingresso)
+
+    rows = session.exec(
+        query.order_by(
+            InventarioIngresso.diretoria_id,
+            InventarioIngresso.tipo_ingresso,
+            InventarioIngresso.id,
+        )
+    ).all()
+    return [InventarioIngressoRead.model_validate(row) for row in rows]
+
+
+@router.post(
+    "/eventos/{evento_id}/inventario/desbloqueio-manual",
+    response_model=DesbloqueioManualInventarioResponse,
+)
+def criar_desbloqueio_manual_inventario(
+    evento_id: int,
+    payload: DesbloqueioManualInventarioCreate,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(require_npbb_user),
+):
+    eventos_shared._check_evento_visible_or_404(session, evento_id, current_user)
+    configuracao = _get_config_or_404(session, evento_id)
+    _ensure_diretoria_exists(session, payload.diretoria_id)
+    _ensure_tipo_ingresso_ativo(session, int(configuracao.id), payload.tipo_ingresso)
+
+    try:
+        auditoria, inventario = desbloqueio_manual(
+            session,
+            evento_id=evento_id,
+            diretoria_id=payload.diretoria_id,
+            tipo_ingresso=payload.tipo_ingresso,
+            quantidade=payload.quantidade,
+            usuario_id=getattr(current_user, "id", None),
+            motivo=payload.motivo,
+            correlation_id=payload.correlation_id,
+        )
+    except ValueError as exc:
+        _translate_inventario_service_error(exc)
+
+    session.commit()
+    session.refresh(auditoria)
+    session.refresh(inventario)
+    return _serialize_desbloqueio_response(auditoria, inventario)

@@ -45,7 +45,7 @@ Evolve the NPBB assets/tickets domain from its current aggregated-quota model (`
 
 Establish the new data model that supports ticket types per event, supply modes, reconciliation, recipient lifecycle, adjustments, and operational incidents — all coexisting with the current `CotaCortesia`/`SolicitacaoIngresso` tables.
 
-## TODOs
+## Implemented State
 
 - Create new enums: `TipoIngresso` (pista, pista_premium, camarote), `ModoFornecimento` (interno_emitido_com_qr, externo_recebido), `StatusInventario` (planejado, recebido_confirmado, bloqueado_por_recebimento, disponivel, distribuido), `StatusDestinatario` (enviado, confirmado, utilizado, cancelado), `TipoOcorrencia` (entrega_errada, quantidade_divergente, destinatario_invalido, outro), `TipoAjuste` (aumento, reducao, remanejamento)
 - Create `ConfiguracaoIngressoEvento` model — links evento to its active ticket types and supply mode, with `modo_fornecimento` field and audit trail for mode changes
@@ -81,24 +81,25 @@ Establish the new data model that supports ticket types per event, supply modes,
 
 Build the API for configuring which ticket types are active per event and setting the supply mode, including audited mode changes.
 
-## TODOs
+## Implemented State
 
-- Create schemas in `backend/app/schemas/ingressos_v2.py`: `ConfiguracaoIngressoEventoCreate`, `ConfiguracaoIngressoEventoRead`, `ConfiguracaoIngressoEventoUpdate`, `PrevisaoIngressoCreate`, `PrevisaoIngressoRead`
-- Create router `backend/app/routers/ingressos_v2.py` with prefix `/ingressos/v2`
+- Schemas created in `backend/app/schemas/ingressos_v2.py`: `ConfiguracaoIngressoEventoCreate`, `ConfiguracaoIngressoEventoRead`, `ConfiguracaoIngressoEventoUpdate`, `PrevisaoIngressoCreate`, `PrevisaoIngressoRead`
+- Router created in `backend/app/routers/ingressos_v2.py` with prefix `/ingressos/v2`
+- Configuration and forecast endpoints are implemented in the router and covered by dedicated endpoint tests
 - Implement `POST /ingressos/v2/eventos/{evento_id}/configuracao` — set active ticket types and supply mode for an event
 - Implement `GET /ingressos/v2/eventos/{evento_id}/configuracao` — read current config
 - Implement `PATCH /ingressos/v2/eventos/{evento_id}/configuracao` — update config (mode change creates audit record, requires admin role)
 - Implement `POST /ingressos/v2/eventos/{evento_id}/previsoes` — create/update planned quantities per diretoria + tipo_ingresso
 - Implement `GET /ingressos/v2/eventos/{evento_id}/previsoes` — list planned quantities with filters
-- Register router in `backend/app/main.py`
-- Write tests for configuration CRUD and mode-change audit trail
+- Router registered in `backend/app/main.py`
+- Test coverage implemented in `backend/tests/test_ingressos_v2_endpoints.py`, with isolated app bootstrap for `auth` + `ingressos_v2`
 
 ## Details
 
 - Only ticket types declared in the event config are valid for that event (e.g., an event might only use `pista` and `camarote`)
 - Mode change via PATCH writes a row to `AuditoriaIngressoEvento` with the acting user, old mode, new mode
-- RBAC: mode change and config creation require admin-level user; reading is available to any authenticated user with event visibility
-- Follow the same `_apply_visibility` pattern from `ativos.py` for agency-scoped access
+- RBAC: write operations use `require_npbb_user`; read operations use `get_current_user` plus `_check_evento_visible_or_404`
+- Event visibility is enforced through `backend/app/routers/eventos/_shared.py`
 - Previsao upserts: if a row for `(evento_id, diretoria_id, tipo_ingresso)` already exists, update the quantity
 
 ## Verification
@@ -107,6 +108,7 @@ Build the API for configuring which ticket types are active per event and settin
 - Cannot create a duplicate configuration for the same event
 - Mode change produces an audit record with correct old/new values
 - Planned quantities can be created and updated per diretoria + tipo
+- Target verification command: `cd backend && python -m pytest tests/test_ingressos_v2_endpoints.py -q`
 
 ---
 
@@ -132,7 +134,7 @@ Build the reconciliation engine that tracks received quantities against planned 
 - For `modo = externo_recebido`, `disponivel = min(recebido_confirmado, planejado) - distribuido`; surplus `max(recebido_confirmado - planejado, 0)` is blocked
 - `RecebimentoIngresso` stores artifact references: file path, drive link, or text instructions (all optional, at least one recommended)
 - `desbloqueio_manual` requires admin role and creates an audit record
-- Inventory is computed, not stored as a materialized row — the `calcular_inventario()` function aggregates from previsao + recebimentos + distribuicoes + ajustes
+- **Design decision (Task 1 review)**: `InventarioIngresso` is stored as a **materialized snapshot** row per (evento, diretoria, tipo_ingresso). The `calcular_inventario()` function **updates this snapshot** by aggregating from previsao + recebimentos + distribuicoes + ajustes. This avoids expensive JOINs on every inventory read and simplifies dashboard queries (Task 7). The reconciliation service (this task) is the sole writer of the snapshot.
 - `correlation_id` links recebimento records to downstream operations
 
 ## Verification

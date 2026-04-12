@@ -22,6 +22,7 @@ from app.models.framework_models import (
     IntakeKind,
     SourceMode,
 )
+from app.models import ingressos_v2_models  # noqa: F401
 
 __all__ = [
     "BatchStage",

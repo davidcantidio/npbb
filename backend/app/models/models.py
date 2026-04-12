@@ -48,6 +48,8 @@ class ModoFornecimento(str, Enum):
 
 
 class StatusInventario(str, Enum):
+    """Application-layer enum for inventory state classification; not persisted as a DB column."""
+
     PLANEJADO = "planejado"
     RECEBIDO_CONFIRMADO = "recebido_confirmado"
     BLOQUEADO_POR_RECEBIMENTO = "bloqueado_por_recebimento"
@@ -73,6 +75,11 @@ class TipoAjuste(str, Enum):
     AUMENTO = "aumento"
     REDUCAO = "reducao"
     REMANEJAMENTO = "remanejamento"
+
+
+class TipoBloqueioInventario(str, Enum):
+    FALTA_RECEBIMENTO = "falta_recebimento"
+    EXCESSO_RECEBIDO = "excesso_recebido"
 
 
 class Usuario(SQLModel, table=True):
@@ -575,17 +582,6 @@ from app.models.event_support_models import (
     QuestionarioRespostaOpcao,
     QuestionarioRespostaPergunta,
     SolicitacaoIngresso,
-)
-from app.models.ingressos_v2_models import (
-    AjusteIngresso,
-    AuditoriaIngressoEvento,
-    ConfiguracaoIngressoEvento,
-    ConfiguracaoIngressoEventoTipo,
-    DistribuicaoIngresso,
-    InventarioIngresso,
-    OcorrenciaIngresso,
-    PrevisaoIngresso,
-    RecebimentoIngresso,
 )
 from app.models.tmj_analytics_models import (
     AttendanceAccessControl,

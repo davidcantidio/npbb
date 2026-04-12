@@ -26,6 +26,7 @@ from app.db.metadata import SQLModel  # noqa: F401
 
 # Importa os modelos para autogenerate
 from app.models import models  # noqa: F401
+from app.models import ingressos_v2_models  # noqa: F401
 from app.models import lead_batch  # noqa: F401
 from app.models import framework_models  # noqa: F401
 from app.models import sponsorship_models  # noqa: F401

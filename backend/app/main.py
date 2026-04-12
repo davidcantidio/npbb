@@ -31,6 +31,7 @@ from app.routers.internal_etl import router as internal_etl_router
 from app.routers.internal_health import router as internal_health_router
 from app.routers.internal_scraping import router as internal_scraping_router
 from app.routers.data_quality import router as data_quality_router
+from app.routers.sponsorship import router as sponsorship_router
 from app.api.v1.endpoints.framework import router as framework_router
 
 
@@ -193,4 +194,5 @@ app.include_router(internal_etl_router)
 app.include_router(internal_health_router)
 app.include_router(internal_scraping_router)
 app.include_router(data_quality_router)
+app.include_router(sponsorship_router)
 app.include_router(framework_router)

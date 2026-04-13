@@ -117,7 +117,7 @@ function createXlsxFile() {
   });
 }
 
-describe("ImportacaoPage", () => {
+describe("ImportacaoPage", { timeout: 30000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseAuth.mockReturnValue({

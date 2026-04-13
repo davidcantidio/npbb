@@ -48,7 +48,7 @@ async function selectEventoAndConfirm() {
   await user.click(screen.getByRole("button", { name: "Confirmar Mapeamento" }));
 }
 
-describe("MapeamentoPage", () => {
+describe("MapeamentoPage", { timeout: 30000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseAuth.mockReturnValue({

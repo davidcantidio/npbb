@@ -289,7 +289,6 @@ export async function commitLeadImportEtl(
   sessionToken: string,
   eventoId: number,
   forceWarnings = false,
-  strict = false,
 ): Promise<LeadImportEtlResult> {
   const res = await fetchWithAuth("/leads/import/etl/commit", {
     method: "POST",
@@ -301,7 +300,6 @@ export async function commitLeadImportEtl(
       session_token: sessionToken,
       evento_id: eventoId,
       force_warnings: forceWarnings,
-      strict,
     }),
     retries: 0,
   });

@@ -86,19 +86,33 @@ def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) 
             except ValueError:
                 data_nasc = None
 
-        lead = Lead(
-            nome=row.get("nome", "").strip() or None,
-            email=row.get("email", "").strip() or None,
-            telefone=row.get("telefone", "").strip() or None,
-            cpf=row.get("cpf", "").strip() or None,
-            data_nascimento=data_nasc,
-            evento_nome=row.get("evento", "").strip() or None,
-            sessao=row.get("local", "").strip() or None,
-            fonte_origem=batch.plataforma_origem,
-            batch_id=batch.id,
-        )
-        db.add(lead)
-        db.flush()
+        email = row.get("email", "").strip() or None
+        cpf = row.get("cpf", "").strip() or None
+        evento_nome = row.get("evento", "").strip() or None
+        sessao = row.get("local", "").strip() or None
+
+        lead = db.exec(
+            select(Lead)
+            .where(Lead.email == email)
+            .where(Lead.cpf == cpf)
+            .where(Lead.evento_nome == evento_nome)
+            .where(Lead.sessao == sessao)
+        ).first()
+        if lead is None:
+            lead = Lead(
+                nome=row.get("nome", "").strip() or None,
+                email=email,
+                telefone=row.get("telefone", "").strip() or None,
+                cpf=cpf,
+                data_nascimento=data_nasc,
+                evento_nome=evento_nome,
+                sessao=sessao,
+                fonte_origem=batch.plataforma_origem,
+                batch_id=batch.id,
+            )
+            db.add(lead)
+            db.flush()
+            count += 1
         if lead.id is not None and batch.evento_id is not None:
             ensure_lead_event(
                 db,
@@ -107,7 +121,6 @@ def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) 
                 source_kind=LeadEventoSourceKind.LEAD_BATCH,
                 source_ref_id=batch.id,
             )
-        count += 1
 
     db.commit()
     return count

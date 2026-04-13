@@ -26,6 +26,7 @@ import { toApiErrorMessage } from "../../services/http";
 import {
   ColumnConfidence,
   ColumnSuggestion,
+  MapearBatchResult,
   ReferenciaEvento,
   getLeadBatchColunas,
   listReferenciaEventos,
@@ -64,11 +65,21 @@ const CONFIDENCE_COLORS: Record<ColumnConfidence, "success" | "info" | "warning"
   none: "default",
 };
 
-export default function MapeamentoPage() {
+export type MapeamentoPageProps = {
+  batchId?: number;
+  onCancel?: () => void;
+  onMapped?: (result: MapearBatchResult) => void;
+};
+
+export default function MapeamentoPage({
+  batchId: batchIdProp,
+  onCancel,
+  onMapped,
+}: MapeamentoPageProps = {}) {
   const { token } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const batchId = Number(searchParams.get("batch_id") ?? "0");
+  const batchId = batchIdProp ?? Number(searchParams.get("batch_id") ?? "0");
 
   const [colunas, setColunas] = useState<ColumnSuggestion[]>([]);
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
@@ -151,8 +162,12 @@ export default function MapeamentoPage() {
       if (!Number.isFinite(res.batch_id) || res.batch_id <= 0) {
         throw new Error("Resposta de confirmação não retornou batch_id.");
       }
-      setResult({ silver_count: res.silver_count });
-      navigate(`/leads/pipeline?batch_id=${res.batch_id}`);
+      if (onMapped) {
+        onMapped(res);
+      } else {
+        setResult({ silver_count: res.silver_count });
+        navigate(`/leads/pipeline?batch_id=${res.batch_id}`);
+      }
     } catch (err) {
       setError(toApiErrorMessage(err, "Falha ao confirmar mapeamento."));
     } finally {
@@ -352,7 +367,13 @@ export default function MapeamentoPage() {
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
               <Button
                 variant="outlined"
-                onClick={() => navigate(`/leads/importar`)}
+                onClick={() => {
+                  if (onCancel) {
+                    onCancel();
+                  } else {
+                    navigate("/leads/importar");
+                  }
+                }}
                 disabled={submitting}
               >
                 Cancelar

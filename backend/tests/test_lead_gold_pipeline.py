@@ -6,25 +6,20 @@ POST /leads/batches/{id}/executar-pipeline
 
 from __future__ import annotations
 
+import asyncio
 import io
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
 from app.models.models import Evento, Lead, LeadEvento, LeadEventoSourceKind, StatusEvento, Usuario
-from sqlalchemy import select as sa_select
 from app.utils.security import hash_password
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 
 def _make_engine():
@@ -80,7 +75,7 @@ def _seed_status(session: Session) -> StatusEvento:
 
 def _seed_evento(session: Session) -> Evento:
     ev_status = _seed_status(session)
-    evento = Evento(nome="Evento Gold Teste", cidade="SP", estado="SP", status_id=ev_status.id)
+    evento = Evento(nome="Park Challenge 2025", cidade="SP", estado="SP", status_id=ev_status.id)
     session.add(evento)
     session.commit()
     session.refresh(evento)
@@ -125,20 +120,15 @@ def _promote_to_silver(engine, batch_id: int, evento_id: int) -> None:
                 "cpf": "12345678901",
                 "email": "alice@ex.com",
                 "telefone": "11999990000",
-                "evento": "Evento Gold Teste",
+                "evento": "Park Challenge 2025",
                 "tipo_evento": "ESPORTE",
-                "local": "São Paulo-SP",
+                "local": "Sao Paulo-SP",
                 "data_evento": "2026-06-08",
                 "data_nascimento": "1990-01-15",
             },
         )
         s.add(silver)
         s.commit()
-
-
-# ---------------------------------------------------------------------------
-# GET /leads/batches/{id}
-# ---------------------------------------------------------------------------
 
 
 class TestGetBatch:
@@ -189,11 +179,6 @@ class TestGetBatch:
         assert body["stage"] == "gold"
 
 
-# ---------------------------------------------------------------------------
-# POST /leads/batches/{id}/executar-pipeline
-# ---------------------------------------------------------------------------
-
-
 class TestExecutarPipeline:
     def test_returns_400_if_stage_not_silver(self, client, engine):
         with Session(engine) as s:
@@ -227,7 +212,7 @@ class TestExecutarPipeline:
         with patch(
             "app.routers.leads.executar_pipeline_gold",
             new_callable=AsyncMock,
-        ) as mock_pipeline:
+        ):
             resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
 
         assert resp.status_code == 202, resp.text
@@ -237,10 +222,9 @@ class TestExecutarPipeline:
 
 
 class TestLeadEventoInGoldPipeline:
-    """Testes red/green para ISSUE-F1-03-001 T1: Garantir LeadEvento no pipeline Gold."""
+    """Guarantee LeadEvento creation and idempotency in the Gold pipeline."""
 
-    def test_promote_to_gold_creates_lead_evento(self, client, engine):
-        """Red test: deve falhar inicialmente se ensure_lead_event não for chamado corretamente."""
+    def test_promote_to_gold_creates_lead_evento(self, client, engine, monkeypatch):
         with Session(engine) as s:
             auth = _auth_header(client, s)
             evento = _seed_evento(s)
@@ -248,31 +232,26 @@ class TestLeadEventoInGoldPipeline:
         batch_id = _upload_batch(client, auth)
         _promote_to_silver(engine, batch_id, evento.id)
 
-        # Executa o pipeline real (não mockado)
-        with Session(engine) as s:
-            from app.services.lead_pipeline_service import executar_pipeline_gold
-            # Como é async, chamamos de forma síncrona para teste
-            import asyncio
-            asyncio.run(executar_pipeline_gold(batch_id))
+        import app.db.database as database_module
 
-        # Verifica criação do LeadEvento
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
         with Session(engine) as s:
-            leads = s.exec(sa_select(Lead).where(Lead.batch_id == batch_id)).all()
+            leads = s.exec(select(Lead).where(Lead.batch_id == batch_id)).all()
             assert len(leads) > 0, "Deve ter criado pelo menos um Lead Gold"
 
             for lead in leads:
-                lead_eventos = s.exec(
-                    sa_select(LeadEvento)
-                    .where(LeadEvento.lead_id == lead.id)
-                ).all()
+                lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
                 assert len(lead_eventos) == 1, f"Lead {lead.id} deve ter exatamente 1 LeadEvento"
-                le = lead_eventos[0]
-                assert le.evento_id == evento.id
-                assert le.source_kind == LeadEventoSourceKind.LEAD_BATCH
-                assert le.source_ref_id == batch_id
+                lead_evento = lead_eventos[0]
+                assert lead_evento.evento_id == evento.id
+                assert lead_evento.source_kind == LeadEventoSourceKind.LEAD_BATCH
+                assert lead_evento.source_ref_id == batch_id
 
-    def test_reprocess_does_not_duplicate_lead_evento(self, client, engine):
-        """Testa idempotência: reprocessar o mesmo batch não cria duplicatas."""
+    def test_reprocess_does_not_duplicate_lead_evento(self, client, engine, monkeypatch):
         with Session(engine) as s:
             auth = _auth_header(client, s)
             evento = _seed_evento(s)
@@ -280,18 +259,20 @@ class TestLeadEventoInGoldPipeline:
         batch_id = _upload_batch(client, auth)
         _promote_to_silver(engine, batch_id, evento.id)
 
-        # Executa 2x
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
         from app.services.lead_pipeline_service import executar_pipeline_gold
-        import asyncio
+
         asyncio.run(executar_pipeline_gold(batch_id))
         asyncio.run(executar_pipeline_gold(batch_id))
 
         with Session(engine) as s:
-            leads = s.exec(sa_select(Lead).where(Lead.batch_id == batch_id)).all()
+            leads = s.exec(select(Lead).where(Lead.batch_id == batch_id)).all()
             for lead in leads:
                 lead_eventos = s.exec(
-                    sa_select(LeadEvento)
+                    select(LeadEvento)
                     .where(LeadEvento.lead_id == lead.id)
                     .where(LeadEvento.evento_id == evento.id)
                 ).all()
-                assert len(lead_eventos) == 1, "Não deve duplicar LeadEvento"
+                assert len(lead_eventos) == 1, "Nao deve duplicar LeadEvento"

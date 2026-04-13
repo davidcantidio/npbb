@@ -441,31 +441,32 @@ class TestEnsureCanonicalEventLink:
         with Session(engine) as s:
             auth = _auth_header(client, s)
             evento = _seed_evento(s)
+            evento_nome = evento.nome
+            evento_id = evento.id
 
-            # Create a lead with evento_nome
             lead = Lead(
                 nome="Test Lead",
                 email="testlead@example.com",
-                evento_nome=evento.nome,
+                evento_nome=evento_nome,
             )
             s.add(lead)
             s.commit()
             s.refresh(lead)
+            lead_id = lead.id
 
         from app.modules.leads_publicidade.application.etl_import import persistence
 
         with Session(engine) as s:
-            lead = s.get(Lead, lead.id)
-            payload = {"evento_nome": evento.nome}
+            lead = s.get(Lead, lead_id)
+            payload = {"evento_nome": evento_nome}
             persistence._ensure_canonical_event_link(s, lead=lead, payload=payload)
             s.commit()
 
-            # Verify LeadEvento was created
             from app.models.models import LeadEvento
-            lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+            lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead_id)).all()
 
         assert len(lead_eventos) == 1
-        assert lead_eventos[0].evento_id == evento.id
+        assert lead_eventos[0].evento_id == evento_id
 
     def test_does_not_create_lead_evento_when_ambiguous_match(self, client, engine):
         """Given ambiguous evento match, When link is ensured, Then LeadEvento is NOT created."""

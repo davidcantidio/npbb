@@ -31,8 +31,8 @@ def commit_preview_session(
     if snapshot.status == "committed":
         raise EtlPreviewSessionConflictError("session_token ja foi consumido.")
 
-    if snapshot.has_validation_errors:
-        raise EtlImportValidationError("Commit ETL bloqueado por erros de validacao no preview.")
+    if snapshot.strict and snapshot.has_validation_errors:
+        raise EtlImportValidationError("strict=true bloqueia commit quando ha erros de validacao no preview.")
     if snapshot.has_warnings and not force_warnings:
         raise EtlImportValidationError("Commit ETL exige confirmacao explicita para warnings.")
 

@@ -143,7 +143,7 @@ describe("leads_import ETL service", () => {
       },
     ]);
 
-    const result = await commitLeadImportEtl("token-123", "session-123", 42, true, false);
+    const result = await commitLeadImportEtl("token-123", "session-123", 42, true);
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/leads\/import\/etl\/commit$/),
@@ -157,7 +157,6 @@ describe("leads_import ETL service", () => {
           session_token: "session-123",
           evento_id: 42,
           force_warnings: true,
-          strict: false,
         }),
       }),
     );

@@ -6,11 +6,10 @@ import AppLayout from "../components/layout/AppLayout";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import AtivosList from "../pages/AtivosList";
-import ComingSoon from "../pages/ComingSoon";
 import EventDetail from "../pages/EventDetail";
 import IngressosPortal from "../pages/IngressosPortal";
+import LegacyLeadStepRedirect from "../pages/leads/LegacyLeadStepRedirect";
 import Login from "../pages/Login";
-import PublicidadeImport from "../pages/PublicidadeImport";
 import Register from "../pages/Register";
 import ResetPassword from "../pages/ResetPassword";
 import Success from "../pages/Success";
@@ -25,9 +24,7 @@ const EventQuestionario = lazy(() => import("../pages/EventQuestionario"));
 const EventsList = lazy(() => import("../pages/EventsList"));
 const LeadsAgeAnalysisPage = lazy(() => import("../pages/dashboard/LeadsAgeAnalysisPage"));
 const LeadsImport = lazy(() => import("../pages/LeadsImport"));
-const MapeamentoPage = lazy(() => import("../pages/leads/MapeamentoPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
-const PipelineStatusPage = lazy(() => import("../pages/leads/PipelineStatusPage"));
 const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
 const PatrocinadosPage = lazy(() => import("../features/patrocinados/PatrocinadosPage"));
 const PatrocinadosEntryPage = lazy(() => import("../features/patrocinados/PatrocinadosEntryPage"));
@@ -119,9 +116,8 @@ export default function AppRoutes() {
           <Route path="/leads" element={<Navigate to="/leads/importar" replace />} />
           <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
           <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
-          <Route path="/leads/mapeamento" element={withSuspense(<MapeamentoPage />)} />
-          <Route path="/leads/pipeline" element={withSuspense(<PipelineStatusPage />)} />
-          <Route path="/publicidade" element={<PublicidadeImport />} />
+          <Route path="/leads/mapeamento" element={<LegacyLeadStepRedirect step="mapping" />} />
+          <Route path="/leads/pipeline" element={<LegacyLeadStepRedirect step="pipeline" />} />
           <Route path="/patrocinados" element={withSuspense(<PatrocinadosPage />)} />
           <Route path="/patrocinados/novo" element={withSuspense(<PatrocinadosEntryPage />)} />
           <Route path="/patrocinados/pessoas/novo" element={withSuspense(<SponsoredPersonNewPage />)} />
@@ -134,7 +130,6 @@ export default function AppRoutes() {
           />
           <Route path="/patrocinados/grupos/:id" element={withSuspense(<SponsorshipGroupPage />)} />
           <Route path="/patrocinados/:id" element={withSuspense(<LegacySponsorshipGroupRedirect />)} />
-          <Route path="/cupons" element={<ComingSoon title="Cupons" />} />
         </Route>
       </Route>
 

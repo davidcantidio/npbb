@@ -3,9 +3,9 @@ doc_id: "TASK-1.md"
 us_id: "US-1-01-INGESTAO-E-MAPEAMENTO-INICIAL"
 task_id: "T1"
 version: "1.1"
-status: "todo"
+status: "done"
 owner: "PM"
-last_updated: "2026-03-26"
+last_updated: "2026-04-13"
 tdd_aplicavel: true
 ---
 

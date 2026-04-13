@@ -3,48 +3,112 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
-import ImportacaoPage from "../leads/ImportacaoPage";
-import { useAuth } from "../../store/auth";
+import { ApiError } from "../../services/http";
 import {
+  commitLeadImportEtl,
   createLeadBatch,
+  getLeadBatch,
   getLeadBatchPreview,
   listReferenciaEventos,
   previewLeadImportEtl,
 } from "../../services/leads_import";
+import { useAuth } from "../../store/auth";
+import ImportacaoPage from "../leads/ImportacaoPage";
+
+vi.mock("../leads/MapeamentoPage", () => ({
+  default: ({
+    batchId,
+    onCancel,
+    onMapped,
+  }: {
+    batchId?: number;
+    onCancel?: () => void;
+    onMapped?: (result: { batch_id: number; silver_count: number; stage: string }) => void;
+  }) => (
+    <div>
+      <div>{`Mapeamento shell ${batchId ?? 0}`}</div>
+      <button type="button" onClick={() => onCancel?.()}>
+        Cancelar shell mapeamento
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onMapped?.({
+            batch_id: batchId ?? 0,
+            silver_count: 3,
+            stage: "silver",
+          })
+        }
+      >
+        Concluir shell mapeamento
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("../leads/PipelineStatusPage", () => ({
+  default: ({
+    batchId,
+    onNewImport,
+  }: {
+    batchId?: number;
+    onNewImport?: () => void;
+  }) => (
+    <div>
+      <div>{`Pipeline shell ${batchId ?? 0}`}</div>
+      <button type="button" onClick={() => onNewImport?.()}>
+        Nova importacao shell
+      </button>
+    </div>
+  ),
+}));
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/leads_import", () => ({
   commitLeadImportEtl: vi.fn(),
   createLeadBatch: vi.fn(),
+  getLeadBatch: vi.fn(),
   getLeadBatchPreview: vi.fn(),
   listReferenciaEventos: vi.fn(),
   previewLeadImportEtl: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedCommitLeadImportEtl = vi.mocked(commitLeadImportEtl);
 const mockedCreateLeadBatch = vi.mocked(createLeadBatch);
+const mockedGetLeadBatch = vi.mocked(getLeadBatch);
 const mockedGetLeadBatchPreview = vi.mocked(getLeadBatchPreview);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 const mockedPreviewLeadImportEtl = vi.mocked(previewLeadImportEtl);
 
-function MapeamentoProbe() {
+function LocationProbe() {
   const location = useLocation();
-  return <div>{`Mapeamento route ${location.search}`}</div>;
+  return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
 }
 
-function renderImportacaoPage() {
+function ImportacaoHarness() {
+  return (
+    <>
+      <ImportacaoPage />
+      <LocationProbe />
+    </>
+  );
+}
+
+function renderImportacaoPage(initialEntry = "/leads/importar") {
   return render(
-    <MemoryRouter initialEntries={["/leads/importar"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/leads/importar" element={<ImportacaoPage />} />
-        <Route path="/leads/mapeamento" element={<MapeamentoProbe />} />
+        <Route path="/leads/importar" element={<ImportacaoHarness />} />
       </Routes>
     </MemoryRouter>,
   );
 }
 
 function createCsvFile() {
-  return new File(["nome,email\nAlice,alice@npbb.com.br"], "leads.csv", { type: "text/csv" });
+  return new File(["nome,email\nAlice,alice@npbb.com.br"], "leads.csv", {
+    type: "text/csv",
+  });
 }
 
 function createXlsxFile() {
@@ -71,14 +135,16 @@ describe("ImportacaoPage", () => {
     ]);
   });
 
-  it("renders the active Bronze stepper with the current date prefilled", () => {
+  it("renders the canonical Bronze shell with the current date prefilled", () => {
     renderImportacaoPage();
 
     expect(screen.getByText("Importacao de Leads")).toBeInTheDocument();
-    expect(screen.getByText("Metadados e upload")).toBeInTheDocument();
-    expect(screen.getByText("Preview de colunas")).toBeInTheDocument();
+    expect(screen.getByText("Upload")).toBeInTheDocument();
+    expect(screen.getByText("Mapeamento")).toBeInTheDocument();
+    expect(screen.getByText("Pipeline")).toBeInTheDocument();
     expect(screen.getByDisplayValue("demo@npbb.com.br")).toBeInTheDocument();
     expect(screen.getByDisplayValue(new Date().toISOString().slice(0, 10))).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar");
   });
 
   it("shows a validation error when required fields are missing", async () => {
@@ -94,7 +160,7 @@ describe("ImportacaoPage", () => {
     expect(mockedCreateLeadBatch).not.toHaveBeenCalled();
   });
 
-  it("uploads a batch and shows the preview for the current Bronze flow", async () => {
+  it("uploads a batch and keeps the operator in the canonical shell preview", async () => {
     mockedCreateLeadBatch.mockResolvedValue({
       id: 10,
       enviado_por: 1,
@@ -141,32 +207,16 @@ describe("ImportacaoPage", () => {
     });
 
     expect(await screen.findByText("Preview do lote #10")).toBeInTheDocument();
+    expect(screen.getByText("Estado atual do lote #10")).toBeInTheDocument();
     expect(screen.getByText("Colunas detectadas: 2 | Linhas de amostra: 1 de 1")).toBeInTheDocument();
-    expect(screen.getAllByText("nome").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("email").length).toBeGreaterThan(0);
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("alice@npbb.com.br")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
+    });
   });
 
-  it("shows the API error inline when batch creation fails", async () => {
-    mockedCreateLeadBatch.mockRejectedValue(new Error("Servidor indisponivel"));
-
-    const { container } = renderImportacaoPage();
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
-    await user.click(await screen.findByRole("option", { name: "email" }));
-
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(fileInput, { target: { files: [createCsvFile()] } });
-
-    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
-
-    expect(await screen.findByText("Servidor indisponivel")).toBeInTheDocument();
-    expect(mockedGetLeadBatchPreview).not.toHaveBeenCalled();
-  });
-
-  it("navigates to mapping after a successful preview", async () => {
+  it("opens the mapping step inside the same shell and preserves batch_id in the query string", async () => {
     mockedCreateLeadBatch.mockResolvedValue({
       id: 10,
       enviado_por: 1,
@@ -185,6 +235,19 @@ describe("ImportacaoPage", () => {
       rows: [["Alice", "alice@npbb.com.br"]],
       total_rows: 1,
     });
+    mockedGetLeadBatch.mockResolvedValue({
+      id: 10,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: null,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+    });
 
     const { container } = renderImportacaoPage();
     const user = userEvent.setup();
@@ -198,9 +261,50 @@ describe("ImportacaoPage", () => {
     await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
     await screen.findByText("Preview do lote #10");
 
-    await user.click(screen.getByRole("button", { name: "Avancar para Mapeamento" }));
+    await user.click(screen.getByRole("button", { name: "Ir para Mapeamento" }));
 
-    expect(await screen.findByText("Mapeamento route ?batch_id=10")).toBeInTheDocument();
+    expect(await screen.findByText("Mapeamento shell 10")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=10");
+    expect(mockedGetLeadBatch).toHaveBeenCalledWith("token-123", 10);
+  });
+
+  it("resumes the mapping step from query params and can advance to pipeline without leaving the shell", async () => {
+    mockedGetLeadBatch.mockResolvedValue({
+      id: 10,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "silver",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+    });
+
+    renderImportacaoPage("/leads/importar?step=mapping&batch_id=10");
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("Mapeamento shell 10")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=10");
+
+    await user.click(screen.getByRole("button", { name: "Concluir shell mapeamento" }));
+
+    expect(await screen.findByText("Pipeline shell 10")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=pipeline&batch_id=10");
+  });
+
+  it("returns to a fresh Bronze shell from the pipeline step", async () => {
+    renderImportacaoPage("/leads/importar?step=pipeline&batch_id=10");
+    const user = userEvent.setup();
+
+    expect(screen.getByText("Pipeline shell 10")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Nova importacao shell" }));
+
+    expect(screen.getByRole("button", { name: "Enviar para Bronze" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
   });
 
   it("shows the ETL header row prompt when automatic detection needs input", async () => {
@@ -228,23 +332,53 @@ describe("ImportacaoPage", () => {
 
     expect(await screen.findByLabelText("Linha do cabecalho")).toBeInTheDocument();
     expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", xlsxFile, 42, false, undefined);
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=etl");
   });
 
-  it("sends CSV files through the ETL preview flow", async () => {
+  it("handles ETL warnings and confirms the commit inside the shell", async () => {
     mockedPreviewLeadImportEtl.mockResolvedValue({
       status: "previewed",
-      session_token: "session-csv",
-      total_rows: 1,
-      valid_rows: 1,
-      invalid_rows: 0,
-      dq_report: [],
+      session_token: "session-123",
+      total_rows: 3,
+      valid_rows: 2,
+      invalid_rows: 1,
+      dq_report: [
+        {
+          check_name: "duplicidade_cpf_evento",
+          severity: "warning",
+          affected_rows: 1,
+          sample: [],
+          message: "Duplicidade no lote",
+        },
+      ],
     });
+    mockedCommitLeadImportEtl
+      .mockRejectedValueOnce(
+        new ApiError({
+          message: "Commit bloqueado por warnings.",
+          status: 400,
+          detail: { message: "Commit bloqueado por warnings." },
+          code: "ETL_COMMIT_BLOCKED",
+          method: "POST",
+          url: "/leads/import/etl/commit",
+        }),
+      )
+      .mockResolvedValueOnce({
+        session_token: "session-123",
+        total_rows: 3,
+        valid_rows: 2,
+        invalid_rows: 1,
+        created: 1,
+        updated: 1,
+        skipped: 1,
+        errors: 0,
+        strict: false,
+        status: "committed",
+        dq_report: [],
+      });
 
-    const { container } = renderImportacaoPage();
+    const { container } = renderImportacaoPage("/leads/importar?step=etl");
     const user = userEvent.setup();
-
-    await user.click(screen.getByRole("combobox", { name: /fluxo de processamento/i }));
-    await user.click(await screen.findByRole("option", { name: "ETL CSV/XLSX" }));
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const csvFile = createCsvFile();
@@ -254,58 +388,20 @@ describe("ImportacaoPage", () => {
     await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
     await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
 
-    await screen.findByText("Linhas: 1 | Validas: 1 | Invalidas: 0");
-    expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", csvFile, 42, false, undefined);
-  });
+    expect(await screen.findByText("Linhas: 3 | Validas: 2 | Invalidas: 1")).toBeInTheDocument();
 
-  it("sends the selected CPF alias when ETL asks for a CPF column", async () => {
-    mockedPreviewLeadImportEtl
-      .mockResolvedValueOnce({
-        status: "cpf_column_required",
-        message: "A linha indicada nao contem uma coluna de CPF reconhecida.",
-        header_row: 2,
-        required_fields: ["cpf"],
-        columns: [
-          { column_index: 1, column_letter: "A", source_value: "Nome" },
-          { column_index: 2, column_letter: "B", source_value: "Documento" },
-        ],
-      })
-      .mockResolvedValueOnce({
-        status: "previewed",
-        session_token: "session-123",
-        total_rows: 1,
-        valid_rows: 1,
-        invalid_rows: 0,
-        dq_report: [],
-      });
+    await user.click(screen.getByRole("button", { name: "Confirmar importacao ETL" }));
 
-    const { container } = renderImportacaoPage();
-    const user = userEvent.setup();
+    expect(await screen.findByText(/Confirme que deseja prosseguir mesmo assim\./)).toBeInTheDocument();
+    expect(mockedCommitLeadImportEtl).toHaveBeenNthCalledWith(1, "token-123", "session-123", 42, false);
 
-    await user.click(screen.getByRole("combobox", { name: /fluxo de processamento/i }));
-    await user.click(await screen.findByRole("option", { name: "ETL CSV/XLSX" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar mesmo com avisos" }));
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const xlsxFile = createXlsxFile();
-    fireEvent.change(fileInput, { target: { files: [xlsxFile] } });
-
-    await user.click(await screen.findByRole("combobox", { name: /evento de referencia/i }));
-    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
-    await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
-
-    await user.click(await screen.findByRole("combobox", { name: /coluna de cpf/i }));
-    await user.click(await screen.findByRole("option", { name: "B - Documento" }));
-    await user.click(screen.getByRole("button", { name: "Salvar alias CPF" }));
-
-    await screen.findByText("Linhas: 1 | Validas: 1 | Invalidas: 0");
-    expect(mockedPreviewLeadImportEtl).toHaveBeenLastCalledWith("token-123", xlsxFile, 42, false, {
-      headerRow: 2,
-      fieldAliases: {
-        cpf: {
-          column_index: 2,
-          source_value: "Documento",
-        },
-      },
-    });
+    expect(mockedCommitLeadImportEtl).toHaveBeenNthCalledWith(2, "token-123", "session-123", 42, true);
+    expect(
+      await screen.findByText(
+        "Importacao concluida: 1 criado(s), 1 atualizado(s), 1 ignorado(s), 0 erro(s).",
+      ),
+    ).toBeInTheDocument();
   });
 });

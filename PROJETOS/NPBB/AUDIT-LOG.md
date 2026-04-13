@@ -3,7 +3,7 @@ doc_id: "AUDIT-LOG.md"
 version: "2.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-03-26"
+last_updated: "2026-04-13"
 ---
 
 # AUDIT-LOG - NPBB
@@ -21,7 +21,7 @@ last_updated: "2026-03-26"
 
 | Feature | Estado do Gate | Ultima Auditoria | Relatorio Mais Recente | Observacoes |
 |---|---|---|---|---|
-| [FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD](features/FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD/FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD.md) | not_ready | nao_aplicavel | [RELATORIO-AUDITORIA-F1-R01.md](features/FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | Rodada inicial planejada para a feature piloto real do `npbb`. O projeto ja esta no layout atual e o gate continua fechado ate a primeira execucao/revisao da US. |
+| [FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD](features/FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD/FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD.md) | pending | nao_aplicavel | [RELATORIO-AUDITORIA-F1-R01.md](features/FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD/auditorias/RELATORIO-AUDITORIA-F1-R01.md) | US-1-02 revisada e promovida a `done` em 2026-04-13; todas as US da feature em `done`; gate `pending` ate rodada `SESSION-AUDITAR-FEATURE`. |
 
 ## Resolucoes de Follow-ups
 

@@ -141,12 +141,20 @@ function QualityMetricsSection({ report }: { report: PipelineReport }) {
   );
 }
 
-export default function PipelineStatusPage() {
+export type PipelineStatusPageProps = {
+  batchId?: number;
+  onNewImport?: () => void;
+};
+
+export default function PipelineStatusPage({
+  batchId: batchIdProp,
+  onNewImport,
+}: PipelineStatusPageProps = {}) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const batchId = Number(searchParams.get("batch_id"));
+  const batchId = batchIdProp ?? Number(searchParams.get("batch_id"));
 
   const [batch, setBatch] = useState<LeadBatch | null>(null);
   const [loading, setLoading] = useState(true);
@@ -249,7 +257,17 @@ export default function PipelineStatusPage() {
         <Typography variant="h5" fontWeight={700}>
           Pipeline Gold — Lote #{batch.id}
         </Typography>
-        <Button variant="text" size="small" onClick={() => navigate("/leads/importar")}>
+        <Button
+          variant="text"
+          size="small"
+          onClick={() => {
+            if (onNewImport) {
+              onNewImport();
+            } else {
+              navigate("/leads/importar");
+            }
+          }}
+        >
           Nova importação
         </Button>
       </Stack>

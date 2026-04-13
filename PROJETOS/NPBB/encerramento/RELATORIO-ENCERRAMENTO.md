@@ -11,7 +11,7 @@ project: "NPBB"
 
 ## Estado Atual
 
-O piloto **FEATURE-1** concluiu a auditoria **R01** com veredito `go` e gate `approved` (registos de `2026-04-12` nos artefatos de auditoria). Em **2026-04-13** o historico auditado foi **integrado no tronco `main`** (fast-forward ate `23c8ff48521ea90c79b71ba1a2e6d5c1e93a0ebd`, seguido de `dbeb59c` para trilha pos-R01), a partir de worktree limpo, sem usar o clone principal sujo como base de merge.
+O piloto **FEATURE-1** concluiu a auditoria **R01** com veredito `go` e gate `approved` (registos de `2026-04-12` nos artefatos de auditoria). Em **2026-04-13** o historico auditado foi **integrado no tronco `main`** (fast-forward ate `23c8ff48521ea90c79b71ba1a2e6d5c1e93a0ebd`, seguido de commits de trilha pos-R01 documentados em [`AUDIT-LOG.md`](../AUDIT-LOG.md)), a partir de worktree limpo, sem usar o clone principal sujo como base de merge.
 
 Este relatorio permanece em `draft` ate a **sessao de encerramento** formal preencher o resumo executivo final e o PM declarar o projeto encerrado no sentido governado.
 

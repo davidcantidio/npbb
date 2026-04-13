@@ -28,7 +28,7 @@ pipeline Gold sem sair do fluxo governado atual do projeto.
 
 - status: `active`
 - audit_gate: `approved` (rodada `FEATURE-1-R01` concluida com veredito `go` em `2026-04-12`)
-- integracao_tronco: `main` alinhado ao commit `dbeb59c` em `2026-04-13` (inclui `23c8ff4` dos artefatos R01; commit seguinte apenas trilha operacional e estabilidade de testes; nao reabre a rodada R01)
+- integracao_tronco: historico R01 integrado em `main` em `2026-04-13` (baseline auditada `23c8ff4…`; commits posteriores apenas trilha operacional — ver [`AUDIT-LOG.md`](../../AUDIT-LOG.md)); nao reabre a rodada R01
 - proximo_passo_canonico: sessao de encerramento do projeto NPBB quando as pre-condicoes em [`encerramento/RELATORIO-ENCERRAMENTO.md`](../../encerramento/RELATORIO-ENCERRAMENTO.md) estiverem satisfeitas
 - relatorio_mais_recente: [RELATORIO-AUDITORIA-F1-R01](auditorias/RELATORIO-AUDITORIA-F1-R01.md)
 - audit_log: [AUDIT-LOG.md](../../AUDIT-LOG.md)

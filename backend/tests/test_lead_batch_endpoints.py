@@ -98,6 +98,21 @@ class TestPostLeadsBatches:
         assert body["plataforma_origem"] == "email"
         assert body["id"] is not None
 
+    def test_upload_accepts_date_only_iso_string(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={"plataforma_origem": "email", "data_envio": "2026-03-01"},
+        )
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["stage"] == "bronze"
+        assert body["data_envio"].startswith("2026-03-01")
+
     def test_upload_xlsx_creates_batch(self, client, engine):
         with Session(engine) as s:
             headers = _auth_header(client, s)

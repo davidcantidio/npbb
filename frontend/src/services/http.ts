@@ -161,7 +161,28 @@ function detailToMessage(detail: ApiErrorDetail, fallback: string) {
     if (typeof message === "string" && message.trim()) return message;
   }
   if (Array.isArray(detail) && detail.length > 0) {
-    return "Requisicao invalida.";
+    const parts: string[] = [];
+    for (const item of detail.slice(0, 3)) {
+      if (typeof item === "string" && item.trim()) {
+        parts.push(item.trim());
+        continue;
+      }
+      if (item && typeof item === "object") {
+        const msg = (item as any).msg;
+        const loc = (item as any).loc;
+        const locPath =
+          Array.isArray(loc) && loc.length > 0
+            ? loc
+                .filter((value: unknown) => typeof value === "string" || typeof value === "number")
+                .map((value: string | number) => String(value))
+                .join(".")
+            : null;
+        if (typeof msg === "string" && msg.trim()) {
+          parts.push(locPath ? `${locPath}: ${msg.trim()}` : msg.trim());
+        }
+      }
+    }
+    return parts.length > 0 ? `Requisicao invalida: ${parts.join("; ")}` : "Requisicao invalida.";
   }
   return fallback;
 }

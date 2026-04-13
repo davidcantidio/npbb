@@ -1447,14 +1447,36 @@ def criar_batch(
             extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
         )
 
+    from datetime import date as _date
     from datetime import datetime as _dt
+    from datetime import timezone as _timezone
+
+    def _parse_data_envio(value: str):
+        if not value or not isinstance(value, str):
+            raise ValueError("empty")
+        cleaned = value.strip()
+        if cleaned.endswith("Z"):
+            cleaned = f"{cleaned[:-1]}+00:00"
+
+        try:
+            dt = _dt.fromisoformat(cleaned)
+        except ValueError:
+            # Accept date-only ISO-8601 strings (YYYY-MM-DD) sent by the frontend.
+            d = _date.fromisoformat(cleaned)
+            dt = _dt.combine(d, _dt.min.time())
+
+        # Persist as naive datetime (DB column is naive in this project).
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(_timezone.utc).replace(tzinfo=None)
+        return dt
+
     try:
-        parsed_data_envio = _dt.fromisoformat(data_envio)
+        parsed_data_envio = _parse_data_envio(data_envio)
     except (ValueError, TypeError):
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
             code="INVALID_DATE",
-            message="data_envio deve ser ISO-8601",
+            message="data_envio deve ser ISO-8601 (YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS)",
             field="data_envio",
         )
 

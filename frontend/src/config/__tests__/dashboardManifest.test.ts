@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DASHBOARD_MANIFEST } from "../dashboardManifest";
 
-const VALID_DOMAINS = new Set(["leads", "eventos", "publicidade"]);
+const VALID_DOMAINS = new Set(["leads", "eventos"]);
 
 describe("DASHBOARD_MANIFEST", () => {
   it("defines the required dashboard entries with the expected shape", () => {

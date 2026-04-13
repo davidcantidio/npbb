@@ -1,10 +1,6 @@
-export type DashboardIconKey =
-  | "age-analysis"
-  | "event-closure"
-  | "event-conversion"
-  | "media-coverage";
+export type DashboardIconKey = "age-analysis" | "event-closure" | "event-conversion";
 
-export type DashboardDomain = "leads" | "eventos" | "publicidade";
+export type DashboardDomain = "leads" | "eventos";
 
 export type DashboardManifestEntry = {
   id: string;

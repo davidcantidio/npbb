@@ -107,6 +107,7 @@ def test_login_bb_pendente_ok(client, engine):
         json={"email": user.email, "password": "senha123"},
     )
     assert response.status_code == 200
+    assert response.json()["user"]["status_aprovacao"] == STATUS_APROVADO
 
 
 def test_login_bb_aprovado_ok(client, engine):

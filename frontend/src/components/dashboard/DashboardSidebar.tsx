@@ -17,7 +17,6 @@ type DashboardSidebarSection = {
 const DOMAIN_TITLES: Record<DashboardDomain, string> = {
   leads: "Leads",
   eventos: "Eventos",
-  publicidade: "Publicidade",
 };
 
 function buildSections(entries: DashboardManifestEntry[]): DashboardSidebarSection[] {

@@ -135,6 +135,33 @@ robocopy "C:\Users\NPBB\fabrica\PROJETOS\COMUM" "C:\Users\NPBB\npbb\PROJETOS\COM
 
 `PROJETOS/NPBB` e os demais projetos da aplicação continuam sendo mantidos apenas no `npbb`.
 
+## Usuario BB de teste (seed de desenvolvimento)
+
+O script `backend/scripts/seed_sample.py` cria contas para desenvolvimento local (requer `DATABASE_URL` ou `DIRECT_URL` e, para hash de senha, `SECRET_KEY` no `backend/.env`). Senha dos usuarios criados: variavel `SEED_PASSWORD`, ou **`Senha123!`** se `SEED_PASSWORD` nao estiver definida.
+
+| E-mail | Tipo | Uso principal |
+|--------|------|----------------|
+| `david.cantidio@npbb.com.br` | NPBB | Operacao interna (ex.: **Ativos**, atribuir cotas). |
+| `funcionario@bb.com.br` | BB (funcionario **DIMAC**) | Simular **usuario BB** no portal: **Ativos → Ingressos** (`/ingressos`), fluxo **Solicitar ingresso**. |
+| `agencia@agencia.com.br` | Agencia | Fluxos ligados a agencia (ex.: V3A). |
+
+Para o BB conseguir usar a API e a UI de ingressos, o seed tambem define **`matricula`** (valor fixo de desenvolvimento `SEED999001`) e **`status_aprovacao`** = **`APROVADO`**. Sem isso, o backend responde com erro de matricula/aprovacao e o frontend mostra bloqueio antes da lista de cotas.
+
+**Cotas:** o seed **nao** cria `CotaCortesia`. Para ver ingressos disponiveis e o botao **Solicitar ingresso**, entre como usuario **NPBB**, abra **Ativos** e atribua cotas ao evento para a diretoria **DIMAC** (a mesma do funcionario seed). Depois volte com `funcionario@bb.com.br`.
+
+Execucao tipica (na pasta `backend/`, com `PYTHONPATH` apontando para a raiz do repo e para `backend/` — os scripts `dev_backend` ja fazem isso):
+
+```powershell
+cd backend
+$env:PYTHONPATH = "$(Resolve-Path ..);$(Get-Location)"
+python scripts\seed_sample.py
+```
+
+```bash
+cd backend
+PYTHONPATH=..:. python scripts/seed_sample.py
+```
+
 ## Testes
 
 ```bash
@@ -214,7 +241,3 @@ Guia completo: `docs/DEPLOY_RENDER_CLOUDFLARE.md`. Referencia de configuracao do
 1. Suba backend + frontend.
 2. Acesse `/leads` e faça o preview de um CSV/XLSX pequeno.
 3. Abra `/dashboard/leads` para ver KPIs e rankings.
-
-#   w r i k e - n p b b 
- 
- 

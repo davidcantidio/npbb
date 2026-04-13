@@ -63,3 +63,8 @@ class UsuarioRead(BaseModel):
 
 class UsuarioDiretoriaUpdate(BaseModel):
     diretoria_id: int
+
+
+class UsuarioPerfilUpdate(BaseModel):
+    matricula: str
+    diretoria_id: int

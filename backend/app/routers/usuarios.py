@@ -22,7 +22,7 @@ from app.schemas.password_reset import (
     ResetPasswordRequest,
     ResetPasswordResponse,
 )
-from app.schemas.usuario import UsuarioCreate, UsuarioDiretoriaUpdate, UsuarioRead, UsuarioTipo
+from app.schemas.usuario import UsuarioCreate, UsuarioDiretoriaUpdate, UsuarioPerfilUpdate, UsuarioRead, UsuarioTipo
 from app.services.password_reset import PasswordResetError, request_password_reset, reset_password
 from app.utils.log_sanitize import sanitize_exception, sanitize_text
 from app.utils.security import hash_password
@@ -32,6 +32,8 @@ router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{6,}$")
 MATRICULA_RE = re.compile(r"^[A-Za-z][0-9]{1,16}$")
+# BB: sem fila manual de aprovacao por enquanto; reativar PENDENTE + painel NPBB quando necessario.
+STATUS_APROVACAO_BB_PADRAO = "APROVADO"
 FORGOT_PASSWORD_MESSAGE = (
     "Se o email estiver cadastrado, você receberá instruções para redefinir a senha."
 )
@@ -305,7 +307,9 @@ def criar_usuario(
         tipo_usuario=usuario_in.tipo_usuario.value,
         funcionario_id=funcionario_id,
         agencia_id=agencia_id,
-        status_aprovacao="PENDENTE" if usuario_in.tipo_usuario == UsuarioTipo.BB else None,
+        status_aprovacao=(
+            STATUS_APROVACAO_BB_PADRAO if usuario_in.tipo_usuario == UsuarioTipo.BB else None
+        ),
     )
 
     try:
@@ -418,6 +422,143 @@ def atualizar_diretoria(
         current_user.funcionario_id = funcionario.id
         session.add(current_user)
         session.commit()
+
+    session.refresh(current_user)
+    return UsuarioRead.model_validate(current_user, from_attributes=True)
+
+
+@router.patch("/me", response_model=UsuarioRead)
+def atualizar_perfil_bb(
+    payload: UsuarioPerfilUpdate,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Permite a usuario BB definir matricula e diretoria apos o cadastro.
+
+    Util para contas criadas sem matricula (ex.: via seed de desenvolvimento).
+    Por padrao marca o perfil como aprovado (sem fila manual); ajuste futuro se
+    reintroduzir aprovacao NPBB.
+    """
+    if current_user.tipo_usuario != UsuarioTipo.BB:
+        _raise_http(
+            status.HTTP_403_FORBIDDEN,
+            code="FORBIDDEN",
+            message="Apenas usuarios BB podem atualizar matricula",
+        )
+
+    matricula = (payload.matricula or "").strip()
+    if not MATRICULA_RE.match(matricula):
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="MATRICULA_INVALID",
+            message="Matricula invalida (ex.: A123)",
+            field="matricula",
+        )
+
+    diretoria = session.get(Diretoria, payload.diretoria_id)
+    if not diretoria:
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="DIRETORIA_NOT_FOUND",
+            message="Diretoria nao encontrada",
+            field="diretoria_id",
+        )
+
+    matricula_lower = matricula.lower()
+
+    funcionario = session.exec(
+        select(Funcionario).where(func.lower(Funcionario.chave_c) == matricula_lower)
+    ).first()
+
+    if funcionario:
+        if funcionario.diretoria_id and int(funcionario.diretoria_id) != int(diretoria.id):
+            _raise_http(
+                status.HTTP_400_BAD_REQUEST,
+                code="DIRETORIA_MISMATCH",
+                message="Diretoria nao corresponde a matricula",
+                field="diretoria_id",
+            )
+        # garantir que a matricula nao esta vinculada a outro usuario
+        owner = session.exec(
+            select(Usuario).where(
+                Usuario.funcionario_id == funcionario.id,
+                Usuario.id != current_user.id,
+            )
+        ).first()
+        if owner:
+            _raise_http(
+                status.HTTP_409_CONFLICT,
+                code="MATRICULA_ALREADY_REGISTERED",
+                message="Matricula ja cadastrada",
+                field="matricula",
+            )
+        funcionario.diretoria_id = int(diretoria.id)
+        session.add(funcionario)
+        session.commit()
+        current_user.funcionario_id = funcionario.id
+    else:
+        email = str(current_user.email or "").strip().lower()
+        email_local = email.split("@")[0]
+        funcionario_email = session.exec(
+            select(Funcionario).where(func.lower(Funcionario.email) == email)
+        ).first()
+        if funcionario_email is not None:
+            owner = session.exec(
+                select(Usuario).where(
+                    Usuario.funcionario_id == funcionario_email.id,
+                    Usuario.id != current_user.id,
+                )
+            ).first()
+            if owner:
+                _raise_http(
+                    status.HTTP_409_CONFLICT,
+                    code="EMAIL_ALREADY_REGISTERED",
+                    message="Email ja cadastrado",
+                    field="email",
+                )
+            funcionario_email.chave_c = matricula_lower
+            funcionario_email.diretoria_id = int(diretoria.id)
+            session.add(funcionario_email)
+            session.commit()
+            session.refresh(funcionario_email)
+            current_user.funcionario_id = funcionario_email.id
+        else:
+            new_funcionario = Funcionario(
+                nome=email_local or email,
+                chave_c=matricula_lower,
+                diretoria_id=int(diretoria.id),
+                email=email,
+            )
+            session.add(new_funcionario)
+            session.commit()
+            session.refresh(new_funcionario)
+            current_user.funcionario_id = new_funcionario.id
+
+    current_user.matricula = matricula_lower
+    current_user.status_aprovacao = STATUS_APROVACAO_BB_PADRAO
+
+    try:
+        session.add(current_user)
+        session.commit()
+    except IntegrityError as e:
+        session.rollback()
+        error_message = str(getattr(e, "orig", e))
+        if (
+            "uq_usuario_matricula" in error_message
+            or "usuario_matricula_key" in error_message
+            or "usuario.matricula" in error_message
+        ):
+            _raise_http(
+                status.HTTP_409_CONFLICT,
+                code="MATRICULA_ALREADY_REGISTERED",
+                message="Matricula ja cadastrada",
+                field="matricula",
+            )
+        _raise_http(
+            status.HTTP_400_BAD_REQUEST,
+            code="UPDATE_FAILED",
+            message="Erro ao atualizar perfil",
+        )
 
     session.refresh(current_user)
     return UsuarioRead.model_validate(current_user, from_attributes=True)

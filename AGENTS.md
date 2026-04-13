@@ -29,6 +29,12 @@ NPBB is an event management and marketing analytics platform with a **Python/Fas
 
 See `docs/SETUP.md` for full details and `Makefile` target `ci-quality` for the full CI checks.
 
+### Agent skills (Cursor)
+
+- **Prefer skills when they apply**: at the start of a task, check whether any **Cursor-attached skill** or repo-local skill under `.claude/skills/**/SKILL.md` matches the work (API design, FastAPI, React, security, tests, DevOps, debugging, etc.).
+- **If a match exists**: read that skill’s `SKILL.md` (and referenced files it tells you to load) **before** designing or coding, and follow its workflow and constraints.
+- **Stay proportional**: trivial one-line fixes do not need a skill deep-dive; non-trivial or multi-step work should use the best-fit skill instead of improvising from scratch.
+
 ## OpenClaw governance
 
 - `PROJETOS/COMUM/boot-prompt.md` is the canonical autonomous entrypoint for the local OpenClaw governance flow.

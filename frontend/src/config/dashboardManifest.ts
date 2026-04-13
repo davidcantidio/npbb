@@ -28,13 +28,4 @@ export const DASHBOARD_MANIFEST = [
     description: "Visao de conversao entre base de leads, publico e compras.",
     enabled: false,
   },
-  {
-    id: "media-coverage",
-    route: "/dashboard/publicidade/cobertura",
-    domain: "publicidade",
-    name: "Cobertura por midia",
-    icon: "media-coverage",
-    description: "Cobertura e alcance por canal de publicidade.",
-    enabled: false,
-  },
 ] satisfies DashboardManifestEntry[];

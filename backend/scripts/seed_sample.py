@@ -7,6 +7,7 @@ Seed de dados de desenvolvimento (Supabase) para popular dominios basicos.
 - Tipos/Subtipos de evento (dominios)
 - Territorios (dominios)
 - Usuarios: npbb, bb (com funcionario), agencia (associado a agencia V3A)
+- Usuario BB de dev recebe matricula e status_aprovacao=APROVADO para permitir fluxo /ingressos
 
 Variaveis de ambiente:
 - DATABASE_URL / DIRECT_URL: conexao Postgres (Supabase). Para seed, usamos DIRECT_URL se existir.
@@ -375,6 +376,24 @@ def ensure_usuario(
     return usuario
 
 
+def ensure_bb_funcionario_ready_for_ingressos(session: Session) -> None:
+    """API e portal de ingressos exigem matricula e perfil APROVADO para usuarios BB."""
+    usuario = session.exec(select(Usuario).where(Usuario.email == "funcionario@bb.com.br")).first()
+    if not usuario or usuario.tipo_usuario != UsuarioTipo.BB:
+        return
+    changed = False
+    if not usuario.matricula or not str(usuario.matricula).strip():
+        usuario.matricula = "SEED999001"
+        changed = True
+    if usuario.status_aprovacao != "APROVADO":
+        usuario.status_aprovacao = "APROVADO"
+        changed = True
+    if changed:
+        session.add(usuario)
+        session.commit()
+        print("Perfil BB funcionario@bb.com.br ajustado para teste de ingressos (matricula + APROVADO).")
+
+
 def ensure_ativacoes_sample(session: Session, *, agencia_ids: list[int]) -> int:
     """Cria 2-3 ativações de exemplo por evento (idempotente).
 
@@ -569,6 +588,7 @@ def main():
             funcionario_id=func_dimac.id,
             nome_info="Funcionario BB (dimac)",
         )
+        ensure_bb_funcionario_ready_for_ingressos(session)
         ensure_usuario(
             session,
             email="agencia@agencia.com.br",

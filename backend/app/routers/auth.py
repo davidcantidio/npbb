@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.core.auth import SESSION_COOKIE_NAME, get_current_user, get_current_user_optional
 from app.db.database import get_session
-from app.models.models import Usuario
+from app.models.models import Usuario, UsuarioTipo
 from app.schemas.auth import LoginRequest, LoginResponse, SessionStatusResponse
 from app.schemas.usuario import UsuarioRead
 from app.utils.jwt import create_access_token
@@ -18,6 +18,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 STATUS_APROVADO = (
     "APROVADO"  # TODO: centralizar status_aprovacao quando houver enum/constante global.
 )
+
+
+def _normalizar_bb_aprovacao_legado(session: Session, usuario: Usuario) -> Usuario:
+    """Contas BB antigas podem ter status_aprovacao null ou PENDENTE; alinha a politica atual."""
+    if usuario.tipo_usuario != UsuarioTipo.BB:
+        return usuario
+    raw = usuario.status_aprovacao
+    normalized = (raw or "").strip().upper()
+    if normalized == STATUS_APROVADO:
+        return usuario
+    if normalized not in ("", "PENDENTE"):
+        return usuario
+    usuario.status_aprovacao = STATUS_APROVADO
+    session.add(usuario)
+    session.commit()
+    session.refresh(usuario)
+    return usuario
 
 SESSION_COOKIE_MAX_AGE_SECONDS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")) * 60
 
@@ -85,6 +102,8 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    usuario = _normalizar_bb_aprovacao_legado(session, usuario)
+
     token = create_access_token({"sub": usuario.id})
     _set_session_cookie(response, token)
     return LoginResponse(
@@ -95,35 +114,45 @@ def login(
 
 
 @router.get("/me", response_model=UsuarioRead)
-def me(current_user: Usuario = Depends(get_current_user)):
+def me(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
     """Retorna dados publicos do usuario autenticado."""
-    return UsuarioRead.model_validate(current_user, from_attributes=True)
+    usuario = _normalizar_bb_aprovacao_legado(session, current_user)
+    return UsuarioRead.model_validate(usuario, from_attributes=True)
 
 
 @router.get("/session", response_model=SessionStatusResponse)
-def session_status(current_user: Usuario | None = Depends(get_current_user_optional)):
+def session_status(
+    session: Session = Depends(get_session),
+    current_user: Usuario | None = Depends(get_current_user_optional),
+):
     """Retorna o estado da sessão sem disparar erro para usuários não autenticados."""
     if not current_user:
         return SessionStatusResponse(authenticated=False, user=None)
+    usuario = _normalizar_bb_aprovacao_legado(session, current_user)
     return SessionStatusResponse(
         authenticated=True,
-        user=UsuarioRead.model_validate(current_user, from_attributes=True),
+        user=UsuarioRead.model_validate(usuario, from_attributes=True),
     )
 
 
 @router.post("/refresh", response_model=LoginResponse)
 def refresh_session(
     response: Response,
+    session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
     """Renova sessão ativa e emite novo cookie/token."""
-    token = create_access_token({"sub": current_user.id})
+    usuario = _normalizar_bb_aprovacao_legado(session, current_user)
+    token = create_access_token({"sub": usuario.id})
     _set_session_cookie(response, token)
     response.headers["X-Auth-Mode"] = "dual-stack"
     return LoginResponse(
         access_token=token,
         token_type="bearer",
-        user=UsuarioRead.model_validate(current_user, from_attributes=True),
+        user=UsuarioRead.model_validate(usuario, from_attributes=True),
     )
 
 

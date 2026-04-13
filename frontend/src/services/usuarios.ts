@@ -86,6 +86,25 @@ export async function listDiretoriasPublic(): Promise<Diretoria[]> {
   return data as Diretoria[];
 }
 
+export async function updatePerfil(
+  token: string,
+  payload: { matricula: string; diretoria_id: number },
+): Promise<UsuarioRead> {
+  const res = await fetch(`${API_BASE_URL}/usuarios/me`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  const data = await parseJsonSafe(text);
+  if (!res.ok) {
+    const detail = (data as any)?.detail ?? res.statusText;
+    throw new ApiError(res.status, detail);
+  }
+  return data as UsuarioRead;
+}
+
 export async function setDiretoriaForUser(
   token: string,
   diretoria_id: number,

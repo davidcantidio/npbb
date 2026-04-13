@@ -120,7 +120,8 @@ def login_and_get_token(client: TestClient, email: str, password: str) -> str:
     return resp.json()["access_token"]
 
 
-def test_ingressos_bb_pendente_bloqueia(client, engine):
+def test_ingressos_bb_nao_aprovado_bloqueia(client, engine):
+    """BB com status explicitamente nao-APROVADO continua bloqueado (ex.: legado REJEITADO)."""
     with Session(engine) as session:
         diretoria = seed_diretoria(session, nome="pendente")
         user = seed_user_with_diretoria(
@@ -128,7 +129,7 @@ def test_ingressos_bb_pendente_bloqueia(client, engine):
             email="pendente@bb.com.br",
             password="Senha123!",
             diretoria_id=int(diretoria.id),
-            status_aprovacao="PENDENTE",
+            status_aprovacao="REJEITADO",
         )
         token = login_and_get_token(client, user.email, "Senha123!")
 

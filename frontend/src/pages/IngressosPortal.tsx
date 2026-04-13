@@ -39,6 +39,7 @@ import { listDiretorias, listEventos, type Diretoria as DiretoriaAdmin, type Eve
 import {
   listDiretoriasPublic,
   setDiretoriaForUser,
+  updatePerfil,
   type Diretoria as DiretoriaPublic,
 } from "../services/usuarios";
 import { useAuth } from "../store/auth";
@@ -161,7 +162,7 @@ function IngressosPortalBB({ token }: PortalProps) {
   }, [needsDiretoria, loadDiretorias]);
 
   const showSkeletons = loading && items.length === 0;
-  const isValidEmail = (value: string) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value);
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   const isTerceiro = tipo === "TERCEIRO";
   const isEmailValid =
     !isTerceiro || (emailTerceiro.trim() !== "" && isValidEmail(emailTerceiro.trim()));
@@ -514,7 +515,12 @@ function IngressosPortalBB({ token }: PortalProps) {
                 setModalError(null);
               }}
               onBlur={() => {
-                if (!isValidEmail(emailTerceiro.trim())) {
+                const trimmed = emailTerceiro.trim();
+                if (trimmed === "") {
+                  setEmailError(null);
+                  return;
+                }
+                if (!isValidEmail(trimmed)) {
                   setEmailError("Email invalido.");
                 }
               }}
@@ -822,6 +828,114 @@ function IngressosPortalAdmin({ token }: PortalProps) {
   );
 }
 
+function CompletarCadastroForm({ token }: { token: string | null }) {
+  const { refresh } = useAuth();
+  const [diretorias, setDiretorias] = useState<DiretoriaPublic[]>([]);
+  const [diretoriasLoading, setDiretoriasLoading] = useState(false);
+  const [matricula, setMatricula] = useState("");
+  const [diretoriaId, setDiretoriaId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  useEffect(() => {
+    setDiretoriasLoading(true);
+    listDiretoriasPublic()
+      .then((items) => setDiretorias(items))
+      .catch(() => {})
+      .finally(() => setDiretoriasLoading(false));
+  }, []);
+
+  const MATRICULA_RE = /^[A-Za-z][0-9]{1,16}$/;
+  const isMatriculaValid = MATRICULA_RE.test(matricula.trim());
+  const canSubmit = isMatriculaValid && Boolean(diretoriaId) && !saving && Boolean(token);
+
+  const handleSave = async () => {
+    if (!token || !canSubmit) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updatePerfil(token, { matricula: matricula.trim(), diretoria_id: Number(diretoriaId) });
+      setSnackbarOpen(true);
+      await refresh();
+    } catch (err: any) {
+      const raw = typeof err?.message === "string" ? err.message : "";
+      const parsed = (() => {
+        try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+      })();
+      setError(parsed?.message ?? raw ?? "Nao foi possivel salvar o cadastro.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Complete seu cadastro
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Informe sua matricula BB e diretoria para acessar os ingressos.
+            </Typography>
+          </Box>
+          <TextField
+            label="Matricula BB"
+            placeholder="ex.: A12345"
+            value={matricula}
+            onChange={(e) => { setMatricula(e.target.value); setError(null); }}
+            error={matricula.trim() !== "" && !isMatriculaValid}
+            helperText={matricula.trim() !== "" && !isMatriculaValid ? "Formato invalido (ex.: A123)" : ""}
+            fullWidth
+          />
+          <Autocomplete
+            options={diretorias}
+            loading={diretoriasLoading}
+            value={diretorias.find((d) => d.id === (diretoriaId ? Number(diretoriaId) : -1)) ?? null}
+            onChange={(_, value) => { setDiretoriaId(value ? String(value.id) : ""); setError(null); }}
+            getOptionLabel={(option) => option.nome}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            fullWidth
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Diretoria"
+                placeholder="Selecione sua diretoria"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {diretoriasLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+          {error ? <Alert severity="error" variant="outlined">{error}</Alert> : null}
+          <Button
+            variant="contained"
+            sx={{ textTransform: "none", fontWeight: 700, alignSelf: "flex-start" }}
+            disabled={!canSubmit}
+            onClick={() => void handleSave()}
+          >
+            {saving ? "Salvando..." : "Salvar e continuar"}
+          </Button>
+        </Stack>
+      </Paper>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message="Cadastro atualizado com sucesso."
+      />
+    </>
+  );
+}
+
 export default function IngressosPortal() {
   const { token, user, loading } = useAuth();
   const isBb = user?.tipo_usuario === "bb";
@@ -842,18 +956,7 @@ export default function IngressosPortal() {
   }
 
   if (isBb && !hasMatricula) {
-    return (
-      <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
-        <Stack spacing={1}>
-          <Typography variant="h6" fontWeight={700}>
-            Complete seu cadastro
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Para acessar os ingressos, informe sua matricula BB no cadastro.
-          </Typography>
-        </Stack>
-      </Paper>
-    );
+    return <CompletarCadastroForm token={token} />;
   }
 
   if (isBb && !isApproved) {

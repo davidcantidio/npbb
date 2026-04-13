@@ -21,8 +21,6 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
-import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import VolunteerActivismRoundedIcon from "@mui/icons-material/VolunteerActivismRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -90,13 +88,11 @@ export default function AppLayout() {
         children: ATIVOS_SUBMENU,
       },
       { label: "Leads", to: "/leads", icon: <PeopleAltRoundedIcon /> },
-      { label: "Publicidade", to: "/publicidade", icon: <CampaignRoundedIcon /> },
       {
         label: "Patrocinados",
         to: "/patrocinados",
         icon: <VolunteerActivismRoundedIcon />,
       },
-      { label: "Cupons", to: "/cupons", icon: <LocalOfferRoundedIcon /> },
     ],
     [],
   );

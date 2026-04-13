@@ -3,8 +3,8 @@ doc_id: "FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-04-13"
-audit_gate: "pending"
+last_updated: "2026-04-12"
+audit_gate: "approved"
 ---
 
 # FEATURE-1 - Pipeline de Leads Bronze Silver Gold
@@ -27,8 +27,8 @@ pipeline Gold sem sair do fluxo governado atual do projeto.
 ## Estado Operacional
 
 - status: `active`
-- audit_gate: `pending` (todas as user stories em `done`; aguarda `SESSION-AUDITAR-FEATURE` conforme `PROJETOS/COMUM/GOV-SCRUM.md`)
-- proximo_passo_canonico: [`SESSION-AUDITAR-FEATURE`](../../../COMUM/SESSION-AUDITAR-FEATURE.md) sobre este manifesto de feature
+- audit_gate: `approved` (rodada `FEATURE-1-R01` concluida com veredito `go` em `2026-04-12`)
+- proximo_passo_canonico: avaliar encerramento do projeto conforme o output de `SESSION-AUDITAR-FEATURE`
 - relatorio_mais_recente: [RELATORIO-AUDITORIA-F1-R01](auditorias/RELATORIO-AUDITORIA-F1-R01.md)
 - audit_log: [AUDIT-LOG.md](../../AUDIT-LOG.md)
 
@@ -54,8 +54,8 @@ pipeline Gold sem sair do fluxo governado atual do projeto.
 ## Definition of Done da Feature
 
 - [x] todas as user stories estao `done` ou `cancelled`
-- [ ] auditoria da feature aprovada com veredito `go`
-- [ ] `AUDIT-LOG.md` atualizado com a rodada mais recente
+- [x] auditoria da feature aprovada com veredito `go`
+- [x] `AUDIT-LOG.md` atualizado com a rodada mais recente
 
 ## Backlog sugerido pos-auditoria (nao bloqueante)
 

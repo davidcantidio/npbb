@@ -48,7 +48,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
 )
 from app.services.imports.file_reader import ImportFileError, read_raw_file_preview
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
-from app.services.lead_pipeline_service import executar_pipeline_gold
+from app.services.lead_pipeline_service import executar_pipeline_gold, queue_pipeline_batch
 from app.schemas.lead_batch import (
     ColunasResponse,
     ColumnSuggestionRead,
@@ -1766,6 +1766,17 @@ async def disparar_pipeline(
             message="Pipeline Gold so pode ser disparado em lotes com stage=silver",
             extra={"stage_atual": batch.stage},
         )
+
+    if batch.pipeline_progress is not None:
+        raise_http_error(
+            status.HTTP_409_CONFLICT,
+            code="PIPELINE_ALREADY_RUNNING",
+            message="Pipeline Gold ja esta em execucao para este lote",
+        )
+
+    queue_pipeline_batch(batch)
+    session.add(batch)
+    session.commit()
 
     background_tasks.add_task(executar_pipeline_gold, batch_id)
     return ExecutarPipelineResponse(batch_id=batch_id, status="queued")

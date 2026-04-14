@@ -1,8 +1,39 @@
 """Check DB state: alembic_version + key ENUM types."""
-import sqlalchemy as sa
+import os
+from pathlib import Path
 
-URL = "postgresql+psycopg2://postgres.jwiznrbfzhidhrpxtvhl:%40liceDioH%26lena123@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
-engine = sa.create_engine(URL, connect_args={"sslmode": "require"})
+import sqlalchemy as sa
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+for env_path in (BASE_DIR / ".env", BASE_DIR.parent / ".env"):
+    if env_path.exists():
+        load_dotenv(env_path)
+        break
+else:
+    load_dotenv()
+
+
+def _database_url() -> str:
+    direct = (os.getenv("DIRECT_URL") or "").strip()
+    if direct:
+        return direct
+    db = (os.getenv("DATABASE_URL") or "").strip()
+    if db:
+        return db
+    raise SystemExit(
+        "Defina DIRECT_URL ou DATABASE_URL em backend/.env. "
+        "Se a porta 6543 (transaction pooler) der timeout, use a URL com :5432 no host do pooler."
+    )
+
+
+URL = _database_url()
+connect_timeout = int(os.getenv("DB_CONNECT_TIMEOUT", "15"))
+connect_args: dict = {"connect_timeout": connect_timeout}
+if "sslmode=" not in URL and "ssl=require" not in URL:
+    connect_args["sslmode"] = "require"
+
+engine = sa.create_engine(URL, connect_args=connect_args)
 
 with engine.connect() as conn:
     avrows = conn.execute(

@@ -1,14 +1,62 @@
 """Configuracao de conexao e utilitarios de sessao do SQLModel."""
 
+import json
 import os
 import sys
+import time
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 from sqlmodel import create_engine, Session
 
 from app.db.metadata import SQLModel
 from dotenv import load_dotenv
+
+
+def _agent_debug_ndjson(
+    location: str,
+    message: str,
+    data: dict,
+    hypothesis_id: str,
+) -> None:
+    # #region agent log
+    try:
+        # Raiz do backend (npbb/backend/debug-649b68.log), visível junto ao .env / .venv
+        log_path = Path(__file__).resolve().parents[2] / "debug-649b68.log"
+        line = json.dumps(
+            {
+                "sessionId": "649b68",
+                "timestamp": int(time.time() * 1000),
+                "location": location,
+                "message": message,
+                "data": data,
+                "hypothesisId": hypothesis_id,
+            },
+            ensure_ascii=False,
+        )
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
+    # #endregion
+
+
+def _safe_db_endpoint(url: str) -> dict:
+    """Host/porta para logs (sem credenciais)."""
+    if url.startswith("sqlite"):
+        return {"driver": "sqlite"}
+    raw = url.replace("postgresql+psycopg2://", "postgresql://", 1)
+    try:
+        p = urlparse(raw)
+        return {
+            "driver": "postgresql",
+            "host": p.hostname,
+            "port": p.port,
+            "uses_supabase_pooler_6543": p.port == 6543,
+        }
+    except Exception:
+        return {"driver": "postgresql", "parse": "failed"}
 
 
 def _load_env() -> None:
@@ -81,12 +129,43 @@ def _get_database_url() -> str:
     )
 
 
+def _pool_kwargs_for_url(url: str) -> dict:
+    """Opções de pool para Postgres remoto (ex.: Supabase + PgBouncer)."""
+    if url.startswith("sqlite"):
+        return {}
+    return {
+        "pool_pre_ping": True,
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "2800")),
+    }
+
+
 def _build_engine():
     _load_env()
     url = _get_database_url()
-    connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+    if url.startswith("sqlite"):
+        connect_args: dict = {"check_same_thread": False}
+    else:
+        connect_args = {
+            "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "15")),
+        }
     echo = os.getenv("SQL_ECHO", "false").lower() == "true"
-    return create_engine(url, echo=echo, connect_args=connect_args)
+    engine_kwargs: dict = {"echo": echo, "connect_args": connect_args, **_pool_kwargs_for_url(url)}
+    # #region agent log
+    eng = create_engine(url, **engine_kwargs)
+    pool = eng.pool
+    _agent_debug_ndjson(
+        "database.py:_build_engine",
+        "engine_created",
+        {
+            "endpoint": _safe_db_endpoint(url),
+            "pool_pre_ping": getattr(pool, "_pre_ping", None),
+            "pool_class": type(pool).__name__,
+            "pool_recycle": getattr(pool, "_recycle", None),
+        },
+        "H1",
+    )
+    # #endregion
+    return eng
 
 
 engine = _build_engine()

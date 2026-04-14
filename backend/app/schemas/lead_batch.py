@@ -10,6 +10,26 @@ from pydantic import BaseModel, ConfigDict
 from app.models.lead_batch import BatchStage, PipelineStatus
 
 
+PipelineProgressStep = Literal[
+    "queued",
+    "silver_csv",
+    "source_adapt",
+    "event_taxonomy",
+    "normalize_rows",
+    "dedupe",
+    "contract_check",
+    "write_outputs",
+    "insert_leads",
+]
+
+
+class LeadBatchPipelineProgressRead(BaseModel):
+    step: PipelineProgressStep
+    label: str
+    pct: int | None = None
+    updated_at: str
+
+
 class LeadBatchRead(BaseModel):
     id: int
     enviado_por: int
@@ -23,6 +43,7 @@ class LeadBatchRead(BaseModel):
     tipo_lead_proponente: Optional[str] = None
     ativacao_id: Optional[int] = None
     pipeline_status: PipelineStatus
+    pipeline_progress: Optional[LeadBatchPipelineProgressRead] = None
     pipeline_report: Optional[dict[str, Any]] = None
     gold_dq_discarded_rows: Optional[int] = None
     gold_dq_issue_counts: Optional[dict[str, int]] = None

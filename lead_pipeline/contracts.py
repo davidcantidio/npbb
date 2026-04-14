@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pandas as pd
 
 from .constants import ALL_COLUMNS
+from .normalization import BIRTH_DATE_MIN
 
 
 def _is_iso_date(value: str) -> bool:
@@ -18,8 +19,22 @@ def _is_iso_date(value: str) -> bool:
     return True
 
 
-def validate_databricks_contract(df: pd.DataFrame) -> list[str]:
+def _is_birth_date_in_range(value: str, *, ref_date: date) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    try:
+        birth_date = date.fromisoformat(text)
+    except ValueError:
+        return False
+    return BIRTH_DATE_MIN <= birth_date <= ref_date
+
+
+def validate_databricks_contract(df: pd.DataFrame, *, ref_date: date | None = None) -> list[str]:
     violations: list[str] = []
+    if ref_date is None:
+        # Fallback stays in UTC so ad-hoc validations match the pipeline cutoff policy.
+        ref_date = datetime.now(timezone.utc).date()
 
     actual_columns = list(df.columns)
     if actual_columns != ALL_COLUMNS:
@@ -50,12 +65,19 @@ def validate_databricks_contract(df: pd.DataFrame) -> list[str]:
             f"DATA_EVENTO_INVALIDA_NO_PROCESSADO: {int(event_date_invalid.sum())} linha(s)"
         )
 
-    birth = df["data_nascimento"].astype(str)
-    birth_invalid = (birth.str.strip() != "") & (~birth.map(_is_iso_date))
+    birth = df["data_nascimento"].astype(str).str.strip()
+    birth_invalid = (birth != "") & (~birth.map(lambda value: _is_birth_date_in_range(value, ref_date=ref_date)))
     if birth_invalid.any():
         violations.append(
             "DATA_NASCIMENTO_INVALIDA_NO_PROCESSADO: "
             f"{int(birth_invalid.sum())} linha(s)"
+        )
+
+    estado = df["estado"].astype(str).str.strip()
+    estado_invalid = (estado != "") & (~estado.str.fullmatch(r"[A-Z]{2}"))
+    if estado_invalid.any():
+        violations.append(
+            f"ESTADO_INVALIDO_NO_PROCESSADO: {int(estado_invalid.sum())} linha(s)"
         )
 
     return violations

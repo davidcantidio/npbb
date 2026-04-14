@@ -1,6 +1,9 @@
 import { fetchWithAuth, handleApiResponse } from "./http";
 
-/** Servidor le/parseia ficheiros grandes do lote; 20s por defeito e insuficiente com XLSX pesados ou DB lenta. */
+/**
+ * Servidor le/parseia ficheiros grandes do lote; o timeout HTTP por defeito (20s) e insuficiente
+ * com XLSX pesados, DB lenta ou GET de estado do lote durante o pipeline Gold (locks / fila).
+ */
 const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
 
 /**
@@ -135,8 +138,52 @@ export type LeadBatch = {
   tipo_lead_proponente: string | null;
   ativacao_id: number | null;
   pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail";
+  pipeline_progress: PipelineProgress | null;
   pipeline_report: PipelineReport | null;
   created_at: string;
+};
+
+export type PipelineProgressStep =
+  | "queued"
+  | "silver_csv"
+  | "source_adapt"
+  | "event_taxonomy"
+  | "normalize_rows"
+  | "dedupe"
+  | "contract_check"
+  | "write_outputs"
+  | "insert_leads";
+
+export type PipelineProgress = {
+  step: PipelineProgressStep;
+  label: string;
+  pct: number | null;
+  updated_at: string;
+};
+
+export type BirthDateControlIssue =
+  | "missing"
+  | "unparseable"
+  | "future"
+  | "before_min";
+
+export type BirthDateControlEntry = {
+  source_file: string;
+  source_sheet: string;
+  source_row: number;
+  issue: BirthDateControlIssue;
+};
+
+export type LocalidadeControleEntry = {
+  source_file: string;
+  source_sheet: string;
+  source_row: number;
+  issue: string;
+  matched_by?: string | null;
+  raw_value?: string | null;
+  raw_cidade?: string | null;
+  raw_estado?: string | null;
+  raw_local?: string | null;
 };
 
 export type PipelineReport = {
@@ -152,8 +199,13 @@ export type PipelineReport = {
     telefone_invalid: number;
     data_evento_invalid: number;
     data_nascimento_invalid: number;
+    data_nascimento_missing: number;
     duplicidades_cpf_evento: number;
     cidade_fora_mapeamento: number;
+    localidade_invalida: number;
+    localidade_nao_resolvida: number;
+    localidade_fora_brasil: number;
+    localidade_cidade_uf_inconsistente: number;
   };
   gate: {
     status: "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
@@ -161,6 +213,8 @@ export type PipelineReport = {
     fail_reasons: string[];
     warnings: string[];
   };
+  data_nascimento_controle?: BirthDateControlEntry[];
+  localidade_controle?: LocalidadeControleEntry[];
 };
 
 export type ExecutarPipelineResult = {
@@ -411,7 +465,11 @@ export async function mapearLeadBatch(
 }
 
 export async function getLeadBatch(token: string, batchId: number): Promise<LeadBatch> {
-  const res = await fetchWithAuth(`/leads/batches/${batchId}`, { token, retries: 0 });
+  const res = await fetchWithAuth(`/leads/batches/${batchId}`, {
+    token,
+    retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+  });
   return handleApiResponse<LeadBatch>(res);
 }
 

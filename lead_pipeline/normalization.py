@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 from datetime import date
+from enum import Enum
 import re
 import unicodedata
 
 import pandas as pd
 
 from .constants import HEADER_SYNONYMS
+
+_KNOWN_INVALID_CPFS = {"12345678909"}
+BIRTH_DATE_MIN = date(1900, 1, 1)
+
+
+class BirthDateIssue(str, Enum):
+    MISSING = "missing"
+    UNPARSEABLE = "unparseable"
+    FUTURE = "future"
+    BEFORE_MIN = "before_min"
 
 
 def strip_accents(value: str) -> str:
@@ -31,6 +42,35 @@ def digits_only(value: str) -> str:
 
 def normalize_cpf(value: str) -> str:
     return digits_only(value)
+
+
+def _calc_cpf_check_digit(numbers: list[int], *, start_weight: int) -> int:
+    total = 0
+    weight = start_weight
+    for number in numbers:
+        total += number * weight
+        weight -= 1
+    remainder = total % 11
+    return 0 if remainder < 2 else 11 - remainder
+
+
+def is_valid_cpf(value: str) -> bool:
+    # Keep parity with backend/app/utils/cpf.py without importing the app package.
+    digits = normalize_cpf(value)
+    if len(digits) != 11:
+        return False
+    if digits == digits[0] * 11:
+        return False
+    if digits in _KNOWN_INVALID_CPFS:
+        return False
+
+    numbers = [int(character) for character in digits]
+    first = _calc_cpf_check_digit(numbers[:9], start_weight=10)
+    if first != numbers[9]:
+        return False
+
+    second = _calc_cpf_check_digit(numbers[:10], start_weight=11)
+    return second == numbers[10]
 
 
 def normalize_phone(value: str) -> str:
@@ -79,3 +119,20 @@ def parse_date(value: str) -> str | None:
     if pd.isna(parsed):
         return None
     return parsed.date().isoformat()
+
+
+def normalize_data_nascimento(raw: str, *, ref_date: date) -> tuple[str, BirthDateIssue | None]:
+    """Normalize `data_nascimento` against the UTC reference date used by the pipeline."""
+
+    parsed = parse_date(raw)
+    if parsed == "":
+        return "", BirthDateIssue.MISSING
+    if parsed is None:
+        return "", BirthDateIssue.UNPARSEABLE
+
+    birth_date = date.fromisoformat(parsed)
+    if birth_date < BIRTH_DATE_MIN:
+        return "", BirthDateIssue.BEFORE_MIN
+    if birth_date > ref_date:
+        return "", BirthDateIssue.FUTURE
+    return birth_date.isoformat(), None

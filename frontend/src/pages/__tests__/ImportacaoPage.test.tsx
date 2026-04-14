@@ -132,6 +132,7 @@ function bronzeBatchBase() {
     origem_lote: "proponente" as const,
     tipo_lead_proponente: "entrada_evento",
     ativacao_id: null as number | null,
+    pipeline_progress: null as null,
   };
 }
 
@@ -279,6 +280,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       tipo_lead_proponente: null,
       ativacao_id: 5,
       pipeline_status: "pending",
+      pipeline_progress: null,
       pipeline_report: null,
       created_at: "2026-03-09T12:00:00",
     });
@@ -383,6 +385,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       tipo_lead_proponente: null,
       ativacao_id: 9,
       pipeline_status: "pending",
+      pipeline_progress: null,
       pipeline_report: null,
       created_at: "2026-03-09T12:00:00",
     });

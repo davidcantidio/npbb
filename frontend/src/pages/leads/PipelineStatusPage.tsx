@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  LinearProgress,
   Paper,
   Stack,
   Tooltip,
@@ -25,15 +26,17 @@ import {
 } from "../../services/leads_import";
 import { useAuth } from "../../store/auth";
 
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = 1500;
 
 type GateStatus = "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
 
 function GateIcon({ status }: { status: GateStatus }) {
-  if (status === "PASS")
+  if (status === "PASS") {
     return <CheckCircleIcon color="success" sx={{ fontSize: 28 }} />;
-  if (status === "PASS_WITH_WARNINGS")
+  }
+  if (status === "PASS_WITH_WARNINGS") {
     return <WarningAmberIcon color="warning" sx={{ fontSize: 28 }} />;
+  }
   return <ErrorIcon color="error" sx={{ fontSize: 28 }} />;
 }
 
@@ -54,16 +57,14 @@ function StageChip({ stage }: { stage: string }) {
 }
 
 function PipelineStatusChip({ pipelineStatus }: { pipelineStatus: string }) {
-  const colorMap: Record<string, "default" | "info" | "success" | "warning" | "error"> = {
+  const colorMap: Record<string, "default" | "success" | "warning" | "error"> = {
     pending: "default",
-    queued: "info",
     pass: "success",
     pass_with_warnings: "warning",
     fail: "error",
   };
   const labelMap: Record<string, string> = {
     pending: "Pendente",
-    queued: "Na fila",
     pass: "Aprovado",
     pass_with_warnings: "Aprovado c/ avisos",
     fail: "Reprovado",
@@ -113,8 +114,16 @@ function QualityMetricsSection({ report }: { report: PipelineReport }) {
           { label: "Telefones inválidos", value: qm.telefone_invalid },
           { label: "Datas de evento inválidas", value: qm.data_evento_invalid },
           { label: "Datas de nascimento inválidas", value: qm.data_nascimento_invalid },
+          { label: "Datas de nascimento ausentes", value: qm.data_nascimento_missing },
           { label: "Duplicidades CPF+evento", value: qm.duplicidades_cpf_evento },
           { label: "Cidade fora do mapeamento", value: qm.cidade_fora_mapeamento },
+          { label: "Localidades inválidas", value: qm.localidade_invalida },
+          { label: "Localidades não resolvidas", value: qm.localidade_nao_resolvida },
+          { label: "Localidades fora do Brasil", value: qm.localidade_fora_brasil },
+          {
+            label: "Cidade/UF inconsistentes",
+            value: qm.localidade_cidade_uf_inconsistente,
+          },
         ].map(({ label, value }) => (
           <Grid item xs={6} sm={4} key={label}>
             <Tooltip title={label}>
@@ -126,7 +135,11 @@ function QualityMetricsSection({ report }: { report: PipelineReport }) {
                   borderColor: value > 0 ? "warning.main" : "divider",
                 }}
               >
-                <Typography variant="h6" fontWeight={700} color={value > 0 ? "warning.main" : "text.primary"}>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  color={value > 0 ? "warning.main" : "text.primary"}
+                >
                   {value}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
@@ -175,7 +188,7 @@ export default function PipelineStatusPage({
     try {
       const data = await getLeadBatch(token, batchId);
       setBatch(data);
-      if (data.pipeline_status !== "pending") {
+      if (!(data.pipeline_status === "pending" && data.pipeline_progress !== null)) {
         stopPolling();
       }
     } catch (err) {
@@ -196,23 +209,16 @@ export default function PipelineStatusPage({
 
   useEffect(() => {
     if (!batch) return;
-    if (batch.pipeline_status === "pending" && batch.stage === "silver") {
+    const hasActiveProgress =
+      batch.pipeline_status === "pending" && batch.pipeline_progress !== null;
+    if (!hasActiveProgress) {
+      stopPolling();
       return;
     }
-    if (batch.pipeline_status === "pending") {
-      stopPolling();
-      if (!pollRef.current) {
-        pollRef.current = setInterval(fetchBatch, POLL_INTERVAL_MS);
-      }
-    } else {
-      stopPolling();
+    if (!pollRef.current) {
+      pollRef.current = setInterval(fetchBatch, POLL_INTERVAL_MS);
     }
-  }, [batch?.pipeline_status]);
-
-  const startPolling = () => {
-    stopPolling();
-    pollRef.current = setInterval(fetchBatch, POLL_INTERVAL_MS);
-  };
+  }, [batch?.pipeline_status, batch?.pipeline_progress?.updated_at]);
 
   const handleExecutar = async () => {
     if (!token || !batchId) return;
@@ -221,7 +227,6 @@ export default function PipelineStatusPage({
     try {
       await executarPipeline(token, batchId);
       await fetchBatch();
-      startPolling();
     } catch (err) {
       setError(toApiErrorMessage(err, "Erro ao executar o pipeline."));
     } finally {
@@ -249,7 +254,10 @@ export default function PipelineStatusPage({
 
   const report = batch.pipeline_report;
   const gateStatus: GateStatus | null = report?.gate?.status ?? null;
-  const isPipelineRunning = batch.pipeline_status === "pending" && pollRef.current !== null;
+  const pipelineProgress = batch.pipeline_progress;
+  const hasActiveProgress =
+    batch.pipeline_status === "pending" && pipelineProgress !== null;
+  const progressValue = pipelineProgress?.pct ?? null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 900, mx: "auto" }}>
@@ -278,7 +286,6 @@ export default function PipelineStatusPage({
         </Alert>
       )}
 
-      {/* Status cards */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems="flex-start">
           <Stack spacing={1}>
@@ -310,38 +317,45 @@ export default function PipelineStatusPage({
             </Typography>
             <Stack direction="row" alignItems="center" spacing={1}>
               <PipelineStatusChip pipelineStatus={batch.pipeline_status} />
-              {isPipelineRunning && <CircularProgress size={14} />}
+              {hasActiveProgress && <CircularProgress size={14} />}
             </Stack>
           </Stack>
         </Stack>
 
         <Divider sx={{ my: 2 }} />
 
-        <Stack direction="row" spacing={2} alignItems="center">
-          {batch.stage === "silver" && batch.pipeline_status !== "pending" && (
-            <Button
-              variant="contained"
-              onClick={handleExecutar}
-              disabled={running || isPipelineRunning}
-              startIcon={running || isPipelineRunning ? <CircularProgress size={16} /> : undefined}
-            >
-              {running || isPipelineRunning ? "Executando..." : "Executar Pipeline"}
-            </Button>
-          )}
-          {batch.stage === "silver" && batch.pipeline_status === "pending" && !pollRef.current && (
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          {batch.stage === "silver" && !hasActiveProgress && (
             <Button
               variant="contained"
               onClick={handleExecutar}
               disabled={running}
               startIcon={running ? <CircularProgress size={16} /> : undefined}
             >
-              {running ? "Iniciando..." : "Executar Pipeline"}
+              {running ? "Executando..." : "Executar Pipeline"}
             </Button>
           )}
-          {isPipelineRunning && (
-            <Typography variant="body2" color="text.secondary">
-              Pipeline em execução — atualizando automaticamente...
-            </Typography>
+          {hasActiveProgress && (
+            <Stack spacing={1} sx={{ flex: 1, minWidth: { xs: "100%", sm: 320 } }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                <Typography variant="body2" color="text.secondary">
+                  {pipelineProgress?.label ?? "Processando pipeline..."}
+                </Typography>
+                {typeof progressValue === "number" && (
+                  <Typography variant="caption" color="text.secondary">
+                    {progressValue}%
+                  </Typography>
+                )}
+              </Stack>
+              <LinearProgress
+                aria-label="Progresso da pipeline"
+                variant={typeof progressValue === "number" ? "determinate" : "indeterminate"}
+                value={typeof progressValue === "number" ? progressValue : undefined}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Atualizando automaticamente...
+              </Typography>
+            </Stack>
           )}
           {batch.stage === "gold" && (
             <Alert severity="success" sx={{ py: 0.5 }} icon={<CheckCircleIcon />}>
@@ -351,7 +365,6 @@ export default function PipelineStatusPage({
         </Stack>
       </Paper>
 
-      {/* Gate result + metrics */}
       {report && gateStatus && (
         <Paper sx={{ p: 3, mb: 3 }}>
           <Stack direction="row" alignItems="center" spacing={1.5} mb={2}>
@@ -383,8 +396,8 @@ export default function PipelineStatusPage({
                 Avisos:
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                {report.gate.warnings.map((w) => (
-                  <Chip key={w} label={w} color="warning" size="small" />
+                {report.gate.warnings.map((warning) => (
+                  <Chip key={warning} label={warning} color="warning" size="small" />
                 ))}
               </Stack>
             </Stack>

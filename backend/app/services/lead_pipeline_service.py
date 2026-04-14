@@ -1,4 +1,4 @@
-"""Service for Gold pipeline: Silver → run_pipeline → insert Gold leads."""
+"""Service for Gold pipeline: Silver -> run_pipeline -> insert Gold leads."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 import logging
 import re
 import shutil
-from datetime import date as date_type, datetime as datetime_type, time as time_type
+from datetime import date as date_type, datetime as datetime_type, time as time_type, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,19 +18,49 @@ from sqlmodel import Session, select
 
 from lead_pipeline.constants import ALL_COLUMNS
 from lead_pipeline.normalization import strip_accents
-from lead_pipeline.pipeline import PipelineConfig, run_pipeline
+from lead_pipeline.pipeline import PipelineConfig, PipelineProgressEvent, run_pipeline
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
 from app.models.lead_public_models import TipoLead
-from app.models.models import Ativacao, AtivacaoLead, Lead, LeadEventoSourceKind
+from app.models.models import Ativacao, AtivacaoLead, Evento, Lead, LeadEventoSourceKind, TipoEvento
 from app.services.lead_event_service import ensure_lead_event
 
 logger = logging.getLogger(__name__)
 
 TMP_ROOT = Path("/tmp/npbb_pipeline")
 
+PIPELINE_PROGRESS_LABELS: dict[str, str] = {
+    "queued": "Na fila para processamento",
+    "silver_csv": "Gerando CSV a partir do Silver",
+    "source_adapt": "Lendo e adaptando arquivos de origem",
+    "event_taxonomy": "Classificando tipo de evento",
+    "normalize_rows": "Normalizando campos (CPF, datas, telefone, local…)",
+    "dedupe": "Removendo duplicidades CPF + evento",
+    "contract_check": "Validando contrato dos dados",
+    "write_outputs": "Gravando relatório e CSV consolidado",
+    "insert_leads": "Inserindo leads Gold no banco",
+}
+
+
+def _evento_lookup_por_ids(db: Session, event_ids: set[int]) -> dict[int, tuple[str, str | None]]:
+    """Nome do evento e nome do tipo (lookup) para enriquecer linhas Silver sem evento/tipo no arquivo."""
+    if not event_ids:
+        return {}
+    eventos = db.exec(select(Evento).where(Evento.id.in_(event_ids))).all()
+    tipo_ids = {e.tipo_id for e in eventos if e.tipo_id is not None}
+    tipo_nomes: dict[int, str] = {}
+    if tipo_ids:
+        for tipo in db.exec(select(TipoEvento).where(TipoEvento.id.in_(tipo_ids))).all():
+            tipo_nomes[int(tipo.id)] = tipo.nome
+    out: dict[int, tuple[str, str | None]] = {}
+    for ev in eventos:
+        tid = ev.tipo_id
+        tipo_nome = tipo_nomes.get(int(tid)) if tid is not None else None
+        out[int(ev.id)] = (ev.nome, tipo_nome)
+    return out
+
 
 def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
-    """Lê leads_silver do lote e escreve CSV temporário com o contrato Gold."""
+    """Le `leads_silver` do lote e escreve CSV temporario com o contrato Gold."""
     tmp_dir = TMP_ROOT / str(batch_id)
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,13 +68,22 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
         select(LeadSilver).where(LeadSilver.batch_id == batch_id)
     ).all()
 
+    event_ids = {int(r.evento_id) for r in silver_rows if r.evento_id is not None}
+    evento_por_id = _evento_lookup_por_ids(db, event_ids)
+
     csv_path = tmp_dir / "silver_input.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=ALL_COLUMNS)
         writer.writeheader()
         for row in silver_rows:
             dados = row.dados_brutos or {}
-            writer.writerow({col: dados.get(col, "") for col in ALL_COLUMNS})
+            out_row = {col: str(dados.get(col, "") or "") for col in ALL_COLUMNS}
+            nome_ev, nome_tipo = evento_por_id.get(int(row.evento_id), ("", None))
+            if not out_row["evento"].strip() and nome_ev:
+                out_row["evento"] = nome_ev
+            if not out_row["tipo_evento"].strip() and nome_tipo:
+                out_row["tipo_evento"] = nome_tipo
+            writer.writerow(out_row)
 
     return csv_path
 
@@ -87,7 +126,7 @@ def _pipeline_status_from_str(status: str) -> PipelineStatus:
 
 
 def _gold_dq_snapshot_from_report(report_data: dict[str, Any]) -> tuple[int | None, dict[str, int] | None, int | None]:
-    """Extrai totais do relatório Gold para colunas indexáveis em `lead_batches`."""
+    """Extrai totais do relatorio Gold para colunas indexaveis em `lead_batches`."""
     if not report_data:
         return None, None, None
 
@@ -119,10 +158,65 @@ def _gold_dq_snapshot_from_report(report_data: dict[str, Any]) -> tuple[int | No
     return discarded, issue_counts, inv_total
 
 
-def _clear_gold_dq_snapshot(batch: LeadBatch) -> None:
+def _clear_gold_pipeline_snapshot(batch: LeadBatch) -> None:
+    batch.pipeline_report = None
     batch.gold_dq_discarded_rows = None
     batch.gold_dq_issue_counts = None
     batch.gold_dq_invalid_records_total = None
+
+
+def _clear_pipeline_progress(batch: LeadBatch) -> None:
+    batch.pipeline_progress = None
+
+
+def _pipeline_progress_updated_at() -> str:
+    return datetime_type.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _build_pipeline_progress_payload(
+    *,
+    step: str,
+    pct: int | None = None,
+    label: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "step": step,
+        "label": label or PIPELINE_PROGRESS_LABELS.get(step, step),
+        "pct": pct,
+        "updated_at": _pipeline_progress_updated_at(),
+    }
+
+
+def set_pipeline_progress(
+    batch: LeadBatch,
+    *,
+    step: str,
+    pct: int | None = None,
+    label: str | None = None,
+) -> None:
+    batch.pipeline_progress = _build_pipeline_progress_payload(step=step, pct=pct, label=label)
+
+
+def queue_pipeline_batch(batch: LeadBatch) -> None:
+    batch.pipeline_status = PipelineStatus.PENDING
+    _clear_gold_pipeline_snapshot(batch)
+    set_pipeline_progress(batch, step="queued")
+
+
+def _persist_pipeline_progress(engine: Any, batch_id: int, event: PipelineProgressEvent) -> None:
+    with Session(engine) as db:
+        batch = db.get(LeadBatch, batch_id)
+        if not batch:
+            logger.warning("Batch %s nao encontrado para atualizar progresso da pipeline.", batch_id)
+            return
+        set_pipeline_progress(
+            batch,
+            step=event.step,
+            pct=event.pct,
+            label=event.label,
+        )
+        db.add(batch)
+        db.commit()
 
 
 def _clean_text(value: Any) -> str | None:
@@ -262,7 +356,7 @@ def _find_existing_lead(db: Session, payload: dict[str, Any]) -> Lead | None:
 
 
 def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) -> int:
-    """Lê o CSV validado e insere leads na tabela `lead`. Retorna quantidade inserida."""
+    """Le o CSV validado e insere leads na tabela `lead`."""
     if not consolidated_path.exists():
         return 0
 
@@ -323,68 +417,94 @@ def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) 
 
 
 async def executar_pipeline_gold(batch_id: int) -> None:
-    """Background task: materializa Silver CSV → run_pipeline → promove leads Gold.
+    """Background task: materializa Silver CSV -> run_pipeline -> promove Gold."""
+    from app.db.database import engine  # import local para evitar ciclo na inicializacao
 
-    Cria sua própria sessão de DB pois roda após o response ter sido enviado.
-    """
-    from app.db.database import engine  # import local para evitar ciclo na inicialização
+    tmp_dir = TMP_ROOT / str(batch_id)
 
-    with Session(engine) as db:
-        batch = db.get(LeadBatch, batch_id)
-        if not batch:
-            logger.error("Batch %s não encontrado para execução do pipeline.", batch_id)
-            return
+    def on_progress(event: PipelineProgressEvent) -> None:
+        _persist_pipeline_progress(engine, batch_id, event)
 
-        tmp_dir = TMP_ROOT / str(batch_id)
-        try:
+    try:
+        with Session(engine) as db:
+            batch = db.get(LeadBatch, batch_id)
+            if not batch:
+                logger.error("Batch %s nao encontrado para execucao do pipeline.", batch_id)
+                return
+
+            queue_pipeline_batch(batch)
+            db.add(batch)
+            db.commit()
+
+            set_pipeline_progress(batch, step="silver_csv")
+            db.add(batch)
+            db.commit()
+
             csv_path = materializar_silver_como_csv(batch_id, db)
 
-            output_root = tmp_dir / "output"
-            config = PipelineConfig(
-                lote_id=str(batch_id),
-                input_files=[csv_path],
-                output_root=output_root,
-            )
+        output_root = tmp_dir / "output"
+        config = PipelineConfig(
+            lote_id=str(batch_id),
+            input_files=[csv_path],
+            output_root=output_root,
+            on_progress=on_progress,
+        )
 
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, run_pipeline, config)
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, run_pipeline, config)
 
-            report_data: dict[str, Any] = {}
-            if result.report_path.exists():
-                report_data = json.loads(result.report_path.read_text(encoding="utf-8"))
+        report_data: dict[str, Any] = {}
+        if result.report_path.exists():
+            report_data = json.loads(result.report_path.read_text(encoding="utf-8"))
 
-            pipeline_status = _pipeline_status_from_str(result.status)
+        pipeline_status = _pipeline_status_from_str(result.status)
+
+        with Session(engine) as db:
+            batch = db.get(LeadBatch, batch_id)
+            if not batch:
+                logger.error("Batch %s nao encontrado para finalizar pipeline.", batch_id)
+                return
+
+            if result.decision == "promote":
+                set_pipeline_progress(batch, step="insert_leads")
+                db.add(batch)
+                db.commit()
+                _inserir_leads_gold(batch, result.consolidated_path, db)
+                batch.stage = BatchStage.GOLD
+            else:
+                batch.stage = BatchStage.SILVER
+
             batch.pipeline_report = report_data
             batch.pipeline_status = pipeline_status
             disc, issues, inv_n = _gold_dq_snapshot_from_report(report_data)
             batch.gold_dq_discarded_rows = disc
             batch.gold_dq_issue_counts = issues
             batch.gold_dq_invalid_records_total = inv_n
-
-            if result.decision == "promote":
-                _inserir_leads_gold(batch, result.consolidated_path, db)
-                batch.stage = BatchStage.GOLD
-            else:
-                batch.stage = BatchStage.SILVER
+            _clear_pipeline_progress(batch)
 
             db.add(batch)
             db.commit()
-            logger.info(
-                "Pipeline batch %s concluído: status=%s decision=%s",
-                batch_id,
-                result.status,
-                result.decision,
-            )
 
-        except Exception:
-            logger.exception("Falha na execução do pipeline para batch %s.", batch_id)
-            try:
+        logger.info(
+            "Pipeline batch %s concluido: status=%s decision=%s",
+            batch_id,
+            result.status,
+            result.decision,
+        )
+
+    except Exception:
+        logger.exception("Falha na execucao do pipeline para batch %s.", batch_id)
+        try:
+            with Session(engine) as db:
+                batch = db.get(LeadBatch, batch_id)
+                if batch is None:
+                    return
                 batch.pipeline_status = PipelineStatus.FAIL
-                _clear_gold_dq_snapshot(batch)
+                _clear_gold_pipeline_snapshot(batch)
+                _clear_pipeline_progress(batch)
                 db.add(batch)
                 db.commit()
-            except Exception:
-                logger.exception("Falha ao persistir status FAIL para batch %s.", batch_id)
-
-        finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            logger.exception("Falha ao persistir status FAIL para batch %s.", batch_id)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)

@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import PipelineStatusPage from "../leads/PipelineStatusPage";
@@ -34,8 +34,13 @@ const basePipelineReport: PipelineReport = {
     telefone_invalid: 0,
     data_evento_invalid: 0,
     data_nascimento_invalid: 0,
+    data_nascimento_missing: 0,
     duplicidades_cpf_evento: 0,
     cidade_fora_mapeamento: 0,
+    localidade_invalida: 0,
+    localidade_nao_resolvida: 0,
+    localidade_fora_brasil: 0,
+    localidade_cidade_uf_inconsistente: 0,
   },
   gate: {
     status: "PASS",
@@ -59,6 +64,7 @@ function createBatch(overrides: Partial<LeadBatch> = {}): LeadBatch {
     tipo_lead_proponente: "entrada_evento",
     ativacao_id: null,
     pipeline_status: "pass",
+    pipeline_progress: null,
     pipeline_report: basePipelineReport,
     created_at: "2026-03-09T12:00:00",
     ...overrides,
@@ -93,9 +99,14 @@ describe("PipelineStatusPage", () => {
       createBatch({
         stage: "silver",
         pipeline_status: "pending",
+        pipeline_progress: null,
         pipeline_report: null,
       }),
     );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders with minimal route and auth context", async () => {
@@ -118,6 +129,86 @@ describe("PipelineStatusPage", () => {
     expect(screen.getByText("GOLD")).toBeInTheDocument();
     expect(screen.getByText("Aprovado")).toBeInTheDocument();
     expect(screen.getByText("3 leads promovidos para Gold")).toBeInTheDocument();
+  });
+
+  it("does not poll for a silver batch that is still pending without pipeline_progress", async () => {
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "pending",
+        pipeline_progress: null,
+        pipeline_report: null,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByRole("button", { name: "Executar Pipeline" })).toBeInTheDocument();
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(1);
+  }, 10000);
+
+  it("shows determinate progress and keeps polling while pipeline_progress is active", async () => {
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "pending",
+        pipeline_progress: {
+          step: "normalize_rows",
+          label: "Normalizando campos (CPF, datas, telefone, local…)",
+          pct: 40,
+          updated_at: "2026-04-14T12:34:56.789Z",
+        },
+        pipeline_report: null,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(
+      await screen.findByText("Normalizando campos (CPF, datas, telefone, local…)")
+    ).toBeInTheDocument();
+    expect(screen.getByText("40%")).toBeInTheDocument();
+
+    const progressbar = screen.getByRole("progressbar", {
+      name: "Progresso da pipeline",
+    });
+    expect(progressbar).toHaveAttribute("aria-valuenow", "40");
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(2);
+  }, 10000);
+
+  it("shows indeterminate progress when pct is null", async () => {
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "pending",
+        pipeline_progress: {
+          step: "source_adapt",
+          label: "Lendo e adaptando arquivos de origem",
+          pct: null,
+          updated_at: "2026-04-14T12:34:56.789Z",
+        },
+        pipeline_report: null,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText("Lendo e adaptando arquivos de origem")).toBeInTheDocument();
+    const progressbar = screen.getByRole("progressbar", {
+      name: "Progresso da pipeline",
+    });
+    expect(progressbar).not.toHaveAttribute("aria-valuenow");
   });
 
   it("shows warning feedback when the pipeline passes with warnings", async () => {

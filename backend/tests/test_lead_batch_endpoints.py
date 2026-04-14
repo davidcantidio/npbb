@@ -144,6 +144,7 @@ class TestPostLeadsBatches:
         body = resp.json()
         assert body["stage"] == "bronze"
         assert body["pipeline_status"] == "pending"
+        assert body["pipeline_progress"] is None
         assert body["nome_arquivo_original"] == "leads.csv"
         assert body["plataforma_origem"] == "email"
         assert body["id"] is not None

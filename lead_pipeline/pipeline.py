@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 import zipfile
 
 import pandas as pd
@@ -13,17 +13,31 @@ from .constants import (
     ALL_COLUMNS,
     FINAL_FILENAME,
     OPTIONAL_COLUMNS,
-    REQUIRED_COLUMNS,
     WARNING_ARQUIVO_ENCRIPTADO,
     WARNING_ARQUIVO_FONTE_AGREGADA,
     WARNING_ARQUIVO_ZIP_DUPLICADO,
     WARNING_CIDADE_FORA_MAPEAMENTO,
     WARNING_CPF_INVALIDO,
+    WARNING_DATA_NASCIMENTO_AUSENTE,
+    WARNING_DATA_NASCIMENTO_INVALIDA,
     WARNING_DUPLICIDADE_CPF_EVENTO,
+    WARNING_LOCALIDADE_INVALIDA,
 )
 from .contracts import validate_databricks_contract
 from .event_taxonomy import classify_event_type
-from .normalization import normalize_cpf, normalize_email, normalize_local, normalize_phone, parse_date
+from .geo_normalize import (
+    LocalityNormalizationResult,
+    normalize_brazilian_locality,
+)
+from .normalization import (
+    BirthDateIssue,
+    is_valid_cpf,
+    normalize_cpf,
+    normalize_data_nascimento,
+    normalize_email,
+    normalize_phone,
+    parse_date,
+)
 from .source_adapter import (
     CITY_OUT_COL,
     REJECT_REASON_COL,
@@ -40,6 +54,14 @@ class PipelineConfig:
     input_files: list[Path]
     scan_root: Path | None = None
     output_root: Path = Path("./eventos")
+    on_progress: Callable[["PipelineProgressEvent"], None] | None = None
+
+
+@dataclass
+class PipelineProgressEvent:
+    step: str
+    label: str
+    pct: int | None = None
 
 
 @dataclass
@@ -48,8 +70,13 @@ class QualityMetrics:
     telefone_invalid: int = 0
     data_evento_invalid: int = 0
     data_nascimento_invalid: int = 0
+    data_nascimento_missing: int = 0
     duplicidades_cpf_evento: int = 0
     cidade_fora_mapeamento: int = 0
+    localidade_invalida: int = 0
+    localidade_nao_resolvida: int = 0
+    localidade_fora_brasil: int = 0
+    localidade_cidade_uf_inconsistente: int = 0
 
 
 @dataclass
@@ -136,20 +163,68 @@ def _ordered_unique(values: list[str]) -> list[str]:
     return result
 
 
+def _emit_progress(
+    config: PipelineConfig,
+    *,
+    step: str,
+    label: str,
+    pct: int | None = None,
+) -> None:
+    if config.on_progress is None:
+        return
+    config.on_progress(PipelineProgressEvent(step=step, label=label, pct=pct))
+
+
+def _truncate_for_report(value: str, *, limit: int = 120) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 3].rstrip()}..."
+
+
+def _register_locality_issue(
+    metrics: QualityMetrics,
+    locality_result: LocalityNormalizationResult,
+) -> None:
+    if locality_result.issue_code is None:
+        return
+
+    metrics.localidade_invalida += 1
+    if locality_result.issue_code == "non_br":
+        metrics.localidade_fora_brasil += 1
+    elif locality_result.issue_code == "cidade_uf_mismatch":
+        metrics.localidade_cidade_uf_inconsistente += 1
+    else:
+        metrics.localidade_nao_resolvida += 1
+
+
 def _normalize_row(
     row: dict[str, Any],
     *,
     city_out_of_mapping: bool,
-) -> tuple[dict[str, str], list[str]]:
+    ref_date_utc: date,
+) -> tuple[
+    dict[str, str],
+    list[str],
+    BirthDateIssue | None,
+    LocalityNormalizationResult,
+]:
     reasons: list[str] = []
 
     cpf = normalize_cpf(row.get("cpf", ""))
     phone = normalize_phone(row.get("telefone", ""))
     event_date = parse_date(row.get("data_evento", ""))
-    birth_date = parse_date(row.get("data_nascimento", ""))
-    local = normalize_local(row.get("local", ""))
+    birth_date, birth_date_issue = normalize_data_nascimento(
+        row.get("data_nascimento", ""),
+        ref_date=ref_date_utc,
+    )
+    locality_result = normalize_brazilian_locality(
+        cidade=row.get("cidade", ""),
+        estado=row.get("estado", ""),
+        local=row.get("local", ""),
+    )
 
-    if len(cpf) != 11:
+    if not is_valid_cpf(cpf):
         reasons.append("CPF_INVALIDO")
     if phone and len(phone) < 10:
         reasons.append("TELEFONE_INVALIDO")
@@ -157,33 +232,37 @@ def _normalize_row(
         reasons.append("DATA_EVENTO_INVALIDA")
     elif event_date == "" and not city_out_of_mapping:
         reasons.append("DATA_EVENTO_INVALIDA")
-    if birth_date is None:
-        reasons.append("DATA_NASCIMENTO_INVALIDA")
 
     normalized_row = {
         "nome": str(row.get("nome", "")).strip(),
         "cpf": cpf,
-        "data_nascimento": birth_date if birth_date is not None else "",
+        "data_nascimento": birth_date,
         "email": normalize_email(row.get("email", "")),
         "telefone": phone,
         "evento": str(row.get("evento", "")).strip(),
         "tipo_evento": str(row.get("tipo_evento", "")).strip(),
-        "local": local,
+        "local": locality_result.local,
         "data_evento": event_date if event_date is not None else "",
     }
     for column in OPTIONAL_COLUMNS:
         normalized_row[column] = str(row.get(column, "") or "").strip()
-    return normalized_row, reasons
+    normalized_row["cidade"] = locality_result.cidade
+    normalized_row["estado"] = locality_result.estado
+    return normalized_row, reasons, birth_date_issue, locality_result
 
 
 def _build_report(
     config: PipelineConfig,
+    *,
+    run_timestamp: datetime,
     raw_rows: int,
     valid_rows: int,
     metrics: QualityMetrics,
     fail_reasons: list[str],
     warnings: list[str],
     invalid_records: list[dict[str, Any]],
+    data_nascimento_controle: list[dict[str, Any]],
+    localidade_controle: list[dict[str, Any]],
     source_profiles_detected: dict[str, list[str]],
     input_files_scanned: list[str],
     input_files_processed: list[str],
@@ -204,7 +283,7 @@ def _build_report(
 
     report = {
         "lote_id": config.lote_id,
-        "run_timestamp": datetime.now(timezone.utc).isoformat(),
+        "run_timestamp": run_timestamp.isoformat(),
         "input_files": [str(path) for path in config.input_files],
         "input_files_scanned": input_files_scanned,
         "input_files_processed": input_files_processed,
@@ -223,6 +302,8 @@ def _build_report(
             "fail_reasons": fail_reasons,
             "warnings": warnings,
         },
+        "data_nascimento_controle": data_nascimento_controle,
+        "localidade_controle": localidade_controle,
         "invalid_records": invalid_records,
         "exit_code": exit_code,
     }
@@ -258,8 +339,16 @@ def _write_summary(report: dict[str, Any], summary_path: Path) -> None:
         f"- telefone_invalid: {metrics['telefone_invalid']}",
         f"- data_evento_invalid: {metrics['data_evento_invalid']}",
         f"- data_nascimento_invalid: {metrics['data_nascimento_invalid']}",
+        f"- data_nascimento_missing: {metrics['data_nascimento_missing']}",
         f"- duplicidades_cpf_evento: {metrics['duplicidades_cpf_evento']}",
         f"- cidade_fora_mapeamento: {metrics['cidade_fora_mapeamento']}",
+        f"- localidade_invalida: {metrics['localidade_invalida']}",
+        f"- localidade_nao_resolvida: {metrics['localidade_nao_resolvida']}",
+        f"- localidade_fora_brasil: {metrics['localidade_fora_brasil']}",
+        (
+            "- localidade_cidade_uf_inconsistente: "
+            f"{metrics['localidade_cidade_uf_inconsistente']}"
+        ),
         "",
         "## Skips",
         f"- {report.get('input_files_skipped', [])}",
@@ -267,6 +356,7 @@ def _write_summary(report: dict[str, Any], summary_path: Path) -> None:
         "## Gate",
         f"- fail_reasons: {gate['fail_reasons']}",
         f"- warnings: {gate['warnings']}",
+        f"- localidade_controle: {len(report.get('localidade_controle', []))}",
     ]
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -280,11 +370,15 @@ def _collect_metric_warnings(metrics: QualityMetrics) -> list[str]:
     if metrics.data_evento_invalid:
         warnings.append("DATA_EVENTO_INVALIDA")
     if metrics.data_nascimento_invalid:
-        warnings.append("DATA_NASCIMENTO_INVALIDA")
+        warnings.append(WARNING_DATA_NASCIMENTO_INVALIDA)
+    if metrics.data_nascimento_missing:
+        warnings.append(WARNING_DATA_NASCIMENTO_AUSENTE)
     if metrics.duplicidades_cpf_evento:
         warnings.append(WARNING_DUPLICIDADE_CPF_EVENTO)
     if metrics.cidade_fora_mapeamento:
         warnings.append(WARNING_CIDADE_FORA_MAPEAMENTO)
+    if metrics.localidade_invalida:
+        warnings.append(WARNING_LOCALIDADE_INVALIDA)
     return warnings
 
 
@@ -301,12 +395,17 @@ def _apply_event_taxonomy(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]
             typed_values.append(str(row.get("tipo_evento", "")).strip())
             continue
         event_name = str(row.get("evento", "")).strip()
+        existing_type = str(row.get("tipo_evento", "")).strip()
         mapped_type = classify_event_type(event_name)
-        if mapped_type is None:
-            unknown_events.append(event_name or "EVENTO_VAZIO")
-            typed_values.append(str(row.get("tipo_evento", "")).strip())
+        if mapped_type is not None:
+            typed_values.append(mapped_type)
             continue
-        typed_values.append(mapped_type)
+        # Cadastro/export já pode trazer tipo (ex.: "Entretenimento") sem o nome constar na taxonomia fixa.
+        if existing_type:
+            typed_values.append(existing_type)
+            continue
+        unknown_events.append(event_name or "EVENTO_VAZIO")
+        typed_values.append("")
 
     typed_df["tipo_evento"] = typed_values
     fail_reasons = [
@@ -319,11 +418,16 @@ def _apply_event_taxonomy(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]
 def run_pipeline(config: PipelineConfig) -> PipelineResult:
     output_dir = config.output_root / config.lote_id
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Keep the DQ cutoff aligned with the UTC `run_timestamp` persisted in the report.
+    run_timestamp = datetime.now(timezone.utc)
+    ref_date_utc = run_timestamp.date()
 
     fail_reasons: list[str] = []
     accumulated_warnings: list[str] = []
     metrics = QualityMetrics()
     invalid_records: list[dict[str, Any]] = []
+    data_nascimento_controle: list[dict[str, Any]] = []
+    localidade_controle: list[dict[str, Any]] = []
     raw_frames: list[pd.DataFrame] = []
     normalized_rows: list[dict[str, Any]] = []
     source_profiles_detected: dict[str, list[str]] = {}
@@ -356,6 +460,11 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         input_files_scanned = [str(path) for path in ordered_paths]
 
     input_files_processed: list[str] = []
+    _emit_progress(
+        config,
+        step="source_adapt",
+        label="Lendo e adaptando arquivos de origem",
+    )
 
     for input_file in ordered_paths:
         try:
@@ -400,6 +509,11 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             ]
         )
 
+    _emit_progress(
+        config,
+        step="event_taxonomy",
+        label="Classificando tipo de evento",
+    )
     raw_df, taxonomy_fail_reasons = _apply_event_taxonomy(raw_df)
     if taxonomy_fail_reasons:
         fail_reasons.extend(taxonomy_fail_reasons)
@@ -414,7 +528,33 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     raw_path = output_dir / "raw.csv"
     raw_export.to_csv(raw_path, index=False)
 
-    for row in raw_df.to_dict(orient="records"):
+    total_raw_rows = len(raw_df.index)
+    last_normalize_pct: int | None = None
+    _emit_progress(
+        config,
+        step="normalize_rows",
+        label="Normalizando campos (CPF, datas, telefone, local…)",
+        pct=100 if total_raw_rows == 0 else 0,
+    )
+    if total_raw_rows == 0:
+        last_normalize_pct = 100
+
+    def _emit_normalize_progress(processed_rows: int) -> None:
+        nonlocal last_normalize_pct
+        if total_raw_rows <= 0:
+            return
+        pct = int((processed_rows * 100) / total_raw_rows)
+        pct_bucket = 100 if processed_rows >= total_raw_rows else (pct // 5) * 5
+        if last_normalize_pct is None or pct_bucket > last_normalize_pct:
+            _emit_progress(
+                config,
+                step="normalize_rows",
+                label="Normalizando campos (CPF, datas, telefone, local…)",
+                pct=pct_bucket,
+            )
+            last_normalize_pct = pct_bucket
+
+    for row_index, row in enumerate(raw_df.to_dict(orient="records"), start=1):
         row_data = {column: str(row.get(column, "")) for column in ALL_COLUMNS}
         reject_reason = str(row.get(REJECT_REASON_COL, "")).strip()
         if reject_reason:
@@ -428,16 +568,57 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
                     "row_data": row_data,
                 }
             )
+            _emit_normalize_progress(row_index)
             continue
 
         city_out_of_mapping = bool(row.get(CITY_OUT_COL, False))
-        normalized_row, reasons = _normalize_row(
+        normalized_row, reasons, birth_date_issue, locality_result = _normalize_row(
             row_data,
             city_out_of_mapping=city_out_of_mapping,
+            ref_date_utc=ref_date_utc,
         )
 
         if city_out_of_mapping:
             metrics.cidade_fora_mapeamento += 1
+        if birth_date_issue is not None:
+            data_nascimento_controle.append(
+                {
+                    "source_file": row["source_file"],
+                    "source_sheet": str(row.get(SHEET_COL_SOURCE, "")),
+                    "source_row": int(row.get(ROW_COL_SOURCE, 0)),
+                    "issue": birth_date_issue.value,
+                }
+            )
+            if birth_date_issue is BirthDateIssue.MISSING:
+                metrics.data_nascimento_missing += 1
+            else:
+                metrics.data_nascimento_invalid += 1
+
+        if locality_result.issue_code is not None:
+            _register_locality_issue(metrics, locality_result)
+            localidade_controle.append(
+                {
+                    "source_file": row["source_file"],
+                    "source_sheet": str(row.get(SHEET_COL_SOURCE, "")),
+                    "source_row": int(row.get(ROW_COL_SOURCE, 0)),
+                    "issue": locality_result.issue_code,
+                    "matched_by": locality_result.matched_by,
+                    "raw_value": _truncate_for_report(
+                        " | ".join(
+                            value
+                            for value in (
+                                row_data.get("cidade", ""),
+                                row_data.get("estado", ""),
+                                row_data.get("local", ""),
+                            )
+                            if value
+                        )
+                    ),
+                    "raw_cidade": _truncate_for_report(row_data.get("cidade", "")),
+                    "raw_estado": _truncate_for_report(row_data.get("estado", "")),
+                    "raw_local": _truncate_for_report(row_data.get("local", "")),
+                }
+            )
 
         if reasons:
             if "CPF_INVALIDO" in reasons:
@@ -446,8 +627,6 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
                 metrics.telefone_invalid += 1
             if "DATA_EVENTO_INVALIDA" in reasons:
                 metrics.data_evento_invalid += 1
-            if "DATA_NASCIMENTO_INVALIDA" in reasons:
-                metrics.data_nascimento_invalid += 1
 
             invalid_records.append(
                 {
@@ -458,6 +637,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
                     "row_data": row_data,
                 }
             )
+            _emit_normalize_progress(row_index)
             continue
 
         normalized_rows.append(
@@ -469,6 +649,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
                 "__row_data": row_data,
             }
         )
+        _emit_normalize_progress(row_index)
 
     if normalized_rows:
         valid_df = pd.DataFrame(normalized_rows)
@@ -477,6 +658,11 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             columns=[*ALL_COLUMNS, "__source_file", "__source_sheet", "__source_row", "__row_data"]
         )
 
+    _emit_progress(
+        config,
+        step="dedupe",
+        label="Removendo duplicidades CPF + evento",
+    )
     if not valid_df.empty:
         duplicated_mask = valid_df.duplicated(subset=["cpf", "evento"], keep="first")
         duplicated_rows = valid_df[duplicated_mask]
@@ -499,7 +685,12 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         else pd.DataFrame(columns=ALL_COLUMNS)
     )
 
-    contract_violations = validate_databricks_contract(final_df)
+    _emit_progress(
+        config,
+        step="contract_check",
+        label="Validando contrato dos dados",
+    )
+    contract_violations = validate_databricks_contract(final_df, ref_date=ref_date_utc)
     if contract_violations:
         fail_reasons.extend(contract_violations)
 
@@ -512,18 +703,26 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     )
     report = _build_report(
         config=config,
+        run_timestamp=run_timestamp,
         raw_rows=len(raw_df),
         valid_rows=len(final_df),
         metrics=metrics,
         fail_reasons=fail_reasons,
         warnings=warnings,
         invalid_records=invalid_records,
+        data_nascimento_controle=data_nascimento_controle,
+        localidade_controle=localidade_controle,
         source_profiles_detected=source_profiles_detected,
         input_files_scanned=input_files_scanned,
         input_files_processed=input_files_processed,
         input_files_skipped=input_files_skipped,
     )
 
+    _emit_progress(
+        config,
+        step="write_outputs",
+        label="Gravando relatório e CSV consolidado",
+    )
     consolidated_path = output_dir / FINAL_FILENAME
     final_df.to_csv(consolidated_path, index=False)
 

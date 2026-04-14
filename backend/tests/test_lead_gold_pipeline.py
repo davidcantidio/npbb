@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import io
-from datetime import date as date_type
+import json
+from datetime import date as date_type, datetime, timezone
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
@@ -28,11 +32,16 @@ from app.models.models import (
     LeadEvento,
     LeadEventoSourceKind,
     StatusEvento,
+    TipoEvento,
     TipoLead,
     TipoResponsavel,
     Usuario,
 )
 from app.utils.security import hash_password
+from lead_pipeline.constants import ALL_COLUMNS, FINAL_FILENAME
+from lead_pipeline.contracts import validate_databricks_contract
+from lead_pipeline.normalization import BirthDateIssue, normalize_data_nascimento
+from lead_pipeline.pipeline import PipelineProgressEvent, PipelineResult, _normalize_row
 
 
 def _make_engine():
@@ -46,6 +55,12 @@ def _make_engine():
 @pytest.fixture
 def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
+    tmp_root = Path("backend/tmp-pytest") / f"lead-pipeline-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        "app.services.lead_pipeline_service.TMP_ROOT",
+        tmp_root,
+    )
     eng = _make_engine()
     SQLModel.metadata.create_all(eng)
     return eng
@@ -117,7 +132,36 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-CSV_CONTENT = b"nome,cpf,email,telefone\nAlice,12345678901,alice@ex.com,11999990000\n"
+CSV_CONTENT = b"nome,cpf,email,telefone\nAlice,52998224725,alice@ex.com,11999990000\n"
+
+
+def _base_gold_row(
+    *,
+    cpf: str = "52998224725",
+    data_nascimento: str = "1990-01-15",
+    local: str = "Sao Paulo-SP",
+    cidade: str = "",
+    estado: str = "",
+) -> dict[str, str]:
+    return {
+        "nome": "Alice",
+        "cpf": cpf,
+        "email": "alice@ex.com",
+        "telefone": "11999990000",
+        "evento": "Park Challenge 2025",
+        "tipo_evento": "ESPORTE",
+        "local": local,
+        "data_evento": "2026-06-08",
+        "data_nascimento": data_nascimento,
+        "cidade": cidade,
+        "estado": estado,
+    }
+
+
+def _contract_frame(*, data_nascimento: str) -> pd.DataFrame:
+    row = {column: "" for column in ALL_COLUMNS}
+    row.update(_base_gold_row(data_nascimento=data_nascimento))
+    return pd.DataFrame([row], columns=ALL_COLUMNS)
 
 
 def _upload_batch(
@@ -166,17 +210,7 @@ def _promote_to_silver(
         batch.stage = BatchStage.SILVER
         batch.evento_id = evento_id
         s.add(batch)
-        dados_brutos = {
-            "nome": "Alice",
-            "cpf": "12345678901",
-            "email": "alice@ex.com",
-            "telefone": "11999990000",
-            "evento": "Park Challenge 2025",
-            "tipo_evento": "ESPORTE",
-            "local": "Sao Paulo-SP",
-            "data_evento": "2026-06-08",
-            "data_nascimento": "1990-01-15",
-        }
+        dados_brutos = _base_gold_row()
         if dados_brutos_extra:
             dados_brutos.update(dados_brutos_extra)
         silver = LeadSilver(
@@ -187,6 +221,66 @@ def _promote_to_silver(
         )
         s.add(silver)
         s.commit()
+
+
+def test_materializar_silver_csv_preenche_evento_tipo_via_evento_referencia(engine, monkeypatch):
+    """Linhas Silver sem evento/tipo no JSON devem herdar nome e tipo do Evento referenciado (F3 Gold)."""
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        ag = _seed_agencia(s)
+        st = _seed_status(s)
+        tipo = TipoEvento(nome="Entretenimento Catalogo")
+        s.add(tipo)
+        s.commit()
+        s.refresh(tipo)
+        ev = Evento(
+            nome="Festival Fora Da Taxonomia",
+            cidade="RJ",
+            estado="RJ",
+            status_id=st.id,
+            agencia_id=ag.id,
+            tipo_id=tipo.id,
+        )
+        s.add(ev)
+        s.commit()
+        s.refresh(ev)
+
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="x.csv",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=ev.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        dados = _base_gold_row()
+        dados["evento"] = ""
+        dados["tipo_evento"] = ""
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=dados, evento_id=ev.id))
+        s.commit()
+        batch_id = batch.id
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert len(rows) == 1
+    assert rows[0]["evento"] == "Festival Fora Da Taxonomia"
+    assert rows[0]["tipo_evento"] == "Entretenimento Catalogo"
 
 
 class TestGetBatch:
@@ -201,6 +295,7 @@ class TestGetBatch:
         assert body["id"] == batch_id
         assert body["stage"] == "bronze"
         assert body["pipeline_status"] == "pending"
+        assert body["pipeline_progress"] is None
 
     def test_returns_404_for_unknown_batch(self, client, engine):
         with Session(engine) as s:
@@ -227,6 +322,9 @@ class TestGetBatch:
             batch.pipeline_report = fake_report
             batch.pipeline_status = PipelineStatus.PASS
             batch.stage = BatchStage.GOLD
+            batch.gold_dq_discarded_rows = 1
+            batch.gold_dq_issue_counts = {"cpf_invalid_discarded": 1}
+            batch.gold_dq_invalid_records_total = 1
             s.add(batch)
             s.commit()
 
@@ -234,7 +332,40 @@ class TestGetBatch:
         assert resp.status_code == 200
         body = resp.json()
         assert body["pipeline_report"]["gate"]["status"] == "PASS"
+        assert body["gold_dq_discarded_rows"] == 1
+        assert body["gold_dq_issue_counts"] == {"cpf_invalid_discarded": 1}
+        assert body["gold_dq_invalid_records_total"] == 1
         assert body["stage"] == "gold"
+        assert body["pipeline_progress"] is None
+
+    def test_returns_pipeline_progress_when_present(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            batch.pipeline_progress = {
+                "step": "normalize_rows",
+                "label": "Normalizando campos (CPF, datas, telefone, local…)",
+                "pct": 40,
+                "updated_at": "2026-04-14T12:34:56.789Z",
+            }
+            s.add(batch)
+            s.commit()
+
+        resp = client.get(f"/leads/batches/{batch_id}", headers=auth)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["pipeline_progress"] == {
+            "step": "normalize_rows",
+            "label": "Normalizando campos (CPF, datas, telefone, local…)",
+            "pct": 40,
+            "updated_at": "2026-04-14T12:34:56.789Z",
+        }
 
 
 class TestExecutarPipeline:
@@ -267,6 +398,16 @@ class TestExecutarPipeline:
         batch_id = _upload_batch(client, auth)
         _promote_to_silver(engine, batch_id, evento.id)
 
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            batch.pipeline_status = PipelineStatus.PASS
+            batch.pipeline_report = {"gate": {"status": "PASS"}}
+            batch.gold_dq_discarded_rows = 9
+            batch.gold_dq_issue_counts = {"cpf_invalid_discarded": 9}
+            batch.gold_dq_invalid_records_total = 9
+            s.add(batch)
+            s.commit()
+
         with patch(
             "app.routers.leads.executar_pipeline_gold",
             new_callable=AsyncMock,
@@ -277,6 +418,239 @@ class TestExecutarPipeline:
         body = resp.json()
         assert body["batch_id"] == batch_id
         assert body["status"] == "queued"
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch.pipeline_status == PipelineStatus.PENDING
+            assert batch.pipeline_report is None
+            assert batch.gold_dq_discarded_rows is None
+            assert batch.gold_dq_issue_counts is None
+            assert batch.gold_dq_invalid_records_total is None
+            assert batch.pipeline_progress == {
+                "step": "queued",
+                "label": "Na fila para processamento",
+                "pct": None,
+                "updated_at": batch.pipeline_progress["updated_at"],
+            }
+            assert str(batch.pipeline_progress["updated_at"]).endswith("Z")
+
+        with patch(
+            "app.routers.leads.executar_pipeline_gold",
+            new_callable=AsyncMock,
+        ):
+            duplicate_resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
+
+        assert duplicate_resp.status_code == 409
+        assert duplicate_resp.json()["detail"]["code"] == "PIPELINE_ALREADY_RUNNING"
+
+
+class TestExecutarPipelineServiceProgress:
+    def test_persists_intermediate_progress_and_clears_it_on_success(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        seen_steps: list[str] = []
+
+        def fake_run_pipeline(config):
+            assert config.on_progress is not None
+
+            with Session(engine) as s:
+                batch = s.get(LeadBatch, batch_id)
+                assert batch.pipeline_progress is not None
+                assert batch.pipeline_progress["step"] == "silver_csv"
+                seen_steps.append(batch.pipeline_progress["step"])
+
+            config.on_progress(
+                PipelineProgressEvent(
+                    step="normalize_rows",
+                    label="Normalizando campos (CPF, datas, telefone, local…)",
+                    pct=40,
+                )
+            )
+
+            with Session(engine) as s:
+                batch = s.get(LeadBatch, batch_id)
+                assert batch.pipeline_progress is not None
+                assert batch.pipeline_progress["step"] == "normalize_rows"
+                assert batch.pipeline_progress["pct"] == 40
+                seen_steps.append(batch.pipeline_progress["step"])
+
+            output_dir = config.output_root / config.lote_id
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            consolidated_path = output_dir / FINAL_FILENAME
+            consolidated_path.write_text(
+                (
+                    "nome,cpf,email,telefone,evento,tipo_evento,local,data_evento,data_nascimento\n"
+                    "Alice,52998224725,alice@ex.com,11999990000,Park Challenge 2025,ESPORTE,"
+                    "Sao Paulo-SP,2026-06-08,1990-01-15\n"
+                ),
+                encoding="utf-8",
+            )
+
+            report_path = output_dir / "report.json"
+            report_path.write_text(
+                json.dumps(
+                    {
+                        "gate": {
+                            "status": "PASS",
+                            "decision": "promote",
+                            "fail_reasons": [],
+                            "warnings": [],
+                        },
+                        "totals": {"discarded_rows": 0},
+                        "quality_metrics": {"cpf_invalid_discarded": 0},
+                        "invalid_records": [],
+                        "exit_code": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            summary_path = output_dir / "validation-summary.md"
+            summary_path.write_text("# summary\n", encoding="utf-8")
+
+            return PipelineResult(
+                lote_id=config.lote_id,
+                status="PASS",
+                decision="promote",
+                output_dir=output_dir,
+                report_path=report_path,
+                summary_path=summary_path,
+                consolidated_path=consolidated_path,
+                exit_code=0,
+            )
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", fake_run_pipeline)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        assert seen_steps == ["silver_csv", "normalize_rows"]
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch.pipeline_status == PipelineStatus.PASS
+            assert batch.stage == BatchStage.GOLD
+            assert batch.pipeline_progress is None
+
+
+class TestNormalizeRowCPFValidation:
+    @pytest.mark.parametrize("cpf", ["52998224726", "11111111111", "12345678909"])
+    def test_marks_invalid_cpf_reasons(self, cpf: str) -> None:
+        _, reasons, _, _ = _normalize_row(
+            _base_gold_row(cpf=cpf),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+        )
+
+        assert "CPF_INVALIDO" in reasons
+
+    def test_accepts_valid_cpf(self) -> None:
+        _, reasons, _, _ = _normalize_row(
+            _base_gold_row(cpf="52998224725"),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+        )
+
+        assert "CPF_INVALIDO" not in reasons
+
+
+class TestNormalizeRowLocalidade:
+    def test_normalizes_locality_from_local_field(self) -> None:
+        normalized, reasons, _, locality = _normalize_row(
+            _base_gold_row(local="Sao Paulo-SP"),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+        )
+
+        assert reasons == []
+        assert locality.issue_code is None
+        assert normalized["cidade"] == "São Paulo"
+        assert normalized["estado"] == "SP"
+        assert normalized["local"] == "São Paulo-SP"
+
+    def test_marks_city_uf_mismatch_without_promoting_raw_location(self) -> None:
+        normalized, reasons, _, locality = _normalize_row(
+            _base_gold_row(cidade="Sao Paulo", estado="RJ", local="Sao Paulo-RJ"),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+        )
+
+        assert reasons == []
+        assert locality.issue_code == "cidade_uf_mismatch"
+        assert normalized["cidade"] == ""
+        assert normalized["estado"] == ""
+        assert normalized["local"] == ""
+
+
+class TestNormalizeDataNascimento:
+    @pytest.mark.parametrize(
+        ("raw_value", "expected_value", "expected_issue"),
+        [
+            ("", "", BirthDateIssue.MISSING),
+            ("   ", "", BirthDateIssue.MISSING),
+            ("1990-01-15", "1990-01-15", None),
+            ("2099-01-01", "", BirthDateIssue.FUTURE),
+            ("1899-12-31", "", BirthDateIssue.BEFORE_MIN),
+            ("lixo", "", BirthDateIssue.UNPARSEABLE),
+        ],
+    )
+    def test_normalize_data_nascimento_returns_expected_status(
+        self,
+        raw_value: str,
+        expected_value: str,
+        expected_issue: BirthDateIssue | None,
+    ) -> None:
+        normalized, issue = normalize_data_nascimento(raw_value, ref_date=date_type(2026, 1, 1))
+
+        assert normalized == expected_value
+        assert issue == expected_issue
+
+
+class TestNormalizeRowBirthDateDQ:
+    @pytest.mark.parametrize(
+        ("raw_value", "expected_issue"),
+        [
+            ("", BirthDateIssue.MISSING),
+            ("lixo", BirthDateIssue.UNPARSEABLE),
+            ("2099-01-01", BirthDateIssue.FUTURE),
+            ("1899-12-31", BirthDateIssue.BEFORE_MIN),
+        ],
+    )
+    def test_birth_date_issue_does_not_discard_row(
+        self,
+        raw_value: str,
+        expected_issue: BirthDateIssue,
+    ) -> None:
+        normalized, reasons, issue, _ = _normalize_row(
+            _base_gold_row(data_nascimento=raw_value),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+        )
+
+        assert normalized["data_nascimento"] == ""
+        assert "DATA_NASCIMENTO_INVALIDA" not in reasons
+        assert issue == expected_issue
+
+
+class TestDatabricksContractBirthDate:
+    @pytest.mark.parametrize("data_nascimento", ["2099-01-01", "1899-12-31"])
+    def test_rejects_birth_date_outside_allowed_range(self, data_nascimento: str) -> None:
+        violations = validate_databricks_contract(
+            _contract_frame(data_nascimento=data_nascimento),
+            ref_date=date_type(2026, 1, 1),
+        )
+
+        assert violations == ["DATA_NASCIMENTO_INVALIDA_NO_PROCESSADO: 1 linha(s)"]
 
 
 class TestLeadEventoInGoldPipeline:
@@ -302,8 +676,20 @@ class TestLeadEventoInGoldPipeline:
             assert batch.gold_dq_discarded_rows == 0
             assert batch.gold_dq_invalid_records_total == 0
             assert batch.gold_dq_issue_counts is not None
-            assert batch.gold_dq_issue_counts.get("cpf_invalid_discarded", 0) == 0
-            assert batch.gold_dq_issue_counts.get("data_nascimento_invalid", 0) == 0
+            for metric_key in (
+                "cpf_invalid_discarded",
+                "telefone_invalid",
+                "data_evento_invalid",
+                "data_nascimento_invalid",
+                "data_nascimento_missing",
+                "duplicidades_cpf_evento",
+                "cidade_fora_mapeamento",
+                "localidade_invalida",
+                "localidade_nao_resolvida",
+                "localidade_fora_brasil",
+                "localidade_cidade_uf_inconsistente",
+            ):
+                assert batch.gold_dq_issue_counts.get(metric_key, 0) == 0
 
             leads = s.exec(select(Lead).where(Lead.batch_id == batch_id)).all()
             assert len(leads) > 0, "Deve ter criado pelo menos um Lead Gold"
@@ -387,7 +773,7 @@ class TestLeadEventoInGoldPipeline:
             assert lead.complemento == "Apto 4"
             assert lead.bairro == "Centro"
             assert lead.cep == "01001-000"
-            assert lead.cidade == "Sao Paulo"
+            assert lead.cidade == "São Paulo"
             assert lead.estado == "SP"
             assert lead.genero == "Feminino"
             assert lead.codigo_promocional == "PROMO10"
@@ -445,6 +831,207 @@ class TestLeadEventoInGoldPipeline:
                 assert le.source_ref_id == al.id
                 assert le.tipo_lead == TipoLead.ATIVACAO
                 assert le.responsavel_tipo == TipoResponsavel.AGENCIA
+
+    def test_failed_rerun_clears_previous_pipeline_snapshot(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            batch.pipeline_status = PipelineStatus.PASS
+            batch.pipeline_report = {"gate": {"status": "PASS"}}
+            batch.gold_dq_discarded_rows = 7
+            batch.gold_dq_issue_counts = {"cpf_invalid_discarded": 7}
+            batch.gold_dq_invalid_records_total = 7
+            s.add(batch)
+            s.commit()
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        def _raise_pipeline_error(*_args, **_kwargs):
+            raise RuntimeError("pipeline exploded")
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", _raise_pipeline_error)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch.pipeline_status == PipelineStatus.FAIL
+            assert batch.pipeline_report is None
+            assert batch.pipeline_progress is None
+            assert batch.gold_dq_discarded_rows is None
+            assert batch.gold_dq_issue_counts is None
+            assert batch.gold_dq_invalid_records_total is None
+
+        resp = client.get(f"/leads/batches/{batch_id}", headers=auth)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["pipeline_status"] == "fail"
+        assert body["pipeline_report"] is None
+        assert body["pipeline_progress"] is None
+        assert body["gold_dq_discarded_rows"] is None
+        assert body["gold_dq_issue_counts"] is None
+        assert body["gold_dq_invalid_records_total"] is None
+
+    def test_missing_birth_date_keeps_lead_and_records_dq(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={"data_nascimento": "   "},
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS_WITH_WARNINGS
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("data_nascimento_missing") == 1
+            assert batch.gold_dq_issue_counts.get("data_nascimento_invalid") == 0
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["invalid_records"] == []
+            assert batch.pipeline_report["gate"]["warnings"] == ["DATA_NASCIMENTO_AUSENTE"]
+            controle = batch.pipeline_report["data_nascimento_controle"]
+            assert len(controle) == 1
+            assert controle[0]["source_file"] == "silver_input.csv"
+            assert controle[0]["source_sheet"] == ""
+            assert controle[0]["source_row"] > 0
+            assert controle[0]["issue"] == "missing"
+
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.data_nascimento is None
+
+    def test_invalid_locality_keeps_lead_and_records_dq(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={
+                "cidade": "Sao Paulo",
+                "estado": "RJ",
+                "local": "Sao Paulo-RJ",
+            },
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS_WITH_WARNINGS
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("localidade_invalida") == 1
+            assert batch.gold_dq_issue_counts.get("localidade_cidade_uf_inconsistente") == 1
+            assert batch.gold_dq_issue_counts.get("localidade_nao_resolvida") == 0
+            assert batch.gold_dq_issue_counts.get("localidade_fora_brasil") == 0
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["invalid_records"] == []
+            assert batch.pipeline_report["gate"]["warnings"] == ["LOCALIDADE_INVALIDA"]
+            controle = batch.pipeline_report["localidade_controle"]
+            assert len(controle) == 1
+            assert controle[0]["source_file"] == "silver_input.csv"
+            assert controle[0]["source_sheet"] == ""
+            assert controle[0]["source_row"] > 0
+            assert controle[0]["issue"] == "cidade_uf_mismatch"
+            assert controle[0]["raw_cidade"] == "Sao Paulo"
+            assert controle[0]["raw_estado"] == "RJ"
+            assert controle[0]["raw_local"] == "Sao Paulo-RJ"
+
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.cidade is None
+            assert lead.estado is None
+            assert lead.sessao is None
+
+    @pytest.mark.parametrize(
+        ("raw_birth_date", "expected_issue"),
+        [
+            ("lixo", "unparseable"),
+            ("2099-01-01", "future"),
+            ("1899-12-31", "before_min"),
+        ],
+    )
+    def test_invalid_birth_date_keeps_lead_and_records_dq(
+        self,
+        client,
+        engine,
+        monkeypatch,
+        raw_birth_date: str,
+        expected_issue: str,
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={"data_nascimento": raw_birth_date},
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS_WITH_WARNINGS
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("data_nascimento_missing") == 0
+            assert batch.gold_dq_issue_counts.get("data_nascimento_invalid") == 1
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["invalid_records"] == []
+            assert batch.pipeline_report["gate"]["warnings"] == ["DATA_NASCIMENTO_INVALIDA"]
+            controle = batch.pipeline_report["data_nascimento_controle"]
+            assert len(controle) == 1
+            assert controle[0]["source_file"] == "silver_input.csv"
+            assert controle[0]["source_sheet"] == ""
+            assert controle[0]["source_row"] > 0
+            assert controle[0]["issue"] == expected_issue
+
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.data_nascimento is None
 
     def test_reprocess_does_not_duplicate_lead_evento(self, client, engine, monkeypatch):
         with Session(engine) as s:

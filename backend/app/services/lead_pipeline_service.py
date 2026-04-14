@@ -86,6 +86,45 @@ def _pipeline_status_from_str(status: str) -> PipelineStatus:
     return mapping.get(status.upper(), PipelineStatus.FAIL)
 
 
+def _gold_dq_snapshot_from_report(report_data: dict[str, Any]) -> tuple[int | None, dict[str, int] | None, int | None]:
+    """Extrai totais do relatório Gold para colunas indexáveis em `lead_batches`."""
+    if not report_data:
+        return None, None, None
+
+    totals = report_data.get("totals") or {}
+    discarded_raw = totals.get("discarded_rows")
+    discarded: int | None
+    if discarded_raw is None:
+        discarded = None
+    else:
+        discarded = int(discarded_raw)
+
+    qm = report_data.get("quality_metrics")
+    parsed: dict[str, int] = {}
+    if isinstance(qm, dict):
+        for key, val in qm.items():
+            if isinstance(val, bool):
+                continue
+            if isinstance(val, (int, float)):
+                parsed[str(key)] = int(val)
+    issue_counts: dict[str, int] | None = parsed
+
+    inv = report_data.get("invalid_records")
+    inv_total: int | None
+    if isinstance(inv, list):
+        inv_total = len(inv)
+    else:
+        inv_total = None
+
+    return discarded, issue_counts, inv_total
+
+
+def _clear_gold_dq_snapshot(batch: LeadBatch) -> None:
+    batch.gold_dq_discarded_rows = None
+    batch.gold_dq_issue_counts = None
+    batch.gold_dq_invalid_records_total = None
+
+
 def _clean_text(value: Any) -> str | None:
     text = str(value or "").strip()
     return text or None
@@ -317,6 +356,10 @@ async def executar_pipeline_gold(batch_id: int) -> None:
             pipeline_status = _pipeline_status_from_str(result.status)
             batch.pipeline_report = report_data
             batch.pipeline_status = pipeline_status
+            disc, issues, inv_n = _gold_dq_snapshot_from_report(report_data)
+            batch.gold_dq_discarded_rows = disc
+            batch.gold_dq_issue_counts = issues
+            batch.gold_dq_invalid_records_total = inv_n
 
             if result.decision == "promote":
                 _inserir_leads_gold(batch, result.consolidated_path, db)
@@ -337,6 +380,7 @@ async def executar_pipeline_gold(batch_id: int) -> None:
             logger.exception("Falha na execução do pipeline para batch %s.", batch_id)
             try:
                 batch.pipeline_status = PipelineStatus.FAIL
+                _clear_gold_dq_snapshot(batch)
                 db.add(batch)
                 db.commit()
             except Exception:

@@ -24,6 +24,9 @@ class LeadBatchRead(BaseModel):
     ativacao_id: Optional[int] = None
     pipeline_status: PipelineStatus
     pipeline_report: Optional[dict[str, Any]] = None
+    gold_dq_discarded_rows: Optional[int] = None
+    gold_dq_issue_counts: Optional[dict[str, int]] = None
+    gold_dq_invalid_records_total: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

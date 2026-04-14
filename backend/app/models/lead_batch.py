@@ -59,6 +59,10 @@ class LeadBatch(SQLModel, table=True):
     ativacao_id: Optional[int] = Field(default=None, foreign_key="ativacao.id", index=True)
     pipeline_status: PipelineStatus = Field(default=PipelineStatus.PENDING, index=True)
     pipeline_report: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    # Resumo persistido da fase Gold (facilita consultas sem parsear pipeline_report).
+    gold_dq_discarded_rows: Optional[int] = Field(default=None)
+    gold_dq_issue_counts: Optional[dict[str, int]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    gold_dq_invalid_records_total: Optional[int] = Field(default=None)
 
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(

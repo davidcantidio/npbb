@@ -298,6 +298,13 @@ class TestLeadEventoInGoldPipeline:
         asyncio.run(executar_pipeline_gold(batch_id))
 
         with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch.gold_dq_discarded_rows == 0
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("cpf_invalid_discarded", 0) == 0
+            assert batch.gold_dq_issue_counts.get("data_nascimento_invalid", 0) == 0
+
             leads = s.exec(select(Lead).where(Lead.batch_id == batch_id)).all()
             assert len(leads) > 0, "Deve ter criado pelo menos um Lead Gold"
 

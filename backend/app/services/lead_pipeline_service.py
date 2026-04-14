@@ -6,14 +6,18 @@ import asyncio
 import csv
 import json
 import logging
+import re
 import shutil
-from datetime import date as date_type
+from datetime import date as date_type, datetime as datetime_type, time as time_type
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from lead_pipeline.constants import ALL_COLUMNS
+from lead_pipeline.normalization import strip_accents
 from lead_pipeline.pipeline import PipelineConfig, run_pipeline
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
 from app.models.lead_public_models import TipoLead
@@ -24,21 +28,9 @@ logger = logging.getLogger(__name__)
 
 TMP_ROOT = Path("/tmp/npbb_pipeline")
 
-_REQUIRED_COLUMNS = [
-    "nome",
-    "cpf",
-    "data_nascimento",
-    "email",
-    "telefone",
-    "evento",
-    "tipo_evento",
-    "local",
-    "data_evento",
-]
-
 
 def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
-    """Lê leads_silver do lote e escreve CSV temporário com REQUIRED_COLUMNS."""
+    """Lê leads_silver do lote e escreve CSV temporário com o contrato Gold."""
     tmp_dir = TMP_ROOT / str(batch_id)
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -48,11 +40,11 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
 
     csv_path = tmp_dir / "silver_input.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=_REQUIRED_COLUMNS)
+        writer = csv.DictWriter(fh, fieldnames=ALL_COLUMNS)
         writer.writeheader()
         for row in silver_rows:
             dados = row.dados_brutos or {}
-            writer.writerow({col: dados.get(col, "") for col in _REQUIRED_COLUMNS})
+            writer.writerow({col: dados.get(col, "") for col in ALL_COLUMNS})
 
     return csv_path
 
@@ -94,6 +86,142 @@ def _pipeline_status_from_str(status: str) -> PipelineStatus:
     return mapping.get(status.upper(), PipelineStatus.FAIL)
 
 
+def _clean_text(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _has_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip() != ""
+    return True
+
+
+def _parse_timestamp(value: Any) -> pd.Timestamp | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    iso_like = re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[ T].*)?", text) is not None
+    parsed = pd.to_datetime(text, errors="coerce", dayfirst=not iso_like)
+    if pd.isna(parsed):
+        return None
+    return parsed
+
+
+def _parse_date_value(value: Any) -> date_type | None:
+    parsed = _parse_timestamp(value)
+    return parsed.date() if parsed is not None else None
+
+
+def _parse_datetime_value(value: Any) -> datetime_type | None:
+    parsed = _parse_timestamp(value)
+    return parsed.to_pydatetime() if parsed is not None else None
+
+
+def _parse_time_value(value: Any) -> time_type | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return time_type.fromisoformat(text)
+    except ValueError:
+        parsed = _parse_timestamp(text)
+        return parsed.time() if parsed is not None else None
+
+
+def _parse_bool_value(value: Any) -> bool | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+
+    normalized = strip_accents(text).lower()
+    true_values = {"1", "true", "t", "sim", "s", "yes", "y", "on"}
+    false_values = {"0", "false", "f", "nao", "n", "no", "off"}
+    if normalized in true_values:
+        return True
+    if normalized in false_values:
+        return False
+    return None
+
+
+def _parse_int_value(value: Any) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        parsed = pd.to_numeric(text, errors="coerce")
+        if pd.isna(parsed):
+            return None
+        return int(parsed)
+
+
+def _build_lead_payload(row: dict[str, str], batch: LeadBatch) -> dict[str, Any]:
+    fonte_origem = _clean_text(row.get("fonte_origem")) or batch.plataforma_origem
+    return {
+        "id_salesforce": _clean_text(row.get("id_salesforce")),
+        "nome": _clean_text(row.get("nome")),
+        "sobrenome": _clean_text(row.get("sobrenome")),
+        "email": _clean_text(row.get("email")),
+        "telefone": _clean_text(row.get("telefone")),
+        "cpf": _clean_text(row.get("cpf")),
+        "data_nascimento": _parse_date_value(row.get("data_nascimento")),
+        "evento_nome": _clean_text(row.get("evento")),
+        "sessao": _clean_text(row.get("sessao")) or _clean_text(row.get("local")),
+        "data_compra": _parse_datetime_value(row.get("data_compra")),
+        "data_compra_data": _parse_date_value(row.get("data_compra_data")),
+        "data_compra_hora": _parse_time_value(row.get("data_compra_hora")),
+        "opt_in": _clean_text(row.get("opt_in")),
+        "opt_in_id": _clean_text(row.get("opt_in_id")),
+        "opt_in_flag": _parse_bool_value(row.get("opt_in_flag")),
+        "metodo_entrega": _clean_text(row.get("metodo_entrega")),
+        "rg": _clean_text(row.get("rg")),
+        "endereco_rua": _clean_text(row.get("endereco_rua")),
+        "endereco_numero": _clean_text(row.get("endereco_numero")),
+        "complemento": _clean_text(row.get("complemento")),
+        "bairro": _clean_text(row.get("bairro")),
+        "cep": _clean_text(row.get("cep")),
+        "cidade": _clean_text(row.get("cidade")),
+        "estado": _clean_text(row.get("estado")),
+        "genero": _clean_text(row.get("genero")),
+        "codigo_promocional": _clean_text(row.get("codigo_promocional")),
+        "ingresso_tipo": _clean_text(row.get("ingresso_tipo")),
+        "ingresso_qtd": _parse_int_value(row.get("ingresso_qtd")),
+        "fonte_origem": fonte_origem,
+        "is_cliente_bb": _parse_bool_value(row.get("is_cliente_bb")),
+        "is_cliente_estilo": _parse_bool_value(row.get("is_cliente_estilo")),
+    }
+
+
+def _merge_lead_payload_if_missing(lead: Lead, payload: dict[str, Any]) -> None:
+    for field, value in payload.items():
+        if not _has_value(value):
+            continue
+        current = getattr(lead, field, None)
+        if _has_value(current):
+            continue
+        setattr(lead, field, value)
+
+
+def _find_existing_lead(db: Session, payload: dict[str, Any]) -> Lead | None:
+    id_salesforce = payload.get("id_salesforce")
+    if _has_value(id_salesforce):
+        lead = db.exec(select(Lead).where(Lead.id_salesforce == id_salesforce)).first()
+        if lead is not None:
+            return lead
+
+    return db.exec(
+        select(Lead)
+        .where(Lead.email == payload.get("email"))
+        .where(Lead.cpf == payload.get("cpf"))
+        .where(Lead.evento_nome == payload.get("evento_nome"))
+        .where(Lead.sessao == payload.get("sessao"))
+    ).first()
+
+
 def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) -> int:
     """Lê o CSV validado e insere leads na tabela `lead`. Retorna quantidade inserida."""
     if not consolidated_path.exists():
@@ -116,41 +244,17 @@ def _inserir_leads_gold(batch: LeadBatch, consolidated_path: Path, db: Session) 
 
     count = 0
     for row in rows:
-        data_nasc: date_type | None = None
-        raw_nasc = (row.get("data_nascimento") or "").strip()
-        if raw_nasc:
-            try:
-                data_nasc = date_type.fromisoformat(raw_nasc)
-            except ValueError:
-                data_nasc = None
-
-        email = row.get("email", "").strip() or None
-        cpf = row.get("cpf", "").strip() or None
-        evento_nome = row.get("evento", "").strip() or None
-        sessao = row.get("local", "").strip() or None
-
-        lead = db.exec(
-            select(Lead)
-            .where(Lead.email == email)
-            .where(Lead.cpf == cpf)
-            .where(Lead.evento_nome == evento_nome)
-            .where(Lead.sessao == sessao)
-        ).first()
+        lead_payload = _build_lead_payload(row, batch)
+        lead = _find_existing_lead(db, lead_payload)
         if lead is None:
-            lead = Lead(
-                nome=row.get("nome", "").strip() or None,
-                email=email,
-                telefone=row.get("telefone", "").strip() or None,
-                cpf=cpf,
-                data_nascimento=data_nasc,
-                evento_nome=evento_nome,
-                sessao=sessao,
-                fonte_origem=batch.plataforma_origem,
-                batch_id=batch.id,
-            )
+            lead = Lead(**lead_payload, batch_id=batch.id)
             db.add(lead)
             db.flush()
             count += 1
+        else:
+            _merge_lead_payload_if_missing(lead, lead_payload)
+            db.add(lead)
+            db.flush()
         if lead.id is not None and batch.evento_id is not None:
             if is_ativacao_batch:
                 ativacao_lead = _get_or_create_ativacao_lead(

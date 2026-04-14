@@ -35,3 +35,26 @@ def test_lead_evento_migration_exists() -> None:
         "Nenhuma migration menciona 'lead_evento'. "
         "ISSUE-F1-01-002 requer migration versionada para a tabela."
     )
+
+
+def test_lead_evento_canonical_origin_migration_exists() -> None:
+    """Verifica que a migration canonica cobre enum legado, checks e triggers de ativacao."""
+    backend_dir = Path(__file__).resolve().parents[1]
+    versions_dir = backend_dir / "alembic" / "versions"
+
+    matching_files: list[str] = []
+    for migration_file in versions_dir.glob("*.py"):
+        content = migration_file.read_text(encoding="utf-8")
+        if (
+            "validate_lead_evento_activation_link" in content
+            and "prevent_ativacao_lead_delete_if_linked" in content
+            and "ck_lead_evento_tipo_lead_proponente" in content
+            and "ck_lead_evento_source_kind_ativacao_requires_tipo_lead" in content
+            and "leadeventosourcekind" in content
+        ):
+            matching_files.append(migration_file.name)
+
+    assert matching_files, (
+        "Nenhuma migration encontrada para a canonicalizacao de origem do lead_evento "
+        "(enum legado, checks e triggers de ativacao)."
+    )

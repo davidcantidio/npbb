@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+from datetime import date as date_type
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -152,28 +153,37 @@ def _upload_batch(
     return resp.json()["id"]
 
 
-def _promote_to_silver(engine, batch_id: int, evento_id: int) -> None:
+def _promote_to_silver(
+    engine,
+    batch_id: int,
+    evento_id: int,
+    *,
+    dados_brutos_extra: dict[str, str] | None = None,
+) -> None:
     """Directly set batch to silver stage and add a silver row."""
     with Session(engine) as s:
         batch = s.get(LeadBatch, batch_id)
         batch.stage = BatchStage.SILVER
         batch.evento_id = evento_id
         s.add(batch)
+        dados_brutos = {
+            "nome": "Alice",
+            "cpf": "12345678901",
+            "email": "alice@ex.com",
+            "telefone": "11999990000",
+            "evento": "Park Challenge 2025",
+            "tipo_evento": "ESPORTE",
+            "local": "Sao Paulo-SP",
+            "data_evento": "2026-06-08",
+            "data_nascimento": "1990-01-15",
+        }
+        if dados_brutos_extra:
+            dados_brutos.update(dados_brutos_extra)
         silver = LeadSilver(
             batch_id=batch_id,
             row_index=0,
             evento_id=evento_id,
-            dados_brutos={
-                "nome": "Alice",
-                "cpf": "12345678901",
-                "email": "alice@ex.com",
-                "telefone": "11999990000",
-                "evento": "Park Challenge 2025",
-                "tipo_evento": "ESPORTE",
-                "local": "Sao Paulo-SP",
-                "data_evento": "2026-06-08",
-                "data_nascimento": "1990-01-15",
-            },
+            dados_brutos=dados_brutos,
         )
         s.add(silver)
         s.commit()
@@ -302,6 +312,83 @@ class TestLeadEventoInGoldPipeline:
                 assert lead_evento.responsavel_tipo == TipoResponsavel.PROPONENTE
                 assert lead_evento.responsavel_nome == evento.nome
                 assert lead_evento.responsavel_agencia_id is None
+
+    def test_promote_to_gold_persists_extended_lead_fields(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={
+                "id_salesforce": "sf-001",
+                "sobrenome": "Silva",
+                "sessao": "Sessao VIP",
+                "data_compra": "2026-02-10T14:35:00",
+                "data_compra_data": "2026-02-10",
+                "data_compra_hora": "14:35:00",
+                "opt_in": "newsletter",
+                "opt_in_id": "opt-123",
+                "opt_in_flag": "Sim",
+                "metodo_entrega": "digital",
+                "rg": "1234567",
+                "endereco_rua": "Rua A",
+                "endereco_numero": "123",
+                "complemento": "Apto 4",
+                "bairro": "Centro",
+                "cep": "01001-000",
+                "cidade": "Sao Paulo",
+                "estado": "SP",
+                "genero": "Feminino",
+                "codigo_promocional": "PROMO10",
+                "ingresso_tipo": "VIP",
+                "ingresso_qtd": "2",
+                "fonte_origem": "crm",
+                "is_cliente_bb": "Sim",
+                "is_cliente_estilo": "Nao",
+            },
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.id_salesforce == "sf-001"
+            assert lead.sobrenome == "Silva"
+            assert lead.sessao == "Sessao VIP"
+            assert lead.data_compra is not None
+            assert lead.data_compra.date() == date_type.fromisoformat("2026-02-10")
+            assert str(lead.data_compra.time()) == "14:35:00"
+            assert lead.data_compra_data == date_type.fromisoformat("2026-02-10")
+            assert str(lead.data_compra_hora) == "14:35:00"
+            assert lead.opt_in == "newsletter"
+            assert lead.opt_in_id == "opt-123"
+            assert lead.opt_in_flag is True
+            assert lead.metodo_entrega == "digital"
+            assert lead.rg == "1234567"
+            assert lead.endereco_rua == "Rua A"
+            assert lead.endereco_numero == "123"
+            assert lead.complemento == "Apto 4"
+            assert lead.bairro == "Centro"
+            assert lead.cep == "01001-000"
+            assert lead.cidade == "Sao Paulo"
+            assert lead.estado == "SP"
+            assert lead.genero == "Feminino"
+            assert lead.codigo_promocional == "PROMO10"
+            assert lead.ingresso_tipo == "VIP"
+            assert lead.ingresso_qtd == 2
+            assert lead.fonte_origem == "crm"
+            assert lead.is_cliente_bb is True
+            assert lead.is_cliente_estilo is False
 
     def test_promote_to_gold_activation_batch_creates_ativacao_lead_and_lead_evento(
         self, client, engine, monkeypatch

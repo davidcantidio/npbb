@@ -94,6 +94,20 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     expect(await screen.findByRole("option", { name: /Evento Teste/i })).toBeInTheDocument();
   });
 
+  it("lists extended lead fields in the canonical mapping dropdown", async () => {
+    renderMapeamentoPage();
+
+    const user = userEvent.setup();
+    await screen.findByText("Nome");
+
+    const comboboxes = screen.getAllByRole("combobox");
+    await user.click(comboboxes[comboboxes.length - 1]);
+
+    expect(await screen.findByRole("option", { name: "sobrenome" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "genero" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "is_cliente_bb" })).toBeInTheDocument();
+  });
+
   it("shows an error alert when reference events fail to load", async () => {
     mockedListReferenciaEventos.mockRejectedValue(new Error("network error"));
 

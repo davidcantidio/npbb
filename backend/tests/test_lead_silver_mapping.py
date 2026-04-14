@@ -102,6 +102,7 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
 
 CSV_CANONICAL = b"nome,cpf,email,telefone\nAlice,12345678901,alice@ex.com,11999990000\n"
 CSV_SYNONYMS = b"full_name,documento,phone\nBob,98765432100,11888880000\n"
+CSV_EXTENDED_SYNONYMS = b"last_name,sexo,rg\nSilva,Feminino,1234567\n"
 CSV_WITH_PREAMBLE = (
     b"linha solta 1,,\n"
     b"linha solta 2,,\n"
@@ -222,6 +223,32 @@ class TestGetColunas:
         assert colunas["documento"]["confianca"] == "synonym_match"
         assert colunas["phone"]["campo_sugerido"] == "telefone"
         assert colunas["phone"]["confianca"] == "synonym_match"
+
+    def test_synonym_match_for_extended_lead_fields(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, CSV_EXTENDED_SYNONYMS)
+        resp = client.get(f"/leads/batches/{batch_id}/colunas", headers=auth)
+        assert resp.status_code == 200
+        colunas = {c["coluna_original"]: c for c in resp.json()["colunas"]}
+        assert colunas["last_name"]["campo_sugerido"] == "sobrenome"
+        assert colunas["last_name"]["confianca"] == "synonym_match"
+        assert colunas["sexo"]["campo_sugerido"] == "genero"
+        assert colunas["sexo"]["confianca"] == "synonym_match"
+        assert colunas["rg"]["campo_sugerido"] == "rg"
+        assert colunas["rg"]["confianca"] == "exact_match"
+
+    def test_cidade_is_suggested_as_exact_canonical_field(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, b"cidade\nSao Paulo\n")
+        resp = client.get(f"/leads/batches/{batch_id}/colunas", headers=auth)
+        assert resp.status_code == 200
+        colunas = {c["coluna_original"]: c for c in resp.json()["colunas"]}
+        assert colunas["cidade"]["campo_sugerido"] == "cidade"
+        assert colunas["cidade"]["confianca"] == "exact_match"
 
     def test_alias_match_from_saved_aliases(self, client, engine):
         with Session(engine) as s:
@@ -464,6 +491,36 @@ class TestPostMapear:
                 "cpf": "98765432100",
                 "email": "bob@ex.com",
             }
+
+    def test_mapping_persists_extended_lead_fields(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        csv_data = b"nome,last_name,sexo,rg\nAlice,Silva,Feminino,1234567\n"
+        batch_id = _upload_batch(client, auth, csv_data)
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {
+                    "nome": "nome",
+                    "last_name": "sobrenome",
+                    "sexo": "genero",
+                    "rg": "rg",
+                },
+            },
+        )
+        assert resp.status_code == 200, resp.text
+
+        with Session(engine) as s:
+            silver_row = s.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).first()
+            assert silver_row is not None
+            assert silver_row.dados_brutos["nome"] == "Alice"
+            assert silver_row.dados_brutos["sobrenome"] == "Silva"
+            assert silver_row.dados_brutos["genero"] == "Feminino"
+            assert silver_row.dados_brutos["rg"] == "1234567"
 
 
 # ---------------------------------------------------------------------------

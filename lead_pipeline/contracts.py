@@ -4,7 +4,7 @@ from datetime import date
 
 import pandas as pd
 
-from .constants import REQUIRED_COLUMNS
+from .constants import ALL_COLUMNS
 
 
 def _is_iso_date(value: str) -> bool:
@@ -22,10 +22,10 @@ def validate_databricks_contract(df: pd.DataFrame) -> list[str]:
     violations: list[str] = []
 
     actual_columns = list(df.columns)
-    if actual_columns != REQUIRED_COLUMNS:
+    if actual_columns != ALL_COLUMNS:
         violations.append(
             "SCHEMA_INVALIDO: colunas esperadas "
-            f"{REQUIRED_COLUMNS}, obtidas {actual_columns}"
+            f"{ALL_COLUMNS}, obtidas {actual_columns}"
         )
         return violations
 

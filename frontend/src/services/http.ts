@@ -318,6 +318,10 @@ export async function handleApiResponse<T>(res: Response): Promise<T> {
 /** Converts unknown errors into user-facing API messages. */
 export function toApiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
+    if (error.code === "TIMEOUT" || error.code === "NETWORK_ERROR") {
+      const msg = error.message?.trim();
+      return msg ? msg : fallback;
+    }
     return detailToMessage(error.detail, error.message || fallback);
   }
   if (error instanceof Error && error.message.trim()) return error.message;

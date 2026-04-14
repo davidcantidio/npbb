@@ -18,24 +18,14 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from lead_pipeline.constants import HEADER_SYNONYMS
+from lead_pipeline.constants import ALL_COLUMNS, HEADER_SYNONYMS
 from lead_pipeline.normalization import canonicalize_header
 
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver
 from app.services.imports.file_reader import read_raw_file_headers, read_raw_file_rows
 
 
-CANONICAL_FIELDS = {
-    "nome",
-    "cpf",
-    "data_nascimento",
-    "email",
-    "telefone",
-    "evento",
-    "tipo_evento",
-    "local",
-    "data_evento",
-}
+CANONICAL_FIELDS = frozenset(ALL_COLUMNS)
 
 Confidence = str  # "exact_match" | "synonym_match" | "alias_match" | "none"
 

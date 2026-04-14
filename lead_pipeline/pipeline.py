@@ -10,7 +10,9 @@ import zipfile
 import pandas as pd
 
 from .constants import (
+    ALL_COLUMNS,
     FINAL_FILENAME,
+    OPTIONAL_COLUMNS,
     REQUIRED_COLUMNS,
     WARNING_ARQUIVO_ENCRIPTADO,
     WARNING_ARQUIVO_FONTE_AGREGADA,
@@ -169,6 +171,8 @@ def _normalize_row(
         "local": local,
         "data_evento": event_date if event_date is not None else "",
     }
+    for column in OPTIONAL_COLUMNS:
+        normalized_row[column] = str(row.get(column, "") or "").strip()
     return normalized_row, reasons
 
 
@@ -387,7 +391,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     else:
         raw_df = pd.DataFrame(
             columns=[
-                *REQUIRED_COLUMNS,
+                *ALL_COLUMNS,
                 CITY_OUT_COL,
                 SHEET_COL_SOURCE,
                 ROW_COL_SOURCE,
@@ -400,7 +404,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     if taxonomy_fail_reasons:
         fail_reasons.extend(taxonomy_fail_reasons)
 
-    raw_export = raw_df[[*REQUIRED_COLUMNS, "source_file", SHEET_COL_SOURCE, ROW_COL_SOURCE]].copy()
+    raw_export = raw_df[[*ALL_COLUMNS, "source_file", SHEET_COL_SOURCE, ROW_COL_SOURCE]].copy()
     raw_export = raw_export.rename(
         columns={
             SHEET_COL_SOURCE: "source_sheet",
@@ -411,7 +415,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     raw_export.to_csv(raw_path, index=False)
 
     for row in raw_df.to_dict(orient="records"):
-        row_data = {column: str(row.get(column, "")) for column in REQUIRED_COLUMNS}
+        row_data = {column: str(row.get(column, "")) for column in ALL_COLUMNS}
         reject_reason = str(row.get(REJECT_REASON_COL, "")).strip()
         if reject_reason:
             explicit_row_warnings.append(reject_reason)
@@ -470,7 +474,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         valid_df = pd.DataFrame(normalized_rows)
     else:
         valid_df = pd.DataFrame(
-            columns=[*REQUIRED_COLUMNS, "__source_file", "__source_sheet", "__source_row", "__row_data"]
+            columns=[*ALL_COLUMNS, "__source_file", "__source_sheet", "__source_row", "__row_data"]
         )
 
     if not valid_df.empty:
@@ -490,9 +494,9 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         valid_df = valid_df[~duplicated_mask]
 
     final_df = (
-        valid_df[REQUIRED_COLUMNS].copy()
+        valid_df[ALL_COLUMNS].copy()
         if not valid_df.empty
-        else pd.DataFrame(columns=REQUIRED_COLUMNS)
+        else pd.DataFrame(columns=ALL_COLUMNS)
     )
 
     contract_violations = validate_databricks_contract(final_df)

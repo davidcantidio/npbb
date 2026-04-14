@@ -4,15 +4,18 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 import re
+from typing import Any
 
 import pandas as pd
 from openpyxl import load_workbook
 
 from .constants import (
+    ALL_COLUMNS,
     CITY_TO_EVENT_DATE,
     CITY_TO_LOCAL_UF,
     EVENTO_PADRAO,
     MAPPING_VERSION,
+    OPTIONAL_COLUMNS,
     REQUIRED_COLUMNS,
     TIPO_EVENTO_PADRAO,
     WARNING_ARQUIVO_ENCRIPTADO,
@@ -104,7 +107,7 @@ class AdaptedInput:
 def _empty_dataframe() -> pd.DataFrame:
     return pd.DataFrame(
         columns=[
-            *REQUIRED_COLUMNS,
+            *ALL_COLUMNS,
             CITY_OUT_COL,
             SHEET_COL_SOURCE,
             ROW_COL_SOURCE,
@@ -245,7 +248,11 @@ def _adapt_canonical(df: pd.DataFrame, input_file: Path) -> tuple[pd.DataFrame, 
         )
         return _empty_dataframe(), fail_reasons
 
-    canonical_df = canonical_df[REQUIRED_COLUMNS].copy()
+    for column in OPTIONAL_COLUMNS:
+        if column not in canonical_df.columns:
+            canonical_df[column] = ""
+
+    canonical_df = canonical_df[ALL_COLUMNS].copy()
     canonical_df[CITY_OUT_COL] = False
     canonical_df[SHEET_COL_SOURCE] = ""
     canonical_df[ROW_COL_SOURCE] = canonical_df.index + 2
@@ -337,10 +344,11 @@ def _build_df_with_meta(
     data_evento: pd.Series | str,
     city_out: pd.Series | bool = False,
     reject_reason: pd.Series | str = "",
+    optional_fields: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
     base_len = len(source_df)
 
-    def series_or_constant(value: pd.Series | str | bool) -> pd.Series:
+    def series_or_constant(value: pd.Series | Any) -> pd.Series:
         if isinstance(value, pd.Series):
             return _clean_series(value).reindex(source_df.index)
         return pd.Series([str(value)] * base_len, index=source_df.index, dtype="object")
@@ -367,6 +375,9 @@ def _build_df_with_meta(
             REJECT_REASON_COL: series_or_constant(reject_reason),
         }
     )
+    for column in OPTIONAL_COLUMNS:
+        raw_value = optional_fields.get(column, "") if optional_fields else ""
+        adapted[column] = series_or_constant(raw_value)
     return adapted
 
 
@@ -405,6 +416,7 @@ def _adapt_park(input_file: Path) -> AdaptedInput:
         local="Florianópolis-SC",
         data_evento=event_date,
         city_out=False,
+        optional_fields={"sobrenome": sobrenome},
     )
     return AdaptedInput(dataframe=adapted, source_profiles=[PROFILE_PARK], fail_reasons=[], warnings=[])
 
@@ -442,6 +454,7 @@ def _adapt_ticketing(input_file: Path) -> AdaptedInput:
             local=local,
             data_evento=event_date,
             city_out=False,
+            optional_fields={"sobrenome": last_name},
         )
         frames.append(adapted)
 
@@ -770,6 +783,7 @@ def _adapt_vert_battle(input_file: Path) -> AdaptedInput:
         local=pd.Series(mapped_local, index=df.index, dtype="object"),
         data_evento=pd.Series(mapped_event_date, index=df.index, dtype="object"),
         city_out=pd.Series(city_out_of_mapping, index=df.index, dtype=bool),
+        optional_fields={"sobrenome": sobrenome},
     )
     return AdaptedInput(
         dataframe=adapted,

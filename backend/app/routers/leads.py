@@ -46,7 +46,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead,
     persist_lead_batch,
 )
-from app.services.imports.file_reader import ImportFileError
+from app.services.imports.file_reader import ImportFileError, read_raw_file_preview
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
 from app.services.lead_pipeline_service import executar_pipeline_gold
 from app.schemas.lead_batch import (
@@ -1340,38 +1340,6 @@ async def commit_import_etl(
 # ---------------------------------------------------------------------------
 
 
-def _read_csv_preview(raw: bytes, max_rows: int = 3) -> dict:
-    try:
-        text = raw.decode("utf-8-sig", errors="ignore")
-    except Exception:
-        text = raw.decode("latin-1", errors="ignore")
-    delimiter = _detect_csv_delimiter(text)
-    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-    rows: list[list[str]] = []
-    for row in reader:
-        rows.append([cell.strip() for cell in row])
-        if len(rows) >= max_rows + 1:
-            break
-    start_index = _detect_data_start_index(rows)
-    headers = rows[start_index] if rows else []
-    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
-    return {"headers": headers, "rows": data_rows[:max_rows], "total_rows": len(data_rows)}
-
-
-def _read_xlsx_preview(raw: bytes, max_rows: int = 3) -> dict:
-    wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-    ws = wb.worksheets[0]
-    rows: list[list[str]] = []
-    total_data = 0
-    for row in ws.iter_rows(values_only=True):
-        rows.append([("" if v is None else str(v)).strip() for v in row])
-    start_index = _detect_data_start_index(rows)
-    headers = rows[start_index] if rows else []
-    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
-    total_data = len(data_rows)
-    return {"headers": headers, "rows": data_rows[:max_rows], "total_rows": total_data}
-
-
 @router.get("/export/gold")
 @router.get("/export/gold/")
 def exportar_leads_gold(
@@ -1410,6 +1378,10 @@ def criar_batch(
     file: UploadFile = File(...),
     plataforma_origem: str = Form(...),
     data_envio: str = Form(...),
+    evento_id: int | None = Form(default=None),
+    origem_lote: str = Form(default="proponente"),
+    tipo_lead_proponente: str | None = Form(default=None),
+    ativacao_id: int | None = Form(default=None),
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -1480,6 +1452,80 @@ def criar_batch(
             field="data_envio",
         )
 
+    resolved_evento_id: int | None = None
+    if evento_id is not None:
+        evento = session.get(Evento, evento_id)
+        if evento is None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="EVENTO_NOT_FOUND",
+                message="Evento informado nao existe",
+                field="evento_id",
+            )
+        resolved_evento_id = evento_id
+
+    origem_clean = (origem_lote or "proponente").strip().lower()
+    if origem_clean not in ("proponente", "ativacao"):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_ORIGEM_LOTE",
+            message="origem_lote deve ser proponente ou ativacao",
+            field="origem_lote",
+        )
+
+    resolved_ativacao_id: int | None = None
+    resolved_tipo_lead_prop: str | None = None
+
+    if origem_clean == "ativacao":
+        if resolved_evento_id is None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="EVENTO_REQUIRED_FOR_ATIVACAO_BATCH",
+                message="evento_id e obrigatorio para importacao por ativacao",
+                field="evento_id",
+            )
+        if ativacao_id is None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ATIVACAO_REQUIRED",
+                message="ativacao_id e obrigatorio quando origem_lote=ativacao",
+                field="ativacao_id",
+            )
+        ativacao_row = session.get(Ativacao, ativacao_id)
+        if ativacao_row is None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ATIVACAO_NOT_FOUND",
+                message="Ativacao nao encontrada",
+                field="ativacao_id",
+            )
+        if int(ativacao_row.evento_id) != int(resolved_evento_id):
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ATIVACAO_EVENTO_MISMATCH",
+                message="ativacao_id deve pertencer ao evento_id informado",
+                field="ativacao_id",
+            )
+        resolved_ativacao_id = int(ativacao_id)
+    else:
+        if ativacao_id is not None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ATIVACAO_NOT_ALLOWED",
+                message="ativacao_id so e permitido quando origem_lote=ativacao",
+                field="ativacao_id",
+            )
+        if tipo_lead_proponente is not None and str(tipo_lead_proponente).strip():
+            t = str(tipo_lead_proponente).strip().lower()
+            if t not in ("bilheteria", "entrada_evento"):
+                raise_http_error(
+                    status.HTTP_400_BAD_REQUEST,
+                    code="INVALID_TIPO_LEAD_PROPONENTE",
+                    message="tipo_lead_proponente deve ser bilheteria ou entrada_evento",
+                    field="tipo_lead_proponente",
+                )
+            resolved_tipo_lead_prop = t
+
     batch = LeadBatch(
         enviado_por=int(current_user.id),
         plataforma_origem=plataforma_origem.strip(),
@@ -1487,6 +1533,10 @@ def criar_batch(
         nome_arquivo_original=filename,
         arquivo_bronze=raw,
         stage=BatchStage.BRONZE,
+        evento_id=resolved_evento_id,
+        origem_lote=origem_clean,
+        tipo_lead_proponente=resolved_tipo_lead_prop,
+        ativacao_id=resolved_ativacao_id,
         pipeline_status=PipelineStatus.PENDING,
     )
     session.add(batch)
@@ -1548,12 +1598,13 @@ def preview_batch(
             message="Arquivo nao encontrado no lote",
         )
     filename = batch.nome_arquivo_original or ""
-    ext = Path(filename).suffix.lower()
     try:
-        if ext == ".csv":
-            result = _read_csv_preview(batch.arquivo_bronze)
-        else:
-            result = _read_xlsx_preview(batch.arquivo_bronze)
+        preview = read_raw_file_preview(batch.arquivo_bronze, filename=filename, sample_rows=3)
+        result = {
+            "headers": preview.headers,
+            "rows": preview.rows,
+            "total_rows": len(preview.rows),
+        }
     except Exception:
         raise_http_error(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

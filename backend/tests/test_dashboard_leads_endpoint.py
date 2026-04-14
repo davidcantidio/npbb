@@ -15,6 +15,8 @@ from app.models.models import (
     LeadEvento,
     LeadEventoSourceKind,
     StatusEvento,
+    TipoLead,
+    TipoResponsavel,
     Usuario,
 )
 from app.utils.security import hash_password
@@ -74,12 +76,20 @@ def add_activation_canonical_link(session: Session, *, ativacao: Ativacao, lead:
     ativacao_lead = AtivacaoLead(ativacao_id=ativacao.id, lead_id=lead.id)
     session.add(ativacao_lead)
     session.flush()
+    evento = session.get(Evento, ativacao.evento_id)
+    assert evento is not None
+    agencia = session.get(Agencia, evento.agencia_id)
+    assert agencia is not None
     session.add(
         LeadEvento(
             lead_id=lead.id,
             evento_id=ativacao.evento_id,
             source_kind=LeadEventoSourceKind.ACTIVATION,
             source_ref_id=ativacao_lead.id,
+            tipo_lead=TipoLead.ATIVACAO,
+            responsavel_tipo=TipoResponsavel.AGENCIA,
+            responsavel_nome=agencia.nome,
+            responsavel_agencia_id=agencia.id,
         )
     )
 

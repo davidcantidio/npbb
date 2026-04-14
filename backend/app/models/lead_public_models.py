@@ -107,6 +107,15 @@ class LeadEvento(SQLModel, table=True):
             name="tipo_lead_ativacao_agencia",
         ),
         CheckConstraint(
+            "tipo_lead IS NULL OR tipo_lead NOT IN ('entrada_evento', 'bilheteria') OR "
+            "(responsavel_tipo IS NOT NULL AND responsavel_tipo = 'proponente')",
+            name="tipo_lead_proponente",
+        ),
+        CheckConstraint(
+            "source_kind != 'ativacao' OR tipo_lead = 'ativacao'",
+            name="source_kind_ativacao_tipo_lead",
+        ),
+        CheckConstraint(
             "responsavel_tipo IS NULL OR "
             "(responsavel_nome IS NOT NULL AND length(trim(responsavel_nome)) > 0)",
             name="responsavel_nome_required",

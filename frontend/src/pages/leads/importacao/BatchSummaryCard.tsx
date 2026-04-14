@@ -54,6 +54,28 @@ export default function BatchSummaryCard({ batch }: { batch: LeadBatch }) {
             </Typography>
             <Typography variant="body2">{formatDateOnly(batch.data_envio)}</Typography>
           </Stack>
+          {batch.evento_id != null ? (
+            <Stack spacing={0.5}>
+              <Typography variant="caption" color="text.secondary">
+                Evento (id)
+              </Typography>
+              <Typography variant="body2">{batch.evento_id}</Typography>
+            </Stack>
+          ) : null}
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="text.secondary">
+              Origem do lote
+            </Typography>
+            <Typography variant="body2">
+              {(batch.origem_lote ?? "proponente") === "ativacao" ? "Ativacao" : "Proponente"}
+              {(batch.origem_lote ?? "proponente") === "ativacao" && batch.ativacao_id != null
+                ? ` (ativacao #${batch.ativacao_id})`
+                : null}
+              {(batch.origem_lote ?? "proponente") === "proponente" && batch.tipo_lead_proponente
+                ? ` — ${batch.tipo_lead_proponente}`
+                : null}
+            </Typography>
+          </Stack>
           <Stack spacing={0.5}>
             <Typography variant="caption" color="text.secondary">
               Stage

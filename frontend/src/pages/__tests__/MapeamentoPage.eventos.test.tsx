@@ -14,7 +14,7 @@ vi.mock("../../services/leads_import", () => ({
   mapearLeadBatch: vi.fn(),
 }));
 
-const EVENTOS_LOAD_ERROR = "Não foi possível carregar os eventos. Tente recarregar a página.";
+const EVENTOS_LOAD_ERROR = "Nao foi possivel carregar os eventos. Tente recarregar a pagina.";
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedGetLeadBatchColunas = vi.mocked(getLeadBatchColunas);
@@ -76,6 +76,27 @@ describe("MapeamentoPage reference events", () => {
 
     await waitFor(() => {
       expect(screen.queryByText(EVENTOS_LOAD_ERROR)).not.toBeInTheDocument();
+    });
+  });
+
+  it("prefills event from initialEventoId after reference events load", async () => {
+    mockedListReferenciaEventos.mockResolvedValue([
+      { id: 42, nome: "Fest Example", data_inicio_prevista: "2026-05-10" },
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<MapeamentoPage batchId={10} initialEventoId={42} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const input = (await screen.findByPlaceholderText(
+      "Selecione ou pesquise o evento...",
+    )) as HTMLInputElement;
+    await waitFor(() => {
+      expect(input.value).toContain("Fest Example");
     });
   });
 });

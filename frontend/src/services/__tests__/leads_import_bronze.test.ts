@@ -42,6 +42,9 @@ describe("leads_import Bronze service", () => {
               nome_arquivo_original: "leads.csv",
               stage: "bronze",
               evento_id: null,
+              origem_lote: "proponente",
+              tipo_lead_proponente: null,
+              ativacao_id: null,
               pipeline_status: "pending",
               created_at: "2026-03-05T12:00:00",
             }),
@@ -67,6 +70,50 @@ describe("leads_import Bronze service", () => {
     );
     expect(result.id).toBe(10);
     expect(result.stage).toBe("bronze");
+  });
+
+  it("createLeadBatch includes evento_id in FormData when provided", async () => {
+    const fetchMock = mockFetchSequence([
+      {
+        ok: true,
+        status: 201,
+        statusText: "Created",
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              id: 11,
+              enviado_por: 2,
+              plataforma_origem: "email",
+              data_envio: "2026-03-05T00:00:00",
+              data_upload: "2026-03-05T12:00:00",
+              nome_arquivo_original: "leads.csv",
+              stage: "bronze",
+              evento_id: 7,
+              origem_lote: "proponente",
+              tipo_lead_proponente: null,
+              ativacao_id: null,
+              pipeline_status: "pending",
+              created_at: "2026-03-05T12:00:00",
+            }),
+          ),
+      },
+    ]);
+
+    const file = new File(["nome,email"], "leads.csv", { type: "text/csv" });
+    await createLeadBatch("token-123", {
+      plataforma_origem: "email",
+      data_envio: "2026-03-05",
+      evento_id: 7,
+      origem_lote: "ativacao",
+      ativacao_id: 3,
+      file,
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = init.body as FormData;
+    expect(body.get("evento_id")).toBe("7");
+    expect(body.get("origem_lote")).toBe("ativacao");
+    expect(body.get("ativacao_id")).toBe("3");
   });
 
   it("getLeadBatchPreview fetches sample contract unchanged", async () => {

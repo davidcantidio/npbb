@@ -102,10 +102,20 @@ export type LeadImportEtlResult = {
   dq_report: LeadImportEtlDQCheckResult[];
 };
 
+export type OrigemLoteLeadBatch = "proponente" | "ativacao";
+
 export type CreateLeadBatchPayload = {
   plataforma_origem: string;
   data_envio: string;
   quem_enviou?: string;
+  /** Evento associado ao lote (opcional na API; obrigatório no fluxo Bronze do shell de importação). */
+  evento_id?: number;
+  /** Origem declarada no upload Bronze (default proponente). */
+  origem_lote?: OrigemLoteLeadBatch;
+  /** Quando origem_lote=proponente: bilheteria ou entrada_evento. */
+  tipo_lead_proponente?: "bilheteria" | "entrada_evento";
+  /** Obrigatório quando origem_lote=ativacao; deve pertencer ao evento_id. */
+  ativacao_id?: number;
   file: File;
 };
 
@@ -118,6 +128,9 @@ export type LeadBatch = {
   nome_arquivo_original: string;
   stage: "bronze" | "silver" | "gold";
   evento_id: number | null;
+  origem_lote: OrigemLoteLeadBatch;
+  tipo_lead_proponente: string | null;
+  ativacao_id: number | null;
   pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail";
   pipeline_report: PipelineReport | null;
   created_at: string;
@@ -233,6 +246,18 @@ export async function createLeadBatch(
   form.append("file", payload.file);
   form.append("plataforma_origem", payload.plataforma_origem);
   form.append("data_envio", payload.data_envio);
+  if (payload.evento_id != null && Number.isFinite(payload.evento_id)) {
+    form.append("evento_id", String(payload.evento_id));
+  }
+  if (payload.origem_lote) {
+    form.append("origem_lote", payload.origem_lote);
+  }
+  if (payload.tipo_lead_proponente) {
+    form.append("tipo_lead_proponente", payload.tipo_lead_proponente);
+  }
+  if (payload.ativacao_id != null && Number.isFinite(payload.ativacao_id)) {
+    form.append("ativacao_id", String(payload.ativacao_id));
+  }
   if (payload.quem_enviou) {
     // Campo reservado para evolucao futura do contrato de API.
     form.append("quem_enviou", payload.quem_enviou);

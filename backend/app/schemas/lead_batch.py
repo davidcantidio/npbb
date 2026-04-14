@@ -19,6 +19,9 @@ class LeadBatchRead(BaseModel):
     nome_arquivo_original: str
     stage: BatchStage
     evento_id: Optional[int] = None
+    origem_lote: str = "proponente"
+    tipo_lead_proponente: Optional[str] = None
+    ativacao_id: Optional[int] = None
     pipeline_status: PipelineStatus
     pipeline_report: Optional[dict[str, Any]] = None
     created_at: datetime

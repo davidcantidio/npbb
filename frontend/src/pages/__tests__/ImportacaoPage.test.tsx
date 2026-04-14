@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -12,21 +12,25 @@ import {
   listReferenciaEventos,
   previewLeadImportEtl,
 } from "../../services/leads_import";
+import { createEventoAtivacao, listEventoAtivacoes } from "../../services/eventos/workflow";
 import { useAuth } from "../../store/auth";
 import ImportacaoPage from "../leads/ImportacaoPage";
 
 vi.mock("../leads/MapeamentoPage", () => ({
   default: ({
     batchId,
+    fixedEventoId,
     onCancel,
     onMapped,
   }: {
     batchId?: number;
+    fixedEventoId?: number | null;
     onCancel?: () => void;
     onMapped?: (result: { batch_id: number; silver_count: number; stage: string }) => void;
   }) => (
     <div>
       <div>{`Mapeamento shell ${batchId ?? 0}`}</div>
+      <div>{fixedEventoId != null ? `Evento fixo shell ${fixedEventoId}` : "Evento editavel shell"}</div>
       <button type="button" onClick={() => onCancel?.()}>
         Cancelar shell mapeamento
       </button>
@@ -72,6 +76,10 @@ vi.mock("../../services/leads_import", () => ({
   listReferenciaEventos: vi.fn(),
   previewLeadImportEtl: vi.fn(),
 }));
+vi.mock("../../services/eventos/workflow", () => ({
+  listEventoAtivacoes: vi.fn(),
+  createEventoAtivacao: vi.fn(),
+}));
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedCommitLeadImportEtl = vi.mocked(commitLeadImportEtl);
@@ -80,6 +88,8 @@ const mockedGetLeadBatch = vi.mocked(getLeadBatch);
 const mockedGetLeadBatchPreview = vi.mocked(getLeadBatchPreview);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 const mockedPreviewLeadImportEtl = vi.mocked(previewLeadImportEtl);
+const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
+const mockedCreateEventoAtivacao = vi.mocked(createEventoAtivacao);
 
 function LocationProbe() {
   const location = useLocation();
@@ -117,6 +127,14 @@ function createXlsxFile() {
   });
 }
 
+function bronzeBatchBase() {
+  return {
+    origem_lote: "proponente" as const,
+    tipo_lead_proponente: "entrada_evento",
+    ativacao_id: null as number | null,
+  };
+}
+
 describe("ImportacaoPage", { timeout: 30000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -133,10 +151,15 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     mockedListReferenciaEventos.mockResolvedValue([
       { id: 42, nome: "Evento ETL", data_inicio_prevista: "2099-01-01" },
     ]);
+    mockedListEventoAtivacoes.mockResolvedValue([]);
   });
 
-  it("renders the canonical Bronze shell with the current date prefilled", () => {
+  it("renders the canonical Bronze shell with the current date prefilled", async () => {
     renderImportacaoPage();
+
+    await waitFor(() => {
+      expect(mockedListReferenciaEventos).toHaveBeenCalledWith("token-123");
+    });
 
     expect(screen.getByText("Importacao de Leads")).toBeInTheDocument();
     expect(screen.getByText("Upload")).toBeInTheDocument();
@@ -169,10 +192,11 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       data_upload: "2026-03-09T12:00:00",
       nome_arquivo_original: "leads.csv",
       stage: "bronze",
-      evento_id: null,
+      evento_id: 42,
       pipeline_status: "pending",
       pipeline_report: null,
       created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
     });
     mockedGetLeadBatchPreview.mockResolvedValue({
       headers: ["nome", "email"],
@@ -188,6 +212,9 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
     await user.click(await screen.findByRole("option", { name: "email" }));
 
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     const csvFile = createCsvFile();
     fireEvent.change(fileInput, { target: { files: [csvFile] } });
@@ -199,7 +226,10 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
         quem_enviou: "demo@npbb.com.br",
         plataforma_origem: "email",
         data_envio: expectedDate,
+        evento_id: 42,
         file: csvFile,
+        origem_lote: "proponente",
+        tipo_lead_proponente: "entrada_evento",
       });
     });
     await waitFor(() => {
@@ -216,6 +246,186 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     });
   });
 
+  it("envia lote de ativacao com ativacao_id selecionada", async () => {
+    mockedListEventoAtivacoes.mockResolvedValue([
+      {
+        id: 5,
+        evento_id: 42,
+        nome: "Stand import",
+        descricao: null,
+        mensagem_qrcode: null,
+        gamificacao_id: null,
+        landing_url: null,
+        qr_code_url: null,
+        url_promotor: null,
+        redireciona_pesquisa: false,
+        checkin_unico: false,
+        termo_uso: false,
+        gera_cupom: false,
+        created_at: "2026-03-09T12:00:00",
+        updated_at: "2026-03-09T12:00:00",
+      },
+    ]);
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 11,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: 42,
+      origem_lote: "ativacao",
+      tipo_lead_proponente: null,
+      ativacao_id: 5,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Bob", "bob@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement;
+    const expectedDate = dateInput.value;
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "email" }));
+
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+
+    await waitFor(() => expect(mockedListEventoAtivacoes).toHaveBeenCalledWith("token-123", 42));
+
+    await user.click(screen.getByRole("radio", { name: /ativacao \(importacao\)/i }));
+
+    await user.click(await screen.findByLabelText(/ativacao vinculada/i));
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByText("Stand import"));
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
+
+    await waitFor(() => {
+      expect(mockedCreateLeadBatch).toHaveBeenCalledWith("token-123", {
+        quem_enviou: "demo@npbb.com.br",
+        plataforma_origem: "email",
+        data_envio: expectedDate,
+        evento_id: 42,
+        file: csvFile,
+        origem_lote: "ativacao",
+        ativacao_id: 5,
+      });
+    });
+  }, 60_000);
+
+  it("bloqueia envio de lote de ativacao sem ativacao selecionada", async () => {
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "email" }));
+
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+
+    await user.click(screen.getByRole("radio", { name: /ativacao \(importacao\)/i }));
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+    const submitButton = screen.getByRole("button", { name: "Enviar para Bronze" });
+
+    expect(submitButton).toBeDisabled();
+    expect(screen.getByText("Selecione a ativacao desta importacao para continuar.")).toBeInTheDocument();
+    expect(mockedCreateLeadBatch).not.toHaveBeenCalled();
+  });
+
+  it("permite criar ativacao ad hoc quando o evento nao tem ativacoes", async () => {
+    const ativacaoCriada = {
+      id: 9,
+      evento_id: 42,
+      nome: "Nova stand",
+      descricao: null,
+      mensagem_qrcode: null,
+      gamificacao_id: null,
+      landing_url: null,
+      qr_code_url: null,
+      url_promotor: null,
+      redireciona_pesquisa: false,
+      checkin_unico: false,
+      termo_uso: false,
+      gera_cupom: false,
+      created_at: "2026-03-09T12:00:00",
+      updated_at: "2026-03-09T12:00:00",
+    };
+    mockedListEventoAtivacoes.mockReset();
+    mockedListEventoAtivacoes.mockResolvedValueOnce([]).mockResolvedValue([ativacaoCriada]);
+    mockedCreateEventoAtivacao.mockResolvedValue(ativacaoCriada);
+
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 12,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: 42,
+      origem_lote: "ativacao",
+      tipo_lead_proponente: null,
+      ativacao_id: 9,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Carol", "carol@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "email" }));
+
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+
+    await user.click(screen.getByRole("radio", { name: /ativacao \(importacao\)/i }));
+
+    await screen.findByText(/Este evento ainda nao possui ativacoes/i);
+    await user.click(screen.getByRole("button", { name: /criar ativacao/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    const nomeInput = within(dialog).getByLabelText(/nome da ativacao/i);
+    fireEvent.change(nomeInput, { target: { value: "Nova stand" } });
+    await user.click(within(dialog).getByRole("button", { name: /^criar$/i }));
+
+    await waitFor(() => expect(mockedCreateEventoAtivacao).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [createCsvFile()] } });
+    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
+
+    await waitFor(() => {
+      expect(mockedCreateLeadBatch).toHaveBeenCalledWith(
+        "token-123",
+        expect.objectContaining({ origem_lote: "ativacao", ativacao_id: 9 }),
+      );
+    });
+  }, 60_000);
+
   it("opens the mapping step inside the same shell and preserves batch_id in the query string", async () => {
     mockedCreateLeadBatch.mockResolvedValue({
       id: 10,
@@ -225,10 +435,11 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       data_upload: "2026-03-09T12:00:00",
       nome_arquivo_original: "leads.csv",
       stage: "bronze",
-      evento_id: null,
+      evento_id: 42,
       pipeline_status: "pending",
       pipeline_report: null,
       created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
     });
     mockedGetLeadBatchPreview.mockResolvedValue({
       headers: ["nome", "email"],
@@ -243,10 +454,11 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       data_upload: "2026-03-09T12:00:00",
       nome_arquivo_original: "leads.csv",
       stage: "bronze",
-      evento_id: null,
+      evento_id: 42,
       pipeline_status: "pending",
       pipeline_report: null,
       created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
     });
 
     const { container } = renderImportacaoPage();
@@ -254,6 +466,9 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
     await user.click(await screen.findByRole("option", { name: "email" }));
+
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
 
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [createCsvFile()] } });
@@ -264,8 +479,13 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: "Ir para Mapeamento" }));
 
     expect(await screen.findByText("Mapeamento shell 10")).toBeInTheDocument();
+    expect(screen.getByText("Evento fixo shell 42")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=10");
     expect(mockedGetLeadBatch).toHaveBeenCalledWith("token-123", 10);
+    expect(mockedCreateLeadBatch).toHaveBeenCalledWith(
+      "token-123",
+      expect.objectContaining({ evento_id: 42 }),
+    );
   });
 
   it("resumes the mapping step from query params and can advance to pipeline without leaving the shell", async () => {
@@ -281,6 +501,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       pipeline_status: "pending",
       pipeline_report: null,
       created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
     });
 
     renderImportacaoPage("/leads/importar?step=mapping&batch_id=10");
@@ -293,6 +514,29 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Pipeline shell 10")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=pipeline&batch_id=10");
+  });
+
+  it("keeps the mapping event editable for legacy batches without evento_id", async () => {
+    mockedGetLeadBatch.mockResolvedValue({
+      id: 10,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: null,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
+    });
+
+    renderImportacaoPage("/leads/importar?step=mapping&batch_id=10");
+
+    expect(await screen.findByText("Mapeamento shell 10")).toBeInTheDocument();
+    expect(screen.getByText("Evento editavel shell")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=10");
   });
 
   it("returns to a fresh Bronze shell from the pipeline step", async () => {

@@ -52,6 +52,11 @@ class LeadBatch(SQLModel, table=True):
 
     stage: BatchStage = Field(default=BatchStage.BRONZE)
     evento_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
+    # proponente | ativacao — importacao Bronze; ativacao exige ativacao_id coerente com evento_id.
+    origem_lote: str = Field(default="proponente", max_length=20, index=True)
+    # bilheteria | entrada_evento quando origem_lote=proponente; None trata como entrada_evento no pipeline.
+    tipo_lead_proponente: Optional[str] = Field(default=None, max_length=32)
+    ativacao_id: Optional[int] = Field(default=None, foreign_key="ativacao.id", index=True)
     pipeline_status: PipelineStatus = Field(default=PipelineStatus.PENDING, index=True)
     pipeline_report: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON, nullable=True))
 

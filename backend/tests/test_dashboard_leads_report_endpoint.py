@@ -14,6 +14,8 @@ from app.models.models import (
     LeadEvento,
     LeadEventoSourceKind,
     StatusEvento,
+    TipoLead,
+    TipoResponsavel,
     Usuario,
 )
 from app.utils.security import hash_password
@@ -67,6 +69,9 @@ def add_direct_canonical_link(session: Session, *, evento: Evento, lead: Lead) -
             evento_id=evento.id,
             source_kind=LeadEventoSourceKind.EVENT_DIRECT,
             source_ref_id=evento.id,
+            tipo_lead=TipoLead.ENTRADA_EVENTO,
+            responsavel_tipo=TipoResponsavel.PROPONENTE,
+            responsavel_nome=evento.nome,
         )
     )
 

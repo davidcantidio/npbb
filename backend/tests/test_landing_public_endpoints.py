@@ -20,7 +20,9 @@ from app.models.models import (
     LeadEventoSourceKind,
     LeadReconhecimentoToken,
     StatusEvento,
+    TipoLead,
     TipoEvento,
+    TipoResponsavel,
     Usuario,
 )
 from app.services.reconhecimento import gerar_token
@@ -308,6 +310,8 @@ def test_public_landing_por_evento_aceita_template_override_transitorio_sem_pers
 def test_public_landing_por_ativacao_normaliza_descricao_e_mensagem_qrcode(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)
+        agencia_id = agencia.id
+        agencia_nome = agencia.nome
         tipo = seed_tipo(session, "Tecnologia")
         evento = seed_evento(
             session,
@@ -334,6 +338,8 @@ def test_public_landing_por_ativacao_normaliza_descricao_e_mensagem_qrcode(clien
 def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)
+        agencia_id = agencia.id
+        agencia_nome = agencia.nome
         tipo = seed_tipo(session, "Tecnologia")
         evento = seed_evento(
             session,
@@ -385,11 +391,63 @@ def test_public_landing_submit_cria_lead_e_vinculo_com_ativacao(client, engine):
         ).first()
         assert conversao is not None
         assert conversao.cpf == "52998224725"
+        lead_evento = session.exec(
+            select(LeadEvento)
+            .where(LeadEvento.lead_id == payload["lead_id"])
+            .where(LeadEvento.evento_id == evento_id)
+        ).first()
+        assert lead_evento is not None
+        assert lead_evento.source_kind == LeadEventoSourceKind.ACTIVATION
+        assert lead_evento.source_ref_id == link.id
+        assert lead_evento.tipo_lead == TipoLead.ATIVACAO
+        assert lead_evento.responsavel_tipo == TipoResponsavel.AGENCIA
+        assert lead_evento.responsavel_nome == agencia_nome
+        assert lead_evento.responsavel_agencia_id == agencia_id
+
+
+def test_public_landing_submit_sem_ativacao_grava_entrada_evento_proponente(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session)
+        tipo = seed_tipo(session, "Corporativo")
+        evento = seed_evento(
+            session,
+            agencia_id=agencia.id,
+            tipo_id=tipo.id,
+            nome="Forum BB Proponente",
+        )
+        evento_id = evento.id
+
+    resp = client.post(
+        f"/landing/eventos/{evento_id}/submit",
+        json={
+            "nome": "Clara",
+            "email": "clara@example.com",
+            "consentimento_lgpd": True,
+        },
+    )
+    assert resp.status_code == 201
+    payload = resp.json()
+
+    with Session(engine) as session:
+        lead_evento = session.exec(
+            select(LeadEvento)
+            .where(LeadEvento.lead_id == payload["lead_id"])
+            .where(LeadEvento.evento_id == evento_id)
+        ).first()
+        assert lead_evento is not None
+        assert lead_evento.source_kind == LeadEventoSourceKind.EVENT_DIRECT
+        assert lead_evento.source_ref_id == evento_id
+        assert lead_evento.tipo_lead == TipoLead.ENTRADA_EVENTO
+        assert lead_evento.responsavel_tipo == TipoResponsavel.PROPONENTE
+        assert lead_evento.responsavel_nome == "Forum BB Proponente"
+        assert lead_evento.responsavel_agencia_id is None
 
 
 def test_public_submit_wrapper_mantem_contrato_do_endpoint_canonico(client, engine):
     with Session(engine) as session:
         agencia = seed_agencia(session)
+        agencia_id = agencia.id
+        agencia_nome = agencia.nome
         tipo = seed_tipo(session, "Tecnologia")
         evento = seed_evento(
             session,
@@ -1064,6 +1122,10 @@ def test_submit_repetido_nao_duplica_ativacao_lead(client, engine):
             .where(AtivacaoLead.ativacao_id == ativacao_id)
         ).all()
         assert len(links) == 1
+        lead_eventos = session.exec(
+            select(LeadEvento).where(LeadEvento.source_ref_id == resp1.json()["ativacao_lead_id"])
+        ).all()
+        assert len(lead_eventos) == 1
 
 
 def test_gamificacao_complete_sucesso(client, engine):
@@ -1300,6 +1362,8 @@ def test_submit_duplicata_mantem_lead_evento_canonico(client, engine):
     """Red test for ISSUE-F1-02-002: duplicata de conversao nao perde o vinculo canonico LeadEvento."""
     with Session(engine) as session:
         agencia = seed_agencia(session)
+        agencia_id = agencia.id
+        agencia_nome = agencia.nome
         tipo = seed_tipo(session, "Tecnologia")
         evento = seed_evento(
             session,
@@ -1325,6 +1389,7 @@ def test_submit_duplicata_mantem_lead_evento_canonico(client, engine):
     assert resp2.status_code == 201
     assert resp2.json()["bloqueado_cpf_duplicado"] is True
     assert resp1.json()["lead_id"] == resp2.json()["lead_id"]
+    assert resp1.json()["ativacao_lead_id"] == resp2.json()["ativacao_lead_id"]
 
     with Session(engine) as session:
         lead_eventos = session.exec(
@@ -1334,5 +1399,9 @@ def test_submit_duplicata_mantem_lead_evento_canonico(client, engine):
         ).all()
         assert len(lead_eventos) == 1, "Deve manter exatamente 1 LeadEvento (idempotente)"
         le = lead_eventos[0]
-        assert le.source_kind in (LeadEventoSourceKind.ACTIVATION, LeadEventoSourceKind.EVENT_DIRECT)
-        assert le.source_ref_id is not None
+        assert le.source_kind == LeadEventoSourceKind.ACTIVATION
+        assert le.source_ref_id == resp1.json()["ativacao_lead_id"]
+        assert le.tipo_lead == TipoLead.ATIVACAO
+        assert le.responsavel_tipo == TipoResponsavel.AGENCIA
+        assert le.responsavel_nome == agencia_nome
+        assert le.responsavel_agencia_id == agencia_id

@@ -18,7 +18,19 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
-from app.models.models import Evento, Lead, LeadEvento, LeadEventoSourceKind, StatusEvento, Usuario
+from app.models.models import (
+    Agencia,
+    Ativacao,
+    AtivacaoLead,
+    Evento,
+    Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
+    StatusEvento,
+    TipoLead,
+    TipoResponsavel,
+    Usuario,
+)
 from app.utils.security import hash_password
 
 
@@ -73,13 +85,27 @@ def _seed_status(session: Session) -> StatusEvento:
     return status
 
 
-def _seed_evento(session: Session) -> Evento:
+def _seed_evento(session: Session, *, agencia_id: int | None = None) -> Evento:
     ev_status = _seed_status(session)
-    evento = Evento(nome="Park Challenge 2025", cidade="SP", estado="SP", status_id=ev_status.id)
+    evento = Evento(
+        nome="Park Challenge 2025",
+        cidade="SP",
+        estado="SP",
+        status_id=ev_status.id,
+        agencia_id=agencia_id,
+    )
     session.add(evento)
     session.commit()
     session.refresh(evento)
     return evento
+
+
+def _seed_agencia(session: Session) -> Agencia:
+    ag = Agencia(nome="Agencia Teste", dominio="ag-teste-import.npbb", lote=1)
+    session.add(ag)
+    session.commit()
+    session.refresh(ag)
+    return ag
 
 
 def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
@@ -93,12 +119,34 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
 CSV_CONTENT = b"nome,cpf,email,telefone\nAlice,12345678901,alice@ex.com,11999990000\n"
 
 
-def _upload_batch(client: TestClient, auth: dict, plataforma: str = "email") -> int:
+def _upload_batch(
+    client: TestClient,
+    auth: dict,
+    plataforma: str = "email",
+    *,
+    evento_id: int | None = None,
+    origem_lote: str | None = None,
+    ativacao_id: int | None = None,
+    tipo_lead_proponente: str | None = None,
+) -> int:
+    data: dict[str, str] = {
+        "plataforma_origem": plataforma,
+        "data_envio": "2026-03-05T10:00:00",
+    }
+    if evento_id is not None:
+        data["evento_id"] = str(evento_id)
+    if origem_lote is not None:
+        data["origem_lote"] = origem_lote
+    if ativacao_id is not None:
+        data["ativacao_id"] = str(ativacao_id)
+    if tipo_lead_proponente is not None:
+        data["tipo_lead_proponente"] = tipo_lead_proponente
+
     resp = client.post(
         "/leads/batches",
         headers=auth,
         files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
-        data={"plataforma_origem": plataforma, "data_envio": "2026-03-05T10:00:00"},
+        data=data,
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
@@ -250,6 +298,59 @@ class TestLeadEventoInGoldPipeline:
                 assert lead_evento.evento_id == evento.id
                 assert lead_evento.source_kind == LeadEventoSourceKind.LEAD_BATCH
                 assert lead_evento.source_ref_id == batch_id
+                assert lead_evento.tipo_lead == TipoLead.ENTRADA_EVENTO
+                assert lead_evento.responsavel_tipo == TipoResponsavel.PROPONENTE
+                assert lead_evento.responsavel_nome == evento.nome
+                assert lead_evento.responsavel_agencia_id is None
+
+    def test_promote_to_gold_activation_batch_creates_ativacao_lead_and_lead_evento(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            agencia = _seed_agencia(s)
+            evento = _seed_evento(s, agencia_id=agencia.id)
+            ativacao = Ativacao(nome="Stand import", evento_id=evento.id)
+            s.add(ativacao)
+            s.commit()
+            s.refresh(ativacao)
+            evento_id = evento.id
+            ativacao_id = ativacao.id
+
+        batch_id = _upload_batch(
+            client,
+            auth,
+            evento_id=evento_id,
+            origem_lote="ativacao",
+            ativacao_id=ativacao_id,
+        )
+        _promote_to_silver(engine, batch_id, evento_id)
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            leads = s.exec(select(Lead).where(Lead.batch_id == batch_id)).all()
+            assert len(leads) > 0
+            for lead in leads:
+                al = s.exec(
+                    select(AtivacaoLead)
+                    .where(AtivacaoLead.ativacao_id == ativacao_id)
+                    .where(AtivacaoLead.lead_id == lead.id)
+                ).first()
+                assert al is not None
+                lead_eventos = s.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+                assert len(lead_eventos) == 1
+                le = lead_eventos[0]
+                assert le.evento_id == evento_id
+                assert le.source_kind == LeadEventoSourceKind.ACTIVATION
+                assert le.source_ref_id == al.id
+                assert le.tipo_lead == TipoLead.ATIVACAO
+                assert le.responsavel_tipo == TipoResponsavel.AGENCIA
 
     def test_reprocess_does_not_duplicate_lead_evento(self, client, engine, monkeypatch):
         with Session(engine) as s:

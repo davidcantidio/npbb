@@ -6,13 +6,24 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
+from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver
-from app.models.models import Evento, Lead, LeadEvento, StatusEvento, Usuario
+from app.models.models import (
+    Evento,
+    Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
+    StatusEvento,
+    TipoLead,
+    TipoResponsavel,
+    Usuario,
+)
+from app.services.imports.contracts import ImportPreviewResult
 from app.utils.security import hash_password
 
 
@@ -91,6 +102,19 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
 
 CSV_CANONICAL = b"nome,cpf,email,telefone\nAlice,12345678901,alice@ex.com,11999990000\n"
 CSV_SYNONYMS = b"full_name,documento,phone\nBob,98765432100,11888880000\n"
+CSV_WITH_PREAMBLE = (
+    b"linha solta 1,,\n"
+    b"linha solta 2,,\n"
+    b"linha solta 3,,\n"
+    b"linha solta 4,,\n"
+    b"linha solta 5,,\n"
+    b"linha solta 6,,\n"
+    b"linha solta 7,,\n"
+    b"linha solta 8,,\n"
+    b"nome,cpf,email\n"
+    b"Alice,12345678901,alice@ex.com\n"
+    b"Bob,98765432100,bob@ex.com\n"
+)
 
 
 def _upload_batch(client: TestClient, auth: dict, csv_content: bytes, plataforma: str = "email") -> int:
@@ -104,12 +128,69 @@ def _upload_batch(client: TestClient, auth: dict, csv_content: bytes, plataforma
     return resp.json()["id"]
 
 
+def _make_xlsx_with_preamble() -> io.BytesIO:
+    wb = Workbook()
+    ws = wb.active
+    for idx in range(8):
+        ws.append([f"linha solta {idx + 1}", "", ""])
+    ws.append(["nome", "cpf", "email"])
+    ws.append(["Alice", "12345678901", "alice@ex.com"])
+    ws.append(["Bob", "98765432100", "bob@ex.com"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+def _upload_xlsx_batch(client: TestClient, auth: dict, workbook: io.BytesIO, plataforma: str = "manual") -> int:
+    resp = client.post(
+        "/leads/batches",
+        headers=auth,
+        files={
+            "file": (
+                "leads.xlsx",
+                workbook,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+        data={"plataforma_origem": plataforma, "data_envio": "2026-03-01T10:00:00"},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]
+
+
 # ---------------------------------------------------------------------------
 # GET /leads/batches/{id}/colunas
 # ---------------------------------------------------------------------------
 
 
 class TestGetColunas:
+    def test_uses_header_only_reader(self, monkeypatch, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, CSV_WITH_PREAMBLE)
+
+        def fake_headers(raw: bytes, *, filename: str) -> ImportPreviewResult:
+            assert filename == "leads.csv"
+            return ImportPreviewResult(
+                filename=filename,
+                headers=["nome", "cpf", "email"],
+                rows=[],
+                delimiter=",",
+                start_index=8,
+            )
+
+        def fail_full_read(*args, **kwargs):
+            raise AssertionError("suggest_column_mapping should not read the full file")
+
+        monkeypatch.setattr("app.services.lead_mapping.read_raw_file_headers", fake_headers)
+        monkeypatch.setattr("app.services.lead_mapping.read_raw_file_rows", fail_full_read)
+
+        resp = client.get(f"/leads/batches/{batch_id}/colunas", headers=auth)
+        assert resp.status_code == 200
+        assert [col["coluna_original"] for col in resp.json()["colunas"]] == ["nome", "cpf", "email"]
+
     def test_exact_match_canonical_fields(self, client, engine):
         with Session(engine) as s:
             auth = _auth_header(client, s)
@@ -178,6 +259,18 @@ class TestGetColunas:
         col = body["colunas"][0]
         assert col["campo_sugerido"] is None
         assert col["confianca"] == "none"
+
+    def test_detects_real_header_after_preamble_rows(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, CSV_WITH_PREAMBLE)
+        resp = client.get(f"/leads/batches/{batch_id}/colunas", headers=auth)
+        assert resp.status_code == 200
+        body = resp.json()
+        colunas = {c["coluna_original"]: c for c in body["colunas"]}
+        assert set(colunas) == {"nome", "cpf", "email"}
+        assert "linha solta 1" not in colunas
 
     def test_returns_404_for_unknown_batch(self, client, engine):
         with Session(engine) as s:
@@ -339,6 +432,39 @@ class TestPostMapear:
         )
         assert resp.status_code == 400
 
+    def test_mapping_skips_preamble_rows_for_xlsx_batches(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_xlsx_batch(client, auth, _make_xlsx_with_preamble())
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {"nome": "nome", "cpf": "cpf", "email": "email"},
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["silver_count"] == 2
+
+        with Session(engine) as s:
+            silver_rows = s.exec(
+                select(LeadSilver).where(LeadSilver.batch_id == batch_id).order_by(LeadSilver.row_index)
+            ).all()
+            assert len(silver_rows) == 2
+            assert silver_rows[0].dados_brutos == {
+                "nome": "Alice",
+                "cpf": "12345678901",
+                "email": "alice@ex.com",
+            }
+            assert silver_rows[1].dados_brutos == {
+                "nome": "Bob",
+                "cpf": "98765432100",
+                "email": "bob@ex.com",
+            }
+
 
 # ---------------------------------------------------------------------------
 # Tests for LeadEvento resolution by evento_nome (ISSUE-F1-03-002)
@@ -467,6 +593,11 @@ class TestEnsureCanonicalEventLink:
 
         assert len(lead_eventos) == 1
         assert lead_eventos[0].evento_id == evento_id
+        assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_NAME_BACKFILL
+        assert lead_eventos[0].tipo_lead == TipoLead.ENTRADA_EVENTO
+        assert lead_eventos[0].responsavel_tipo == TipoResponsavel.PROPONENTE
+        assert lead_eventos[0].responsavel_nome == evento_nome
+        assert lead_eventos[0].responsavel_agencia_id is None
 
     def test_does_not_create_lead_evento_when_ambiguous_match(self, client, engine):
         """Given ambiguous evento match, When link is ensured, Then LeadEvento is NOT created."""

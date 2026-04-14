@@ -19,8 +19,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
 import QuickCreateEventoModal from "../../components/QuickCreateEventoModal";
 import { toApiErrorMessage } from "../../services/http";
 import {
@@ -35,9 +36,8 @@ import {
 import { formatEventoLabel } from "../../utils/formatters";
 import { useAuth } from "../../store/auth";
 
-/** Synthetic option id used to trigger the quick-create modal. */
 const QUICK_CREATE_ID = -1;
-const EVENTOS_LOAD_ERROR = "Não foi possível carregar os eventos. Tente recarregar a página.";
+const EVENTOS_LOAD_ERROR = "Nao foi possivel carregar os eventos. Tente recarregar a pagina.";
 
 const CANONICAL_FIELDS = [
   "nome",
@@ -53,9 +53,9 @@ const CANONICAL_FIELDS = [
 
 const CONFIDENCE_LABELS: Record<ColumnConfidence, string> = {
   exact_match: "Exato",
-  synonym_match: "Sinônimo",
+  synonym_match: "Sinonimo",
   alias_match: "Alias salvo",
-  none: "Sem sugestão",
+  none: "Sem sugestao",
 };
 
 const CONFIDENCE_COLORS: Record<ColumnConfidence, "success" | "info" | "warning" | "default"> = {
@@ -67,12 +67,16 @@ const CONFIDENCE_COLORS: Record<ColumnConfidence, "success" | "info" | "warning"
 
 export type MapeamentoPageProps = {
   batchId?: number;
+  initialEventoId?: number | null;
+  fixedEventoId?: number | null;
   onCancel?: () => void;
   onMapped?: (result: MapearBatchResult) => void;
 };
 
 export default function MapeamentoPage({
   batchId: batchIdProp,
+  initialEventoId = null,
+  fixedEventoId = null,
   onCancel,
   onMapped,
 }: MapeamentoPageProps = {}) {
@@ -80,6 +84,9 @@ export default function MapeamentoPage({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const batchId = batchIdProp ?? Number(searchParams.get("batch_id") ?? "0");
+
+  const fixedEvento = fixedEventoId != null && Number.isFinite(fixedEventoId) ? Number(fixedEventoId) : null;
+  const usesFixedEvento = fixedEvento != null;
 
   const [colunas, setColunas] = useState<ColumnSuggestion[]>([]);
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
@@ -94,6 +101,28 @@ export default function MapeamentoPage({
   const [eventosError, setEventosError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ silver_count: number } | null>(null);
+  const eventoPrefillAppliedForBatchRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    eventoPrefillAppliedForBatchRef.current = null;
+    if (usesFixedEvento) {
+      setEventoId(fixedEvento);
+      setEventoInputValue("");
+      return;
+    }
+    setEventoId("");
+    setEventoInputValue("");
+  }, [batchId, fixedEvento, usesFixedEvento]);
+
+  useEffect(() => {
+    if (usesFixedEvento || !batchId || initialEventoId == null || !Number.isFinite(initialEventoId)) return;
+    if (eventoPrefillAppliedForBatchRef.current === batchId) return;
+    const evento = eventos.find((item) => item.id === initialEventoId);
+    if (!evento) return;
+    setEventoId(initialEventoId);
+    setEventoInputValue(formatEventoLabel(evento.nome, evento.data_inicio_prevista));
+    eventoPrefillAppliedForBatchRef.current = batchId;
+  }, [batchId, eventos, initialEventoId, usesFixedEvento]);
 
   useEffect(() => {
     if (!token || !batchId) return;
@@ -111,6 +140,13 @@ export default function MapeamentoPage({
       .catch((err) => setError(toApiErrorMessage(err, "Falha ao carregar colunas do lote.")))
       .finally(() => setLoadingColunas(false));
 
+    if (usesFixedEvento) {
+      setEventos([]);
+      setEventosError(null);
+      setLoadingEventos(false);
+      return;
+    }
+
     setLoadingEventos(true);
     setEventosError(null);
     listReferenciaEventos(token)
@@ -123,7 +159,7 @@ export default function MapeamentoPage({
         setEventosError(EVENTOS_LOAD_ERROR);
       })
       .finally(() => setLoadingEventos(false));
-  }, [token, batchId]);
+  }, [batchId, token, usesFixedEvento]);
 
   const handleEventoCreated = useCallback(
     (created: { id: number; nome: string; data_inicio_prevista?: string | null }) => {
@@ -140,27 +176,28 @@ export default function MapeamentoPage({
     [],
   );
 
+  const resolvedEventoId = usesFixedEvento ? fixedEvento : typeof eventoId === "number" ? eventoId : null;
+
   const canConfirm = useMemo(() => {
-    if (!eventoId || submitting) return false;
-    const hasMapped = Object.values(mapeamento).some((v) => v !== "");
-    return hasMapped;
-  }, [eventoId, mapeamento, submitting]);
+    if (!resolvedEventoId || submitting) return false;
+    return Object.values(mapeamento).some((value) => value !== "");
+  }, [mapeamento, resolvedEventoId, submitting]);
 
   const handleConfirm = async () => {
-    if (!token || !eventoId) return;
+    if (!token || !resolvedEventoId) return;
     setSubmitting(true);
     setError(null);
     try {
       const activeMapeamento: Record<string, string> = {};
-      for (const [col, campo] of Object.entries(mapeamento)) {
-        if (campo) activeMapeamento[col] = campo;
+      for (const [coluna, campo] of Object.entries(mapeamento)) {
+        if (campo) activeMapeamento[coluna] = campo;
       }
       const res = await mapearLeadBatch(token, batchId, {
-        evento_id: Number(eventoId),
+        evento_id: resolvedEventoId,
         mapeamento: activeMapeamento,
       });
       if (!Number.isFinite(res.batch_id) || res.batch_id <= 0) {
-        throw new Error("Resposta de confirmação não retornou batch_id.");
+        throw new Error("Resposta de confirmacao nao retornou batch_id.");
       }
       if (onMapped) {
         onMapped(res);
@@ -176,11 +213,7 @@ export default function MapeamentoPage({
   };
 
   if (!batchId) {
-    return (
-      <Alert severity="error">
-        batch_id ausente. Acesse esta página a partir do fluxo de importação.
-      </Alert>
-    );
+    return <Alert severity="error">batch_id ausente. Acesse esta pagina a partir do fluxo de importacao.</Alert>;
   }
 
   return (
@@ -191,7 +224,7 @@ export default function MapeamentoPage({
             Mapeamento de Colunas
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Lote #{batchId} — confirme o mapeamento das colunas para os campos canônicos.
+            Lote #{batchId} - confirme o mapeamento das colunas para os campos canonicos.
           </Typography>
         </Box>
       </Stack>
@@ -203,7 +236,7 @@ export default function MapeamentoPage({
           <Stack spacing={2} alignItems="center" textAlign="center">
             <CheckCircleOutlineIcon color="success" sx={{ fontSize: 56 }} />
             <Typography variant="h6" fontWeight={700}>
-              Mapeamento concluído!
+              Mapeamento concluido!
             </Typography>
             <Typography variant="body1" color="text.secondary">
               {result.silver_count} linha{result.silver_count !== 1 ? "s" : ""} persistida
@@ -211,7 +244,7 @@ export default function MapeamentoPage({
             </Typography>
             <Stack direction="row" spacing={2} justifyContent="center">
               <Button variant="outlined" onClick={() => navigate("/leads/importar")}>
-                Nova Importação
+                Nova Importacao
               </Button>
             </Stack>
           </Stack>
@@ -219,74 +252,69 @@ export default function MapeamentoPage({
       ) : (
         <Paper elevation={1} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
           <Stack spacing={3}>
-            {/* Seleção de Evento */}
-            <Box>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                Evento de referência
-              </Typography>
-              {eventosError ? (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setEventosError(null)}>
-                  {eventosError}
-                </Alert>
-              ) : null}
-              {loadingEventos ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Autocomplete<ReferenciaEvento, false, false, false>
-                  options={eventos}
-                  getOptionLabel={(ev) => formatEventoLabel(ev.nome, ev.data_inicio_prevista)}
-                  filterOptions={(options, state) => {
-                    const filtered = options.filter((o) =>
-                      formatEventoLabel(o.nome, o.data_inicio_prevista)
-                        .toLowerCase()
-                        .includes(state.inputValue.toLowerCase()),
-                    );
-                    if (filtered.length === 0 || state.inputValue.trim()) {
-                      filtered.push({
-                        id: QUICK_CREATE_ID,
-                        nome: "+ Criar evento rapidamente",
-                        data_inicio_prevista: null,
-                      });
-                    }
-                    return filtered;
-                  }}
-                  value={eventoId ? (eventos.find((e) => e.id === eventoId) ?? null) : null}
-                  inputValue={eventoInputValue}
-                  onInputChange={(_, value) => setEventoInputValue(value)}
-                  onChange={(_, selected) => {
-                    if (!selected) {
-                      setEventoId("");
-                      return;
-                    }
-                    if (selected.id === QUICK_CREATE_ID) {
-                      setIsQuickCreateOpen(true);
-                      return;
-                    }
-                    setEventoId(selected.id);
-                  }}
-                  sx={{ maxWidth: 480 }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Selecione ou pesquise o evento..."
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <MenuItem
-                      {...props}
-                      key={option.id}
-                      sx={option.id === QUICK_CREATE_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
-                    >
-                      {option.id === QUICK_CREATE_ID
-                        ? option.nome
-                        : formatEventoLabel(option.nome, option.data_inicio_prevista)}
-                    </MenuItem>
-                  )}
-                />
-              )}
-            </Box>
+            {!usesFixedEvento ? (
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                  Evento de referencia
+                </Typography>
+                {eventosError ? (
+                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setEventosError(null)}>
+                    {eventosError}
+                  </Alert>
+                ) : null}
+                {loadingEventos ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <Autocomplete<ReferenciaEvento, false, false, false>
+                    options={eventos}
+                    getOptionLabel={(evento) => formatEventoLabel(evento.nome, evento.data_inicio_prevista)}
+                    filterOptions={(options, state) => {
+                      const filtered = options.filter((evento) =>
+                        formatEventoLabel(evento.nome, evento.data_inicio_prevista)
+                          .toLowerCase()
+                          .includes(state.inputValue.toLowerCase()),
+                      );
+                      if (filtered.length === 0 || state.inputValue.trim()) {
+                        filtered.push({
+                          id: QUICK_CREATE_ID,
+                          nome: "+ Criar evento rapidamente",
+                          data_inicio_prevista: null,
+                        });
+                      }
+                      return filtered;
+                    }}
+                    value={eventoId ? (eventos.find((evento) => evento.id === eventoId) ?? null) : null}
+                    inputValue={eventoInputValue}
+                    onInputChange={(_, value) => setEventoInputValue(value)}
+                    onChange={(_, selected) => {
+                      if (!selected) {
+                        setEventoId("");
+                        return;
+                      }
+                      if (selected.id === QUICK_CREATE_ID) {
+                        setIsQuickCreateOpen(true);
+                        return;
+                      }
+                      setEventoId(selected.id);
+                    }}
+                    sx={{ maxWidth: 480 }}
+                    renderInput={(params) => <TextField {...params} placeholder="Selecione ou pesquise o evento..." />}
+                    renderOption={(props, option) => (
+                      <MenuItem
+                        {...props}
+                        key={option.id}
+                        sx={option.id === QUICK_CREATE_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
+                      >
+                        {option.id === QUICK_CREATE_ID
+                          ? option.nome
+                          : formatEventoLabel(option.nome, option.data_inicio_prevista)}
+                      </MenuItem>
+                    )}
+                  />
+                )}
+              </Box>
+            ) : null}
 
-            {/* Tabela de Mapeamento */}
             <Box>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
                 Mapeamento de colunas
@@ -303,42 +331,38 @@ export default function MapeamentoPage({
                     <TableHead>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 700 }}>Coluna original</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Sugestão automática</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Campo canônico</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Sugestao automatica</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Campo canonico</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {colunas.map((col) => (
-                        <TableRow key={col.coluna_original} hover>
+                      {colunas.map((coluna) => (
+                        <TableRow key={coluna.coluna_original} hover>
                           <TableCell>
                             <Typography variant="body2" fontFamily="monospace">
-                              {col.coluna_original}
+                              {coluna.coluna_original}
                             </Typography>
                           </TableCell>
                           <TableCell>
                             <Chip
-                              label={CONFIDENCE_LABELS[col.confianca]}
-                              color={CONFIDENCE_COLORS[col.confianca]}
+                              label={CONFIDENCE_LABELS[coluna.confianca]}
+                              color={CONFIDENCE_COLORS[coluna.confianca]}
                               size="small"
                               variant="outlined"
                             />
-                            {col.campo_sugerido ? (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ ml: 1 }}
-                              >
-                                → {col.campo_sugerido}
+                            {coluna.campo_sugerido ? (
+                              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                -&gt; {coluna.campo_sugerido}
                               </Typography>
                             ) : null}
                           </TableCell>
                           <TableCell>
                             <Select
-                              value={mapeamento[col.coluna_original] ?? ""}
-                              onChange={(e) =>
+                              value={mapeamento[coluna.coluna_original] ?? ""}
+                              onChange={(event) =>
                                 setMapeamento((prev) => ({
                                   ...prev,
-                                  [col.coluna_original]: e.target.value as string,
+                                  [coluna.coluna_original]: event.target.value as string,
                                 }))
                               }
                               displayEmpty
@@ -363,7 +387,6 @@ export default function MapeamentoPage({
               )}
             </Box>
 
-            {/* Ações */}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
               <Button
                 variant="outlined"
@@ -378,27 +401,21 @@ export default function MapeamentoPage({
               >
                 Cancelar
               </Button>
-              <Button
-                variant="contained"
-                disabled={!canConfirm}
-                onClick={handleConfirm}
-              >
-                {submitting ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  "Confirmar Mapeamento"
-                )}
+              <Button variant="contained" disabled={!canConfirm} onClick={handleConfirm}>
+                {submitting ? <CircularProgress size={18} color="inherit" /> : "Confirmar Mapeamento"}
               </Button>
             </Stack>
           </Stack>
         </Paper>
       )}
 
-      <QuickCreateEventoModal
-        open={isQuickCreateOpen}
-        onClose={() => setIsQuickCreateOpen(false)}
-        onCreated={handleEventoCreated}
-      />
+      {!usesFixedEvento ? (
+        <QuickCreateEventoModal
+          open={isQuickCreateOpen}
+          onClose={() => setIsQuickCreateOpen(false)}
+          onCreated={handleEventoCreated}
+        />
+      ) : null}
     </Box>
   );
 }

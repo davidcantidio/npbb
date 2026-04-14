@@ -13,19 +13,16 @@ Fluxo:
 
 from __future__ import annotations
 
-import csv
-import io
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-from openpyxl import load_workbook
 from sqlmodel import Session, select
 
 from lead_pipeline.constants import HEADER_SYNONYMS
 from lead_pipeline.normalization import canonicalize_header
 
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver
+from app.services.imports.file_reader import read_raw_file_headers, read_raw_file_rows
 
 
 CANONICAL_FIELDS = {
@@ -57,78 +54,23 @@ class MapearResult:
     stage: str
 
 
-def _detect_csv_delimiter(text: str) -> str:
-    first_line = text.splitlines()[0] if text else ""
-    return ";" if first_line.count(";") > first_line.count(",") else ","
-
-
-def _read_headers_from_raw(raw: bytes, filename: str) -> list[str]:
-    ext = Path(filename).suffix.lower()
-    if ext == ".xlsx":
-        wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-        ws = wb.worksheets[0]
-        for row in ws.iter_rows(max_row=1, values_only=True):
-            return [("" if v is None else str(v)).strip() for v in row]
-        return []
-    else:
-        try:
-            text = raw.decode("utf-8-sig", errors="ignore")
-        except Exception:
-            text = raw.decode("latin-1", errors="ignore")
-        delimiter = _detect_csv_delimiter(text)
-        reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-        for row in reader:
-            return [cell.strip() for cell in row]
-        return []
-
-
-def _read_all_rows_from_raw(raw: bytes, filename: str) -> tuple[list[str], list[list[str]]]:
-    """Retorna (headers, data_rows) — todas as linhas de dados (sem limite)."""
-    ext = Path(filename).suffix.lower()
-    if ext == ".xlsx":
-        wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-        ws = wb.worksheets[0]
-        all_rows: list[list[str]] = []
-        for row in ws.iter_rows(values_only=True):
-            all_rows.append([("" if v is None else str(v)).strip() for v in row])
-        headers = all_rows[0] if all_rows else []
-        return headers, all_rows[1:]
-    else:
-        try:
-            text = raw.decode("utf-8-sig", errors="ignore")
-        except Exception:
-            text = raw.decode("latin-1", errors="ignore")
-        delimiter = _detect_csv_delimiter(text)
-        reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-        rows = list(reader)
-        if not rows:
-            return [], []
-        headers = [cell.strip() for cell in rows[0]]
-        data_rows = [[cell.strip() for cell in row] for row in rows[1:] if any(cell.strip() for cell in row)]
-        return headers, data_rows
-
-
 def _suggest_for_header(
     header: str,
     aliases_by_coluna: dict[str, str],
 ) -> tuple[str | None, Confidence]:
     canonical = canonicalize_header(header)
 
-    # exact_match: coluna já é um campo canônico
     if canonical in CANONICAL_FIELDS:
         return canonical, "exact_match"
 
-    # synonym_match: sinônimo definido em HEADER_SYNONYMS
     synonym = HEADER_SYNONYMS.get(canonical)
     if synonym and synonym in CANONICAL_FIELDS:
         return synonym, "synonym_match"
 
-    # alias_match: alias salvo de envios anteriores para a plataforma
     saved = aliases_by_coluna.get(header)
     if saved:
         return saved, "alias_match"
 
-    # Também tenta alias com a versão canonicalizada
     saved_canonical = aliases_by_coluna.get(canonical)
     if saved_canonical:
         return saved_canonical, "alias_match"
@@ -143,14 +85,16 @@ def suggest_column_mapping(
     """Retorna sugestoes automaticas de mapeamento para todas as colunas do lote."""
     batch = db.get(LeadBatch, batch_id)
     if not batch:
-        raise ValueError(f"Lote {batch_id} não encontrado")
+        raise ValueError(f"Lote {batch_id} nao encontrado")
 
-    headers = _read_headers_from_raw(batch.arquivo_bronze, batch.nome_arquivo_original)
+    extracted = read_raw_file_headers(
+        batch.arquivo_bronze,
+        filename=batch.nome_arquivo_original,
+    )
+    headers = extracted.headers
 
     aliases = db.exec(
-        select(LeadColumnAlias).where(
-            LeadColumnAlias.plataforma_origem == batch.plataforma_origem
-        )
+        select(LeadColumnAlias).where(LeadColumnAlias.plataforma_origem == batch.plataforma_origem)
     ).all()
     aliases_by_coluna: dict[str, str] = {a.nome_coluna_original: a.campo_canonico for a in aliases}
 
@@ -159,11 +103,13 @@ def suggest_column_mapping(
         if not header:
             continue
         campo, confianca = _suggest_for_header(header, aliases_by_coluna)
-        suggestions.append(ColumnSuggestion(
-            coluna_original=header,
-            campo_sugerido=campo,
-            confianca=confianca,
-        ))
+        suggestions.append(
+            ColumnSuggestion(
+                coluna_original=header,
+                campo_sugerido=campo,
+                confianca=confianca,
+            )
+        )
     return suggestions
 
 
@@ -177,19 +123,20 @@ def mapear_batch(
     """Aplica mapeamento confirmado, persiste linhas silver, salva aliases, atualiza stage."""
     batch = db.get(LeadBatch, batch_id)
     if not batch:
-        raise ValueError(f"Lote {batch_id} não encontrado")
+        raise ValueError(f"Lote {batch_id} nao encontrado")
 
-    headers, data_rows = _read_all_rows_from_raw(batch.arquivo_bronze, batch.nome_arquivo_original)
+    extracted = read_raw_file_rows(
+        batch.arquivo_bronze,
+        filename=batch.nome_arquivo_original,
+    )
+    headers = extracted.headers
+    data_rows = extracted.rows
 
-    # Delete existing silver rows for this batch (idempotent re-mapping)
-    existing_silver = db.exec(
-        select(LeadSilver).where(LeadSilver.batch_id == batch_id)
-    ).all()
+    existing_silver = db.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all()
     for row in existing_silver:
         db.delete(row)
     db.flush()
 
-    # Persist silver rows
     silver_count = 0
     for row_index, row in enumerate(data_rows):
         dados_brutos: dict[str, Any] = {}
@@ -212,7 +159,6 @@ def mapear_batch(
         db.add(silver)
         silver_count += 1
 
-    # Save / upsert new aliases
     for coluna_original, campo_canonico in mapeamento.items():
         if not campo_canonico:
             continue
@@ -235,7 +181,6 @@ def mapear_batch(
             )
             db.add(alias)
 
-    # Update batch stage and evento_id
     batch.stage = BatchStage.SILVER
     batch.evento_id = evento_id
     db.add(batch)

@@ -26,6 +26,9 @@ test("uploads an XLSX lead file through the browser and opens mapping", async ({
   await page.getByRole("combobox", { name: /plataforma de origem/i }).click();
   await page.getByRole("option", { name: "manual" }).click();
 
+  await page.getByRole("combobox", { name: /evento de referencia/i }).click();
+  await page.getByRole("option").filter({ hasNotText: /selecione o evento/i }).first().click();
+
   const fileInput = page.locator('input[type="file"]');
   await expect(fileInput).toHaveCount(1);
   // The MUI upload button hides the real input; Playwright 1.58 setInputFiles supports that directly.
@@ -54,10 +57,10 @@ test("uploads an XLSX lead file through the browser and opens mapping", async ({
   await expect(page.getByText(/Colunas detectadas:/)).toBeVisible();
 
   await Promise.all([
-    page.waitForURL(/\/leads\/mapeamento\?batch_id=\d+$/),
-    page.getByRole("button", { name: "Avancar para Mapeamento" }).click(),
+    page.waitForURL(/\/leads\/importar\?step=mapping&batch_id=\d+/),
+    page.getByRole("button", { name: "Ir para Mapeamento" }).click(),
   ]);
 
   await expect(page.getByRole("heading", { name: "Mapeamento de Colunas", exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder("Selecione ou pesquise o evento...")).toBeVisible();
+  await expect(page.getByPlaceholder("Selecione ou pesquise o evento...")).toHaveCount(0);
 });

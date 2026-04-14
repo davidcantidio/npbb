@@ -22,18 +22,18 @@ const mockedUseAuth = vi.mocked(useAuth);
 const mockedGetLeadBatchColunas = vi.mocked(getLeadBatchColunas);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 const mockedMapearLeadBatch = vi.mocked(mapearLeadBatch);
-const EVENTOS_LOAD_ERROR = "Não foi possível carregar os eventos. Tente recarregar a página.";
+const EVENTOS_LOAD_ERROR = "Nao foi possivel carregar os eventos. Tente recarregar a pagina.";
 
 function PipelineProbe() {
   const location = useLocation();
   return <div>{`Pipeline route ${location.search}`}</div>;
 }
 
-function renderMapeamentoPage() {
+function renderMapeamentoPage(element = <MapeamentoPage />) {
   return render(
     <MemoryRouter initialEntries={["/leads/mapeamento?batch_id=10"]}>
       <Routes>
-        <Route path="/leads/mapeamento" element={<MapeamentoPage />} />
+        <Route path="/leads/mapeamento" element={element} />
         <Route path="/leads/pipeline" element={<PipelineProbe />} />
       </Routes>
     </MemoryRouter>,
@@ -122,6 +122,29 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     expect(await screen.findByText("Pipeline route ?batch_id=10")).toBeInTheDocument();
   });
 
+  it("confirms with fixed event and skips loading reference events", async () => {
+    mockedMapearLeadBatch.mockResolvedValue({
+      batch_id: 10,
+      silver_count: 1,
+      stage: "silver",
+    });
+
+    renderMapeamentoPage(<MapeamentoPage batchId={10} fixedEventoId={42} />);
+
+    expect(await screen.findByText("Nome")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Selecione ou pesquise o evento...")).not.toBeInTheDocument();
+    expect(mockedListReferenciaEventos).not.toHaveBeenCalled();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Confirmar Mapeamento" }));
+
+    await waitFor(() => {
+      expect(mockedMapearLeadBatch).toHaveBeenCalledWith("token-123", 10, {
+        evento_id: 42,
+        mapeamento: { Nome: "nome" },
+      });
+    });
+  });
+
   it("shows an explicit error instead of navigating when confirmation omits batch id", async () => {
     mockedMapearLeadBatch.mockResolvedValue({
       silver_count: 1,
@@ -132,7 +155,7 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     await selectEventoAndConfirm();
 
     expect(
-      await screen.findByText(/Resposta de confirma\u00e7\u00e3o n\u00e3o retornou batch_id\./),
+      await screen.findByText(/Resposta de confirmacao nao retornou batch_id\./),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Pipeline route \?batch_id=/)).not.toBeInTheDocument();
   });

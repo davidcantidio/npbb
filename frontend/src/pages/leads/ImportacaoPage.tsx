@@ -24,6 +24,7 @@ import {
   previewLeadImportEtl,
   ReferenciaEvento,
 } from "../../services/leads_import";
+import { createEventoAtivacao, listEventoAtivacoes } from "../../services/eventos/workflow";
 import { ApiError, toApiErrorMessage } from "../../services/http";
 import { useAuth } from "../../store/auth";
 import BatchSummaryCard from "./importacao/BatchSummaryCard";
@@ -68,6 +69,14 @@ export default function ImportacaoPage() {
   const [importFlow, setImportFlow] = useState<ImportFlow>(() => (shellStep === "etl" ? "etl" : "bronze"));
   const [eventos, setEventos] = useState<ReferenciaEvento[]>([]);
   const [eventoId, setEventoId] = useState("");
+  const [bronzeEventoId, setBronzeEventoId] = useState("");
+  const [bronzeOrigemLote, setBronzeOrigemLote] = useState<"proponente" | "ativacao">("proponente");
+  const [bronzeTipoLeadProponente, setBronzeTipoLeadProponente] = useState<"bilheteria" | "entrada_evento">(
+    "entrada_evento",
+  );
+  const [bronzeAtivacaoId, setBronzeAtivacaoId] = useState("");
+  const [ativacoes, setAtivacoes] = useState<{ id: number; nome: string }[]>([]);
+  const [loadingAtivacoes, setLoadingAtivacoes] = useState(false);
   const [loadingEventos, setLoadingEventos] = useState(false);
   const [batch, setBatch] = useState<LeadBatch | null>(null);
   const [mappingBatch, setMappingBatch] = useState<LeadBatch | null>(null);
@@ -95,13 +104,28 @@ export default function ImportacaoPage() {
   }, [shellStep]);
 
   useEffect(() => {
-    if (!token || importFlow !== "etl") return;
+    const shouldLoadEventosCatalog = shellStep === "upload" || shellStep === "etl";
+    if (!token || !shouldLoadEventosCatalog || (importFlow !== "etl" && importFlow !== "bronze")) return;
     setLoadingEventos(true);
     listReferenciaEventos(token)
       .then(setEventos)
       .catch(() => setEventos([]))
       .finally(() => setLoadingEventos(false));
-  }, [importFlow, token]);
+  }, [importFlow, shellStep, token]);
+
+  useEffect(() => {
+    if (!token || importFlow !== "bronze" || !bronzeEventoId) {
+      setAtivacoes([]);
+      setBronzeAtivacaoId("");
+      return;
+    }
+    setBronzeAtivacaoId("");
+    setLoadingAtivacoes(true);
+    listEventoAtivacoes(token, Number(bronzeEventoId))
+      .then((rows) => setAtivacoes(rows.map((a) => ({ id: a.id, nome: a.nome }))))
+      .catch(() => setAtivacoes([]))
+      .finally(() => setLoadingAtivacoes(false));
+  }, [bronzeEventoId, importFlow, token]);
 
   useEffect(() => {
     if (!token || shellStep !== "mapping" || routeBatchId <= 0) {
@@ -122,8 +146,32 @@ export default function ImportacaoPage() {
     if (importFlow === "etl") {
       return Boolean(quemEnviou.trim() && file && isEtlFile && eventoId && !loadingSubmit && !loadingEtlPreview);
     }
-    return Boolean(quemEnviou.trim() && plataformaOrigem && dataEnvio && file && !loadingSubmit);
-  }, [dataEnvio, eventoId, file, importFlow, isEtlFile, loadingEtlPreview, loadingSubmit, plataformaOrigem, quemEnviou]);
+    const bronzeOrigemOk =
+      bronzeOrigemLote === "proponente" ||
+      (bronzeOrigemLote === "ativacao" && Boolean(bronzeEventoId) && Boolean(bronzeAtivacaoId));
+    return Boolean(
+      quemEnviou.trim() &&
+        plataformaOrigem &&
+        dataEnvio &&
+        file &&
+        bronzeEventoId &&
+        bronzeOrigemOk &&
+        !loadingSubmit,
+    );
+  }, [
+    bronzeAtivacaoId,
+    bronzeEventoId,
+    bronzeOrigemLote,
+    dataEnvio,
+    eventoId,
+    file,
+    importFlow,
+    isEtlFile,
+    loadingEtlPreview,
+    loadingSubmit,
+    plataformaOrigem,
+    quemEnviou,
+  ]);
 
   const workflowSteps = importFlow === "etl" ? ETL_WORKFLOW_STEPS : BRONZE_WORKFLOW_STEPS;
   const workflowIndex = useMemo(() => {
@@ -153,6 +201,14 @@ export default function ImportacaoPage() {
     setEventoId("");
   };
 
+  const resetEtlPreviewOnly = () => {
+    setEtlPreview(null);
+    setEtlCommitResult(null);
+    setEtlWarningsPending(false);
+    setEtlHeaderRow("");
+    setEtlCpfColumnIndex("");
+  };
+
   const resetErrorState = () => {
     setError(null);
     setLoadingPreview(false);
@@ -165,6 +221,11 @@ export default function ImportacaoPage() {
     setImportFlow(nextFlow);
     setPlataformaOrigem("");
     setFile(null);
+    setBronzeEventoId("");
+    setBronzeOrigemLote("proponente");
+    setBronzeTipoLeadProponente("entrada_evento");
+    setBronzeAtivacaoId("");
+    setAtivacoes([]);
     resetBronzeFlow();
     resetEtlFlow();
     resetErrorState();
@@ -182,12 +243,29 @@ export default function ImportacaoPage() {
     setSearchParams(nextParams);
   };
 
+  const handleCreateAtivacaoAdHoc = async (nome: string) => {
+    if (!token || !bronzeEventoId) {
+      setError("Sessao expirada ou evento nao selecionado.");
+      throw new Error("invalid");
+    }
+    setError(null);
+    try {
+      const created = await createEventoAtivacao(token, Number(bronzeEventoId), { nome });
+      const list = await listEventoAtivacoes(token, Number(bronzeEventoId));
+      setAtivacoes(list.map((a) => ({ id: a.id, nome: a.nome })));
+      setBronzeAtivacaoId(String(created.id));
+    } catch (err) {
+      setError(toApiErrorMessage(err, "Falha ao criar ativacao."));
+      throw err;
+    }
+  };
+
   const handleSelectFile = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0] ?? null;
     setError(null);
     setFile(nextFile);
     resetBronzeFlow();
-    resetEtlFlow();
+    resetEtlPreviewOnly();
   };
 
   const requestEtlPreview = async (
@@ -248,6 +326,14 @@ export default function ImportacaoPage() {
       setError("Preencha todos os campos obrigatorios.");
       return;
     }
+    if (!bronzeEventoId) {
+      setError("Selecione o evento de referencia desta importacao.");
+      return;
+    }
+    if (bronzeOrigemLote === "ativacao" && !bronzeAtivacaoId) {
+      setError("Selecione a ativacao desta importacao ou crie uma nova.");
+      return;
+    }
 
     setLoadingSubmit(true);
     setError(null);
@@ -257,7 +343,13 @@ export default function ImportacaoPage() {
         quem_enviou: quemEnviou.trim(),
         plataforma_origem: plataformaOrigem,
         data_envio: dataEnvio,
+        evento_id: Number(bronzeEventoId),
         file,
+        origem_lote: bronzeOrigemLote,
+        tipo_lead_proponente:
+          bronzeOrigemLote === "proponente" ? bronzeTipoLeadProponente : undefined,
+        ativacao_id:
+          bronzeOrigemLote === "ativacao" ? Number(bronzeAtivacaoId) : undefined,
       });
       setBatch(createdBatch);
 
@@ -357,25 +449,26 @@ export default function ImportacaoPage() {
         {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
 
         {shellStep === "mapping" ? (
-          <Stack spacing={2}>
-            {loadingMappingBatch ? (
-              <Box sx={{ py: 2, display: "flex", justifyContent: "center" }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : mappingBatch ? (
-              <BatchSummaryCard batch={mappingBatch} />
-            ) : null}
-            <MapeamentoPage
-              batchId={routeBatchId}
-              onCancel={() => {
-                resetBronzeFlow();
-                setCanonicalStep("upload");
-              }}
-              onMapped={(result) => {
-                setCanonicalStep("pipeline", result.batch_id);
-              }}
-            />
-          </Stack>
+          loadingMappingBatch ? (
+            <Box sx={{ py: 2, display: "flex", justifyContent: "center" }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : (
+            <Stack spacing={2}>
+              {mappingBatch ? <BatchSummaryCard batch={mappingBatch} /> : null}
+              <MapeamentoPage
+                batchId={routeBatchId}
+                fixedEventoId={mappingBatch?.evento_id ?? null}
+                onCancel={() => {
+                  resetBronzeFlow();
+                  setCanonicalStep("upload");
+                }}
+                onMapped={(result) => {
+                  setCanonicalStep("pipeline", result.batch_id);
+                }}
+              />
+            </Stack>
+          )
         ) : shellStep === "pipeline" ? (
           <PipelineStatusPage
             batchId={routeBatchId}
@@ -386,7 +479,12 @@ export default function ImportacaoPage() {
         ) : (
           <ImportacaoUploadStep
             activeStep={activeStep}
+            ativacoes={ativacoes}
             batch={batch}
+            bronzeAtivacaoId={bronzeAtivacaoId}
+            bronzeEventoId={bronzeEventoId}
+            bronzeOrigemLote={bronzeOrigemLote}
+            bronzeTipoLeadProponente={bronzeTipoLeadProponente}
             canSubmit={canSubmit}
             committingEtl={committingEtl}
             dataEnvio={dataEnvio}
@@ -400,6 +498,7 @@ export default function ImportacaoPage() {
             file={file}
             importFlow={importFlow}
             isEtlFile={isEtlFile}
+            loadingAtivacoes={loadingAtivacoes}
             loadingEtlPreview={loadingEtlPreview}
             loadingEventos={loadingEventos}
             loadingPreview={loadingPreview}
@@ -411,6 +510,16 @@ export default function ImportacaoPage() {
             onCommitEtl={handleCommitEtl}
             onCpfColumnChange={setEtlCpfColumnIndex}
             onCpfColumnSubmit={handleSubmitCpfColumn}
+            onBronzeAtivacaoIdChange={setBronzeAtivacaoId}
+            onBronzeEventoIdChange={setBronzeEventoId}
+            onBronzeOrigemLoteChange={(value) => {
+              setBronzeOrigemLote(value);
+              if (value === "proponente") {
+                setBronzeAtivacaoId("");
+              }
+            }}
+            onBronzeTipoLeadProponenteChange={setBronzeTipoLeadProponente}
+            onCreateAtivacaoAdHoc={handleCreateAtivacaoAdHoc}
             onDataEnvioChange={setDataEnvio}
             onEventoIdChange={setEventoId}
             onFileChange={handleSelectFile}

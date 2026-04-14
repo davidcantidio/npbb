@@ -16,6 +16,7 @@ from app.services.imports.contracts import ImportPreviewResult
 ALLOWED_IMPORT_EXTENSIONS = {".csv", ".xlsx"}
 DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024
 BYTES_PER_MEGABYTE = 1024 * 1024
+HEADER_SCAN_LIMIT = 50
 
 
 @dataclass(frozen=True)
@@ -61,20 +62,136 @@ def _decode_payload(raw: bytes) -> str:
         return raw.decode("latin-1")
 
 
+def _normalize_row(row: list[object] | tuple[object, ...]) -> list[str]:
+    return [("" if cell is None else str(cell)).strip() for cell in row]
+
+
+def _validate_extension(filename: str) -> str:
+    ext = Path(filename).suffix.lower()
+    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+        accepted_extensions = ", ".join(sorted(ALLOWED_IMPORT_EXTENSIONS))
+        raise ImportFileError(
+            code="INVALID_FILE_TYPE",
+            message=f"Arquivo '{ext}' nao e suportado. Extensoes aceitas: {accepted_extensions}",
+            field="file",
+        )
+    return ext
+
+
+def _build_preview_result(
+    *,
+    filename: str,
+    rows: list[list[str]],
+    delimiter: str | None,
+) -> ImportPreviewResult:
+    start_index = detect_data_start_index(rows)
+    headers = rows[start_index] if rows else []
+    data_rows = [row for row in rows[start_index + 1 :] if any(cell.strip() for cell in row)]
+    return ImportPreviewResult(
+        filename=filename,
+        headers=headers,
+        rows=data_rows,
+        delimiter=delimiter,
+        start_index=start_index,
+    )
+
+
+def _read_preview_window_from_rows(
+    rows_iter: Iterator[list[str]],
+    *,
+    filename: str,
+    delimiter: str | None,
+    sample_rows: int,
+    scan_rows: int = HEADER_SCAN_LIMIT,
+) -> ImportPreviewResult:
+    buffered_rows: list[list[str]] = []
+    for row in rows_iter:
+        buffered_rows.append(row)
+        if len(buffered_rows) >= scan_rows:
+            break
+
+    if not buffered_rows:
+        return ImportPreviewResult(
+            filename=filename,
+            headers=[],
+            rows=[],
+            delimiter=delimiter,
+            start_index=0,
+        )
+
+    start_index = detect_data_start_index(buffered_rows)
+    headers = buffered_rows[start_index] if start_index < len(buffered_rows) else []
+    data_rows = [row for row in buffered_rows[start_index + 1 :] if any(cell.strip() for cell in row)]
+
+    while len(data_rows) < sample_rows:
+        try:
+            row = next(rows_iter)
+        except StopIteration:
+            break
+        if any(cell.strip() for cell in row):
+            data_rows.append(row)
+
+    return ImportPreviewResult(
+        filename=filename,
+        headers=headers,
+        rows=data_rows[:sample_rows],
+        delimiter=delimiter,
+        start_index=start_index,
+    )
+
+
+def _read_csv_rows_from_raw(raw: bytes) -> tuple[list[list[str]], str]:
+    text = _decode_payload(raw)
+    delimiter = _detect_csv_delimiter(text[:4096])
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows = [_normalize_row(row) for row in reader]
+    return rows, delimiter
+
+
+def _read_xlsx_rows_from_raw(raw: bytes) -> list[list[str]]:
+    wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+    try:
+        ws = wb.worksheets[0]
+        return [_normalize_row(row) for row in ws.iter_rows(values_only=True)]
+    finally:
+        wb.close()
+
+
+def _read_csv_preview_from_raw(raw: bytes, *, filename: str, sample_rows: int) -> ImportPreviewResult:
+    text = _decode_payload(raw)
+    delimiter = _detect_csv_delimiter(text[:4096])
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    normalized_rows = (_normalize_row(row) for row in reader)
+    return _read_preview_window_from_rows(
+        normalized_rows,
+        filename=filename,
+        delimiter=delimiter,
+        sample_rows=sample_rows,
+    )
+
+
+def _read_xlsx_preview_from_raw(raw: bytes, *, filename: str, sample_rows: int) -> ImportPreviewResult:
+    wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+    try:
+        ws = wb.worksheets[0]
+        normalized_rows = (_normalize_row(row) for row in ws.iter_rows(values_only=True))
+        return _read_preview_window_from_rows(
+            normalized_rows,
+            filename=filename,
+            delimiter=None,
+            sample_rows=sample_rows,
+        )
+    finally:
+        wb.close()
+
+
 def inspect_upload(
     file: UploadFile,
     *,
     max_bytes: int = DEFAULT_IMPORT_MAX_BYTES,
 ) -> tuple[str, str, int]:
     filename = file.filename or ""
-    ext = Path(filename).suffix.lower()
-    if ext not in ALLOWED_IMPORT_EXTENSIONS:
-        accepted_extensions = ", ".join(sorted(ALLOWED_IMPORT_EXTENSIONS))
-        raise ImportFileError(
-            code="INVALID_FILE_TYPE",
-            message=f"Arquivo '{ext}' não é suportado. Extensões aceitas: {accepted_extensions}",
-            field="file",
-        )
+    ext = _validate_extension(filename)
 
     file.file.seek(0, 2)
     size = file.file.tell()
@@ -98,51 +215,37 @@ def inspect_upload(
     return filename, ext, size
 
 
+def read_raw_file_rows(raw: bytes, *, filename: str) -> ImportPreviewResult:
+    ext = _validate_extension(filename)
+    if ext == ".xlsx":
+        rows = _read_xlsx_rows_from_raw(raw)
+        return _build_preview_result(filename=filename, rows=rows, delimiter=None)
+
+    rows, delimiter = _read_csv_rows_from_raw(raw)
+    return _build_preview_result(filename=filename, rows=rows, delimiter=delimiter)
+
+
+def read_raw_file_headers(raw: bytes, *, filename: str) -> ImportPreviewResult:
+    return read_raw_file_preview(raw, filename=filename, sample_rows=0)
+
+
+def read_raw_file_preview(raw: bytes, *, filename: str, sample_rows: int) -> ImportPreviewResult:
+    ext = _validate_extension(filename)
+    if ext == ".xlsx":
+        return _read_xlsx_preview_from_raw(raw, filename=filename, sample_rows=sample_rows)
+    return _read_csv_preview_from_raw(raw, filename=filename, sample_rows=sample_rows)
+
+
 def _read_csv_sample(file: UploadFile, *, max_rows: int) -> ImportPreviewResult:
     file.file.seek(0)
     raw = file.file.read()
-    text = _decode_payload(raw)
-    delimiter = _detect_csv_delimiter(text[:4096])
-    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-    rows: list[list[str]] = []
-    for row in reader:
-        rows.append([str(cell).strip() for cell in row])
-        if len(rows) >= max_rows + 1:
-            break
-
-    start_index = detect_data_start_index(rows)
-    headers = rows[start_index] if rows else []
-    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
-    return ImportPreviewResult(
-        filename=file.filename or "",
-        headers=headers,
-        rows=data_rows,
-        delimiter=delimiter,
-        start_index=start_index,
-    )
+    return read_raw_file_preview(raw, filename=file.filename or "", sample_rows=max_rows)
 
 
 def _read_xlsx_sample(file: UploadFile, *, max_rows: int) -> ImportPreviewResult:
     file.file.seek(0)
-    wb = load_workbook(file.file, read_only=True, data_only=True)
-    ws = wb.worksheets[0]
-
-    rows: list[list[str]] = []
-    for row in ws.iter_rows(max_row=max_rows + 1, values_only=True):
-        rows.append([("" if v is None else str(v)).strip() for v in row])
-        if len(rows) >= max_rows + 1:
-            break
-
-    start_index = detect_data_start_index(rows)
-    headers = rows[start_index] if rows else []
-    data_rows = rows[start_index + 1 :] if len(rows) > start_index + 1 else []
-    return ImportPreviewResult(
-        filename=file.filename or "",
-        headers=headers,
-        rows=data_rows,
-        delimiter=None,
-        start_index=start_index,
-    )
+    raw = file.file.read()
+    return read_raw_file_preview(raw, filename=file.filename or "", sample_rows=max_rows)
 
 
 def read_file_sample(

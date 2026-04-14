@@ -1,5 +1,8 @@
 import { fetchWithAuth, handleApiResponse } from "./http";
 
+/** Servidor le/parseia ficheiros grandes do lote; 20s por defeito e insuficiente com XLSX pesados ou DB lenta. */
+const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
+
 /**
  * Suggested mapping between an imported column and a canonical lead field.
  */
@@ -277,6 +280,7 @@ export async function getLeadBatchPreview(token: string, batchId: number): Promi
   const res = await fetchWithAuth(`/leads/batches/${batchId}/preview`, {
     token,
     retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
   });
   return handleApiResponse<LeadBatchPreview>(res);
 }
@@ -347,7 +351,10 @@ export type ReferenciaEvento = {
  * @throws Error When request fails.
  */
 export async function listReferenciaEventos(token: string): Promise<ReferenciaEvento[]> {
-  const res = await fetchWithAuth("/leads/referencias/eventos", { token });
+  const res = await fetchWithAuth("/leads/referencias/eventos", {
+    token,
+    timeoutMs: 60_000,
+  });
   return handleApiResponse<ReferenciaEvento[]>(res);
 }
 
@@ -380,7 +387,10 @@ export type MapearBatchResult = {
 };
 
 export async function getLeadBatchColunas(token: string, batchId: number): Promise<ColunasResponse> {
-  const res = await fetchWithAuth(`/leads/batches/${batchId}/colunas`, { token });
+  const res = await fetchWithAuth(`/leads/batches/${batchId}/colunas`, {
+    token,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+  });
   return handleApiResponse<ColunasResponse>(res);
 }
 
@@ -395,6 +405,7 @@ export async function mapearLeadBatch(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
   });
   return handleApiResponse<MapearBatchResult>(res);
 }
@@ -412,6 +423,7 @@ export async function executarPipeline(
     method: "POST",
     token,
     retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
   });
   return handleApiResponse<ExecutarPipelineResult>(res);
 }

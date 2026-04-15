@@ -6,6 +6,7 @@ import PipelineStatusPage from "../leads/PipelineStatusPage";
 import { useAuth } from "../../store/auth";
 import {
   executarPipeline,
+  getApiReadiness,
   getLeadBatch,
   type LeadBatch,
   type PipelineReport,
@@ -14,11 +15,13 @@ import {
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/leads_import", () => ({
   executarPipeline: vi.fn(),
+  getApiReadiness: vi.fn(),
   getLeadBatch: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedExecutarPipeline = vi.mocked(executarPipeline);
+const mockedGetApiReadiness = vi.mocked(getApiReadiness);
 const mockedGetLeadBatch = vi.mocked(getLeadBatch);
 
 const basePipelineReport: PipelineReport = {
@@ -95,6 +98,7 @@ describe("PipelineStatusPage", () => {
       logout: vi.fn(),
     });
     mockedExecutarPipeline.mockResolvedValue({ batch_id: 10, status: "queued" });
+    mockedGetApiReadiness.mockResolvedValue({ status: "ready" });
     mockedGetLeadBatch.mockResolvedValue(
       createBatch({
         stage: "silver",
@@ -185,6 +189,55 @@ describe("PipelineStatusPage", () => {
     });
 
     expect(mockedGetLeadBatch).toHaveBeenCalledTimes(2);
+  }, 10000);
+
+  it("does not start overlapping polling requests when a status request is still running", async () => {
+    let resolveSecondRequest: ((value: LeadBatch) => void) | undefined;
+    mockedGetLeadBatch
+      .mockResolvedValueOnce(
+        createBatch({
+          stage: "silver",
+          pipeline_status: "pending",
+          pipeline_progress: {
+            step: "normalize_rows",
+            label: "Normalizando campos",
+            pct: 40,
+            updated_at: "2026-04-14T12:34:56.789Z",
+          },
+          pipeline_report: null,
+        }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<LeadBatch>((resolve) => {
+            resolveSecondRequest = resolve;
+          }),
+      );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText("Normalizando campos")).toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveSecondRequest?.(
+        createBatch({
+          stage: "gold",
+          pipeline_status: "pass",
+          pipeline_progress: null,
+        }),
+      );
+      await Promise.resolve();
+    });
   }, 10000);
 
   it("shows indeterminate progress when pct is null", async () => {

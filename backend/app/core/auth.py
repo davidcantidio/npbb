@@ -14,6 +14,19 @@ SESSION_COOKIE_NAME = "npbb_access_token"
 http_bearer = HTTPBearer(auto_error=False)
 
 
+def _database_unavailable_exception(exc: OperationalError) -> HTTPException:
+    msg = str(exc.orig) if getattr(exc, "orig", None) else str(exc)
+    raw = msg.lower()
+    code = "DB_TIMEOUT" if "timeout" in raw or "timed out" in raw or "10060" in raw else "DB_UNAVAILABLE"
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "code": code,
+            "message": "Banco de dados indisponivel durante a autenticacao.",
+        },
+    )
+
+
 def _resolve_token_value(
     token: str | None,
     bearer: HTTPAuthorizationCredentials | None,
@@ -77,12 +90,12 @@ def get_current_user(
             "OperationalError_on_usuario_get",
             {
                 "msg_prefix": msg[:240],
-                "has_timeout": "timed out" in msg.lower() or "10060" in msg,
+                "has_timeout": "timeout" in msg.lower() or "timed out" in msg.lower() or "10060" in msg,
                 "has_server_closed": "server closed the connection" in msg.lower(),
             },
             "H2",
         )
-        raise
+        raise _database_unavailable_exception(e) from e
     # #endregion
     if not usuario or not usuario.ativo:
         raise HTTPException(
@@ -117,7 +130,10 @@ def get_current_user_optional(
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
         return None
 
-    usuario = session.get(Usuario, user_id)
+    try:
+        usuario = session.get(Usuario, user_id)
+    except OperationalError as e:
+        raise _database_unavailable_exception(e) from e
     if not usuario or not usuario.ativo:
         return None
     return usuario

@@ -1,4 +1,5 @@
 import os
+from time import perf_counter
 
 from fastapi import FastAPI
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -6,7 +7,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 
+from app.db.database import engine, get_database_endpoint_info
 from app.routers.agencias import router as agencias_router
 from app.routers.ativacao import eventos_router as eventos_ativacao_router
 from app.routers.ativacao import router as ativacao_router
@@ -66,6 +70,32 @@ app.add_middleware(
 )
 
 
+def _database_error_detail(exc: OperationalError, *, path: str | None = None) -> dict[str, object]:
+    raw = str(getattr(exc, "orig", exc)).lower()
+    is_timeout = "timeout" in raw or "timed out" in raw or "10060" in raw
+    message = (
+        "Banco de dados indisponivel ou demorando para responder."
+        if is_timeout
+        else "Banco de dados indisponivel."
+    )
+    detail: dict[str, object] = {
+        "code": "DB_TIMEOUT" if is_timeout else "DB_UNAVAILABLE",
+        "message": message,
+        "database": get_database_endpoint_info(),
+    }
+    if path:
+        detail["path"] = path
+    return detail
+
+
+@app.exception_handler(OperationalError)
+async def database_operational_error_handler(request, exc: OperationalError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": _database_error_detail(exc, path=request.url.path)},
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def questionario_validation_exception_handler(request, exc: RequestValidationError):
     if "/questionario" not in request.url.path:
@@ -100,6 +130,31 @@ async def questionario_validation_exception_handler(request, exc: RequestValidat
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def readiness_check():
+    started_at = perf_counter()
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("select 1"))
+    except OperationalError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unavailable",
+                "detail": _database_error_detail(exc, path="/health/ready"),
+            },
+        )
+
+    return {
+        "status": "ready",
+        "database": {
+            "status": "ok",
+            "endpoint": get_database_endpoint_info(),
+            "elapsed_ms": round((perf_counter() - started_at) * 1000),
+        },
+    }
 
 
 @app.get("/novo-usuario", response_class=HTMLResponse, include_in_schema=False)

@@ -13,6 +13,19 @@ from app.db.metadata import SQLModel
 from dotenv import load_dotenv
 
 
+def _env_int(name: str, default: int, *, min_value: int | None = None) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    if min_value is not None:
+        return max(min_value, value)
+    return value
+
+
 def _agent_debug_ndjson(
     location: str,
     message: str,
@@ -57,6 +70,11 @@ def _safe_db_endpoint(url: str) -> dict:
         }
     except Exception:
         return {"driver": "postgresql", "parse": "failed"}
+
+
+def get_database_endpoint_info() -> dict:
+    """Retorna informacoes nao sensiveis do banco configurado."""
+    return _safe_db_endpoint(str(engine.url))
 
 
 def _load_env() -> None:
@@ -133,10 +151,36 @@ def _pool_kwargs_for_url(url: str) -> dict:
     """Opções de pool para Postgres remoto (ex.: Supabase + PgBouncer)."""
     if url.startswith("sqlite"):
         return {}
-    return {
+    kwargs: dict = {
         "pool_pre_ping": True,
-        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "2800")),
+        "pool_recycle": _env_int("DB_POOL_RECYCLE", 2800, min_value=1),
+        "pool_timeout": _env_int("DB_POOL_TIMEOUT", 5, min_value=1),
     }
+    if os.getenv("DB_POOL_SIZE"):
+        kwargs["pool_size"] = _env_int("DB_POOL_SIZE", 5, min_value=1)
+    if os.getenv("DB_MAX_OVERFLOW"):
+        kwargs["max_overflow"] = _env_int("DB_MAX_OVERFLOW", 5)
+    return kwargs
+
+
+def _postgres_connect_args() -> dict:
+    connect_args: dict = {
+        "connect_timeout": _env_int("DB_CONNECT_TIMEOUT", 5, min_value=1),
+        "keepalives": 1,
+        "keepalives_idle": _env_int("DB_KEEPALIVES_IDLE", 30, min_value=1),
+        "keepalives_interval": _env_int("DB_KEEPALIVES_INTERVAL", 10, min_value=1),
+        "keepalives_count": _env_int("DB_KEEPALIVES_COUNT", 3, min_value=1),
+    }
+    statement_timeout_ms = _env_int("DB_STATEMENT_TIMEOUT_MS", 15000, min_value=0)
+    db_options = os.getenv("DB_OPTIONS", "").strip()
+    options: list[str] = []
+    if db_options:
+        options.append(db_options)
+    if statement_timeout_ms > 0:
+        options.append(f"-c statement_timeout={statement_timeout_ms}")
+    if options:
+        connect_args["options"] = " ".join(options)
+    return connect_args
 
 
 def _build_engine():
@@ -145,9 +189,7 @@ def _build_engine():
     if url.startswith("sqlite"):
         connect_args: dict = {"check_same_thread": False}
     else:
-        connect_args = {
-            "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "15")),
-        }
+        connect_args = _postgres_connect_args()
     echo = os.getenv("SQL_ECHO", "false").lower() == "true"
     engine_kwargs: dict = {"echo": echo, "connect_args": connect_args, **_pool_kwargs_for_url(url)}
     # #region agent log
@@ -174,7 +216,11 @@ engine = _build_engine()
 def get_session():
     """Fornece uma sessao de banco para injecao de dependencia."""
     with Session(engine) as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
 
 
 def init_db():

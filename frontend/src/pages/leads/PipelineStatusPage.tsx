@@ -23,6 +23,7 @@ import {
   type LeadBatch,
   type PipelineReport,
   executarPipeline,
+  getApiReadiness,
   getLeadBatch,
 } from "../../services/leads_import";
 import { useAuth } from "../../store/auth";
@@ -383,18 +384,34 @@ export default function PipelineStatusPage({
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readinessCheckedRef = useRef(false);
 
   const stopPolling = () => {
     if (pollRef.current) {
-      clearInterval(pollRef.current);
+      clearTimeout(pollRef.current);
       pollRef.current = null;
     }
+  };
+
+  const schedulePolling = () => {
+    stopPolling();
+    pollRef.current = setTimeout(() => {
+      pollRef.current = null;
+      void fetchBatch();
+    }, POLL_INTERVAL_MS);
+  };
+
+  const ensureApiReady = async () => {
+    if (readinessCheckedRef.current) return;
+    await getApiReadiness();
+    readinessCheckedRef.current = true;
   };
 
   const fetchBatch = async () => {
     if (!token || !batchId) return;
     try {
+      await ensureApiReady();
       const data = await getLeadBatch(token, batchId);
       setBatch(data);
       if (!(data.pipeline_status === "pending" && data.pipeline_progress !== null)) {
@@ -412,6 +429,7 @@ export default function PipelineStatusPage({
       setLoading(false);
       return;
     }
+    readinessCheckedRef.current = false;
     fetchBatch().finally(() => setLoading(false));
     return () => stopPolling();
   }, [batchId, token]);
@@ -424,15 +442,14 @@ export default function PipelineStatusPage({
       stopPolling();
       return;
     }
-    if (!pollRef.current) {
-      pollRef.current = setInterval(fetchBatch, POLL_INTERVAL_MS);
-    }
+    if (!pollRef.current) schedulePolling();
   }, [batch?.pipeline_status, batch?.pipeline_progress?.updated_at]);
 
   const handleExecutar = async () => {
     if (!token || !batchId) return;
     setRunning(true);
     setError(null);
+    stopPolling();
     try {
       await executarPipeline(token, batchId);
       await fetchBatch();

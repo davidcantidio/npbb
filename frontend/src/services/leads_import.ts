@@ -5,6 +5,24 @@ import { fetchWithAuth, handleApiResponse } from "./http";
  * com XLSX pesados, DB lenta ou GET de estado do lote durante o pipeline Gold (locks / fila).
  */
 const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
+const LEAD_BATCH_STATUS_TIMEOUT_MS = 15_000;
+
+export type ApiReadiness = {
+  status: "ready";
+  database?: {
+    status: "ok";
+    elapsed_ms?: number;
+    endpoint?: Record<string, unknown>;
+  };
+};
+
+export async function getApiReadiness(): Promise<ApiReadiness> {
+  const res = await fetchWithAuth("/health/ready", {
+    timeoutMs: 8_000,
+    retries: 0,
+  });
+  return handleApiResponse<ApiReadiness>(res);
+}
 
 /**
  * Suggested mapping between an imported column and a canonical lead field.
@@ -499,7 +517,7 @@ export async function getLeadBatch(token: string, batchId: number): Promise<Lead
   const res = await fetchWithAuth(`/leads/batches/${batchId}`, {
     token,
     retries: 0,
-    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+    timeoutMs: LEAD_BATCH_STATUS_TIMEOUT_MS,
   });
   return handleApiResponse<LeadBatch>(res);
 }

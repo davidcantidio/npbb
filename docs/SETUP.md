@@ -64,6 +64,9 @@ SECRET_KEY="change-me"
 FRONTEND_ORIGIN="http://localhost:5173"
 EMAIL_BACKEND="console"
 PASSWORD_RESET_DEBUG="false"
+DB_CONNECT_TIMEOUT=5
+DB_POOL_TIMEOUT=5
+DB_STATEMENT_TIMEOUT_MS=15000
 ```
 
 Alternativa (PostgreSQL local para dev):
@@ -75,6 +78,7 @@ DIRECT_URL="postgresql+psycopg2://seu_usuario_sistema@127.0.0.1:5432/npbb"
 Observacoes:
 - `DATABASE_URL` e a conexao usada pela API.
 - `DIRECT_URL` e a conexao direta para migrations/seed.
+- `DB_CONNECT_TIMEOUT` deve ser menor que o timeout HTTP do frontend para a API retornar `503` estruturado quando o banco remoto estiver indisponivel, em vez de deixar o proxy do Vite abortar a conexao.
 - O backend aceita variaveis separadas (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`) como fallback.
 - Em testes, o backend permite SQLite se `TESTING=true` ou `PYTEST_CURRENT_TEST` estiver setado.
 - Para startup local, rode com `PYTHONPATH=..` (ou use `./scripts/dev_api.sh`) porque o backend importa o pacote compartilhado `core/`.
@@ -106,6 +110,11 @@ source backend/.venv/bin/activate
 ./scripts/dev_backend.sh
 ```
 
+Windows/PowerShell:
+```powershell
+.\scripts\dev_backend.ps1
+```
+
 Opcao B (dentro de `backend/`, oficial):
 ```bash
 PYTHONPATH=.. python -m uvicorn app.main:app --reload
@@ -121,6 +130,8 @@ PYTHONPATH=. uvicorn app.main:app --reload --app-dir backend
 
 Importante:
 - `uvicorn app.main:app --reload` na raiz, sem `PYTHONPATH` e sem `--app-dir backend`, nao e suportado.
+- Se `Get-NetTCPConnection -LocalPort 8000` mostrar `Python312\python.exe` global em vez de `backend\.venv\Scripts\python.exe`, encerre esse processo e suba pelo script oficial.
+- Antes de iniciar fluxos do frontend que fazem polling, valide `http://127.0.0.1:8000/health` e `http://127.0.0.1:8000/health/ready`.
 
 ### 4) Migrations (dev)
 ```bash

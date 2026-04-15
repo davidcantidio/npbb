@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from app.models.models import Lead, LeadEventoSourceKind
+from app.models.models import Lead, LeadEvento, LeadEventoSourceKind
 from app.services.lead_event_service import ensure_lead_event, resolve_unique_evento_by_name
 from app.utils.log_sanitize import sanitize_exception
 
@@ -50,21 +50,29 @@ class LeadBatchPersistenceResult:
         yield self.has_errors
 
 
-def build_dedupe_key(payload: dict[str, object]) -> str | None:
+def build_dedupe_key(
+    payload: dict[str, object],
+    *,
+    canonical_evento_id: int | None = None,
+) -> str | None:
     email = payload.get("email") or ""
     cpf = payload.get("cpf") or ""
     if not email and not cpf:
         return None
-    evento_nome = payload.get("evento_nome") or ""
+    evento_identity = (
+        f"evento_id:{canonical_evento_id}"
+        if canonical_evento_id is not None
+        else payload.get("evento_nome") or ""
+    )
     sessao = payload.get("sessao") or ""
-    return f"{email}|{cpf}|{evento_nome}|{sessao}"
+    return f"{email}|{cpf}|{evento_identity}|{sessao}"
 
 
-def find_existing_lead(session: Session, payload: dict[str, object]) -> Lead | None:
+def _build_contact_filters(payload: dict[str, object]) -> list[object]:
     email = payload.get("email")
     cpf = payload.get("cpf")
     if not email and not cpf:
-        return None
+        return []
 
     filters = []
     if email and cpf:
@@ -74,15 +82,87 @@ def find_existing_lead(session: Session, payload: dict[str, object]) -> Lead | N
         filters.append(Lead.email == email)
     else:
         filters.append(Lead.cpf == cpf)
+    return filters
+
+
+def _find_lead_by_canonical_event(
+    session: Session,
+    payload: dict[str, object],
+    *,
+    canonical_evento_id: int,
+) -> Lead | None:
+    contact_filters = _build_contact_filters(payload)
+    if not contact_filters:
+        return None
+
+    stmt = (
+        select(Lead)
+        .join(LeadEvento, LeadEvento.lead_id == Lead.id)
+        .where(LeadEvento.evento_id == canonical_evento_id)
+    )
+    for filter_ in contact_filters:
+        stmt = stmt.where(filter_)
+
+    sessao = payload.get("sessao")
+    if sessao is not None:
+        stmt = stmt.where(Lead.sessao == sessao)
+
+    return session.exec(stmt).first()
+
+
+def _find_legacy_lead_candidates(session: Session, payload: dict[str, object]) -> list[Lead]:
+    contact_filters = _build_contact_filters(payload)
+    if not contact_filters:
+        return []
+
+    stmt = select(Lead)
+    for filter_ in contact_filters:
+        stmt = stmt.where(filter_)
 
     evento_nome = payload.get("evento_nome")
     sessao = payload.get("sessao")
     if evento_nome is not None:
-        filters.append(Lead.evento_nome == evento_nome)
+        stmt = stmt.where(Lead.evento_nome == evento_nome)
     if sessao is not None:
-        filters.append(Lead.sessao == sessao)
+        stmt = stmt.where(Lead.sessao == sessao)
 
-    return session.exec(select(Lead).where(*filters)).first()
+    return list(session.exec(stmt).all())
+
+
+def _lead_has_any_canonical_event_link(session: Session, lead_id: int | None) -> bool:
+    if lead_id is None:
+        return False
+    return (
+        session.exec(select(LeadEvento.id).where(LeadEvento.lead_id == lead_id)).first() is not None
+    )
+
+
+def find_existing_lead(
+    session: Session,
+    payload: dict[str, object],
+    *,
+    canonical_evento_id: int | None = None,
+) -> Lead | None:
+    if not _build_contact_filters(payload):
+        return None
+
+    if canonical_evento_id is not None:
+        lead = _find_lead_by_canonical_event(
+            session,
+            payload,
+            canonical_evento_id=canonical_evento_id,
+        )
+        if lead is not None:
+            return lead
+
+    candidates = _find_legacy_lead_candidates(session, payload)
+    if canonical_evento_id is None:
+        return candidates[0] if candidates else None
+
+    for candidate in candidates:
+        if not _lead_has_any_canonical_event_link(session, candidate.id):
+            return candidate
+    return None
 
 
 def merge_lead(existing: Lead, payload: dict[str, object]) -> None:
@@ -107,8 +187,17 @@ def _ensure_canonical_event_link(
     *,
     lead: Lead,
     payload: dict[str, object],
+    canonical_evento_id: int | None = None,
 ) -> None:
     if lead.id is None:
+        return
+    if canonical_evento_id is not None:
+        ensure_lead_event(
+            session,
+            lead_id=lead.id,
+            evento_id=canonical_evento_id,
+            source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+        )
         return
     resolution = resolve_unique_evento_by_name(
         session,
@@ -127,6 +216,7 @@ def _ensure_canonical_event_link(
 def persist_lead_batch(
     session: Session,
     batch: list[tuple[dict[str, object], int] | None],
+    canonical_evento_id: int | None = None,
 ) -> LeadBatchPersistenceResult:
     effective_items: list[tuple[dict[str, object], int]] = [
         item for item in batch if item is not None
@@ -142,13 +232,21 @@ def persist_lead_batch(
 
     try:
         with session.begin_nested():
-            created, updated = _persist_lead_batch_bulk(session, effective_items)
+            created, updated = _persist_lead_batch_bulk(
+                session,
+                effective_items,
+                canonical_evento_id=canonical_evento_id,
+            )
     except Exception as exc:
         logger.warning(
             "Lead import bulk fallback activated detail=%s",
             sanitize_exception(exc),
         )
-        result = _persist_lead_batch_row_by_row(session, effective_items)
+        result = _persist_lead_batch_row_by_row(
+            session,
+            effective_items,
+            canonical_evento_id=canonical_evento_id,
+        )
         result = _ensure_attempted_rows_are_reported(result, effective_items)
         result = _commit_or_failure(session, result, effective_items)
         return _with_failed_rows(result, validation_failed_rows)
@@ -213,6 +311,8 @@ def _ensure_outer_transaction(session: Session) -> None:
 def _persist_lead_batch_bulk(
     session: Session,
     batch: list[tuple[dict[str, object], int]],
+    *,
+    canonical_evento_id: int | None = None,
 ) -> tuple[int, int]:
     created = 0
     updated = 0
@@ -222,10 +322,14 @@ def _persist_lead_batch_bulk(
     lead_cache: dict[str, Lead] = {}
 
     for payload, _row_number in batch:
-        key = build_dedupe_key(payload)
+        key = build_dedupe_key(payload, canonical_evento_id=canonical_evento_id)
         existing = lead_cache.get(key) if key else None
         if existing is None:
-            existing = find_existing_lead(session, payload)
+            existing = find_existing_lead(
+                session,
+                payload,
+                canonical_evento_id=canonical_evento_id,
+            )
             if existing and key:
                 lead_cache[key] = existing
         if existing:
@@ -239,13 +343,23 @@ def _persist_lead_batch_bulk(
         session.add_all(new_objects)
         session.flush()
         for lead, payload in zip(new_objects, new_payloads, strict=False):
-            _ensure_canonical_event_link(session, lead=lead, payload=payload)
+            _ensure_canonical_event_link(
+                session,
+                lead=lead,
+                payload=payload,
+                canonical_evento_id=canonical_evento_id,
+            )
         created += len(new_objects)
     if update_objects:
         session.add_all([lead for lead, _payload in update_objects])
         session.flush()
         for lead, payload in update_objects:
-            _ensure_canonical_event_link(session, lead=lead, payload=payload)
+            _ensure_canonical_event_link(
+                session,
+                lead=lead,
+                payload=payload,
+                canonical_evento_id=canonical_evento_id,
+            )
         updated += len(update_objects)
     return created, updated
 
@@ -253,6 +367,8 @@ def _persist_lead_batch_bulk(
 def _persist_lead_batch_row_by_row(
     session: Session,
     batch: list[tuple[dict[str, object], int]],
+    *,
+    canonical_evento_id: int | None = None,
 ) -> LeadBatchPersistenceResult:
     created = 0
     updated = 0
@@ -261,7 +377,11 @@ def _persist_lead_batch_row_by_row(
     for payload, row_number in batch:
         try:
             with session.begin_nested():
-                action = _persist_single_lead_row(session, payload)
+                action = _persist_single_lead_row(
+                    session,
+                    payload,
+                    canonical_evento_id=canonical_evento_id,
+                )
         except Exception as exc:
             reason = sanitize_exception(exc)
             failed_rows.append(LeadPersistenceFailedRow(row_index=row_number, reason=reason))
@@ -283,19 +403,38 @@ def _persist_lead_batch_row_by_row(
     )
 
 
-def _persist_single_lead_row(session: Session, payload: dict[str, object]) -> str:
-    existing = find_existing_lead(session, payload)
+def _persist_single_lead_row(
+    session: Session,
+    payload: dict[str, object],
+    *,
+    canonical_evento_id: int | None = None,
+) -> str:
+    existing = find_existing_lead(
+        session,
+        payload,
+        canonical_evento_id=canonical_evento_id,
+    )
     if existing:
         merge_lead(existing, payload)
         session.add(existing)
         session.flush()
-        _ensure_canonical_event_link(session, lead=existing, payload=payload)
+        _ensure_canonical_event_link(
+            session,
+            lead=existing,
+            payload=payload,
+            canonical_evento_id=canonical_evento_id,
+        )
         return "updated"
 
     lead = Lead(**payload)
     session.add(lead)
     session.flush()
-    _ensure_canonical_event_link(session, lead=lead, payload=payload)
+    _ensure_canonical_event_link(
+        session,
+        lead=lead,
+        payload=payload,
+        canonical_evento_id=canonical_evento_id,
+    )
     return "created"
 
 

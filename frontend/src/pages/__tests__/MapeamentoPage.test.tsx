@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -108,6 +108,34 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     expect(screen.getByRole("option", { name: "is_cliente_bb" })).toBeInTheDocument();
   });
 
+  it("keeps event-owned fields available in the canonical mapping dropdown without fixed event", async () => {
+    mockedGetLeadBatchColunas.mockResolvedValue({
+      batch_id: 10,
+      colunas: [
+        {
+          coluna_original: "Nome",
+          campo_sugerido: "nome",
+          confianca: "exact_match",
+        },
+      ],
+    });
+
+    renderMapeamentoPage();
+
+    const user = userEvent.setup();
+    await screen.findByText("Nome");
+
+    const comboboxes = screen.getAllByRole("combobox");
+    await user.click(comboboxes[comboboxes.length - 1]);
+
+    expect(await screen.findByRole("option", { name: "evento" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "tipo_evento" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "local" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "data_evento" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "cidade" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "estado" })).toBeInTheDocument();
+  });
+
   it("shows an error alert when reference events fail to load", async () => {
     mockedListReferenciaEventos.mockRejectedValue(new Error("network error"));
 
@@ -150,6 +178,84 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     expect(mockedListReferenciaEventos).not.toHaveBeenCalled();
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Confirmar Mapeamento" }));
+
+    await waitFor(() => {
+      expect(mockedMapearLeadBatch).toHaveBeenCalledWith("token-123", 10, {
+        evento_id: 42,
+        mapeamento: { Nome: "nome" },
+      });
+    });
+  });
+
+  it("hides event-owned fields and sanitizes derived suggestions when batch has fixed event", async () => {
+    mockedGetLeadBatchColunas.mockResolvedValue({
+      batch_id: 10,
+      colunas: [
+        {
+          coluna_original: "Nome",
+          campo_sugerido: "nome",
+          confianca: "exact_match",
+        },
+        {
+          coluna_original: "Evento",
+          campo_sugerido: "evento",
+          confianca: "exact_match",
+        },
+        {
+          coluna_original: "Tipo",
+          campo_sugerido: "tipo_evento",
+          confianca: "exact_match",
+        },
+        {
+          coluna_original: "Data",
+          campo_sugerido: "data_evento",
+          confianca: "exact_match",
+        },
+        {
+          coluna_original: "Local",
+          campo_sugerido: "local",
+          confianca: "exact_match",
+        },
+      ],
+    });
+    mockedMapearLeadBatch.mockResolvedValue({
+      batch_id: 10,
+      silver_count: 1,
+      stage: "silver",
+    });
+
+    renderMapeamentoPage(<MapeamentoPage batchId={10} fixedEventoId={42} />);
+
+    expect(await screen.findByText("Nome")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Com evento fixo, evento, tipo_evento, local e data_evento serao derivados automaticamente do cadastro do evento selecionado. Nao e necessario mapea-los no arquivo.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Selecione ou pesquise o evento...")).not.toBeInTheDocument();
+    expect(mockedListReferenciaEventos).not.toHaveBeenCalled();
+
+    const eventoRow = screen.getByText("Evento").closest("tr");
+    expect(eventoRow).not.toBeNull();
+    expect(within(eventoRow as HTMLElement).getByText(/Derivado do evento/)).toBeInTheDocument();
+
+    const user = userEvent.setup();
+
+    const nomeRow = screen.getByText("Nome").closest("tr");
+    expect(nomeRow).not.toBeNull();
+    await user.click(within(nomeRow as HTMLElement).getByRole("combobox"));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("option", { name: "evento" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "tipo_evento" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "local" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "data_evento" })).not.toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "cidade" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "estado" })).toBeInTheDocument();
+    });
+
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Confirmar Mapeamento" }));
 
     await waitFor(() => {
       expect(mockedMapearLeadBatch).toHaveBeenCalledWith("token-123", 10, {

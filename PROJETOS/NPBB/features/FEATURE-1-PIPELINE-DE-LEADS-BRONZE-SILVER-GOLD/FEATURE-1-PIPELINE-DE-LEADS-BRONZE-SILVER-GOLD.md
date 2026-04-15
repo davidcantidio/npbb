@@ -3,7 +3,7 @@ doc_id: "FEATURE-1-PIPELINE-DE-LEADS-BRONZE-SILVER-GOLD"
 version: "1.0"
 status: "active"
 owner: "PM"
-last_updated: "2026-04-12"
+last_updated: "2026-04-15"
 audit_gate: "approved"
 ---
 
@@ -61,6 +61,15 @@ pipeline Gold sem sair do fluxo governado atual do projeto.
 ## Backlog sugerido pos-auditoria (nao bloqueante)
 
 - **Ramo ETL e `batch_id`:** a UI unificada nao persiste identificador de lote no fluxo ETL (ver limitacoes no handoff da US-1-02). **Nao** constitui reabertura da US-1-02. Avaliar nova US ou intake **somente** se o PRD ou o veredito de `SESSION-AUDITAR-FEATURE` exigirem retomada persistente e consulta de lote tambem para ETL.
+- **Diagnostico de ownership da importacao (2026-04-15):** artefatos tecnicos
+  adicionais em
+  [MATRIZ-OWNERSHIP-IMPORTACAO-LEADS](auditorias/MATRIZ-OWNERSHIP-IMPORTACAO-LEADS.md),
+  [RELATORIO-DIAGNOSTICO-OWNERSHIP-IMPORTACAO-LEADS](auditorias/RELATORIO-DIAGNOSTICO-OWNERSHIP-IMPORTACAO-LEADS.md)
+  e
+  [ADR-IMPORTACAO-LEADS-OWNERSHIP-POR-CONTEXTO](auditorias/ADR-IMPORTACAO-LEADS-OWNERSHIP-POR-CONTEXTO.md).
+  O objetivo e preparar as remediacoes P0 de `data_evento` no fluxo classico e
+  do vinculo canonico por `evento_id` no ETL, sem reabrir o gate formal da
+  feature nesta rodada.
 
 ## Dependencias
 

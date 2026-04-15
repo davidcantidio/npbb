@@ -43,7 +43,7 @@ def commit_preview_session(
         if isinstance(payload.get("data_compra"), datetime):
             payload["data_compra_data"] = payload["data_compra"].date()
             payload["data_compra_hora"] = payload["data_compra"].time()
-        key = build_dedupe_key(payload)
+        key = build_dedupe_key(payload, canonical_evento_id=snapshot.evento_id)
         if key:
             previous_index = key_to_index.get(key)
             if previous_index is not None:
@@ -51,7 +51,11 @@ def commit_preview_session(
             key_to_index[key] = len(batch)
         batch.append((payload, row.row_number))
 
-    created, updated, skipped, has_errors = persist_lead_batch(db, batch)
+    created, updated, skipped, has_errors = persist_lead_batch(
+        db,
+        batch,
+        canonical_evento_id=snapshot.evento_id,
+    )
     result = EtlCommitResult(
         session_token=session_token,
         total_rows=snapshot.total_rows,

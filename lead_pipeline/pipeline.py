@@ -54,6 +54,7 @@ class PipelineConfig:
     input_files: list[Path]
     scan_root: Path | None = None
     output_root: Path = Path("./eventos")
+    anchored_on_evento_id: bool = False
     on_progress: Callable[["PipelineProgressEvent"], None] | None = None
 
 
@@ -203,6 +204,7 @@ def _normalize_row(
     *,
     city_out_of_mapping: bool,
     ref_date_utc: date,
+    event_locality_owned: bool = False,
 ) -> tuple[
     dict[str, str],
     list[str],
@@ -218,11 +220,19 @@ def _normalize_row(
         row.get("data_nascimento", ""),
         ref_date=ref_date_utc,
     )
-    locality_result = normalize_brazilian_locality(
-        cidade=row.get("cidade", ""),
-        estado=row.get("estado", ""),
-        local=row.get("local", ""),
-    )
+    event_locality_result: LocalityNormalizationResult | None = None
+    if event_locality_owned:
+        event_locality_result = normalize_brazilian_locality(local=row.get("local", ""))
+        locality_result = normalize_brazilian_locality(
+            cidade=row.get("cidade", ""),
+            estado=row.get("estado", ""),
+        )
+    else:
+        locality_result = normalize_brazilian_locality(
+            cidade=row.get("cidade", ""),
+            estado=row.get("estado", ""),
+            local=row.get("local", ""),
+        )
 
     if not is_valid_cpf(cpf):
         reasons.append("CPF_INVALIDO")
@@ -241,7 +251,11 @@ def _normalize_row(
         "telefone": phone,
         "evento": str(row.get("evento", "")).strip(),
         "tipo_evento": str(row.get("tipo_evento", "")).strip(),
-        "local": locality_result.local,
+        "local": (
+            event_locality_result.local or str(row.get("local", "")).strip()
+            if event_locality_owned and event_locality_result is not None
+            else locality_result.local
+        ),
         "data_evento": event_date if event_date is not None else "",
     }
     for column in OPTIONAL_COLUMNS:
@@ -263,6 +277,7 @@ def _build_report(
     invalid_records: list[dict[str, Any]],
     data_nascimento_controle: list[dict[str, Any]],
     localidade_controle: list[dict[str, Any]],
+    cidade_fora_mapeamento_controle: list[dict[str, Any]],
     source_profiles_detected: dict[str, list[str]],
     input_files_scanned: list[str],
     input_files_processed: list[str],
@@ -304,6 +319,7 @@ def _build_report(
         },
         "data_nascimento_controle": data_nascimento_controle,
         "localidade_controle": localidade_controle,
+        "cidade_fora_mapeamento_controle": cidade_fora_mapeamento_controle,
         "invalid_records": invalid_records,
         "exit_code": exit_code,
     }
@@ -428,6 +444,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     invalid_records: list[dict[str, Any]] = []
     data_nascimento_controle: list[dict[str, Any]] = []
     localidade_controle: list[dict[str, Any]] = []
+    cidade_fora_mapeamento_controle: list[dict[str, Any]] = []
     raw_frames: list[pd.DataFrame] = []
     normalized_rows: list[dict[str, Any]] = []
     source_profiles_detected: dict[str, list[str]] = {}
@@ -576,10 +593,18 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             row_data,
             city_out_of_mapping=city_out_of_mapping,
             ref_date_utc=ref_date_utc,
+            event_locality_owned=config.anchored_on_evento_id,
         )
 
-        if city_out_of_mapping:
+        if city_out_of_mapping and not config.anchored_on_evento_id:
             metrics.cidade_fora_mapeamento += 1
+            cidade_fora_mapeamento_controle.append(
+                {
+                    "source_file": row["source_file"],
+                    "source_sheet": str(row.get(SHEET_COL_SOURCE, "")),
+                    "source_row": int(row.get(ROW_COL_SOURCE, 0)),
+                }
+            )
         if birth_date_issue is not None:
             data_nascimento_controle.append(
                 {
@@ -595,6 +620,9 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
                 metrics.data_nascimento_invalid += 1
 
         if locality_result.issue_code is not None:
+            raw_cidade = row_data.get("cidade", "")
+            raw_estado = row_data.get("estado", "")
+            raw_local = "" if config.anchored_on_evento_id else row_data.get("local", "")
             _register_locality_issue(metrics, locality_result)
             localidade_controle.append(
                 {
@@ -607,16 +635,16 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
                         " | ".join(
                             value
                             for value in (
-                                row_data.get("cidade", ""),
-                                row_data.get("estado", ""),
-                                row_data.get("local", ""),
+                                raw_cidade,
+                                raw_estado,
+                                raw_local,
                             )
                             if value
                         )
                     ),
-                    "raw_cidade": _truncate_for_report(row_data.get("cidade", "")),
-                    "raw_estado": _truncate_for_report(row_data.get("estado", "")),
-                    "raw_local": _truncate_for_report(row_data.get("local", "")),
+                    "raw_cidade": _truncate_for_report(raw_cidade),
+                    "raw_estado": _truncate_for_report(raw_estado),
+                    "raw_local": _truncate_for_report(raw_local),
                 }
             )
 
@@ -712,6 +740,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         invalid_records=invalid_records,
         data_nascimento_controle=data_nascimento_controle,
         localidade_controle=localidade_controle,
+        cidade_fora_mapeamento_controle=cidade_fora_mapeamento_controle,
         source_profiles_detected=source_profiles_detected,
         input_files_scanned=input_files_scanned,
         input_files_processed=input_files_processed,

@@ -24,6 +24,7 @@ const EventQuestionario = lazy(() => import("../pages/EventQuestionario"));
 const EventsList = lazy(() => import("../pages/EventsList"));
 const LeadsAgeAnalysisPage = lazy(() => import("../pages/dashboard/LeadsAgeAnalysisPage"));
 const LeadsImport = lazy(() => import("../pages/LeadsImport"));
+const LeadsListPage = lazy(() => import("../pages/leads/LeadsListPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
 const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
 const PatrocinadosPage = lazy(() => import("../features/patrocinados/PatrocinadosPage"));
@@ -113,7 +114,7 @@ export default function AppRoutes() {
 
           <Route path="/ativos" element={<AtivosList />} />
           <Route path="/ingressos" element={<IngressosPortal />} />
-          <Route path="/leads" element={<Navigate to="/leads/importar" replace />} />
+          <Route path="/leads" element={withSuspense(<LeadsListPage />)} />
           <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
           <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
           <Route path="/leads/mapeamento" element={<LegacyLeadStepRedirect step="mapping" />} />

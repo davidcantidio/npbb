@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from app.models.models import Lead
+from app.models.lead_public_models import LeadEventoSourceKind
+from app.models.models import Evento, Lead, LeadEvento, StatusEvento
 from app.modules.leads_publicidade.application.etl_import import persistence
 from app.modules.leads_publicidade.application.etl_import.persistence import (
     LeadBatchPersistenceResult,
+    build_dedupe_key,
+    find_existing_lead,
     persist_lead_batch,
 )
 
@@ -18,6 +21,40 @@ def _lead_payload(email: str, cpf: str, nome: str) -> dict[str, object]:
         "evento_nome": "Evento Persistencia",
         "sessao": "Sessao A",
     }
+
+
+def _seed_evento(db_session: Session, *, nome: str = "Evento Persistencia Canonico") -> Evento:
+    status = db_session.exec(select(StatusEvento).where(StatusEvento.nome == "Previsto")).first()
+    if status is None:
+        status = StatusEvento(nome="Previsto")
+        db_session.add(status)
+        db_session.commit()
+        db_session.refresh(status)
+
+    evento = Evento(
+        nome=nome,
+        cidade="Brasilia",
+        estado="DF",
+        status_id=status.id,
+    )
+    db_session.add(evento)
+    db_session.commit()
+    db_session.refresh(evento)
+    return evento
+
+
+def test_build_dedupe_key_prefers_canonical_evento_id_over_event_name() -> None:
+    payload = _lead_payload("canonical@example.com", "52998224725", "Lead Canonico")
+    renamed_payload = {**payload, "evento_nome": "Evento Renomeado"}
+
+    assert build_dedupe_key(payload, canonical_evento_id=101) == build_dedupe_key(
+        renamed_payload,
+        canonical_evento_id=101,
+    )
+    assert build_dedupe_key(payload, canonical_evento_id=101) != build_dedupe_key(
+        renamed_payload,
+        canonical_evento_id=202,
+    )
 
 
 def test_persist_lead_batch_bulk_result_is_structured_and_tuple_compatible(
@@ -45,7 +82,7 @@ def test_persist_lead_batch_fallback_tracks_failed_rows_without_losing_successes
     db_session: Session,
     monkeypatch,
 ) -> None:
-    def fail_selected_row(session, *, lead, payload):
+    def fail_selected_row(session, *, lead, payload, canonical_evento_id=None):
         _ = session, lead
         if payload.get("nome") == "Lead Falha":
             raise ValueError("falha controlada")
@@ -79,7 +116,7 @@ def test_persist_lead_batch_total_failure_reports_failed_rows(
     db_session: Session,
     monkeypatch,
 ) -> None:
-    def fail_all_rows(session, *, lead, payload):
+    def fail_all_rows(session, *, lead, payload, canonical_evento_id=None):
         _ = session, lead, payload
         raise ValueError("falha total")
 
@@ -184,3 +221,113 @@ def test_persist_lead_batch_empty_or_filtered_batch_is_noop(db_session: Session)
     assert result.skipped == 0
     assert result.has_errors is False
     assert tuple(result) == (0, 0, 0, False)
+
+
+def test_persist_lead_batch_links_canonical_event_by_explicit_evento_id_even_with_stale_name(
+    db_session: Session,
+) -> None:
+    evento = _seed_evento(db_session, nome="Evento Atual")
+    payload = _lead_payload("evento-id@example.com", "52998224725", "Lead Evento ID")
+    payload["evento_nome"] = "Evento Antigo Ou Ambiguo"
+
+    result = persist_lead_batch(
+        db_session,
+        [(payload, 2)],
+        canonical_evento_id=evento.id,
+    )
+
+    assert result.created == 1
+    lead = db_session.exec(select(Lead).where(Lead.email == "evento-id@example.com")).first()
+    assert lead is not None
+    assert lead.evento_nome == "Evento Antigo Ou Ambiguo"
+
+    lead_eventos = db_session.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+    assert len(lead_eventos) == 1
+    assert lead_eventos[0].evento_id == evento.id
+    assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_DIRECT
+
+
+def test_find_existing_lead_ignores_homonymous_lead_from_other_canonical_event(
+    db_session: Session,
+) -> None:
+    evento = _seed_evento(db_session, nome="Evento Homonimo Persistencia")
+    outro_evento = _seed_evento(db_session, nome="Evento Homonimo Persistencia")
+    lead = Lead(
+        email="homonimo@example.com",
+        cpf="52998224725",
+        nome="Lead Homonimo",
+        evento_nome="Evento Homonimo Persistencia",
+        sessao="Sessao A",
+    )
+    db_session.add(lead)
+    db_session.commit()
+    db_session.refresh(lead)
+    db_session.add(
+        LeadEvento(
+            lead_id=lead.id,
+            evento_id=outro_evento.id,
+            source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+        )
+    )
+    db_session.commit()
+
+    payload = _lead_payload("homonimo@example.com", "52998224725", "Lead Homonimo")
+    payload["evento_nome"] = "Evento Homonimo Persistencia"
+
+    assert find_existing_lead(db_session, payload, canonical_evento_id=evento.id) is None
+
+    matched = find_existing_lead(
+        db_session,
+        payload,
+        canonical_evento_id=outro_evento.id,
+    )
+    assert matched is not None
+    assert matched.id == lead.id
+
+
+def test_persist_lead_batch_updates_existing_lead_by_canonical_evento_id_after_event_rename(
+    db_session: Session,
+) -> None:
+    evento = _seed_evento(db_session, nome="Evento Persistencia Antigo")
+    existing = Lead(
+        email="rename-existing@example.com",
+        cpf="52998224725",
+        nome="Lead Antigo",
+        evento_nome="Evento Persistencia Antigo",
+        sessao="Sessao A",
+    )
+    db_session.add(existing)
+    db_session.commit()
+    db_session.refresh(existing)
+    existing_id = existing.id
+
+    db_session.add(
+        LeadEvento(
+            lead_id=existing_id,
+            evento_id=evento.id,
+            source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+        )
+    )
+    db_session.commit()
+
+    payload = _lead_payload("rename-existing@example.com", "52998224725", "Lead Atualizado")
+    payload["evento_nome"] = "Evento Persistencia Renomeado"
+
+    result = persist_lead_batch(
+        db_session,
+        [(payload, 2)],
+        canonical_evento_id=evento.id,
+    )
+
+    assert result.created == 0
+    assert result.updated == 1
+
+    leads = db_session.exec(select(Lead).where(Lead.email == "rename-existing@example.com")).all()
+    assert len(leads) == 1
+    assert leads[0].id == existing_id
+    assert leads[0].nome == "Lead Atualizado"
+    assert leads[0].evento_nome == "Evento Persistencia Renomeado"
+
+    lead_eventos = db_session.exec(select(LeadEvento).where(LeadEvento.lead_id == existing_id)).all()
+    assert len(lead_eventos) == 1
+    assert lead_eventos[0].evento_id == evento.id

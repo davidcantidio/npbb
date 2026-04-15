@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
@@ -200,3 +200,62 @@ def test_listar_leads_requer_autenticacao(client, engine):
 
     response = client.get("/leads")
     assert response.status_code == 401
+
+
+def test_listar_leads_filtra_por_data_criacao(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get(
+        "/leads?data_inicio=2026-01-09&data_fim=2026-01-09&page_size=10",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["email"] == "bruno@example.com"
+
+
+def test_listar_leads_filtra_por_evento_id_conversao_mais_recente(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        evento_b = session.exec(select(Evento).where(Evento.nome == "Evento B")).first()
+        assert evento_b is not None
+        evento_b_id = evento_b.id
+        headers = get_auth_header(client, session)
+
+    response = client.get(f"/leads?evento_id={evento_b_id}&page_size=10", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["email"] == "ana@example.com"
+    assert data["items"][0]["evento_convertido_nome"] == "Evento B"
+
+
+def test_listar_leads_total_e_paginacao_com_filtro_de_data(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get(
+        "/leads?data_inicio=2026-01-08&data_fim=2026-01-09&page=1&page_size=1",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert len(data["items"]) == 1
+
+    page_2 = client.get(
+        "/leads?data_inicio=2026-01-08&data_fim=2026-01-09&page=2&page_size=1",
+        headers=headers,
+    )
+    assert page_2.status_code == 200
+    data_2 = page_2.json()
+    assert data_2["total"] == 2
+    assert len(data_2["items"]) == 1
+    emails = {data["items"][0]["email"], data_2["items"][0]["email"]}
+    assert emails == {"carla@example.com", "bruno@example.com"}

@@ -19,8 +19,9 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toApiErrorMessage } from "../../services/http";
 import {
-  LeadBatch,
-  PipelineReport,
+  type BirthDateControlIssue,
+  type LeadBatch,
+  type PipelineReport,
   executarPipeline,
   getLeadBatch,
 } from "../../services/leads_import";
@@ -92,8 +93,251 @@ function MetricCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-function QualityMetricsSection({ report }: { report: PipelineReport }) {
+type SourceRowRef = {
+  source_file: string;
+  source_sheet: string;
+  source_row: number;
+};
+
+type QualityMetricKey = keyof PipelineReport["quality_metrics"];
+
+const MOTIVO_CPF = "CPF_INVALIDO";
+const MOTIVO_TELEFONE = "TELEFONE_INVALIDO";
+const MOTIVO_DATA_EVENTO = "DATA_EVENTO_INVALIDA";
+const MOTIVO_DUPLICIDADE = "DUPLICIDADE_CPF_EVENTO";
+
+function splitMotivos(motivo: string): string[] {
+  return (motivo || "")
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function sourceRowKey(r: SourceRowRef): string {
+  return `${r.source_file}\u0000${r.source_sheet}\u0000${r.source_row}`;
+}
+
+function uniqueSortedRefs(refs: SourceRowRef[]): SourceRowRef[] {
+  const seen = new Map<string, SourceRowRef>();
+  for (const r of refs) {
+    const key = sourceRowKey(r);
+    if (!seen.has(key)) {
+      seen.set(key, r);
+    }
+  }
+  return [...seen.values()].sort((a, b) => {
+    const fa = [a.source_file, a.source_sheet || "", String(a.source_row).padStart(8, "0")].join("\t");
+    const fb = [b.source_file, b.source_sheet || "", String(b.source_row).padStart(8, "0")].join("\t");
+    return fa.localeCompare(fb);
+  });
+}
+
+function formatSourceRowRef(r: SourceRowRef): string {
+  const sheet = (r.source_sheet || "").trim();
+  if (sheet) {
+    return `${sheet} · linha ${r.source_row}`;
+  }
+  return `Linha ${r.source_row}`;
+}
+
+function refsFromInvalidRecords(
+  report: PipelineReport,
+  motivoTest: (motivos: string[]) => boolean,
+): SourceRowRef[] {
+  const inv = report.invalid_records;
+  if (!inv?.length) return [];
+  const acc: SourceRowRef[] = [];
+  for (const rec of inv) {
+    const motivos = splitMotivos(rec.motivo_rejeicao);
+    if (!motivoTest(motivos)) continue;
+    acc.push({
+      source_file: String(rec.source_file ?? ""),
+      source_sheet: String(rec.source_sheet ?? ""),
+      source_row: Number(rec.source_row) || 0,
+    });
+  }
+  return uniqueSortedRefs(acc);
+}
+
+function refsFromBirthControle(report: PipelineReport, issues: BirthDateControlIssue[]): SourceRowRef[] {
+  const ctrl = report.data_nascimento_controle;
+  if (!ctrl?.length) return [];
+  const want = new Set(issues);
+  const acc = ctrl
+    .filter((entry) => want.has(entry.issue))
+    .map((entry) => ({
+      source_file: String(entry.source_file ?? ""),
+      source_sheet: String(entry.source_sheet ?? ""),
+      source_row: Number(entry.source_row) || 0,
+    }));
+  return uniqueSortedRefs(acc);
+}
+
+function refsFromLocalidade(report: PipelineReport, issueTest: (issue: string) => boolean): SourceRowRef[] {
+  const ctrl = report.localidade_controle;
+  if (!ctrl?.length) return [];
+  const acc = ctrl
+    .filter((entry) => issueTest(entry.issue))
+    .map((entry) => ({
+      source_file: String(entry.source_file ?? ""),
+      source_sheet: String(entry.source_sheet ?? ""),
+      source_row: Number(entry.source_row) || 0,
+    }));
+  return uniqueSortedRefs(acc);
+}
+
+function refsCidadeForaMapeamento(report: PipelineReport): SourceRowRef[] {
+  const ctrl = report.cidade_fora_mapeamento_controle;
+  if (!ctrl?.length) return [];
+  return uniqueSortedRefs(
+    ctrl.map((entry) => ({
+      source_file: String(entry.source_file ?? ""),
+      source_sheet: String(entry.source_sheet ?? ""),
+      source_row: Number(entry.source_row) || 0,
+    })),
+  );
+}
+
+function buildQualityMetricRowIndex(report: PipelineReport): Record<QualityMetricKey, SourceRowRef[]> {
+  return {
+    cpf_invalid_discarded: refsFromInvalidRecords(report, (motivos) => motivos.includes(MOTIVO_CPF)),
+    telefone_invalid: refsFromInvalidRecords(report, (motivos) => motivos.includes(MOTIVO_TELEFONE)),
+    data_evento_invalid: refsFromInvalidRecords(report, (motivos) => motivos.includes(MOTIVO_DATA_EVENTO)),
+    data_nascimento_invalid: refsFromBirthControle(report, ["unparseable", "future", "before_min"]),
+    data_nascimento_missing: refsFromBirthControle(report, ["missing"]),
+    duplicidades_cpf_evento: refsFromInvalidRecords(report, (motivos) => motivos.includes(MOTIVO_DUPLICIDADE)),
+    cidade_fora_mapeamento: refsCidadeForaMapeamento(report),
+    localidade_invalida: refsFromLocalidade(report, () => true),
+    localidade_nao_resolvida: refsFromLocalidade(
+      report,
+      (issue) => issue !== "non_br" && issue !== "cidade_uf_mismatch",
+    ),
+    localidade_fora_brasil: refsFromLocalidade(report, (issue) => issue === "non_br"),
+    localidade_cidade_uf_inconsistente: refsFromLocalidade(report, (issue) => issue === "cidade_uf_mismatch"),
+  };
+}
+
+function QualityMetricCardWithRows({
+  label,
+  value,
+  rowRefs,
+}: {
+  label: string;
+  value: number;
+  rowRefs: SourceRowRef[];
+}) {
+  const formattedRows = rowRefs.map(formatSourceRowRef);
+  const maxInline = 6;
+  const shownInline = formattedRows.slice(0, maxInline);
+  const hiddenCount = formattedRows.length - shownInline.length;
+  const inlineSummary =
+    formattedRows.length === 0
+      ? ""
+      : hiddenCount > 0
+        ? `${shownInline.join(", ")} (+${hiddenCount})`
+        : shownInline.join(", ");
+
+  const tooltipBody =
+    formattedRows.length > 0 ? (
+      <Box sx={{ maxHeight: 280, overflow: "auto", py: 0.5 }}>
+        {formattedRows.map((line, idx) => (
+          <Typography key={`${line}-${idx}`} component="div" variant="caption" sx={{ display: "block", py: 0.25 }}>
+            {line}
+          </Typography>
+        ))}
+      </Box>
+    ) : (
+      label
+    );
+
+  const paper = (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.5,
+        textAlign: "center",
+        borderColor: value > 0 ? "warning.main" : "divider",
+      }}
+    >
+      <Typography variant="h6" fontWeight={700} color={value > 0 ? "warning.main" : "text.primary"}>
+        {value}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" noWrap title={label}>
+        {label}
+      </Typography>
+      {rowRefs.length > 0 && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{
+            display: "block",
+            mt: 0.75,
+            lineHeight: 1.35,
+            textAlign: "left",
+            whiteSpace: "normal",
+          }}
+        >
+          <Box component="span" fontWeight={600}>
+            Linhas:{" "}
+          </Box>
+          {inlineSummary}
+        </Typography>
+      )}
+    </Paper>
+  );
+
+  return (
+    <Tooltip title={tooltipBody} describeChild>
+      <Box sx={{ cursor: rowRefs.length > 0 ? "help" : "default" }}>{paper}</Box>
+    </Tooltip>
+  );
+}
+
+function QualityMetricsSection({
+  report,
+  anchoredOnEventoId = false,
+}: {
+  report: PipelineReport;
+  anchoredOnEventoId?: boolean;
+}) {
   const { totals, quality_metrics: qm } = report;
+  const rowIndex = buildQualityMetricRowIndex(report);
+
+  const items = [
+    { key: "cpf_invalid_discarded", label: "CPFs inválidos descartados" },
+    { key: "telefone_invalid", label: "Telefones inválidos" },
+    { key: "data_evento_invalid", label: "Datas de evento inválidas" },
+    { key: "data_nascimento_invalid", label: "Datas de nascimento inválidas" },
+    { key: "data_nascimento_missing", label: "Datas de nascimento ausentes" },
+    { key: "duplicidades_cpf_evento", label: "Duplicidades CPF+evento" },
+    {
+      key: "cidade_fora_mapeamento",
+      label: "Cidade fora do mapeamento",
+    },
+    {
+      key: "localidade_invalida",
+      label: anchoredOnEventoId ? "Cidade/UF do lead inválidos" : "Localidades inválidas",
+    },
+    {
+      key: "localidade_nao_resolvida",
+      label: anchoredOnEventoId ? "Cidade/UF do lead não resolvidos" : "Localidades não resolvidas",
+    },
+    {
+      key: "localidade_fora_brasil",
+      label: anchoredOnEventoId ? "Cidade/UF do lead fora do Brasil" : "Localidades fora do Brasil",
+    },
+    {
+      key: "localidade_cidade_uf_inconsistente",
+      label: anchoredOnEventoId ? "Cidade/UF do lead inconsistentes" : "Cidade/UF inconsistentes",
+    },
+  ] satisfies Array<{ key: QualityMetricKey; label: string }>;
+
+  const visibleItems = items.filter(({ key }) => {
+    if (anchoredOnEventoId && key === "data_evento_invalid") return false;
+    if (anchoredOnEventoId && key === "cidade_fora_mapeamento") return false;
+    return true;
+  });
+
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle1" fontWeight={600}>
@@ -109,44 +353,9 @@ function QualityMetricsSection({ report }: { report: PipelineReport }) {
         Métricas de Qualidade
       </Typography>
       <Grid container spacing={1}>
-        {[
-          { label: "CPFs inválidos descartados", value: qm.cpf_invalid_discarded },
-          { label: "Telefones inválidos", value: qm.telefone_invalid },
-          { label: "Datas de evento inválidas", value: qm.data_evento_invalid },
-          { label: "Datas de nascimento inválidas", value: qm.data_nascimento_invalid },
-          { label: "Datas de nascimento ausentes", value: qm.data_nascimento_missing },
-          { label: "Duplicidades CPF+evento", value: qm.duplicidades_cpf_evento },
-          { label: "Cidade fora do mapeamento", value: qm.cidade_fora_mapeamento },
-          { label: "Localidades inválidas", value: qm.localidade_invalida },
-          { label: "Localidades não resolvidas", value: qm.localidade_nao_resolvida },
-          { label: "Localidades fora do Brasil", value: qm.localidade_fora_brasil },
-          {
-            label: "Cidade/UF inconsistentes",
-            value: qm.localidade_cidade_uf_inconsistente,
-          },
-        ].map(({ label, value }) => (
-          <Grid item xs={6} sm={4} key={label}>
-            <Tooltip title={label}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 1.5,
-                  textAlign: "center",
-                  borderColor: value > 0 ? "warning.main" : "divider",
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  fontWeight={700}
-                  color={value > 0 ? "warning.main" : "text.primary"}
-                >
-                  {value}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
-                  {label}
-                </Typography>
-              </Paper>
-            </Tooltip>
+        {visibleItems.map(({ key, label }) => (
+          <Grid item xs={6} sm={4} key={key}>
+            <QualityMetricCardWithRows label={label} value={qm[key]} rowRefs={rowIndex[key]} />
           </Grid>
         ))}
       </Grid>
@@ -254,10 +463,13 @@ export default function PipelineStatusPage({
 
   const report = batch.pipeline_report;
   const gateStatus: GateStatus | null = report?.gate?.status ?? null;
+  const failureContextMessage = report?.failure_context?.message?.trim() || null;
+  const visibleFailReasons = report?.gate?.fail_reasons.filter((reason) => reason !== failureContextMessage) ?? [];
   const pipelineProgress = batch.pipeline_progress;
   const hasActiveProgress =
     batch.pipeline_status === "pending" && pipelineProgress !== null;
   const progressValue = pipelineProgress?.pct ?? null;
+  const anchoredOnEventoId = batch.evento_id != null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 900, mx: "auto" }}>
@@ -365,6 +577,13 @@ export default function PipelineStatusPage({
         </Stack>
       </Paper>
 
+      {batch.pipeline_status === "fail" && !report && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          O pipeline falhou antes de gerar o relatorio desta execucao. Isso indica erro interno na promocao do lote
+          para Gold, nao uma reprovacao explicada pelo quadro de qualidade.
+        </Alert>
+      )}
+
       {report && gateStatus && (
         <Paper sx={{ p: 3, mb: 3 }}>
           <Stack direction="row" alignItems="center" spacing={1.5} mb={2}>
@@ -377,17 +596,23 @@ export default function PipelineStatusPage({
             </Typography>
           </Stack>
 
-          {gateStatus === "FAIL" && report.gate.fail_reasons.length > 0 && (
+          {gateStatus === "FAIL" && visibleFailReasons.length > 0 && (
             <Stack spacing={1} mb={2}>
               <Typography variant="subtitle2" fontWeight={600} color="error">
                 Motivos de reprovação:
               </Typography>
-              {report.gate.fail_reasons.map((reason) => (
+              {visibleFailReasons.map((reason) => (
                 <Alert key={reason} severity="error" sx={{ py: 0.5 }}>
                   {reason}
                 </Alert>
               ))}
             </Stack>
+          )}
+
+          {gateStatus === "FAIL" && failureContextMessage && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {failureContextMessage}
+            </Alert>
           )}
 
           {report.gate.warnings.length > 0 && (
@@ -404,7 +629,10 @@ export default function PipelineStatusPage({
           )}
 
           <Divider sx={{ my: 2 }} />
-          <QualityMetricsSection report={report} />
+          <QualityMetricsSection
+            report={report}
+            anchoredOnEventoId={anchoredOnEventoId}
+          />
         </Paper>
       )}
     </Box>

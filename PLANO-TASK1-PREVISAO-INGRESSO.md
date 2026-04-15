@@ -16,12 +16,14 @@ Persistir a **quantidade planejada** de ingressos por combinação **evento + di
 
 ## 2. Estado atual no repositório (abril 2026)
 
-| Artefacto | Estado |
-|-----------|--------|
-| Enum `TipoIngresso` em `backend/app/models/models.py` | Já existe (`pista`, `pista_premium`, `camarote`). |
+
+| Artefacto                                                                | Estado                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enum `TipoIngresso` em `backend/app/models/models.py`                    | Já existe (`pista`, `pista_premium`, `camarote`).                                                                                                                                                                                       |
 | Classe `PrevisaoIngresso` em `backend/app/models/ingressos_v2_models.py` | Já declarada: FKs `evento_id`, `diretoria_id`, coluna `tipo_ingresso` (mesmo enum Postgres `tipoingresso` que outros modelos v2), `quantidade`, `created_at`, `updated_at`, `UniqueConstraint(evento_id, diretoria_id, tipo_ingresso)`. |
-| Export em `backend/app/models/models.py` | `PrevisaoIngresso` já importada de `ingressos_v2_models`. |
-| Migração Alembic para `previsao_ingresso` | **Não encontrada** em `backend/alembic/versions/` (grep por `previsao_ingresso` só aponta o modelo). |
+| Export em `backend/app/models/models.py`                                 | `PrevisaoIngresso` já importada de `ingressos_v2_models`.                                                                                                                                                                               |
+| Migração Alembic para `previsao_ingresso`                                | **Não encontrada** em `backend/alembic/versions/` (grep por `previsao_ingresso` só aponta o modelo).                                                                                                                                    |
+
 
 Conclusão: o trabalho que falta para “fechar” este item em bases reais é sobretudo **DDL (Alembic)** e **verificação**; o modelo Python já espelha o desenho do `plan.md`.
 
@@ -49,7 +51,7 @@ Conclusão: o trabalho que falta para “fechar” este item em bases reais é s
 - **Granularidade:** uma linha = `(evento_id, diretoria_id, tipo_ingresso)` com `quantidade >= 0` (recomenda-se validação a nível de schema/serviço; o `plan.md` não exige `CheckConstraint` em DB — opcional).
 - **Unicidade:** `UniqueConstraint("evento_id", "diretoria_id", "tipo_ingresso")` como no `plan.md`.
 - **Timestamps:** `created_at` / `updated_at` com `now_utc` e `onupdate` na coluna `updated_at`, consistente com o resto de `ingressos_v2_models.py`.
-- **Enum no Postgres:** nome de tipo **`tipoingresso`** e valores iguais a `TipoIngresso.*.value`, alinhado ao `SQLEnum` existente no modelo (`values_callable`).
+- **Enum no Postgres:** nome de tipo `**tipoingresso`** e valores iguais a `TipoIngresso.*.value`, alinhado ao `SQLEnum` existente no modelo (`values_callable`).
 
 ---
 
@@ -64,15 +66,15 @@ Conclusão: o trabalho que falta para “fechar” este item em bases reais é s
 
 1. Executar `alembic heads` (a partir de `backend/`) e anotar o revision ID actual (pode haver múltiplos heads; fazer `merge` se for política do repo antes de nova revisão).
 2. Gerar revisão **manual** ou **autogenerate**:
-   - **Preferência:** revisão manual explícita para `CREATE TYPE ... AS ENUM` + `CREATE TABLE previsao_ingresso` + FKs + unique constraint + índices, para evitar surpresas com enums em Postgres.
+  - **Preferência:** revisão manual explícita para `CREATE TYPE ... AS ENUM` + `CREATE TABLE previsao_ingresso` + FKs + unique constraint + índices, para evitar surpresas com enums em Postgres.
 3. Na `upgrade()`:
-   - Criar enum `tipoingresso` com os três valores, **só se não existir** (padrão seguro para reexecução em ambientes parcialmente migrados).
-   - Criar tabela `previsao_ingresso` com colunas alinhadas ao SQLModel (tipos: `INTEGER` para IDs e `quantidade`, `TIMESTAMP WITH TIME ZONE` para datas, enum para `tipo_ingresso`).
-   - Adicionar `FOREIGN KEY` para `evento.id` e `diretoria.id`.
-   - Adicionar `UNIQUE (evento_id, diretoria_id, tipo_ingresso)`.
+  - Criar enum `tipoingresso` com os três valores, **só se não existir** (padrão seguro para reexecução em ambientes parcialmente migrados).
+  - Criar tabela `previsao_ingresso` com colunas alinhadas ao SQLModel (tipos: `INTEGER` para IDs e `quantidade`, `TIMESTAMP WITH TIME ZONE` para datas, enum para `tipo_ingresso`).
+  - Adicionar `FOREIGN KEY` para `evento.id` e `diretoria.id`.
+  - Adicionar `UNIQUE (evento_id, diretoria_id, tipo_ingresso)`.
 4. Na `downgrade()`:
-   - `DROP TABLE previsao_ingresso`.
-   - `DROP TYPE tipoingresso` **apenas** se nenhuma outra tabela do mesmo deploy depender desse tipo; se a migração incremental só criar `previsao_ingresso`, pode fazer drop do enum; se enums forem partilhados com outras tabelas na mesma revisão maior, o downgrade deve ser ordenado (tabelas primeiro, tipo por último).
+  - `DROP TABLE previsao_ingresso`.
+  - `DROP TYPE tipoingresso` **apenas** se nenhuma outra tabela do mesmo deploy depender desse tipo; se a migração incremental só criar `previsao_ingresso`, pode fazer drop do enum; se enums forem partilhados com outras tabelas na mesma revisão maior, o downgrade deve ser ordenado (tabelas primeiro, tipo por último).
 
 ### 6.3 Registo de metadados / Alembic
 
@@ -89,21 +91,23 @@ Conclusão: o trabalho que falta para “fechar” este item em bases reais é s
 
 ## 7. Riscos e mitigação
 
-| Risco | Mitigação |
-|-------|-----------|
+
+| Risco                                                          | Mitigação                                                                     |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Enum Postgres com nome/colisão já criado à mão noutro ambiente | Usar `DO $$ ... IF NOT EXISTS` ou verificar `pg_type` antes de `CREATE TYPE`. |
-| Múltiplos heads Alembic | Resolver merges antes de aplicar a nova revisão em CI. |
-| Modelo sem migração leva a erros em runtime ao aceder à tabela | Tratar esta migração como critério de aceitação deste item. |
+| Múltiplos heads Alembic                                        | Resolver merges antes de aplicar a nova revisão em CI.                        |
+| Modelo sem migração leva a erros em runtime ao aceder à tabela | Tratar esta migração como critério de aceitação deste item.                   |
+
 
 ---
 
 ## 8. Critérios de aceitação (definição de pronto)
 
-- [ ] Tabela `previsao_ingresso` criada em Postgres com FKs e unique `(evento_id, diretoria_id, tipo_ingresso)`.
-- [ ] Tipo enum `tipoingresso` disponível e consistente com `TipoIngresso` em Python.
-- [ ] Migração `upgrade` / `downgrade` validada localmente.
-- [ ] Nenhuma alteração destructiva em `cota_cortesia` / `solicitacao_ingresso`.
-- [ ] Classe `PrevisaoIngresso` permanece a fonte de verdade em `backend/app/models/ingressos_v2_models.py` e está exportada onde o projeto já exporta os modelos v2.
+- Tabela `previsao_ingresso` criada em Postgres com FKs e unique `(evento_id, diretoria_id, tipo_ingresso)`.
+- Tipo enum `tipoingresso` disponível e consistente com `TipoIngresso` em Python.
+- Migração `upgrade` / `downgrade` validada localmente.
+- Nenhuma alteração destructiva em `cota_cortesia` / `solicitacao_ingresso`.
+- Classe `PrevisaoIngresso` permanece a fonte de verdade em `backend/app/models/ingressos_v2_models.py` e está exportada onde o projeto já exporta os modelos v2.
 
 ---
 
@@ -150,3 +154,4 @@ class CotaCortesia(SQLModel, table=True):
     evento: Optional["Evento"] = Relationship(back_populates="cotas")
     diretoria: Optional["Diretoria"] = Relationship(back_populates="cotas")
 ```
+

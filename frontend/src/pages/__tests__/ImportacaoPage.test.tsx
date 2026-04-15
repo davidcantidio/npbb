@@ -511,6 +511,9 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     const user = userEvent.setup();
 
     expect(await screen.findByText("Mapeamento shell 10")).toBeInTheDocument();
+    expect(
+      screen.getByText("Campos do evento serao derivados automaticamente do cadastro do evento selecionado."),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=10");
 
     await user.click(screen.getByRole("button", { name: "Concluir shell mapeamento" }));
@@ -539,6 +542,9 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Mapeamento shell 10")).toBeInTheDocument();
     expect(screen.getByText("Evento editavel shell")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Campos do evento serao derivados automaticamente do cadastro do evento selecionado."),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=10");
   });
 

@@ -38,7 +38,7 @@ from app.models.models import (
     Usuario,
 )
 from app.utils.security import hash_password
-from lead_pipeline.constants import ALL_COLUMNS, FINAL_FILENAME
+from lead_pipeline.constants import ALL_COLUMNS, FINAL_FILENAME, TIPO_EVENTO_PADRAO
 from lead_pipeline.contracts import validate_databricks_contract
 from lead_pipeline.normalization import BirthDateIssue, normalize_data_nascimento
 from lead_pipeline.pipeline import PipelineProgressEvent, PipelineResult, _normalize_row
@@ -105,8 +105,9 @@ def _seed_evento(session: Session, *, agencia_id: int | None = None) -> Evento:
     ev_status = _seed_status(session)
     evento = Evento(
         nome="Park Challenge 2025",
-        cidade="SP",
+        cidade="Sao Paulo",
         estado="SP",
+        data_inicio_prevista=date_type(2026, 6, 8),
         status_id=ev_status.id,
         agencia_id=agencia_id,
     )
@@ -139,6 +140,7 @@ def _base_gold_row(
     *,
     cpf: str = "52998224725",
     data_nascimento: str = "1990-01-15",
+    data_evento: str = "2026-06-08",
     local: str = "Sao Paulo-SP",
     cidade: str = "",
     estado: str = "",
@@ -151,7 +153,7 @@ def _base_gold_row(
         "evento": "Park Challenge 2025",
         "tipo_evento": "ESPORTE",
         "local": local,
-        "data_evento": "2026-06-08",
+        "data_evento": data_evento,
         "data_nascimento": data_nascimento,
         "cidade": cidade,
         "estado": estado,
@@ -281,6 +283,280 @@ def test_materializar_silver_csv_preenche_evento_tipo_via_evento_referencia(engi
     assert len(rows) == 1
     assert rows[0]["evento"] == "Festival Fora Da Taxonomia"
     assert rows[0]["tipo_evento"] == "Entretenimento Catalogo"
+
+
+def test_materializar_silver_csv_sobrescreve_evento_espurio_pelo_referencial(engine, monkeypatch):
+    """Planilha com texto em `evento` que nao bate na taxonomia nao deve bloquear o nome do Evento no banco."""
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        ag = _seed_agencia(s)
+        st = _seed_status(s)
+        tipo = TipoEvento(nome="Entretenimento Catalogo")
+        s.add(tipo)
+        s.commit()
+        s.refresh(tipo)
+        ev = Evento(
+            nome="Festival Fora Da Taxonomia",
+            cidade="RJ",
+            estado="RJ",
+            status_id=st.id,
+            agencia_id=ag.id,
+            tipo_id=tipo.id,
+        )
+        s.add(ev)
+        s.commit()
+        s.refresh(ev)
+
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="x.csv",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=ev.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        dados = _base_gold_row()
+        dados["evento"] = "lixo-nao-mapeado"
+        dados["tipo_evento"] = ""
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=dados, evento_id=ev.id))
+        s.commit()
+        batch_id = batch.id
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert rows[0]["evento"] == "Festival Fora Da Taxonomia"
+    assert rows[0]["tipo_evento"] == "Entretenimento Catalogo"
+
+
+def test_materializar_silver_csv_tipo_padrao_quando_evento_sem_tipo_no_banco(engine, monkeypatch):
+    """Evento sem `tipo_id` ainda deve gerar `tipo_evento` para a taxonomia nao falhar no gate."""
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        ag = _seed_agencia(s)
+        st = _seed_status(s)
+        ev = Evento(
+            nome="Festival Fora Da Taxonomia",
+            cidade="RJ",
+            estado="RJ",
+            status_id=st.id,
+            agencia_id=ag.id,
+            tipo_id=None,
+        )
+        s.add(ev)
+        s.commit()
+        s.refresh(ev)
+
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="x.csv",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=ev.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        dados = _base_gold_row()
+        dados["evento"] = ""
+        dados["tipo_evento"] = ""
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=dados, evento_id=ev.id))
+        s.commit()
+        batch_id = batch.id
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert rows[0]["evento"] == "Festival Fora Da Taxonomia"
+    assert rows[0]["tipo_evento"] == TIPO_EVENTO_PADRAO
+
+
+def test_materializar_silver_csv_sobrescreve_data_evento_pela_data_canonica_do_evento(engine, monkeypatch):
+    """Lote ancorado em evento_id deve materializar data_evento a partir do cadastro do Evento."""
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        ag = _seed_agencia(s)
+        st = _seed_status(s)
+        tipo = TipoEvento(nome="Corrida")
+        s.add(tipo)
+        s.commit()
+        s.refresh(tipo)
+        ev = Evento(
+            nome="Evento Com Data Canonica",
+            cidade="RJ",
+            estado="RJ",
+            status_id=st.id,
+            agencia_id=ag.id,
+            tipo_id=tipo.id,
+            data_inicio_prevista=date_type(2026, 6, 8),
+            data_inicio_realizada=date_type(2026, 6, 10),
+        )
+        s.add(ev)
+        s.commit()
+        s.refresh(ev)
+
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="x.csv",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=ev.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        dados = _base_gold_row(data_evento="nao-e-data")
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=dados, evento_id=ev.id))
+        s.commit()
+        batch_id = batch.id
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert rows[0]["evento"] == "Evento Com Data Canonica"
+    assert rows[0]["tipo_evento"] == "Corrida"
+    assert rows[0]["data_evento"] == "2026-06-10"
+
+
+def test_materializar_silver_csv_sobrescreve_local_pela_localidade_canonica_do_evento(engine, monkeypatch):
+    """Lote ancorado em evento_id deve materializar `local` a partir do cadastro do Evento."""
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        ag = _seed_agencia(s)
+        st = _seed_status(s)
+        ev = Evento(
+            nome="Evento Com Local Canonico",
+            cidade="Rio de Janeiro",
+            estado="RJ",
+            status_id=st.id,
+            agencia_id=ag.id,
+            data_inicio_prevista=date_type(2026, 6, 8),
+        )
+        s.add(ev)
+        s.commit()
+        s.refresh(ev)
+
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="x.csv",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=ev.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        dados = _base_gold_row(local="Londres-UK")
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=dados, evento_id=ev.id))
+        s.commit()
+        batch_id = batch.id
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert rows[0]["local"] == "Rio de Janeiro-RJ"
+
+
+def test_configure_lead_gold_statement_timeout_sets_local_timeout_for_postgres(monkeypatch):
+    from app.services.lead_pipeline_service import _configure_lead_gold_statement_timeout
+
+    executed: list[str] = []
+
+    class _FakeDialect:
+        name = "postgresql"
+
+    class _FakeBind:
+        dialect = _FakeDialect()
+
+    class _FakeSession:
+        def get_bind(self):
+            return _FakeBind()
+
+        def exec(self, statement):
+            executed.append(str(statement))
+
+    monkeypatch.setenv("LEAD_GOLD_STATEMENT_TIMEOUT_MS", "12345")
+
+    _configure_lead_gold_statement_timeout(_FakeSession())
+
+    assert executed == ["SET LOCAL statement_timeout = 12345"]
+
+
+def test_configure_lead_gold_statement_timeout_is_noop_on_sqlite():
+    from app.services.lead_pipeline_service import _configure_lead_gold_statement_timeout
+
+    executed: list[str] = []
+
+    class _FakeDialect:
+        name = "sqlite"
+
+    class _FakeBind:
+        dialect = _FakeDialect()
+
+    class _FakeSession:
+        def get_bind(self):
+            return _FakeBind()
+
+        def exec(self, statement):
+            executed.append(str(statement))
+
+    _configure_lead_gold_statement_timeout(_FakeSession())
+
+    assert executed == []
 
 
 class TestGetBatch:
@@ -591,6 +867,35 @@ class TestNormalizeRowLocalidade:
         assert normalized["estado"] == ""
         assert normalized["local"] == ""
 
+    def test_anchored_event_locality_keeps_event_local_and_lead_city_state_separate(self) -> None:
+        normalized, reasons, _, locality = _normalize_row(
+            _base_gold_row(local="Rio de Janeiro-RJ", cidade="Sao Paulo", estado="SP"),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+            event_locality_owned=True,
+        )
+
+        assert reasons == []
+        assert locality.issue_code is None
+        assert normalized["local"] == "Rio de Janeiro-RJ"
+        assert normalized["cidade"] == "São Paulo"
+        assert normalized["estado"] == "SP"
+
+
+    def test_anchored_event_locality_preserves_event_model_value_when_reference_misses(self) -> None:
+        normalized, reasons, _, locality = _normalize_row(
+            _base_gold_row(local="Brasilia-DF", cidade="", estado=""),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+            event_locality_owned=True,
+        )
+
+        assert reasons == []
+        assert locality.issue_code is None
+        assert normalized["local"] == "Brasilia-DF"
+        assert normalized["cidade"] == ""
+        assert normalized["estado"] == ""
+
 
 class TestNormalizeDataNascimento:
     @pytest.mark.parametrize(
@@ -640,6 +945,17 @@ class TestNormalizeRowBirthDateDQ:
         assert normalized["data_nascimento"] == ""
         assert "DATA_NASCIMENTO_INVALIDA" not in reasons
         assert issue == expected_issue
+
+
+class TestNormalizeRowEventDateDQ:
+    def test_invalid_event_date_still_discards_row_in_pipeline_generico(self) -> None:
+        _normalized, reasons, _issue, _locality = _normalize_row(
+            _base_gold_row(data_evento="valor-invalido"),
+            city_out_of_mapping=False,
+            ref_date_utc=date_type(2026, 1, 1),
+        )
+
+        assert "DATA_EVENTO_INVALIDA" in reasons
 
 
 class TestDatabricksContractBirthDate:
@@ -783,6 +1099,189 @@ class TestLeadEventoInGoldPipeline:
             assert lead.is_cliente_bb is True
             assert lead.is_cliente_estilo is False
 
+    def test_invalid_event_date_in_sheet_is_ignored_when_batch_is_anchored_on_evento_id(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+            evento.data_inicio_prevista = date_type(2026, 6, 8)
+            s.add(evento)
+            s.commit()
+            s.refresh(evento)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={"data_evento": "planilha-invalida"},
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS
+            assert batch.stage == BatchStage.GOLD
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("data_evento_invalid", 0) == 0
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["invalid_records"] == []
+            assert "DATA_EVENTO_INVALIDA" not in batch.pipeline_report["gate"]["warnings"]
+
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.evento_nome == evento.nome
+
+    def test_anchored_batch_persists_lead_city_state_and_uses_event_local_for_sessao_fallback(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+            evento.cidade = "Rio de Janeiro"
+            evento.estado = "RJ"
+            s.add(evento)
+            s.commit()
+            s.refresh(evento)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={
+                "local": "Londres-UK",
+                "cidade": "Sao Paulo",
+                "estado": "SP",
+                "sessao": "",
+            },
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["invalid_records"] == []
+
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.cidade == "São Paulo"
+            assert lead.estado == "SP"
+            assert lead.sessao == "Rio de Janeiro-RJ"
+
+    def test_event_without_canonical_date_fails_batch_with_single_contextual_problem(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+            evento.data_inicio_prevista = None
+            evento.data_inicio_realizada = None
+            s.add(evento)
+            s.commit()
+            s.refresh(evento)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={"data_evento": "planilha-invalida"},
+        )
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        def _unexpected_run_pipeline(*_args, **_kwargs):
+            raise AssertionError("run_pipeline nao deve ser chamado quando o Evento nao tem data canonica")
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", _unexpected_run_pipeline)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.FAIL
+            assert batch.stage == BatchStage.SILVER
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_discarded_rows == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("data_evento_invalid", 0) == 0
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["gate"]["status"] == "FAIL"
+            assert batch.pipeline_report["gate"]["decision"] == "hold"
+            assert batch.pipeline_report["gate"]["fail_reasons"] == ["EVENTO_SEM_DATA_CANONICA"]
+            assert batch.pipeline_report["gate"]["warnings"] == []
+            assert batch.pipeline_report["invalid_records"] == []
+
+    def test_event_model_locality_not_in_reference_still_promotes_with_event_local(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+            evento.cidade = "Brasilia"
+            evento.estado = "DF"
+            s.add(evento)
+            s.commit()
+            s.refresh(evento)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={"local": "planilha-espuria", "sessao": ""},
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS
+            assert batch.stage == BatchStage.GOLD
+            assert batch.gold_dq_invalid_records_total == 0
+            assert batch.gold_dq_discarded_rows == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("localidade_invalida", 0) == 0
+            assert batch.gold_dq_issue_counts.get("cidade_fora_mapeamento", 0) == 0
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["gate"]["status"] == "PASS"
+            assert batch.pipeline_report["gate"]["decision"] == "promote"
+            assert "EVENTO_SEM_LOCALIDADE_CANONICA" not in batch.pipeline_report["gate"]["fail_reasons"]
+            assert batch.pipeline_report["gate"]["warnings"] == []
+            assert batch.pipeline_report["invalid_records"] == []
+
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.sessao == "Brasilia-DF"
+
     def test_promote_to_gold_activation_batch_creates_ativacao_lead_and_lead_evento(
         self, client, engine, monkeypatch
     ):
@@ -865,21 +1364,117 @@ class TestLeadEventoInGoldPipeline:
         with Session(engine) as s:
             batch = s.get(LeadBatch, batch_id)
             assert batch.pipeline_status == PipelineStatus.FAIL
-            assert batch.pipeline_report is None
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["gate"]["status"] == "FAIL"
+            assert batch.pipeline_report["gate"]["decision"] == "hold"
+            assert "RuntimeError: pipeline exploded" in batch.pipeline_report["gate"]["fail_reasons"][0]
             assert batch.pipeline_progress is None
-            assert batch.gold_dq_discarded_rows is None
-            assert batch.gold_dq_issue_counts is None
-            assert batch.gold_dq_invalid_records_total is None
+            assert batch.gold_dq_discarded_rows == 0
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("cpf_invalid_discarded") == 0
+            assert batch.gold_dq_invalid_records_total == 0
 
         resp = client.get(f"/leads/batches/{batch_id}", headers=auth)
         assert resp.status_code == 200
         body = resp.json()
         assert body["pipeline_status"] == "fail"
-        assert body["pipeline_report"] is None
+        assert body["pipeline_report"] is not None
+        assert body["pipeline_report"]["gate"]["status"] == "FAIL"
+        assert "RuntimeError: pipeline exploded" in body["pipeline_report"]["gate"]["fail_reasons"][0]
         assert body["pipeline_progress"] is None
-        assert body["gold_dq_discarded_rows"] is None
-        assert body["gold_dq_issue_counts"] is None
-        assert body["gold_dq_invalid_records_total"] is None
+        assert body["gold_dq_discarded_rows"] == 0
+        assert body["gold_dq_issue_counts"]["cpf_invalid_discarded"] == 0
+        assert body["gold_dq_invalid_records_total"] == 0
+
+    def test_insert_failure_preserves_pipeline_quality_report_and_adds_failure_context(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        tmp_root = Path("backend/tmp-pytest") / f"insert-fail-{uuid4().hex}"
+        report_dir = tmp_root / "output" / str(batch_id)
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "report.json"
+        consolidated_path = report_dir / "leads_multieventos_2025.csv"
+        summary_path = report_dir / "summary.md"
+        report_payload = {
+            "lote_id": str(batch_id),
+            "run_timestamp": "2026-04-15T18:00:00Z",
+            "totals": {"raw_rows": 4, "valid_rows": 3, "discarded_rows": 1},
+            "quality_metrics": {
+                "cpf_invalid_discarded": 1,
+                "telefone_invalid": 0,
+                "data_evento_invalid": 0,
+                "data_nascimento_invalid": 0,
+                "data_nascimento_missing": 0,
+                "duplicidades_cpf_evento": 0,
+                "cidade_fora_mapeamento": 0,
+                "localidade_invalida": 0,
+                "localidade_nao_resolvida": 0,
+                "localidade_fora_brasil": 0,
+                "localidade_cidade_uf_inconsistente": 0,
+            },
+            "gate": {
+                "status": "PASS_WITH_WARNINGS",
+                "decision": "promote",
+                "fail_reasons": [],
+                "warnings": ["CPF_INVALIDO_DESCARTADO"],
+            },
+            "invalid_records": [],
+            "data_nascimento_controle": [],
+            "localidade_controle": [],
+            "cidade_fora_mapeamento_controle": [],
+        }
+        report_path.write_text(json.dumps(report_payload), encoding="utf-8")
+        consolidated_path.write_text("nome,cpf,email\nAlice,52998224725,alice@ex.com\n", encoding="utf-8")
+        summary_path.write_text("# resumo\n", encoding="utf-8")
+
+        def _fake_run_pipeline(*_args, **_kwargs):
+            return PipelineResult(
+                lote_id=str(batch_id),
+                status="PASS_WITH_WARNINGS",
+                decision="promote",
+                output_dir=report_dir,
+                report_path=report_path,
+                summary_path=summary_path,
+                consolidated_path=consolidated_path,
+                exit_code=0,
+            )
+
+        def _raise_insert_failure(*_args, **_kwargs):
+            raise RuntimeError("insert exploded")
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", _fake_run_pipeline)
+        monkeypatch.setattr(lead_pipeline_service, "_inserir_leads_gold", _raise_insert_failure)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.FAIL
+            assert batch.stage == BatchStage.SILVER
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["totals"] == report_payload["totals"]
+            assert batch.pipeline_report["gate"]["status"] == "FAIL"
+            assert batch.pipeline_report["gate"]["decision"] == "hold"
+            assert batch.pipeline_report["gate"]["warnings"] == ["CPF_INVALIDO_DESCARTADO"]
+            assert "RuntimeError: insert exploded" in batch.pipeline_report["gate"]["fail_reasons"][0]
+            assert batch.pipeline_report["failure_context"]["step"] == "insert_leads"
+            assert batch.gold_dq_discarded_rows == 1
+            assert batch.gold_dq_issue_counts is not None
+            assert batch.gold_dq_issue_counts.get("cpf_invalid_discarded") == 1
+            assert batch.gold_dq_invalid_records_total == 0
 
     def test_missing_birth_date_keeps_lead_and_records_dq(self, client, engine, monkeypatch):
         with Session(engine) as s:
@@ -923,10 +1518,15 @@ class TestLeadEventoInGoldPipeline:
             assert lead is not None
             assert lead.data_nascimento is None
 
-    def test_invalid_locality_keeps_lead_and_records_dq(self, client, engine, monkeypatch):
+    def test_anchored_batch_keeps_lead_locality_dq_without_blaming_event_local(self, client, engine, monkeypatch):
         with Session(engine) as s:
             auth = _auth_header(client, s)
             evento = _seed_evento(s)
+            evento.cidade = "Rio de Janeiro"
+            evento.estado = "RJ"
+            s.add(evento)
+            s.commit()
+            s.refresh(evento)
 
         batch_id = _upload_batch(client, auth)
         _promote_to_silver(
@@ -968,13 +1568,13 @@ class TestLeadEventoInGoldPipeline:
             assert controle[0]["issue"] == "cidade_uf_mismatch"
             assert controle[0]["raw_cidade"] == "Sao Paulo"
             assert controle[0]["raw_estado"] == "RJ"
-            assert controle[0]["raw_local"] == "Sao Paulo-RJ"
+            assert controle[0]["raw_local"] == ""
 
             lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
             assert lead is not None
             assert lead.cidade is None
             assert lead.estado is None
-            assert lead.sessao is None
+            assert lead.sessao == "Rio de Janeiro-RJ"
 
     @pytest.mark.parametrize(
         ("raw_birth_date", "expected_issue"),
@@ -1058,3 +1658,90 @@ class TestLeadEventoInGoldPipeline:
                     .where(LeadEvento.evento_id == evento.id)
                 ).all()
                 assert len(lead_eventos) == 1, "Nao deve duplicar LeadEvento"
+
+    def test_anchored_batch_reimport_matches_existing_lead_by_evento_id_after_event_rename(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        first_batch_id = _upload_batch(client, auth, evento_id=evento.id)
+        _promote_to_silver(engine, first_batch_id, evento.id)
+        asyncio.run(executar_pipeline_gold(first_batch_id))
+
+        with Session(engine) as s:
+            existing = s.exec(select(Lead).where(Lead.email == "alice@ex.com")).first()
+            assert existing is not None
+            existing_id = existing.id
+            persisted_evento = s.get(Evento, evento.id)
+            assert persisted_evento is not None
+            persisted_evento.nome = "Park Challenge 2025 Renomeado"
+            s.add(persisted_evento)
+            s.commit()
+
+        second_batch_id = _upload_batch(client, auth, evento_id=evento.id)
+        _promote_to_silver(engine, second_batch_id, evento.id)
+        asyncio.run(executar_pipeline_gold(second_batch_id))
+
+        with Session(engine) as s:
+            leads = s.exec(select(Lead).where(Lead.email == "alice@ex.com")).all()
+            assert len(leads) == 1
+            assert leads[0].id == existing_id
+
+            lead_eventos = s.exec(
+                select(LeadEvento)
+                .where(LeadEvento.lead_id == existing_id)
+                .where(LeadEvento.evento_id == evento.id)
+            ).all()
+            assert len(lead_eventos) == 1
+
+    def test_find_existing_lead_anchored_batch_ignores_homonymous_lead_from_other_event(
+        self, engine
+    ) -> None:
+        with Session(engine) as s:
+            evento = _seed_evento(s)
+            outro_evento = _seed_evento(s)
+            outro_evento.nome = evento.nome
+            s.add(outro_evento)
+            s.commit()
+            s.refresh(outro_evento)
+
+            lead = Lead(
+                email="homonimo-classico@example.com",
+                cpf="52998224725",
+                nome="Lead Homonimo",
+                evento_nome=evento.nome,
+                sessao="Sao Paulo-SP",
+            )
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+            s.add(
+                LeadEvento(
+                    lead_id=lead.id,
+                    evento_id=outro_evento.id,
+                    source_kind=LeadEventoSourceKind.LEAD_BATCH,
+                )
+            )
+            s.commit()
+
+            from app.services.lead_pipeline_service import _find_existing_lead
+
+            payload = {
+                "email": "homonimo-classico@example.com",
+                "cpf": "52998224725",
+                "evento_nome": evento.nome,
+                "sessao": "Sao Paulo-SP",
+            }
+
+            assert _find_existing_lead(s, payload, anchored_evento_id=evento.id) is None
+
+            matched = _find_existing_lead(s, payload, anchored_evento_id=outro_evento.id)
+            assert matched is not None
+            assert matched.id == lead.id

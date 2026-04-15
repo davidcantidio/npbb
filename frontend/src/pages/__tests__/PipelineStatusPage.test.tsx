@@ -116,7 +116,7 @@ describe("PipelineStatusPage", () => {
     expect(screen.getByText("leads.csv")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Executar Pipeline" })).toBeInTheDocument();
     expect(mockedGetLeadBatch).toHaveBeenCalledWith("token-123", 10);
-  });
+  }, 10000);
 
   it("shows pipeline state when getLeadBatch returns a valid batch", async () => {
     mockedGetLeadBatch.mockResolvedValue(createBatch());
@@ -211,6 +211,39 @@ describe("PipelineStatusPage", () => {
     expect(progressbar).not.toHaveAttribute("aria-valuenow");
   });
 
+  it("lists source row numbers in quality metrics when invalid_records are present", async () => {
+    const reportWithRows: PipelineReport = {
+      ...basePipelineReport,
+      quality_metrics: {
+        ...basePipelineReport.quality_metrics,
+        cpf_invalid_discarded: 2,
+      },
+      invalid_records: [
+        {
+          source_file: "leads.xlsx",
+          source_sheet: "Participantes",
+          source_row: 3,
+          motivo_rejeicao: "CPF_INVALIDO",
+        },
+        {
+          source_file: "leads.xlsx",
+          source_sheet: "Participantes",
+          source_row: 10,
+          motivo_rejeicao: "CPF_INVALIDO",
+        },
+      ],
+    };
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({ pipeline_report: reportWithRows }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText("Linhas:")).toBeInTheDocument();
+    expect(screen.getByText(/Participantes · linha 3/)).toBeInTheDocument();
+    expect(screen.getByText(/Participantes · linha 10/)).toBeInTheDocument();
+  });
+
   it("shows warning feedback when the pipeline passes with warnings", async () => {
     const warningReport: PipelineReport = {
       ...basePipelineReport,
@@ -237,5 +270,160 @@ describe("PipelineStatusPage", () => {
     expect(screen.getByText("Avisos:")).toBeInTheDocument();
     expect(screen.getByText("Telefone invalido")).toBeInTheDocument();
     expect(screen.getByText(/PASS WITH WARNINGS/)).toBeInTheDocument();
+  });
+
+  it("shows an internal-error alert when the batch failed without pipeline_report", async () => {
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "fail",
+        pipeline_report: null,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText("Reprovado")).toBeInTheDocument();
+    expect(
+      screen.getByText(/falhou antes de gerar o relatorio desta execucao/i),
+    ).toBeInTheDocument();
+  });
+
+  it("hides event-date invalid metric when batch is anchored on evento_id", async () => {
+    const reportWithEventDateInvalid: PipelineReport = {
+      ...basePipelineReport,
+      quality_metrics: {
+        ...basePipelineReport.quality_metrics,
+        data_evento_invalid: 2,
+      },
+      invalid_records: [
+        {
+          source_file: "leads.xlsx",
+          source_sheet: "Planilha",
+          source_row: 3,
+          motivo_rejeicao: "DATA_EVENTO_INVALIDA",
+        },
+      ],
+    };
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        evento_id: 42,
+        pipeline_report: reportWithEventDateInvalid,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText(/Pipeline Gold/)).toBeInTheDocument();
+    expect(screen.queryByText(/Datas de evento/i)).not.toBeInTheDocument();
+  });
+
+  it("relabels lead locality metrics and hides city-out-of-mapping when batch is anchored on evento_id", async () => {
+    const reportWithAnchoredLocality: PipelineReport = {
+      ...basePipelineReport,
+      quality_metrics: {
+        ...basePipelineReport.quality_metrics,
+        cidade_fora_mapeamento: 2,
+        localidade_invalida: 1,
+        localidade_nao_resolvida: 1,
+        localidade_fora_brasil: 1,
+        localidade_cidade_uf_inconsistente: 1,
+      },
+      localidade_controle: [
+        {
+          source_file: "silver_input.csv",
+          source_sheet: "",
+          source_row: 2,
+          issue: "cidade_uf_mismatch",
+          raw_cidade: "Sao Paulo",
+          raw_estado: "RJ",
+          raw_local: "",
+        },
+      ],
+      cidade_fora_mapeamento_controle: [
+        {
+          source_file: "silver_input.csv",
+          source_sheet: "",
+          source_row: 2,
+        },
+      ],
+    };
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        evento_id: 42,
+        pipeline_report: reportWithAnchoredLocality,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText(/Pipeline Gold/)).toBeInTheDocument();
+    expect(screen.queryByText("Cidade fora do mapeamento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Localidades inválidas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Localidades não resolvidas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Localidades fora do Brasil")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cidade/UF inconsistentes")).not.toBeInTheDocument();
+    expect(screen.getByText("Cidade/UF do lead inválidos")).toBeInTheDocument();
+    expect(screen.getByText("Cidade/UF do lead não resolvidos")).toBeInTheDocument();
+    expect(screen.getByText("Cidade/UF do lead fora do Brasil")).toBeInTheDocument();
+    expect(screen.getByText("Cidade/UF do lead inconsistentes")).toBeInTheDocument();
+  });
+
+  it("keeps event-date invalid metric visible for legacy batches without evento_id", async () => {
+    const reportWithEventDateInvalid: PipelineReport = {
+      ...basePipelineReport,
+      quality_metrics: {
+        ...basePipelineReport.quality_metrics,
+        data_evento_invalid: 2,
+      },
+      invalid_records: [
+        {
+          source_file: "leads.xlsx",
+          source_sheet: "Planilha",
+          source_row: 3,
+          motivo_rejeicao: "DATA_EVENTO_INVALIDA",
+        },
+      ],
+    };
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        evento_id: null,
+        pipeline_report: reportWithEventDateInvalid,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText(/Pipeline Gold/)).toBeInTheDocument();
+    expect(screen.getByText(/Datas de evento/i)).toBeInTheDocument();
+  });
+
+  it("keeps generic locality labels visible for legacy batches without evento_id", async () => {
+    const reportWithGenericLocality: PipelineReport = {
+      ...basePipelineReport,
+      quality_metrics: {
+        ...basePipelineReport.quality_metrics,
+        cidade_fora_mapeamento: 1,
+        localidade_invalida: 1,
+        localidade_nao_resolvida: 1,
+        localidade_fora_brasil: 1,
+        localidade_cidade_uf_inconsistente: 1,
+      },
+    };
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        evento_id: null,
+        pipeline_report: reportWithGenericLocality,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText(/Pipeline Gold/)).toBeInTheDocument();
+    expect(screen.getByText("Cidade fora do mapeamento")).toBeInTheDocument();
+    expect(screen.getByText("Localidades inválidas")).toBeInTheDocument();
+    expect(screen.getByText("Localidades não resolvidas")).toBeInTheDocument();
+    expect(screen.getByText("Localidades fora do Brasil")).toBeInTheDocument();
+    expect(screen.getByText("Cidade/UF inconsistentes")).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 import re
 import unicodedata
@@ -96,8 +96,49 @@ def normalize_local(value: str) -> str:
     return re.sub(r"\s*-\s*", "-", normalized)
 
 
-def parse_date(value: str) -> str | None:
+def _sanitize_date_input(value: str | object) -> str:
+    """Normaliza entrada vinda de CSV/JSON (células vazias, NaN serializado, etc.)."""
     text = str(value or "").strip()
+    lowered = text.lower()
+    if lowered in {"", "nan", "nat", "none", "null"}:
+        return ""
+    return text
+
+
+def _try_parse_excel_serial_date(text: str) -> str | None:
+    """Datas armazenadas como número serial do Excel (ex.: 44927 ou 44927.0 em JSON)."""
+    if not re.fullmatch(r"\d+(?:\.\d+)?", text):
+        return None
+    try:
+        serial = float(text.replace(",", "."))
+    except ValueError:
+        return None
+    # Inteiros tipo 20250115 (YYYYMMDD) não são serial OLE; evita interpretação errada.
+    if serial >= 10_000_000:
+        return None
+    # Faixa típica de seriais para datas entre ~1905 e ~2228 (Excel Windows).
+    if not (2_000 <= serial <= 120_000):
+        return None
+    parsed = pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce")
+    if pd.isna(parsed):
+        return None
+    parsed_date = parsed.date()
+    if not (date(1900, 1, 1) <= parsed_date <= date(2100, 12, 31)):
+        return None
+    return parsed_date.isoformat()
+
+
+def _try_parse_yyyymmdd_compact(text: str) -> str | None:
+    if not re.fullmatch(r"\d{8}", text):
+        return None
+    try:
+        return datetime.strptime(text, "%Y%m%d").date().isoformat()
+    except ValueError:
+        return None
+
+
+def parse_date(value: str | object) -> str | None:
+    text = _sanitize_date_input(value)
     if not text:
         return ""
     iso_match = re.fullmatch(r"\d{4}-\d{2}-\d{2}", text)
@@ -115,6 +156,12 @@ def parse_date(value: str) -> str | None:
         if pd.isna(parsed):
             return None
         return parsed.date().isoformat()
+    compact = _try_parse_yyyymmdd_compact(text)
+    if compact is not None:
+        return compact
+    excel_iso = _try_parse_excel_serial_date(text)
+    if excel_iso is not None:
+        return excel_iso
     parsed = pd.to_datetime(text, errors="coerce", dayfirst=True)
     if pd.isna(parsed):
         return None

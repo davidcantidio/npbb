@@ -38,6 +38,7 @@ import { useAuth } from "../../store/auth";
 
 const QUICK_CREATE_ID = -1;
 const EVENTOS_LOAD_ERROR = "Nao foi possivel carregar os eventos. Tente recarregar a pagina.";
+const DERIVED_EVENT_FIELDS = ["evento", "tipo_evento", "local", "data_evento"] as const;
 
 const CANONICAL_FIELDS = [
   "nome",
@@ -89,6 +90,29 @@ const CONFIDENCE_COLORS: Record<ColumnConfidence, "success" | "info" | "warning"
   alias_match: "warning",
   none: "default",
 };
+
+function isDerivedEventField(field: string | null | undefined) {
+  return Boolean(field && DERIVED_EVENT_FIELDS.includes(field as (typeof DERIVED_EVENT_FIELDS)[number]));
+}
+
+function sanitizeMappedField(field: string | null | undefined, usesFixedEvento: boolean) {
+  if (!field) return "";
+  if (usesFixedEvento && isDerivedEventField(field)) {
+    return "";
+  }
+  return field;
+}
+
+function sanitizeMappingRecord(mapping: Record<string, string>, usesFixedEvento: boolean) {
+  const sanitized: Record<string, string> = {};
+  for (const [coluna, campo] of Object.entries(mapping)) {
+    const nextValue = sanitizeMappedField(campo, usesFixedEvento);
+    if (nextValue) {
+      sanitized[coluna] = nextValue;
+    }
+  }
+  return sanitized;
+}
 
 export type MapeamentoPageProps = {
   batchId?: number;
@@ -158,7 +182,7 @@ export default function MapeamentoPage({
         setColunas(data.colunas);
         const initial: Record<string, string> = {};
         for (const col of data.colunas) {
-          initial[col.coluna_original] = col.campo_sugerido ?? "";
+          initial[col.coluna_original] = sanitizeMappedField(col.campo_sugerido, usesFixedEvento);
         }
         setMapeamento(initial);
       })
@@ -202,24 +226,28 @@ export default function MapeamentoPage({
   );
 
   const resolvedEventoId = usesFixedEvento ? fixedEvento : typeof eventoId === "number" ? eventoId : null;
+  const availableCanonicalFields = useMemo(
+    () => CANONICAL_FIELDS.filter((field) => !(usesFixedEvento && isDerivedEventField(field))),
+    [usesFixedEvento],
+  );
+  const sanitizedMapeamento = useMemo(
+    () => sanitizeMappingRecord(mapeamento, usesFixedEvento),
+    [mapeamento, usesFixedEvento],
+  );
 
   const canConfirm = useMemo(() => {
     if (!resolvedEventoId || submitting) return false;
-    return Object.values(mapeamento).some((value) => value !== "");
-  }, [mapeamento, resolvedEventoId, submitting]);
+    return Object.values(sanitizedMapeamento).some((value) => value !== "");
+  }, [resolvedEventoId, sanitizedMapeamento, submitting]);
 
   const handleConfirm = async () => {
     if (!token || !resolvedEventoId) return;
     setSubmitting(true);
     setError(null);
     try {
-      const activeMapeamento: Record<string, string> = {};
-      for (const [coluna, campo] of Object.entries(mapeamento)) {
-        if (campo) activeMapeamento[coluna] = campo;
-      }
       const res = await mapearLeadBatch(token, batchId, {
         evento_id: resolvedEventoId,
-        mapeamento: activeMapeamento,
+        mapeamento: sanitizedMapeamento,
       });
       if (!Number.isFinite(res.batch_id) || res.batch_id <= 0) {
         throw new Error("Resposta de confirmacao nao retornou batch_id.");
@@ -344,6 +372,12 @@ export default function MapeamentoPage({
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
                 Mapeamento de colunas
               </Typography>
+              {usesFixedEvento ? (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Com evento fixo, evento, tipo_evento, local e data_evento serao derivados automaticamente do
+                  cadastro do evento selecionado. Nao e necessario mapea-los no arquivo.
+                </Alert>
+              ) : null}
               {loadingColunas ? (
                 <Box sx={{ py: 3, display: "flex", justifyContent: "center" }}>
                   <CircularProgress size={28} />
@@ -377,13 +411,16 @@ export default function MapeamentoPage({
                             />
                             {coluna.campo_sugerido ? (
                               <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                                -&gt; {coluna.campo_sugerido}
+                                -&gt;{" "}
+                                {usesFixedEvento && isDerivedEventField(coluna.campo_sugerido)
+                                  ? "Derivado do evento"
+                                  : coluna.campo_sugerido}
                               </Typography>
                             ) : null}
                           </TableCell>
                           <TableCell>
                             <Select
-                              value={mapeamento[coluna.coluna_original] ?? ""}
+                              value={sanitizeMappedField(mapeamento[coluna.coluna_original], usesFixedEvento)}
                               onChange={(event) =>
                                 setMapeamento((prev) => ({
                                   ...prev,
@@ -397,7 +434,7 @@ export default function MapeamentoPage({
                               <MenuItem value="">
                                 <em>Ignorar coluna</em>
                               </MenuItem>
-                              {CANONICAL_FIELDS.map((field) => (
+                              {availableCanonicalFields.map((field) => (
                                 <MenuItem key={field} value={field}>
                                   {field}
                                 </MenuItem>

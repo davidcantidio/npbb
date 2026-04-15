@@ -62,6 +62,9 @@ issues.zip
 reports/**/*.docx
 **/.ruff_cache/
 **/.pytest_cache/
+/.tmp-pytest/
+/.tmp-fabrica-pytest/
+**/tmp-pytest/
 **/test-results/
 frontend/playwright-report/
 frontend/test-results/playwright/

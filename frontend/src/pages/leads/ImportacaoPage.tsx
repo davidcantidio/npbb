@@ -456,6 +456,11 @@ export default function ImportacaoPage() {
           ) : (
             <Stack spacing={2}>
               {mappingBatch ? <BatchSummaryCard batch={mappingBatch} /> : null}
+              {mappingBatch?.evento_id != null ? (
+                <Alert severity="info">
+                  Campos do evento serao derivados automaticamente do cadastro do evento selecionado.
+                </Alert>
+              ) : null}
               <MapeamentoPage
                 batchId={routeBatchId}
                 fixedEventoId={mappingBatch?.evento_id ?? null}

@@ -131,7 +131,13 @@ class LeadEvento(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     lead_id: int = Field(foreign_key="lead.id", index=True)
     evento_id: int = Field(foreign_key="evento.id", index=True)
-    source_kind: LeadEventoSourceKind = Field(index=True)
+    source_kind: LeadEventoSourceKind = Field(
+        sa_column=Column(
+            SQLEnum(LeadEventoSourceKind, name="leadeventosourcekind", values_callable=_enum_values),
+            nullable=False,
+            index=True,
+        ),
+    )
     source_ref_id: Optional[int] = Field(default=None, index=True)
     tipo_lead: Optional[TipoLead] = Field(
         default=None,

@@ -14,7 +14,8 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Evento, ImportAlias, Lead, StatusEvento, Usuario
+from app.models.lead_public_models import LeadEventoSourceKind
+from app.models.models import Evento, ImportAlias, Lead, LeadEvento, StatusEvento, Usuario
 from app.routers.leads import _map_etl_import_error
 from app.schemas.lead_import_etl import ImportEtlPreviewResponse, ImportEtlResult
 from app.utils.security import hash_password
@@ -87,6 +88,19 @@ def seed_event(engine, nome="ETL-EVENTO-TESTE") -> Evento:
         session.commit()
         session.refresh(evento)
         return evento
+
+
+def rename_event(engine, *, evento_id: int, nome: str) -> None:
+    with Session(engine) as session:
+        evento = session.get(Evento, evento_id)
+        assert evento is not None
+        evento.nome = nome
+        session.add(evento)
+        session.commit()
+
+
+def seed_homonymous_event(engine, *, nome: str) -> Evento:
+    return seed_event(engine, nome=nome)
 
 
 def login_and_get_token(client: TestClient, email: str, password: str) -> str:
@@ -444,6 +458,166 @@ def test_commit_etl_reuses_committed_result_idempotently(client: TestClient, eng
     assert first.status_code == 200
     assert second.status_code == 200
     assert second.json() == first.json()
+
+
+def test_commit_etl_keeps_canonical_event_link_when_event_is_renamed_after_preview(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine, nome="ETL-EVENTO-RENAME-ORIGINAL")
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["rename@example.com", "52998224725", "Lead Rename", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("rename.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+
+    assert preview.status_code == 200
+    session_token = preview.json()["session_token"]
+
+    rename_event(engine, evento_id=evento.id, nome="ETL-EVENTO-RENAMED")
+
+    commit = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+
+    assert commit.status_code == 200
+    payload = ImportEtlResult.model_validate(commit.json())
+    assert payload.status == "committed"
+
+    with Session(engine) as session:
+        lead = session.exec(select(Lead).where(Lead.email == "rename@example.com")).first()
+        assert lead is not None
+        lead_eventos = session.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+        assert len(lead_eventos) == 1
+        assert lead_eventos[0].evento_id == evento.id
+        assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_DIRECT
+
+
+def test_commit_etl_links_canonical_event_by_snapshot_evento_id_even_with_homonymous_events(
+    client: TestClient,
+    engine,
+) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine, nome="ETL-EVENTO-HOMONIMO")
+    outro_evento = seed_homonymous_event(engine, nome="ETL-EVENTO-HOMONIMO")
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["homonimo@example.com", "52998224725", "Lead Homonimo", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("homonimo.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+
+    assert preview.status_code == 200
+    session_token = preview.json()["session_token"]
+    assert outro_evento.id != evento.id
+
+    commit = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+
+    assert commit.status_code == 200
+
+    with Session(engine) as session:
+        lead = session.exec(select(Lead).where(Lead.email == "homonimo@example.com")).first()
+        assert lead is not None
+        lead_eventos = session.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
+        assert len(lead_eventos) == 1
+        assert lead_eventos[0].evento_id == evento.id
+        assert lead_eventos[0].evento_id != outro_evento.id
+        assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_DIRECT
+
+
+def test_commit_etl_updates_existing_lead_by_snapshot_evento_id_after_event_rename(
+    client: TestClient,
+    engine,
+) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine, nome="ETL-EVENTO-RENOMEAR-UPDATE")
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    with Session(engine) as session:
+        existing = Lead(
+            email="rename-existing@example.com",
+            cpf="52998224725",
+            nome="Lead Original",
+            evento_nome="ETL-EVENTO-LEGADO",
+            sessao="Show 1",
+        )
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        existing_id = existing.id
+        session.add(
+            LeadEvento(
+                lead_id=existing_id,
+                evento_id=evento.id,
+                source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+            )
+        )
+        session.commit()
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["rename-existing@example.com", "52998224725", "Lead Atualizado", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("rename-update.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+
+    assert preview.status_code == 200
+    session_token = preview.json()["session_token"]
+
+    rename_event(engine, evento_id=evento.id, nome="ETL-EVENTO-RENOMEADO-DEPOIS-DO-PREVIEW")
+
+    commit = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+
+    assert commit.status_code == 200
+    payload = ImportEtlResult.model_validate(commit.json())
+    assert payload.created == 0
+    assert payload.updated == 1
+    assert payload.status == "committed"
+
+    with Session(engine) as session:
+        leads = session.exec(select(Lead).where(Lead.email == "rename-existing@example.com")).all()
+        assert len(leads) == 1
+        assert leads[0].id == existing_id
+        assert leads[0].nome == "Lead Atualizado"
+
+        lead_eventos = session.exec(select(LeadEvento).where(LeadEvento.lead_id == existing_id)).all()
+        assert len(lead_eventos) == 1
+        assert lead_eventos[0].evento_id == evento.id
+        assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_DIRECT
 
 
 def test_commit_etl_rejects_unknown_session_token(client: TestClient, engine) -> None:

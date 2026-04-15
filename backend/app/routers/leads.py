@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import tracemalloc
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from collections.abc import Iterator
 
@@ -17,14 +18,24 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile,
 from fastapi import Response as FastAPIResponse
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from sqlmodel import Session, select
 
 from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
-from app.models.models import Ativacao, Evento, Lead, LeadAlias, LeadAliasTipo, LeadConversao, Usuario, now_utc
+from app.models.models import (
+    Ativacao,
+    Evento,
+    Lead,
+    LeadAlias,
+    LeadAliasTipo,
+    LeadConversao,
+    TipoEvento,
+    Usuario,
+    now_utc,
+)
 from app.modules.leads_publicidade.application.leads_import_usecases import (
     importar_leads_usecase,
     preview_import_sample_usecase,
@@ -288,6 +299,76 @@ def reconhecer_lead_publico(
     )
 
 
+def _lead_list_day_window_bounds(value: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(value, time.min, tzinfo=timezone.utc)
+    return start, start + timedelta(days=1)
+
+
+def _format_data_csv_dia_meia_noite(d: date | None) -> str | None:
+    if d is None:
+        return None
+    return f"{d.isoformat()} 00:00:00"
+
+
+def _format_data_evento_export(
+    evento_data: date | None,
+    data_conversao: datetime | None,
+) -> str | None:
+    if evento_data is not None:
+        return _format_data_csv_dia_meia_noite(evento_data)
+    if data_conversao is not None:
+        return _format_data_csv_dia_meia_noite(data_conversao.date())
+    return None
+
+
+def _ano_evento_export(evento_data: date | None, data_conversao: datetime | None) -> int | None:
+    if evento_data is not None:
+        return int(evento_data.year)
+    if data_conversao is not None:
+        return int(data_conversao.year)
+    return None
+
+
+def _ref_date_for_age(evento_data: date | None, data_conversao: datetime | None) -> date | None:
+    if evento_data is not None:
+        return evento_data
+    if data_conversao is not None:
+        return data_conversao.date()
+    return None
+
+
+def _idade_na_data_ref(data_nascimento: date | None, ref: date | None) -> int | None:
+    if data_nascimento is None or ref is None:
+        return None
+    age = ref.year - data_nascimento.year
+    if (ref.month, ref.day) < (data_nascimento.month, data_nascimento.day):
+        age -= 1
+    return max(0, age)
+
+
+def _faixa_etaria_export_data2(idade: int | None) -> str | None:
+    if idade is None:
+        return None
+    if idade < 18:
+        return "0-17"
+    if idade <= 40:
+        return "18-40"
+    return "40+"
+
+
+def _lead_list_filters(params: LeadListQuery) -> list:
+    filters: list = []
+    if params.data_inicio is not None:
+        start_at, _ = _lead_list_day_window_bounds(params.data_inicio)
+        filters.append(Lead.data_criacao >= start_at)
+    if params.data_fim is not None:
+        _, end_exclusive = _lead_list_day_window_bounds(params.data_fim)
+        filters.append(Lead.data_criacao < end_exclusive)
+    if params.evento_id is not None:
+        filters.append(LeadConversao.evento_id == params.evento_id)
+    return filters
+
+
 @router.get("", response_model=LeadListResponse)
 @router.get("/", response_model=LeadListResponse)
 def listar_leads(
@@ -296,7 +377,6 @@ def listar_leads(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
-    total = int(session.exec(select(func.count(Lead.id))).one() or 0)
     offset = (params.page - 1) * params.page_size
 
     latest_conversao_subquery = (
@@ -308,7 +388,9 @@ def listar_leads(
         .subquery()
     )
 
-    rows = session.exec(
+    list_filters = _lead_list_filters(params)
+
+    base_from = (
         select(
             Lead.id,
             Lead.nome,
@@ -321,11 +403,14 @@ def listar_leads(
             Lead.estado,
             Lead.data_compra,
             Lead.data_criacao,
+            Lead.data_nascimento,
             LeadConversao.tipo,
             LeadConversao.data_conversao_evento,
             LeadConversao.created_at,
             LeadConversao.evento_id,
             Evento.nome.label("evento_convertido_nome"),
+            Evento.data_inicio_prevista.label("evento_data_inicio_prevista"),
+            TipoEvento.nome.label("tipo_evento_nome"),
             Lead.rg,
             Lead.genero,
             Lead.is_cliente_bb,
@@ -340,9 +425,24 @@ def listar_leads(
         .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
         .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
         .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
-        .order_by(Lead.data_criacao.desc(), Lead.id.desc())
-        .offset(offset)
-        .limit(params.page_size)
+        .outerjoin(TipoEvento, TipoEvento.id == Evento.tipo_id)
+    )
+    if list_filters:
+        base_from = base_from.where(and_(*list_filters))
+
+    count_stmt = (
+        select(func.count(Lead.id))
+        .select_from(Lead)
+        .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
+        .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
+        .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
+    )
+    if list_filters:
+        count_stmt = count_stmt.where(and_(*list_filters))
+    total = int(session.exec(count_stmt).one() or 0)
+
+    rows = session.exec(
+        base_from.order_by(Lead.data_criacao.desc(), Lead.id.desc()).offset(offset).limit(params.page_size)
     ).all()
 
     items: list[LeadListItemRead] = []
@@ -358,11 +458,14 @@ def listar_leads(
         estado,
         data_compra,
         data_criacao,
+        data_nascimento,
         tipo_conversao,
         data_conversao_evento,
         data_conversao_criada,
         evento_convertido_id,
         evento_convertido_nome,
+        evento_data_inicio_prevista,
+        tipo_evento_nome,
         rg,
         genero,
         is_cliente_bb,
@@ -383,6 +486,10 @@ def listar_leads(
             for part in [nome or "", sobrenome or ""]
             if part and part.strip()
         ) or None
+        data_conv = data_conversao_evento or data_conversao_criada
+        ref_date = _ref_date_for_age(evento_data_inicio_prevista, data_conv)
+        idade_val = _idade_na_data_ref(data_nascimento, ref_date)
+        faixa_val = _faixa_etaria_export_data2(idade_val)
         items.append(
             LeadListItemRead(
                 id=int(lead_id),
@@ -399,7 +506,7 @@ def listar_leads(
                 evento_convertido_id=int(evento_convertido_id) if evento_convertido_id is not None else None,
                 evento_convertido_nome=evento_convertido_nome,
                 tipo_conversao=tipo_conversao_value,
-                data_conversao=data_conversao_evento or data_conversao_criada,
+                data_conversao=data_conv,
                 rg=rg,
                 genero=genero,
                 is_cliente_bb=is_cliente_bb,
@@ -409,6 +516,12 @@ def listar_leads(
                 complemento=complemento,
                 bairro=bairro,
                 cep=cep,
+                data_nascimento=data_nascimento,
+                data_evento=_format_data_evento_export(evento_data_inicio_prevista, data_conv),
+                soma_de_ano_evento=_ano_evento_export(evento_data_inicio_prevista, data_conv),
+                tipo_evento=tipo_evento_nome,
+                faixa_etaria=faixa_val,
+                soma_de_idade=idade_val,
             )
         )
 

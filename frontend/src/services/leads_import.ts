@@ -186,6 +186,18 @@ export type LocalidadeControleEntry = {
   raw_local?: string | null;
 };
 
+/** Linha da planilha/arquivo de origem associada a um problema na pipeline Gold. */
+export type PipelineSourceRowRef = {
+  source_file: string;
+  source_sheet: string;
+  source_row: number;
+};
+
+export type PipelineInvalidRecord = PipelineSourceRowRef & {
+  motivo_rejeicao: string;
+  row_data?: Record<string, string>;
+};
+
 export type PipelineReport = {
   lote_id: string;
   run_timestamp: string;
@@ -213,8 +225,18 @@ export type PipelineReport = {
     fail_reasons: string[];
     warnings: string[];
   };
+  failure_context?: {
+    step?: string;
+    stage?: string;
+    exception_type?: string;
+    detail?: string;
+    message?: string;
+  };
   data_nascimento_controle?: BirthDateControlEntry[];
   localidade_controle?: LocalidadeControleEntry[];
+  /** Registros descartados na normalização/dedup (motivos separados por `;`). */
+  invalid_records?: PipelineInvalidRecord[];
+  cidade_fora_mapeamento_controle?: PipelineSourceRowRef[];
 };
 
 export type ExecutarPipelineResult = {
@@ -250,12 +272,21 @@ export type LeadListItem = {
   // Personal document fields
   rg: string | null;
   genero: string | null;
+  is_cliente_bb?: boolean | null;
+  is_cliente_estilo?: boolean | null;
   // Address fields
   logradouro: string | null;
   numero: string | null;
   complemento: string | null;
   bairro: string | null;
   cep: string | null;
+  /** Exportacao CSV (layout tipo pivot / data 2.csv) */
+  data_nascimento?: string | null;
+  data_evento?: string | null;
+  soma_de_ano_evento?: number | null;
+  tipo_evento?: string | null;
+  faixa_etaria?: string | null;
+  soma_de_idade?: number | null;
 };
 
 /**
@@ -495,11 +526,20 @@ export async function executarPipeline(
  */
 export async function listLeads(
   token: string,
-  params?: { page?: number; page_size?: number },
+  params?: {
+    page?: number;
+    page_size?: number;
+    data_inicio?: string;
+    data_fim?: string;
+    evento_id?: number;
+  },
 ): Promise<LeadListResponse> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
+  if (params?.data_inicio) qs.set("data_inicio", params.data_inicio);
+  if (params?.data_fim) qs.set("data_fim", params.data_fim);
+  if (typeof params?.evento_id === "number") qs.set("evento_id", String(params.evento_id));
   const url = `/leads${qs.toString() ? `?${qs}` : ""}`;
 
   const res = await fetchWithAuth(url, { token });

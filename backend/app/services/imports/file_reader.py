@@ -30,6 +30,45 @@ class ImportFileError(Exception):
     extra: dict | None = None
 
 
+def _probe_starts_with_zip_local_header(probe: bytes) -> bool:
+    """True if bytes start like a ZIP local header (OOXML .xlsx is ZIP-based)."""
+    if len(probe) < 4:
+        return False
+    return probe[:2] == b"PK" and probe[2:4] in (b"\x03\x04", b"\x05\x06", b"\x07\x08")
+
+
+def _validate_import_content_probe(ext: str, probe: bytes) -> None:
+    """Reject extension/content mismatch early (magic bytes, light CSV checks)."""
+    if ext == ".xlsx":
+        if len(probe) < 4:
+            raise ImportFileError(
+                code="INVALID_FILE_CONTENT",
+                message="Arquivo muito curto ou corrompido para ser XLSX.",
+                field="file",
+            )
+        if not _probe_starts_with_zip_local_header(probe):
+            raise ImportFileError(
+                code="INVALID_FILE_CONTENT",
+                message="O conteudo do arquivo nao corresponde a uma planilha XLSX (Office Open XML).",
+                field="file",
+            )
+        return
+
+    if ext == ".csv":
+        if b"\x00" in probe:
+            raise ImportFileError(
+                code="INVALID_FILE_CONTENT",
+                message="O conteudo do arquivo nao corresponde a um CSV de texto (dados binarios detectados).",
+                field="file",
+            )
+        if _probe_starts_with_zip_local_header(probe):
+            raise ImportFileError(
+                code="INVALID_FILE_CONTENT",
+                message="O conteudo parece planilha compactada (ZIP/XLSX), mas a extensao e .csv.",
+                field="file",
+            )
+
+
 def _detect_csv_delimiter(sample_text: str) -> str:
     first_line = sample_text.splitlines()[0] if sample_text else ""
     comma_count = first_line.count(",")
@@ -261,6 +300,12 @@ def inspect_upload(
             message="Arquivo vazio",
             field="file",
         )
+
+    probe_len = min(size, CSV_STREAM_SNIFF_BYTES)
+    file.file.seek(0)
+    probe = file.file.read(probe_len)
+    _validate_import_content_probe(ext, probe)
+    file.file.seek(0)
     return filename, ext, size
 
 

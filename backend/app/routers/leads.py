@@ -64,7 +64,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead,
     persist_lead_batch,
 )
-from app.services.imports.file_reader import ImportFileError, read_raw_file_preview
+from app.services.imports.file_reader import ImportFileError, inspect_upload, read_raw_file_preview
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
 from app.services.lead_pipeline_service import (
     executar_pipeline_gold_em_thread,
@@ -830,54 +830,16 @@ def validar_upload_import(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
-    filename = file.filename or ""
-    ext = Path(filename).suffix.lower()
-    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+    try:
+        filename, _ext, size = inspect_upload(file, max_bytes=MAX_IMPORT_FILE_BYTES)
+    except ImportFileError as err:
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
-            code="INVALID_FILE_TYPE",
-            message="Formato de arquivo invalido (use .csv ou .xlsx)",
-            field="file",
+            code=err.code,
+            message=err.message,
+            field=err.field,
+            extra=err.extra,
         )
-    file.file.seek(0, 2)
-    size = file.file.tell()
-    file.file.seek(0)
-    if size > MAX_IMPORT_FILE_BYTES:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="FILE_TOO_LARGE",
-            message="Arquivo excede o tamanho maximo permitido",
-            field="file",
-            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
-        )
-    if size == 0:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="EMPTY_FILE",
-            message="Arquivo vazio",
-            field="file",
-        )
-
-    file.file.seek(0, 2)
-    size = file.file.tell()
-    file.file.seek(0)
-
-    if size > MAX_IMPORT_FILE_BYTES:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="FILE_TOO_LARGE",
-            message="Arquivo excede o tamanho maximo permitido",
-            field="file",
-            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
-        )
-    if size == 0:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="EMPTY_FILE",
-            message="Arquivo vazio",
-            field="file",
-        )
-
     return {"filename": filename, "size_bytes": size}
 
 
@@ -1787,33 +1749,19 @@ def criar_batch(
             message="Usuario autenticado invalido para upload",
         )
 
-    filename = file.filename or ""
-    ext = Path(filename).suffix.lower()
-    if ext not in ALLOWED_IMPORT_EXTENSIONS:
+    try:
+        filename, _ext, _size = inspect_upload(file, max_bytes=MAX_IMPORT_FILE_BYTES)
+    except ImportFileError as err:
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
-            code="INVALID_FILE_TYPE",
-            message="Formato de arquivo invalido (use .csv ou .xlsx)",
-            field="file",
+            code=err.code,
+            message=err.message,
+            field=err.field,
+            extra=err.extra,
         )
 
     raw = file.file.read()
     arquivo_sha256 = hashlib.sha256(raw).hexdigest()
-    if len(raw) == 0:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="EMPTY_FILE",
-            message="Arquivo vazio",
-            field="file",
-        )
-    if len(raw) > MAX_IMPORT_FILE_BYTES:
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="FILE_TOO_LARGE",
-            message="Arquivo excede o tamanho maximo permitido",
-            field="file",
-            extra={"max_bytes": MAX_IMPORT_FILE_BYTES},
-        )
 
     from datetime import date as _date
     from datetime import datetime as _dt

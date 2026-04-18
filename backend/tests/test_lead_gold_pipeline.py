@@ -2538,6 +2538,55 @@ class TestLeadEventoInGoldPipeline:
             ).all()
             assert len(lead_eventos) == 1
 
+    def test_anchored_batch_reimport_preserves_existing_filled_fields(
+        self, client, engine, monkeypatch
+    ) -> None:
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        first_batch_id = _upload_batch(client, auth, evento_id=evento.id)
+        _promote_to_silver(
+            engine,
+            first_batch_id,
+            evento.id,
+            dados_brutos_extra={"nome": "Alice Original"},
+        )
+        asyncio.run(executar_pipeline_gold(first_batch_id))
+
+        with Session(engine) as s:
+            existing = s.exec(select(Lead).where(Lead.email == "alice@ex.com")).first()
+            assert existing is not None
+            existing_id = existing.id
+            assert existing.nome == "Alice Original"
+
+        second_batch_id = _upload_batch(client, auth, evento_id=evento.id)
+        _promote_to_silver(
+            engine,
+            second_batch_id,
+            evento.id,
+            dados_brutos_extra={"nome": "Alice Corrigida"},
+        )
+        asyncio.run(executar_pipeline_gold(second_batch_id))
+
+        with Session(engine) as s:
+            leads = s.exec(select(Lead).where(Lead.email == "alice@ex.com")).all()
+            assert len(leads) == 1
+            assert leads[0].id == existing_id
+            assert leads[0].nome == "Alice Original"
+
+            lead_eventos = s.exec(
+                select(LeadEvento)
+                .where(LeadEvento.lead_id == existing_id)
+                .where(LeadEvento.evento_id == evento.id)
+            ).all()
+            assert len(lead_eventos) == 1
+
     def test_find_existing_lead_anchored_batch_ignores_homonymous_lead_from_other_event(
         self, engine
     ) -> None:

@@ -596,7 +596,7 @@ class TestGetBatchPreview:
         ]
         assert body["total_rows"] == 2
 
-    def test_invalid_xlsx_preview_returns_parse_error(self, client, engine):
+    def test_invalid_xlsx_rejected_at_upload(self, client, engine):
         with Session(engine) as s:
             headers = _auth_header(client, s)
 
@@ -612,14 +612,9 @@ class TestGetBatchPreview:
             },
             data={"plataforma_origem": "manual", "data_envio": "2026-03-01T10:00:00"},
         )
-        batch_id = upload_resp.json()["id"]
-
-        resp = client.get(f"/leads/batches/{batch_id}/preview", headers=headers)
-        assert resp.status_code == 422
-        assert resp.json()["detail"] == {
-            "code": "PREVIEW_PARSE_ERROR",
-            "message": "Nao foi possivel ler o arquivo do lote para gerar o preview.",
-        }
+        assert upload_resp.status_code == 400
+        detail = upload_resp.json()["detail"]
+        assert detail.get("code") == "INVALID_FILE_CONTENT"
 
     def test_preview_not_found(self, client, engine):
         with Session(engine) as s:

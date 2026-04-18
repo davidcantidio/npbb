@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import zipfile
 from io import BytesIO
 
 import pytest
@@ -49,6 +51,60 @@ def test_inspect_upload_too_large_message_includes_received_size_and_limit_in_mb
     assert "24.3 MB" in err.message
     assert "10.0 MB" in err.message
     assert err.extra == {"max_bytes": max_bytes}
+
+
+def test_inspect_upload_rejects_xlsx_with_non_zip_content() -> None:
+    file = _upload_file("leads.xlsx", b"Isto nao e um ficheiro ZIP/XLSX")
+
+    with pytest.raises(ImportFileError) as exc_info:
+        inspect_upload(file)
+
+    assert exc_info.value.code == "INVALID_FILE_CONTENT"
+
+
+def test_inspect_upload_rejects_csv_with_nul_bytes() -> None:
+    file = _upload_file("leads.csv", b"nome\x00email,cpf\n")
+
+    with pytest.raises(ImportFileError) as exc_info:
+        inspect_upload(file)
+
+    assert exc_info.value.code == "INVALID_FILE_CONTENT"
+
+
+def test_inspect_upload_rejects_csv_with_zip_signature() -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("a.txt", b"hello")
+    zip_bytes = buf.getvalue()
+    file = _upload_file("disguised.csv", zip_bytes)
+
+    with pytest.raises(ImportFileError) as exc_info:
+        inspect_upload(file)
+
+    assert exc_info.value.code == "INVALID_FILE_CONTENT"
+
+
+def test_inspect_upload_accepts_valid_csv_utf8() -> None:
+    content = b"nome,email,cpf\nAlice,alice@ex.com,12345678901\n"
+    file = _upload_file("leads.csv", content)
+    filename, ext, size = inspect_upload(file)
+    assert filename == "leads.csv"
+    assert ext == ".csv"
+    assert size == len(content)
+    assert file.file.tell() == 0
+
+
+def test_inspect_upload_accepts_minimal_zip_xlsx_signature() -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", b'<?xml version="1.0" encoding="UTF-8"?>')
+    payload = buf.getvalue()
+    assert payload.startswith(b"PK\x03\x04")
+    file = _upload_file("minimal.xlsx", payload)
+    filename, ext, size = inspect_upload(file)
+    assert ext == ".xlsx"
+    assert size == len(payload)
+    assert file.file.tell() == 0
 
 
 class _FakeWorksheet:

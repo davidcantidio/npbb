@@ -38,7 +38,18 @@ _DEFAULT_COLUMN_ALIASES: dict[str, str] = {
     "email": "email",
     "e_mail": "email",
 }
+
+ETL_DEFAULT_MAX_SCAN_ROWS = 40
+ETL_MAX_SCAN_ROWS_CAP = 500
+
 ExtractRowsResult = tuple[list[dict[str, Any]], dict[str, Any]] | EtlHeaderRequired | EtlCpfColumnRequired
+
+
+def clamp_etl_max_scan_rows(value: int | None) -> int:
+    """Clamp operator-supplied scan window (API validates; this is the single backend guard)."""
+    if value is None:
+        return ETL_DEFAULT_MAX_SCAN_ROWS
+    return max(1, min(int(value), ETL_MAX_SCAN_ROWS_CAP))
 
 
 def read_upload_bytes(file: UploadFile, *, max_bytes: int) -> tuple[str, str, bytes]:
@@ -57,6 +68,15 @@ def compute_file_fingerprint(filename: str, payload: bytes) -> str:
     return digest.hexdigest()
 
 
+def list_xlsx_sheet_titles(payload: bytes) -> list[str]:
+    """Return workbook sheet titles without loading full cell data (read-only)."""
+    wb = load_workbook(io.BytesIO(payload), read_only=True, data_only=True)
+    try:
+        return list(wb.sheetnames)
+    finally:
+        wb.close()
+
+
 def _clean_cell_text(value: object) -> str:
     if value is None:
         return ""
@@ -73,16 +93,45 @@ def _decode_csv_payload(payload: bytes) -> str:
         return payload.decode("latin-1")
 
 
-def _detect_csv_delimiter(sample_text: str) -> str:
-    first_line = sample_text.splitlines()[0] if sample_text else ""
-    comma_count = first_line.count(",")
-    semicolon_count = first_line.count(";")
-    return ";" if semicolon_count > comma_count else ","
+def _csv_max_field_count(sample_text: str, delimiter: str, *, max_probe_lines: int = 30) -> int:
+    reader = csv.reader(io.StringIO(sample_text), delimiter=delimiter)
+    best = 0
+    for i, row in enumerate(reader):
+        if i >= max_probe_lines:
+            break
+        best = max(best, len(row))
+    return best
+
+
+def _detect_csv_delimiter_robust(sample_text: str) -> str:
+    """Pick CSV delimiter: tab-heavy first line, then Sniffer, then comma vs semicolon (tie -> comma)."""
+    if not sample_text:
+        return ","
+    lines = sample_text.splitlines()
+    first = lines[0] if lines else ""
+    tab_n = first.count("\t")
+    comma_n = first.count(",")
+    semi_n = first.count(";")
+    if tab_n > max(comma_n, semi_n):
+        return "\t"
+
+    probe = sample_text[:8192] if len(sample_text) > 8192 else sample_text
+    try:
+        dialect = csv.Sniffer().sniff(probe, delimiters=";\t,")
+        d = dialect.delimiter
+        if d in ("\t", ";", ",") and _csv_max_field_count(probe, d) >= 2:
+            return d
+    except csv.Error:
+        pass
+
+    if semi_n == comma_n:
+        return ","
+    return ";" if semi_n > comma_n else ","
 
 
 def _load_csv_worksheet(payload: bytes) -> Worksheet:
     text = _decode_csv_payload(payload)
-    delimiter = _detect_csv_delimiter(text[:4096])
+    delimiter = _detect_csv_delimiter_robust(text[:8192])
     reader = csv.reader(io.StringIO(text), delimiter=delimiter)
 
     workbook = Workbook()
@@ -206,15 +255,35 @@ def _persist_manual_aliases(session: Session, manual_alias_values: dict[str, str
         )
 
 
+def _select_xlsx_worksheet(workbook, sheet_name: str | None):
+    """Resolve worksheet: first sheet when sheet_name omitted/blank; exact title match otherwise."""
+    if sheet_name is None or not str(sheet_name).strip():
+        return workbook.worksheets[0]
+    name = str(sheet_name).strip()
+    if name not in workbook.sheetnames:
+        avail = ", ".join(repr(t) for t in workbook.sheetnames)
+        raise EtlImportContractError(f"Aba XLSX inexistente: {name!r}. Abas disponiveis: {avail}")
+    return workbook[name]
+
+
 def _extract_worksheet_rows(
     ws: Worksheet,
     *,
     db: Session,
     header_row: int | None = None,
     field_aliases: dict[str, EtlFieldAliasSelection] | None = None,
+    max_scan_rows: int = ETL_DEFAULT_MAX_SCAN_ROWS,
+    promote_merged_header: bool = False,
+    available_sheets: tuple[str, ...] = (),
+    active_sheet: str | None = None,
 ) -> ExtractRowsResult:
+    # Merged cells: xlsx_utils uses anchor value for empty cells in a merge (no silent column shift here).
     if header_row is not None and header_row < 1:
         raise EtlImportContractError("header_row deve ser 1-indexed e positivo.")
+
+    scan_cap = min(max_scan_rows, ws.max_row) if ws.max_row else 0
+    sheet_ctx = available_sheets
+    active = active_sheet or ws.title
 
     persisted_aliases = _load_persisted_header_aliases(db)
     manual_alias_values = _resolve_manual_alias_values(
@@ -229,8 +298,8 @@ def _extract_worksheet_rows(
         term_aliases=term_aliases,
         forced_row=header_row,
         soft_fail=True,
-        promote_merged_header=False,
-        max_scan_rows=40,
+        promote_merged_header=promote_merged_header,
+        max_scan_rows=max_scan_rows,
         min_non_empty_cells=1,
     )
 
@@ -241,12 +310,16 @@ def _extract_worksheet_rows(
                 message="Nao foi possivel identificar automaticamente a linha do cabecalho com CPF.",
                 max_row=ws.max_row,
                 scanned_rows=found_header_row.scanned_rows,
+                available_sheets=sheet_ctx,
+                active_sheet=active,
             )
         return EtlCpfColumnRequired(
             status="cpf_column_required",
             message="A linha indicada nao contem uma coluna de CPF reconhecida.",
             header_row=header_row,
             columns=_columns_from_header_not_found(found_header_row),
+            available_sheets=sheet_ctx,
+            active_sheet=active,
         )
 
     resolved_header_row = int(found_header_row)
@@ -263,13 +336,17 @@ def _extract_worksheet_rows(
                 status="header_required",
                 message="Nao foi possivel identificar automaticamente a linha do cabecalho com CPF.",
                 max_row=ws.max_row,
-                scanned_rows=min(40, ws.max_row),
+                scanned_rows=scan_cap,
+                available_sheets=sheet_ctx,
+                active_sheet=active,
             )
         return EtlCpfColumnRequired(
             status="cpf_column_required",
             message="A linha indicada nao contem uma coluna de CPF reconhecida.",
             header_row=resolved_header_row,
             columns=_header_columns(ws, resolved_header_row),
+            available_sheets=sheet_ctx,
+            active_sheet=active,
         )
 
     _persist_manual_aliases(db, manual_alias_values)
@@ -291,8 +368,10 @@ def _extract_worksheet_rows(
             }
         )
 
+    meta_sheets = list(sheet_ctx)
     return rows, {
         "sheet_name": ws.title,
+        "available_sheets": meta_sheets,
         "header_row": columns_result.lineage.header_row,
         "header_range": columns_result.lineage.header_range,
         "used_range": columns_result.lineage.used_range,
@@ -306,13 +385,22 @@ def extract_xlsx_rows(
     db: Session,
     header_row: int | None = None,
     field_aliases: dict[str, EtlFieldAliasSelection] | None = None,
+    sheet_name: str | None = None,
+    max_scan_rows: int = ETL_DEFAULT_MAX_SCAN_ROWS,
+    promote_merged_header: bool = False,
 ) -> ExtractRowsResult:
     workbook = load_workbook(io.BytesIO(payload), read_only=False, data_only=True)  # Normal mode has ws.merged_cells.
+    titles = tuple(workbook.sheetnames)
+    ws = _select_xlsx_worksheet(workbook, sheet_name)
     return _extract_worksheet_rows(
-        workbook.worksheets[0],
+        ws,
         db=db,
         header_row=header_row,
         field_aliases=field_aliases,
+        max_scan_rows=max_scan_rows,
+        promote_merged_header=promote_merged_header,
+        available_sheets=titles,
+        active_sheet=ws.title,
     )
 
 
@@ -322,10 +410,17 @@ def extract_csv_rows(
     db: Session,
     header_row: int | None = None,
     field_aliases: dict[str, EtlFieldAliasSelection] | None = None,
+    max_scan_rows: int = ETL_DEFAULT_MAX_SCAN_ROWS,
+    promote_merged_header: bool = False,
 ) -> ExtractRowsResult:
+    ws = _load_csv_worksheet(payload)
     return _extract_worksheet_rows(
-        _load_csv_worksheet(payload),
+        ws,
         db=db,
         header_row=header_row,
         field_aliases=field_aliases,
+        max_scan_rows=max_scan_rows,
+        promote_merged_header=promote_merged_header,
+        available_sheets=(),
+        active_sheet=ws.title,
     )

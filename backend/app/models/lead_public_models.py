@@ -299,6 +299,7 @@ class LeadImportEtlPreviewSession(SQLModel, table=True):
     approved_rows_json: str = Field(sa_column=Column(Text, nullable=False))
     rejected_rows_json: str = Field(sa_column=Column(Text, nullable=False))
     dq_report_json: str = Field(sa_column=Column(Text, nullable=False))
+    preview_context_json: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     commit_result_json: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(default_factory=now_utc, index=True)
     committed_at: Optional[datetime] = Field(

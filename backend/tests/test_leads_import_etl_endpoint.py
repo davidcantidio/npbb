@@ -227,6 +227,8 @@ def test_preview_etl_requests_header_row_when_cpf_header_is_not_detected(client:
     assert payload["status"] == "header_required"
     assert "session_token" not in payload
     assert payload["required_fields"] == ["cpf"]
+    assert payload.get("available_sheets") == ["Sheet"]
+    assert payload.get("active_sheet") == "Sheet"
 
 
 def test_preview_etl_accepts_forced_header_row_with_cpf(client: TestClient, engine) -> None:
@@ -635,7 +637,7 @@ def test_commit_etl_links_canonical_event_by_snapshot_evento_id_even_with_homony
         assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_DIRECT
 
 
-def test_commit_etl_updates_existing_lead_by_snapshot_evento_id_after_event_rename(
+def test_commit_etl_preserves_existing_lead_fields_after_event_rename(
     client: TestClient,
     engine,
 ) -> None:
@@ -699,7 +701,7 @@ def test_commit_etl_updates_existing_lead_by_snapshot_evento_id_after_event_rena
         leads = session.exec(select(Lead).where(Lead.email == "rename-existing@example.com")).all()
         assert len(leads) == 1
         assert leads[0].id == existing_id
-        assert leads[0].nome == "Lead Atualizado"
+        assert leads[0].nome == "Lead Original"
 
         lead_eventos = session.exec(select(LeadEvento).where(LeadEvento.lead_id == existing_id)).all()
         assert len(lead_eventos) == 1
@@ -864,3 +866,224 @@ def test_commit_etl_blocks_validation_errors_even_with_force_warnings(client: Te
 
     assert commit.status_code == 409
     assert commit.json()["detail"]["code"] == "ETL_COMMIT_BLOCKED"
+
+
+def _make_two_sheet_xlsx() -> bytes:
+    wb = Workbook()
+    ws0 = wb.active
+    ws0.title = "Indice"
+    ws0.append(["Resumo"])
+    ws1 = wb.create_sheet("Dados")
+    ws1.append(["CPF", "Email"])
+    ws1.append(["52998224725", "segunda.aba@example.com"])
+    output = BytesIO()
+    wb.save(output)
+    return output.getvalue()
+
+
+def test_preview_etl_multi_sheet_requires_sheet_selection_then_succeeds(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+    payload_bytes = _make_two_sheet_xlsx()
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("multi.xlsx", payload_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert res.status_code == 200
+    first = res.json()
+    assert first["status"] == "header_required"
+    assert set(first["available_sheets"]) == {"Indice", "Dados"}
+
+    res2 = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("multi.xlsx", payload_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false", "sheet_name": "Dados"},
+    )
+    assert res2.status_code == 200
+    body = ImportEtlPreviewResponse.model_validate(res2.json())
+    assert body.status == "previewed"
+    assert body.valid_rows >= 1
+    assert body.sheet_name == "Dados"
+    assert "Dados" in (body.available_sheets or [])
+
+
+def test_preview_etl_sheet_name_idempotency_preserves_sheet_metadata(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+    payload_bytes = _make_two_sheet_xlsx()
+
+    res1 = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("multi.xlsx", payload_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false", "sheet_name": "Dados"},
+    )
+    assert res1.status_code == 200
+    body1 = ImportEtlPreviewResponse.model_validate(res1.json())
+    assert body1.status == "previewed"
+    assert body1.sheet_name == "Dados"
+    assert body1.available_sheets == ["Indice", "Dados"]
+
+    res2 = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("multi.xlsx", payload_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false", "sheet_name": "Dados"},
+    )
+    assert res2.status_code == 200
+    body2 = ImportEtlPreviewResponse.model_validate(res2.json())
+    assert body2.session_token == body1.session_token
+    assert body2.sheet_name == "Dados"
+    assert body2.available_sheets == ["Indice", "Dados"]
+
+    with Session(engine) as session:
+        rows = session.exec(select(LeadImportEtlPreviewSession)).all()
+
+    assert len(rows) == 1
+
+
+def test_preview_etl_invalid_sheet_name_returns_400(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={
+            "file": (
+                "multi.xlsx",
+                _make_two_sheet_xlsx(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+        data={"evento_id": str(evento.id), "strict": "false", "sheet_name": "NaoExiste"},
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"]["code"] == "ETL_INVALID_INPUT"
+
+
+def test_preview_etl_max_scan_rows_out_of_range_returns_422(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={
+            "file": (
+                "x.xlsx",
+                make_xlsx_payload([["CPF"], ["52998224725"]]),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+        data={"evento_id": str(evento.id), "strict": "false", "max_scan_rows": "9999"},
+    )
+    assert res.status_code == 422
+    assert res.json()["detail"]["field"] == "max_scan_rows"
+
+
+def _make_late_header_xlsx() -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    for _ in range(49):
+        ws.append(["preambulo", "x"])
+    ws.append(["CPF", "Email"])
+    ws.append(["52998224725", "late.header@example.com"])
+    output = BytesIO()
+    wb.save(output)
+    return output.getvalue()
+
+
+def test_preview_etl_late_header_row_requires_extended_scan(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+    raw = _make_late_header_xlsx()
+
+    res_fail = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("late.xlsx", raw, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert res_fail.status_code == 200
+    assert res_fail.json()["status"] == "header_required"
+
+    res_ok = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("late.xlsx", raw, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false", "max_scan_rows": "55"},
+    )
+    assert res_ok.status_code == 200
+    body = ImportEtlPreviewResponse.model_validate(res_ok.json())
+    assert body.status == "previewed"
+    assert body.valid_rows >= 1
+
+
+def _make_merged_title_xlsx() -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.merge_cells("A1:C1")
+    ws["A1"] = "Relatorio Participantes"
+    ws.append(["CPF", "Email", "Nome"])
+    ws.append(["52998224725", "merged.title@example.com", "Ana"])
+    output = BytesIO()
+    wb.save(output)
+    return output.getvalue()
+
+
+def test_preview_etl_merged_title_row_above_header(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={
+            "file": (
+                "merged.xlsx",
+                _make_merged_title_xlsx(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert res.status_code == 200
+    body = ImportEtlPreviewResponse.model_validate(res.json())
+    assert body.status == "previewed"
+    assert body.valid_rows >= 1
+
+
+def test_preview_etl_tab_delimited_csv(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    csv_bytes = b"CPF\tEmail\n52998224725\ttab.csv@example.com\n"
+    res = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("tab.csv", csv_bytes, "text/csv")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert res.status_code == 200
+    body = ImportEtlPreviewResponse.model_validate(res.json())
+    assert body.status == "previewed"
+    assert body.valid_rows == 1

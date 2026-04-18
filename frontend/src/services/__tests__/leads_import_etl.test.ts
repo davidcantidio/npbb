@@ -111,6 +111,44 @@ describe("leads_import ETL service", () => {
     expect(result.status).toBe("cpf_column_required");
   });
 
+  it("previewLeadImportEtl sends sheet_name and max_scan_rows when provided", async () => {
+    const fetchMock = mockFetchSequence([
+      {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              status: "previewed",
+              session_token: "s1",
+              total_rows: 1,
+              valid_rows: 1,
+              invalid_rows: 0,
+              dq_report: [],
+              sheet_name: "Dados",
+              available_sheets: ["Indice", "Dados"],
+            }),
+          ),
+      },
+    ]);
+
+    const file = new File(["xlsx"], "leads.xlsx");
+    const result = await previewLeadImportEtl("token-123", file, 99, false, {
+      sheetName: "Dados",
+      maxScanRows: 120,
+    });
+
+    const form = fetchMock.mock.calls[0][1].body as FormData;
+    expect(form.get("sheet_name")).toBe("Dados");
+    expect(form.get("max_scan_rows")).toBe("120");
+    expect(result.status).toBe("previewed");
+    if (result.status === "previewed") {
+      expect(result.sheet_name).toBe("Dados");
+      expect(result.available_sheets).toEqual(["Indice", "Dados"]);
+    }
+  });
+
   it("commitLeadImportEtl posts the public payload and returns the backend contract unchanged", async () => {
     const fetchMock = mockFetchSequence([
       {
@@ -130,6 +168,7 @@ describe("leads_import ETL service", () => {
               errors: 0,
               strict: false,
               status: "committed",
+              persistence_failures: [],
               dq_report: [
                 {
                   check_name: "dq.preview.duplicates",
@@ -162,5 +201,39 @@ describe("leads_import ETL service", () => {
     );
     expect(result.status).toBe("committed");
     expect(result.dq_report[0].check_name).toBe("dq.preview.duplicates");
+    expect(result.persistence_failures).toEqual([]);
+  });
+
+  it("commitLeadImportEtl preserves partial_failure responses for retry handling", async () => {
+    const fetchMock = mockFetchSequence([
+      {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              session_token: "session-123",
+              total_rows: 4,
+              valid_rows: 3,
+              invalid_rows: 1,
+              created: 1,
+              updated: 1,
+              skipped: 1,
+              errors: 1,
+              strict: false,
+              status: "partial_failure",
+              persistence_failures: [{ row_number: 7, reason: "db timeout" }],
+              dq_report: [],
+            }),
+          ),
+      },
+    ]);
+
+    const result = await commitLeadImportEtl("token-123", "session-123", 42, true);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe("partial_failure");
+    expect(result.persistence_failures).toEqual([{ row_number: 7, reason: "db timeout" }]);
   });
 });

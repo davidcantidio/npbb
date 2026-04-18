@@ -46,6 +46,8 @@ class EtlHeaderRequired:
     max_row: int
     scanned_rows: int
     required_fields: tuple[str, ...] = ("cpf",)
+    available_sheets: tuple[str, ...] = field(default_factory=tuple)
+    active_sheet: str | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,8 @@ class EtlCpfColumnRequired:
     header_row: int
     columns: tuple[EtlHeaderColumn, ...]
     required_fields: tuple[str, ...] = ("cpf",)
+    available_sheets: tuple[str, ...] = field(default_factory=tuple)
+    active_sheet: str | None = None
 
 
 @dataclass(frozen=True)
@@ -74,6 +78,8 @@ class EtlPreviewSnapshot:
     idempotency_key: str
     has_validation_errors: bool
     has_warnings: bool
+    sheet_name: str | None = None
+    available_sheets: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

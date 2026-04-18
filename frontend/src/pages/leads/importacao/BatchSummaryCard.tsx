@@ -7,6 +7,7 @@ function pipelineStatusChipColor(
 ): "default" | "info" | "success" | "warning" | "error" {
   if (status === "pass") return "success";
   if (status === "pass_with_warnings") return "warning";
+  if (status === "stalled") return "warning";
   if (status === "fail") return "error";
   return "default";
 }
@@ -14,6 +15,7 @@ function pipelineStatusChipColor(
 function pipelineStatusLabel(status: LeadBatch["pipeline_status"]) {
   if (status === "pass") return "Pipeline aprovado";
   if (status === "pass_with_warnings") return "Pipeline com avisos";
+  if (status === "stalled") return "Pipeline interrompido (retomavel)";
   if (status === "fail") return "Pipeline reprovado";
   return "Pipeline pendente";
 }

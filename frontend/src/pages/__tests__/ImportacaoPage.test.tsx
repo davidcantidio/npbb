@@ -88,6 +88,7 @@ vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
 vi.mock("../../services/leads_import", () => ({
   DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON:
     "Vincule uma agencia ao evento antes de importar leads de ativacao.",
+  LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP: 500,
   commitLeadImportEtl: vi.fn(),
   createLeadBatch: vi.fn(),
   getActivationImportBlockReason: (evento?: { activation_import_block_reason?: string | null }) =>
@@ -1754,8 +1755,43 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
 
     expect(await screen.findByLabelText("Linha do cabecalho")).toBeInTheDocument();
-    expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", xlsxFile, 42, false, undefined);
+    expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", xlsxFile, 42, false, {});
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=etl");
+  });
+
+  it("shows the ETL CPF column prompt with active sheet context when header selection still needs CPF mapping", async () => {
+    mockedPreviewLeadImportEtl.mockResolvedValue({
+      status: "cpf_column_required",
+      message: "A linha indicada nao contem uma coluna de CPF reconhecida.",
+      header_row: 2,
+      columns: [
+        { column_index: 1, column_letter: "A", source_value: "Documento" },
+        { column_index: 2, column_letter: "B", source_value: "Email" },
+      ],
+      required_fields: ["cpf"],
+      available_sheets: ["Indice", "Dados"],
+      active_sheet: "Dados",
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("combobox", { name: /fluxo de processamento/i }));
+    await user.click(await screen.findByRole("option", { name: "ETL CSV/XLSX" }));
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const xlsxFile = createXlsxFile();
+    fireEvent.change(fileInput, { target: { files: [xlsxFile] } });
+
+    await user.click(await screen.findByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+    await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
+
+    expect(await screen.findByText("Folha ativa na ultima tentativa: Dados")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Aba do ficheiro" }));
+    expect(await screen.findByRole("option", { name: "Primeira aba (padrao)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Dados" })).toBeInTheDocument();
   });
 
   it("creates an ad-hoc event in the ETL step and uses it for preview", async () => {
@@ -1826,7 +1862,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
 
     await waitFor(() => {
-      expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", xlsxFile, 88, false, undefined);
+      expect(mockedPreviewLeadImportEtl).toHaveBeenCalledWith("token-123", xlsxFile, 88, false, {});
     });
   });
 
@@ -1870,6 +1906,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
         strict: false,
         status: "committed",
         dq_report: [],
+        persistence_failures: [],
       });
 
     const { container } = renderImportacaoPage("/leads/importar?step=etl");
@@ -1896,6 +1933,79 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     expect(
       await screen.findByText(
         "Importacao concluida: 1 criado(s), 1 atualizado(s), 1 ignorado(s), 0 erro(s).",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps ETL retry available and shows failed rows after partial failure", async () => {
+    mockedPreviewLeadImportEtl.mockResolvedValue({
+      status: "previewed",
+      session_token: "session-123",
+      total_rows: 3,
+      valid_rows: 2,
+      invalid_rows: 1,
+      dq_report: [],
+    });
+    mockedCommitLeadImportEtl
+      .mockResolvedValueOnce({
+        session_token: "session-123",
+        total_rows: 3,
+        valid_rows: 2,
+        invalid_rows: 1,
+        created: 1,
+        updated: 0,
+        skipped: 1,
+        errors: 1,
+        strict: false,
+        status: "partial_failure",
+        dq_report: [],
+        persistence_failures: [{ row_number: 7, reason: "db timeout" }],
+      })
+      .mockResolvedValueOnce({
+        session_token: "session-123",
+        total_rows: 3,
+        valid_rows: 2,
+        invalid_rows: 1,
+        created: 1,
+        updated: 1,
+        skipped: 0,
+        errors: 0,
+        strict: false,
+        status: "committed",
+        dq_report: [],
+        persistence_failures: [],
+      });
+
+    const { container } = renderImportacaoPage("/leads/importar?step=etl");
+    const user = userEvent.setup();
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(await screen.findByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+    await user.click(screen.getByRole("button", { name: "Gerar preview ETL" }));
+
+    await user.click(await screen.findByRole("button", { name: "Confirmar importacao ETL" }));
+
+    expect(
+      await screen.findByText(
+        /Importacao parcialmente concluida: 1 criado\(s\), 0 atualizado\(s\), 1 ignorado\(s\), 1 erro\(s\)\./,
+      ),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Linha 7: db timeout")).toBeInTheDocument();
+
+    const retryButton = screen.getByRole("button", { name: "Retentar importacao ETL" });
+    expect(retryButton).toBeEnabled();
+
+    await user.click(retryButton);
+
+    expect(mockedCommitLeadImportEtl).toHaveBeenNthCalledWith(1, "token-123", "session-123", 42, false);
+    expect(mockedCommitLeadImportEtl).toHaveBeenNthCalledWith(2, "token-123", "session-123", 42, false);
+    expect(
+      await screen.findByText(
+        "Importacao concluida: 1 criado(s), 1 atualizado(s), 0 ignorado(s), 0 erro(s).",
       ),
     ).toBeInTheDocument();
   });

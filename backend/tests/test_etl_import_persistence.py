@@ -351,7 +351,7 @@ def test_find_existing_lead_ignores_homonymous_lead_from_other_canonical_event(
     assert matched.id == lead.id
 
 
-def test_persist_lead_batch_updates_existing_lead_by_canonical_evento_id_after_event_rename(
+def test_persist_lead_batch_preserves_filled_fields_on_reimport_after_event_rename(
     db_session: Session,
 ) -> None:
     evento = _seed_evento(db_session, nome="Evento Persistencia Antigo")
@@ -391,8 +391,8 @@ def test_persist_lead_batch_updates_existing_lead_by_canonical_evento_id_after_e
     leads = db_session.exec(select(Lead).where(Lead.email == "rename-existing@example.com")).all()
     assert len(leads) == 1
     assert leads[0].id == existing_id
-    assert leads[0].nome == "Lead Atualizado"
-    assert leads[0].evento_nome == "Evento Persistencia Renomeado"
+    assert leads[0].nome == "Lead Antigo"
+    assert leads[0].evento_nome == "Evento Persistencia Antigo"
 
     lead_eventos = db_session.exec(select(LeadEvento).where(LeadEvento.lead_id == existing_id)).all()
     assert len(lead_eventos) == 1

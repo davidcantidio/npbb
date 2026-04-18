@@ -18,6 +18,8 @@ async def import_leads_with_etl(
     strict: bool = False,
     header_row: int | None = None,
     field_aliases_json: str | None = None,
+    sheet_name: str | None = None,
+    max_scan_rows: int | None = None,
 ) -> EtlPreviewSnapshot | EtlHeaderRequired | EtlCpfColumnRequired:
     return create_preview_snapshot(
         file=file,
@@ -27,6 +29,8 @@ async def import_leads_with_etl(
         max_bytes=DEFAULT_IMPORT_MAX_BYTES,
         header_row=header_row,
         field_aliases_json=field_aliases_json,
+        sheet_name=sheet_name,
+        max_scan_rows=max_scan_rows,
     )
 
 

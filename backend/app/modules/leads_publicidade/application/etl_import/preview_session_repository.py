@@ -14,6 +14,32 @@ from .dq_report_policy import compute_has_warnings
 from .exceptions import EtlPreviewSessionNotFoundError
 
 
+def _serialize_preview_context(snapshot: EtlPreviewSnapshot) -> str | None:
+    if snapshot.sheet_name is None and not snapshot.available_sheets:
+        return None
+    return json.dumps(
+        {"sheet_name": snapshot.sheet_name, "available_sheets": list(snapshot.available_sheets)},
+        ensure_ascii=False,
+    )
+
+
+def _deserialize_preview_context(raw: str | None) -> tuple[str | None, tuple[str, ...]]:
+    if not raw or not raw.strip():
+        return None, ()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None, ()
+    if not isinstance(payload, dict):
+        return None, ()
+    sheet = payload.get("sheet_name")
+    sheet_name = str(sheet) if sheet is not None else None
+    raw_sheets = payload.get("available_sheets") or []
+    if not isinstance(raw_sheets, list):
+        return sheet_name, ()
+    return sheet_name, tuple(str(s) for s in raw_sheets if s is not None)
+
+
 def _serialize_rows(rows: tuple[EtlPreviewRow, ...]) -> str:
     return json.dumps(
         [
@@ -96,6 +122,7 @@ def create_snapshot(session: Session, snapshot: EtlPreviewSnapshot) -> EtlPrevie
             approved_rows_json=_serialize_rows(snapshot.approved_rows),
             rejected_rows_json=_serialize_rows(snapshot.rejected_rows),
             dq_report_json=_serialize_dq(snapshot.dq_report),
+            preview_context_json=_serialize_preview_context(snapshot),
         )
     )
     session.commit()
@@ -107,6 +134,7 @@ def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
     if entity is None:
         raise EtlPreviewSessionNotFoundError(f"Preview session not found: {session_token}")
     dq_report = _deserialize_dq(entity.dq_report_json)
+    sheet_name, available_sheets = _deserialize_preview_context(getattr(entity, "preview_context_json", None))
     return EtlPreviewSnapshot(
         session_token=entity.session_token,
         filename=entity.filename,
@@ -123,6 +151,8 @@ def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
         idempotency_key=entity.idempotency_key,
         has_validation_errors=entity.has_validation_errors,
         has_warnings=compute_has_warnings(dq_report),
+        sheet_name=sheet_name,
+        available_sheets=available_sheets,
     )
 
 

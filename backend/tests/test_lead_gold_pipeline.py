@@ -137,6 +137,23 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
 CSV_CONTENT = b"nome,cpf,email,telefone\nAlice,52998224725,alice@ex.com,11999990000\n"
 
 
+def _xlsx_with_preamble(*, sheet_name: str = "Participantes") -> bytes:
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+    for idx in range(8):
+        ws.append([f"linha solta {idx + 1}", "", ""])
+    ws.append(["nome", "cpf", "email"])
+    ws.append(["Alice", "52998224725", "alice@ex.com"])
+    ws.append(["Bob", "39053344705", "bob@ex.com"])
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
 def _base_gold_row(
     *,
     cpf: str = "52998224725",
@@ -597,6 +614,11 @@ def test_materializar_prefers_source_row_original_over_source_row(engine, monkey
 
     from app.services.lead_pipeline_service import materializar_silver_como_csv
 
+    def _unexpected_bronze_reread(*args, **kwargs):
+        raise AssertionError("CSV com source_row_original nao deve reler o Bronze so porque source_sheet e vazio.")
+
+    monkeypatch.setattr("app.services.lead_pipeline_service.read_raw_file_rows", _unexpected_bronze_reread)
+
     with Session(engine) as s:
         user = _seed_user(s)
         evento = _seed_evento(s)
@@ -627,6 +649,107 @@ def test_materializar_prefers_source_row_original_over_source_row(engine, monkey
     with path.open(encoding="utf-8") as fh:
         row = next(csv.DictReader(fh))
     assert row["source_row"] == "42"
+
+
+def test_materializar_legacy_csv_recovers_physical_source_rows_from_bronze(engine, monkeypatch):
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-legacy-csv-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    bronze_csv = (
+        b"nome,cpf,email\n"
+        b"Alice,52998224725,alice@ex.com\n"
+        b"\n"
+        b"Bob,39053344705,bob@ex.com\n"
+    )
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        evento = _seed_evento(s)
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="legacy.csv",
+            arquivo_bronze=bronze_csv,
+            stage=BatchStage.SILVER,
+            evento_id=evento.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        first = _base_gold_row()
+        first["nome"] = "Alice"
+        second = _base_gold_row(cpf="39053344705")
+        second["nome"] = "Bob"
+        second["email"] = "bob@ex.com"
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=first, evento_id=evento.id))
+        s.add(LeadSilver(batch_id=batch.id, row_index=1, dados_brutos=second, evento_id=evento.id))
+        s.commit()
+        batch_id = int(batch.id)
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+
+    assert [row["nome"] for row in rows] == ["Alice", "Bob"]
+    assert [row["source_file"] for row in rows] == ["legacy.csv", "legacy.csv"]
+    assert [row["source_sheet"] for row in rows] == ["", ""]
+    assert [row["source_row"] for row in rows] == ["2", "4"]
+
+
+def test_materializar_legacy_xlsx_recovers_sheet_and_physical_source_rows_from_bronze(engine, monkeypatch):
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-legacy-xlsx-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        evento = _seed_evento(s)
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="legacy.xlsx",
+            arquivo_bronze=_xlsx_with_preamble(),
+            stage=BatchStage.SILVER,
+            evento_id=evento.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        first = _base_gold_row()
+        first["nome"] = "Alice"
+        second = _base_gold_row(cpf="39053344705")
+        second["nome"] = "Bob"
+        second["email"] = "bob@ex.com"
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=first, evento_id=evento.id))
+        s.add(LeadSilver(batch_id=batch.id, row_index=1, dados_brutos=second, evento_id=evento.id))
+        s.commit()
+        batch_id = int(batch.id)
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+
+    assert [row["nome"] for row in rows] == ["Alice", "Bob"]
+    assert [row["source_file"] for row in rows] == ["legacy.xlsx", "legacy.xlsx"]
+    assert [row["source_sheet"] for row in rows] == ["Participantes", "Participantes"]
+    assert [row["source_row"] for row in rows] == ["10", "11"]
 
 
 def test_configure_lead_gold_statement_timeout_sets_local_timeout_for_postgres(monkeypatch):

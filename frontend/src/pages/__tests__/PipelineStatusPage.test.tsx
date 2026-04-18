@@ -199,6 +199,47 @@ describe("PipelineStatusPage", () => {
     expect(mockedGetLeadBatch).toHaveBeenCalledTimes(2);
   }, 10000);
 
+  it("backs off polling after 120s when step and pct stay unchanged", async () => {
+    vi.useFakeTimers();
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "pending",
+        pipeline_progress: {
+          step: "normalize_rows",
+          label: "Normalizando campos",
+          pct: 40,
+          updated_at: "2026-04-14T12:34:56.789Z",
+        },
+        pipeline_report: null,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Normalizando campos")).toBeInTheDocument();
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000);
+    });
+    const callsBeforeSlowPoll = mockedGetLeadBatch.mock.calls.length;
+    expect(callsBeforeSlowPoll).toBeGreaterThan(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_499);
+    });
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(callsBeforeSlowPoll);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(callsBeforeSlowPoll + 1);
+  }, 10000);
+
   it("does not start overlapping polling requests when a status request is still running", async () => {
     let resolveSecondRequest: ((value: LeadBatch) => void) | undefined;
     mockedGetLeadBatch
@@ -403,6 +444,36 @@ describe("PipelineStatusPage", () => {
     expect(screen.getByText(/Ultima atualizacao do backend: 2026-04-14T12:34:56.789Z/i)).toBeInTheDocument();
   }, 10000);
 
+  it("treats server-marked stale progress as recoverable and keeps the retry action visible", async () => {
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "pending",
+        pipeline_progress: {
+          step: "normalize_rows",
+          label: "Normalizando campos (CPF, datas, telefone, local…)",
+          pct: 40,
+          updated_at: "2026-04-14T12:34:56.789Z",
+        },
+        pipeline_report: null,
+        gold_pipeline_progress_is_stale: true,
+        gold_pipeline_stale_after_seconds: 420,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText(/Provavel execucao orfa apos reinicio ou deploy/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retomar Pipeline" })).toBeInTheDocument();
+    expect(screen.queryByText(/Atualizando automaticamente/i)).not.toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1_800));
+    });
+
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(1);
+  }, 10000);
+
   it("shows indeterminate progress when pct is null", async () => {
     mockedGetLeadBatch.mockResolvedValue(
       createBatch({
@@ -455,9 +526,13 @@ describe("PipelineStatusPage", () => {
 
     renderPipelineStatusPage();
 
-    expect(await screen.findByText("Linhas:")).toBeInTheDocument();
-    expect(screen.getByText(/leads\.xlsx .* Participantes .* linha 3/)).toBeInTheDocument();
-    expect(screen.getByText(/leads\.xlsx .* Participantes .* linha 10/)).toBeInTheDocument();
+    const summaryLabel = await screen.findByText(/Linhas no ficheiro original/i);
+    const summary = summaryLabel.parentElement;
+    expect(summary).not.toBeNull();
+    expect(summary).toHaveTextContent("leads.xlsx");
+    expect(summary).toHaveTextContent("Participantes");
+    expect(summary).toHaveTextContent("3");
+    expect(summary).toHaveTextContent("10");
   });
 
   it("shows warning feedback when the pipeline passes with warnings", async () => {

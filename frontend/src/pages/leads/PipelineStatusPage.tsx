@@ -29,7 +29,12 @@ import {
 import { useAuth } from "../../store/auth";
 
 const POLL_INTERVAL_MS = 1500;
+/** Apos este tempo com o mesmo step/pct em `pending`, o polling abranda para reduzir carga na API. */
+const POLL_BACKOFF_AFTER_MS = 120_000;
+const POLL_INTERVAL_SLOW_MS = 4500;
 const PIPELINE_STALL_THRESHOLD_MS = 60_000;
+/** Fallback se a API nao enviar `gold_pipeline_stale_after_seconds` (alinhar ao default backend). */
+const PIPELINE_ORPHAN_FALLBACK_MS = 420_000;
 const POLLING_NOTICE_ESCALATION_ATTEMPTS = 3;
 
 type NoticeSeverity = "warning" | "error";
@@ -85,10 +90,20 @@ function buildPollingNotice(batch: LeadBatch, error: unknown, attempt: number) {
 
 function buildStallNotice(batch: LeadBatch) {
   const progress = batch.pipeline_progress;
+  if (batch.gold_pipeline_progress_is_stale === true) {
+    const thrSec = batch.gold_pipeline_stale_after_seconds ?? PIPELINE_ORPHAN_FALLBACK_MS / 1000;
+    return (
+      `O progresso deste lote nao atualiza ha mais de ${thrSec}s (limiar do servidor). ` +
+      `Provavel execucao orfa apos reinicio ou deploy. Clique em "Executar Pipeline" para libertar e reenfileirar. ` +
+      `Etapa registada: "${progress?.label ?? "desconhecida"}" (step=${progress?.step ?? "desconhecido"}). ` +
+      `Ultima atualizacao: ${progress?.updated_at ?? "desconhecida"}.`
+    );
+  }
   return (
     `Processo lento ou possivelmente travado no lote #${batch.id}. ` +
     `Etapa atual: "${progress?.label ?? "desconhecida"}" (step=${progress?.step ?? "desconhecido"}). ` +
-    `Ultima atualizacao do backend: ${progress?.updated_at ?? "desconhecida"}. O polling continua ativo.`
+    `Ultima atualizacao do backend: ${progress?.updated_at ?? "desconhecida"}. ` +
+    `Se o aviso persistir alem do tempo configurado no servidor, use "Executar Pipeline" para retomar.`
   );
 }
 
@@ -126,12 +141,14 @@ function PipelineStatusChip({ pipelineStatus }: { pipelineStatus: string }) {
     pass: "success",
     pass_with_warnings: "warning",
     fail: "error",
+    stalled: "warning",
   };
   const labelMap: Record<string, string> = {
     pending: "Pendente",
     pass: "Aprovado",
     pass_with_warnings: "Aprovado c/ avisos",
     fail: "Reprovado",
+    stalled: "Interrompido (retomavel)",
   };
   return (
     <Chip
@@ -199,15 +216,15 @@ function formatSourceRowRef(r: SourceRowRef): string {
   const file = (r.source_file || "").trim();
   const sheet = (r.source_sheet || "").trim();
   if (file && sheet) {
-    return `${file} · ${sheet} · linha ${r.source_row}`;
+    return `${file} · ${sheet} · linha física ${r.source_row}`;
   }
   if (file) {
-    return `${file} · linha ${r.source_row}`;
+    return `${file} · linha física ${r.source_row}`;
   }
   if (sheet) {
-    return `${sheet} · linha ${r.source_row}`;
+    return `${sheet} · linha física ${r.source_row}`;
   }
-  return `Linha ${r.source_row}`;
+  return `Linha física ${r.source_row}`;
 }
 
 function refsFromInvalidRecords(
@@ -348,7 +365,7 @@ function QualityMetricCardWithRows({
           }}
         >
           <Box component="span" fontWeight={600}>
-            Linhas:{" "}
+            Linhas no ficheiro original:{" "}
           </Box>
           {inlineSummary}
         </Typography>
@@ -464,6 +481,8 @@ export default function PipelineStatusPage({
   const pollingFailureCountRef = useRef(0);
   const lastProgressSignatureRef = useRef<string | null>(null);
   const lastTerminalSignatureRef = useRef<string | null>(null);
+  /** step+pct iguais (ignora `updated_at` do heartbeat) para decidir backoff de polling. */
+  const stuckProgressClientRef = useRef<{ signature: string; sinceMs: number } | null>(null);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -479,17 +498,36 @@ export default function PipelineStatusPage({
     }
   };
 
-  const schedulePolling = () => {
+  const computePollDelayMs = (data: LeadBatch | null): number => {
+    if (!data || data.pipeline_status !== "pending" || data.pipeline_progress === null) {
+      return POLL_INTERVAL_MS;
+    }
+    if (data.gold_pipeline_progress_is_stale === true) {
+      return POLL_INTERVAL_SLOW_MS;
+    }
+    const p = data.pipeline_progress;
+    const signature = `${p.step}|${p.pct ?? ""}`;
+    const now = Date.now();
+    const prev = stuckProgressClientRef.current;
+    if (!prev || prev.signature !== signature) {
+      stuckProgressClientRef.current = { signature, sinceMs: now };
+      return POLL_INTERVAL_MS;
+    }
+    return now - prev.sinceMs >= POLL_BACKOFF_AFTER_MS ? POLL_INTERVAL_SLOW_MS : POLL_INTERVAL_MS;
+  };
+
+  const schedulePolling = (delayMs?: number) => {
     stopPolling();
+    const intervalMs = delayMs ?? computePollDelayMs(batchRef.current);
     logPipelineStatus("info", "polling.scheduled", {
       batchId,
-      intervalMs: POLL_INTERVAL_MS,
+      intervalMs,
       ...buildPipelineContext(batchRef.current),
     });
     pollRef.current = setTimeout(() => {
       pollRef.current = null;
       void fetchBatch("polling");
-    }, POLL_INTERVAL_MS);
+    }, intervalMs);
   };
 
   const ensureApiReady = async () => {
@@ -526,9 +564,14 @@ export default function PipelineStatusPage({
         reason,
         ...buildPipelineContext(data),
       });
-      if (data.pipeline_status === "pending" && data.pipeline_progress !== null) {
-        schedulePolling();
+      const hasActiveProgress =
+        data.pipeline_status === "pending" &&
+        data.pipeline_progress !== null &&
+        data.gold_pipeline_progress_is_stale !== true;
+      if (hasActiveProgress) {
+        schedulePolling(computePollDelayMs(data));
       } else {
+        stuckProgressClientRef.current = null;
         stopPolling();
       }
     } catch (err) {
@@ -551,7 +594,7 @@ export default function PipelineStatusPage({
             ...describePipelineStatusError(err, "Erro ao carregar o status do lote."),
           },
         );
-        schedulePolling();
+        schedulePolling(computePollDelayMs(currentBatch));
         return;
       }
       const message = toApiErrorMessage(err, "Erro ao carregar o status do lote.");
@@ -581,6 +624,7 @@ export default function PipelineStatusPage({
     }
     readinessCheckedRef.current = false;
     pollingFailureCountRef.current = 0;
+    stuckProgressClientRef.current = null;
     setPollingNotice(null);
     setStallNotice(null);
     fetchBatch("initial_load").finally(() => setLoading(false));
@@ -593,17 +637,22 @@ export default function PipelineStatusPage({
   useEffect(() => {
     if (!batch) return;
     const hasActiveProgress =
-      batch.pipeline_status === "pending" && batch.pipeline_progress !== null;
+      batch.pipeline_status === "pending" &&
+      batch.pipeline_progress !== null &&
+      batch.gold_pipeline_progress_is_stale !== true;
     if (!hasActiveProgress) {
+      stuckProgressClientRef.current = null;
       stopPolling();
       stopStallTimer();
-      setStallNotice(null);
-      if (batch.pipeline_status !== "pending") {
+      if (batch.gold_pipeline_progress_is_stale !== true) {
+        setStallNotice(null);
+      }
+      if (batch.pipeline_status !== "pending" || batch.gold_pipeline_progress_is_stale !== true) {
         setPollingNotice(null);
       }
       return;
     }
-    if (!pollRef.current) schedulePolling();
+    if (!pollRef.current) schedulePolling(computePollDelayMs(batch));
   }, [batch?.pipeline_status, batch?.pipeline_progress?.updated_at]);
 
   useEffect(() => {
@@ -614,18 +663,31 @@ export default function PipelineStatusPage({
       setStallNotice(null);
       return;
     }
+    if (batch.gold_pipeline_progress_is_stale === true) {
+      setStallNotice(buildStallNotice(batch));
+      return;
+    }
     setStallNotice(null);
     stallRef.current = setTimeout(() => {
       const message = buildStallNotice(batch);
       setStallNotice(message);
-      logPipelineStatus("warn", "progress.stalled", {
+      logPipelineStatus(batch.gold_pipeline_progress_is_stale ? "error" : "warn", "progress.stalled", {
         batchId: batch.id,
         ...buildPipelineContext(batch),
+        serverStale: batch.gold_pipeline_progress_is_stale === true,
       });
     }, PIPELINE_STALL_THRESHOLD_MS);
 
     return () => stopStallTimer();
-  }, [batch?.id, batch?.pipeline_status, batch?.pipeline_progress?.step, batch?.pipeline_progress?.label, batch?.pipeline_progress?.updated_at]);
+  }, [
+    batch?.id,
+    batch?.pipeline_status,
+    batch?.pipeline_progress?.step,
+    batch?.pipeline_progress?.label,
+    batch?.pipeline_progress?.updated_at,
+    batch?.gold_pipeline_progress_is_stale,
+    batch?.gold_pipeline_stale_after_seconds,
+  ]);
 
   useEffect(() => {
     if (!batch) return;
@@ -690,6 +752,7 @@ export default function PipelineStatusPage({
       logPipelineStatus("info", "execute.accepted", {
         batchId,
         status: result.status,
+        reclaimedStaleLock: result.reclaimed_stale_lock === true,
       });
       await fetchBatch("post_execute");
     } catch (err) {
@@ -728,8 +791,9 @@ export default function PipelineStatusPage({
   const failureContextMessage = report?.failure_context?.message?.trim() || null;
   const visibleFailReasons = report?.gate?.fail_reasons.filter((reason) => reason !== failureContextMessage) ?? [];
   const pipelineProgress = batch.pipeline_progress;
-  const hasActiveProgress =
-    batch.pipeline_status === "pending" && pipelineProgress !== null;
+  const hasPendingProgress = batch.pipeline_status === "pending" && pipelineProgress !== null;
+  const hasRecoverableStaleProgress = hasPendingProgress && batch.gold_pipeline_progress_is_stale === true;
+  const hasActiveProgress = hasPendingProgress && !hasRecoverableStaleProgress;
   const progressValue = pipelineProgress?.pct ?? null;
   const anchoredOnEventoId = batch.evento_id != null;
 
@@ -765,7 +829,7 @@ export default function PipelineStatusPage({
         </Alert>
       )}
       {stallNotice && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert severity={batch.gold_pipeline_progress_is_stale === true ? "error" : "warning"} sx={{ mb: 2 }}>
           {stallNotice}
         </Alert>
       )}
@@ -816,7 +880,7 @@ export default function PipelineStatusPage({
               disabled={running}
               startIcon={running ? <CircularProgress size={16} /> : undefined}
             >
-              {running ? "Executando..." : "Executar Pipeline"}
+              {running ? "Executando..." : hasRecoverableStaleProgress ? "Retomar Pipeline" : "Executar Pipeline"}
             </Button>
           )}
           {hasActiveProgress && (

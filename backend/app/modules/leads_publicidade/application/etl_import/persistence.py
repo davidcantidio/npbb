@@ -13,6 +13,7 @@ from sqlalchemy.sql import func as sql_func
 from sqlmodel import Session, select
 
 from app.models.models import Lead, LeadEvento, LeadEventoSourceKind
+from app.modules.leads_publicidade.application.lead_merge_policy import merge_lead_payload_fill_missing
 from app.services.lead_event_service import ensure_lead_event, resolve_unique_evento_by_name
 from app.utils.log_sanitize import sanitize_exception
 
@@ -390,20 +391,7 @@ def find_existing_lead(
 
 
 def merge_lead(existing: Lead, payload: dict[str, object]) -> None:
-    for key, value in payload.items():
-        if value is None:
-            continue
-        if key in {"email", "cpf"}:
-            if getattr(existing, key):
-                continue
-            setattr(existing, key, value)
-            continue
-        if key == "fonte_origem":
-            if getattr(existing, key):
-                continue
-            setattr(existing, key, value)
-            continue
-        setattr(existing, key, value)
+    merge_lead_payload_fill_missing(existing, payload)
 
 
 def _ensure_canonical_event_link(

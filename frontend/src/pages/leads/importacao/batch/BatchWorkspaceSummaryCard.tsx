@@ -16,12 +16,17 @@ function isTerminalRow(row: BatchUploadRowDraft) {
   );
 }
 
+function needsPipelineAction(row: BatchUploadRowDraft) {
+  return (
+    row.downstream_stage === "silver" &&
+    (row.downstream_pipeline_status === "pending" || row.downstream_pipeline_status === "stalled")
+  );
+}
+
 export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props) {
   const createdRows = rows.filter((row) => row.created_batch_id != null);
   const mappingPendingRows = createdRows.filter((row) => row.downstream_stage === "bronze");
-  const pipelinePendingRows = createdRows.filter(
-    (row) => row.downstream_stage === "silver" && row.downstream_pipeline_status === "pending",
-  );
+  const pipelinePendingRows = createdRows.filter(needsPipelineAction);
   const terminalRows = createdRows.filter(isTerminalRow);
   const primaryRow = mappingPendingRows[0] ?? pipelinePendingRows[0] ?? null;
 
@@ -58,7 +63,7 @@ export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <Chip label={`${createdRows.length} lote(s) criados`} color="success" size="small" />
           <Chip label={`${mappingPendingRows.length} aguardando mapping`} size="small" />
-          <Chip label={`${pipelinePendingRows.length} pronto(s) para pipeline`} color="info" size="small" />
+          <Chip label={`${pipelinePendingRows.length} pronto(s) para pipeline/retomada`} color="info" size="small" />
           <Chip label={`${terminalRows.length} terminal(is)`} color="default" size="small" />
         </Stack>
       </Stack>

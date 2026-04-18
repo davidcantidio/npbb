@@ -25,6 +25,8 @@ class ImportEtlPreviewResponse(BaseModel):
     valid_rows: int
     invalid_rows: int
     dq_report: list[DQCheckResult]
+    sheet_name: str | None = None
+    available_sheets: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +45,8 @@ class ImportEtlHeaderRequiredResponse(BaseModel):
     max_row: int
     scanned_rows: int
     required_fields: list[str] = Field(default_factory=lambda: ["cpf"])
+    available_sheets: list[str] = Field(default_factory=list)
+    active_sheet: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,6 +57,8 @@ class ImportEtlCpfColumnRequiredResponse(BaseModel):
     header_row: int
     columns: list[ImportEtlHeaderColumn]
     required_fields: list[str] = Field(default_factory=lambda: ["cpf"])
+    available_sheets: list[str] = Field(default_factory=list)
+    active_sheet: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

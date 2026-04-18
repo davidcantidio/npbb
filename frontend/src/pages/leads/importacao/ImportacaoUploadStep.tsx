@@ -34,6 +34,7 @@ import {
   LeadBatchPreview,
   LeadImportEtlPreview,
   LeadImportEtlResult,
+  LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP,
   ReferenciaEvento,
 } from "../../../services/leads_import";
 import { formatReferenciaEventoOptionLabel } from "../../../utils/formatters";
@@ -75,7 +76,9 @@ type Props = {
   etlCommitResult: LeadImportEtlResult | null;
   etlCpfColumnIndex: string;
   etlHeaderRow: string;
+  etlMaxScanRows: string;
   etlPreview: LeadImportEtlPreview | null;
+  etlSheetName: string;
   etlWarningsPending: boolean;
   eventoId: string;
   eventos: ReferenciaEvento[];
@@ -113,6 +116,8 @@ type Props = {
   onEventoIdChange: (value: string) => void;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onGoToMapping: () => void;
+  onEtlMaxScanRowsChange: (value: string) => void;
+  onEtlSheetNameChange: (value: string) => void;
   onHeaderRowChange: (value: string) => void;
   onHeaderRowSubmit: () => void;
   onImportFlowChange: (nextFlow: ImportFlow) => void;
@@ -142,6 +147,8 @@ function UploadStep({
   bronzeTipoLeadProponente,
   canSubmit,
   dataEnvio,
+  etlMaxScanRows,
+  etlSheetName,
   eventoId,
   eventos,
   file,
@@ -168,6 +175,8 @@ function UploadStep({
   onBronzeTipoLeadProponenteChange,
   onCreateAtivacaoAdHoc,
   onDataEnvioChange,
+  onEtlMaxScanRowsChange,
+  onEtlSheetNameChange,
   onEventoIdChange,
   onFileChange,
   onImportFlowChange,
@@ -195,6 +204,8 @@ function UploadStep({
   | "bronzeTipoLeadProponente"
   | "canSubmit"
   | "dataEnvio"
+  | "etlMaxScanRows"
+  | "etlSheetName"
   | "eventoId"
   | "eventos"
   | "file"
@@ -221,6 +232,8 @@ function UploadStep({
   | "onBronzeTipoLeadProponenteChange"
   | "onCreateAtivacaoAdHoc"
   | "onDataEnvioChange"
+  | "onEtlMaxScanRowsChange"
+  | "onEtlSheetNameChange"
   | "onEventoIdChange"
   | "onFileChange"
   | "onImportFlowChange"
@@ -557,9 +570,29 @@ function UploadStep({
               </Stack>
 
               {importFlow === "etl" ? (
-                <Alert severity="info">
-                  O fluxo ETL fecha preview e commit no mesmo shell. O contrato atual nao expoe batch_id para consulta de lote.
-                </Alert>
+                <Stack spacing={1.5}>
+                  <Alert severity="info">
+                    O fluxo ETL fecha preview e commit no mesmo shell. O contrato atual nao expoe batch_id para consulta de lote.
+                  </Alert>
+                  {file?.name.toLowerCase().endsWith(".xlsx") ? (
+                    <TextField
+                      label="Aba (XLSX)"
+                      value={etlSheetName}
+                      onChange={(event) => onEtlSheetNameChange(event.target.value)}
+                      fullWidth
+                      helperText="Opcional: titulo exato da folha. Se vazio, usa a primeira aba."
+                    />
+                  ) : null}
+                  <TextField
+                    label="Linhas para buscar cabecalho"
+                    type="number"
+                    value={etlMaxScanRows}
+                    onChange={(event) => onEtlMaxScanRowsChange(event.target.value)}
+                    fullWidth
+                    inputProps={{ min: 1, max: LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP }}
+                    helperText={`Opcional. Padrao 40, maximo ${LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP} (planilhas com cabecalho tardio).`}
+                  />
+                </Stack>
               ) : null}
 
               <Box>
@@ -613,13 +646,18 @@ function EtlPreviewStep({
   etlCommitResult,
   etlCpfColumnIndex,
   etlHeaderRow,
+  etlMaxScanRows,
   etlPreview,
+  etlSheetName,
   etlWarningsPending,
   loadingEtlPreview,
+  file,
   onBack,
   onCommitEtl,
   onCpfColumnChange,
   onCpfColumnSubmit,
+  onEtlMaxScanRowsChange,
+  onEtlSheetNameChange,
   onHeaderRowChange,
   onHeaderRowSubmit,
   onResetEtl,
@@ -629,17 +667,33 @@ function EtlPreviewStep({
   | "etlCommitResult"
   | "etlCpfColumnIndex"
   | "etlHeaderRow"
+  | "etlMaxScanRows"
   | "etlPreview"
+  | "etlSheetName"
   | "etlWarningsPending"
+  | "file"
   | "loadingEtlPreview"
   | "onBack"
   | "onCommitEtl"
   | "onCpfColumnChange"
   | "onCpfColumnSubmit"
+  | "onEtlMaxScanRowsChange"
+  | "onEtlSheetNameChange"
   | "onHeaderRowChange"
   | "onHeaderRowSubmit"
   | "onResetEtl"
 >) {
+  const isPartialFailure = etlCommitResult?.status === "partial_failure";
+  const isCommitted = etlCommitResult?.status === "committed";
+  const isCommitClosed = isCommitted;
+  const commitActionLabel = etlWarningsPending
+    ? isPartialFailure
+      ? "Retentar mesmo com avisos"
+      : "Confirmar mesmo com avisos"
+    : isPartialFailure
+      ? "Retentar importacao ETL"
+      : "Confirmar importacao ETL";
+
   return (
     <Stack spacing={2}>
       <Typography variant="subtitle1" fontWeight={700}>
@@ -659,6 +713,47 @@ function EtlPreviewStep({
       {etlPreview?.status === "header_required" ? (
         <Stack spacing={2}>
           <Alert severity="warning">{etlPreview.message}</Alert>
+          {etlPreview.active_sheet ? (
+            <Typography variant="body2" color="text.secondary">
+              Folha ativa na ultima tentativa: {etlPreview.active_sheet}
+            </Typography>
+          ) : null}
+          {etlPreview.available_sheets && etlPreview.available_sheets.length > 1 ? (
+            <TextField
+              select
+              label="Aba do ficheiro"
+              value={etlSheetName}
+              onChange={(event) => onEtlSheetNameChange(event.target.value)}
+              fullWidth
+              helperText="Escolha a folha com os dados (titulo exato)."
+            >
+              <MenuItem value="">
+                <em>Primeira aba (padrao)</em>
+              </MenuItem>
+              {etlPreview.available_sheets.map((name) => (
+                <MenuItem key={name} value={name}>
+                  {name}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : file?.name.toLowerCase().endsWith(".xlsx") ? (
+            <TextField
+              label="Aba (titulo exato)"
+              value={etlSheetName}
+              onChange={(event) => onEtlSheetNameChange(event.target.value)}
+              fullWidth
+              helperText="Opcional se a folha correta ja for a primeira."
+            />
+          ) : null}
+          <TextField
+            label="Linhas para buscar cabecalho"
+            type="number"
+            value={etlMaxScanRows}
+            onChange={(event) => onEtlMaxScanRowsChange(event.target.value)}
+            fullWidth
+            inputProps={{ min: 1, max: LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP }}
+            helperText={`Opcional. Padrao 40, maximo ${LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP}.`}
+          />
           <TextField
             label="Linha do cabecalho"
             type="number"
@@ -682,6 +777,29 @@ function EtlPreviewStep({
       {etlPreview?.status === "cpf_column_required" ? (
         <Stack spacing={2}>
           <Alert severity="warning">{etlPreview.message}</Alert>
+          {etlPreview.active_sheet ? (
+            <Typography variant="body2" color="text.secondary">
+              Folha ativa na ultima tentativa: {etlPreview.active_sheet}
+            </Typography>
+          ) : null}
+          {etlPreview.available_sheets && etlPreview.available_sheets.length > 1 ? (
+            <TextField
+              select
+              label="Aba do ficheiro"
+              value={etlSheetName}
+              onChange={(event) => onEtlSheetNameChange(event.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>Primeira aba (padrao)</em>
+              </MenuItem>
+              {etlPreview.available_sheets.map((name) => (
+                <MenuItem key={name} value={name}>
+                  {name}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
           <TextField
             select
             label="Coluna de CPF"
@@ -709,9 +827,35 @@ function EtlPreviewStep({
 
       {etlPreview?.status === "previewed" ? (
         <Stack spacing={2}>
-          {etlCommitResult ? (
+          {etlPreview.sheet_name ? (
+            <Typography variant="body2" color="text.secondary">
+              Folha usada: {etlPreview.sheet_name}
+              {etlPreview.available_sheets?.length ? ` (${etlPreview.available_sheets.length} abas no ficheiro)` : null}
+            </Typography>
+          ) : null}
+          {isCommitted ? (
             <Alert severity="success">
               Importacao concluida: {etlCommitResult.created} criado(s), {etlCommitResult.updated} atualizado(s), {etlCommitResult.skipped} ignorado(s), {etlCommitResult.errors} erro(s).
+            </Alert>
+          ) : null}
+          {isPartialFailure ? (
+            <Alert severity="warning">
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  Importacao parcialmente concluida: {etlCommitResult.created} criado(s), {etlCommitResult.updated} atualizado(s), {etlCommitResult.skipped} ignorado(s), {etlCommitResult.errors} erro(s). Corrija o problema e repita o commit com o mesmo preview.
+                </Typography>
+                {etlCommitResult.persistence_failures.length ? (
+                  <Box component="ul" sx={{ mb: 0, mt: 0, pl: 3 }}>
+                    {etlCommitResult.persistence_failures.map((failure) => (
+                      <Box component="li" key={`${failure.row_number}-${failure.reason}`}>
+                        <Typography variant="body2">
+                          Linha {failure.row_number}: {failure.reason}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : null}
+              </Stack>
             </Alert>
           ) : null}
           <Typography variant="body2" color="text.secondary">
@@ -741,17 +885,17 @@ function EtlPreviewStep({
                 variant="contained"
                 color="warning"
                 onClick={() => onCommitEtl(true)}
-                disabled={committingEtl || Boolean(etlCommitResult)}
+                disabled={committingEtl || isCommitClosed}
               >
-                {committingEtl ? <CircularProgress size={18} color="inherit" /> : "Confirmar mesmo com avisos"}
+                {committingEtl ? <CircularProgress size={18} color="inherit" /> : commitActionLabel}
               </Button>
             ) : (
               <Button
                 variant="contained"
                 onClick={() => onCommitEtl(false)}
-                disabled={committingEtl || Boolean(etlCommitResult)}
+                disabled={committingEtl || isCommitClosed}
               >
-                {committingEtl ? <CircularProgress size={18} color="inherit" /> : "Confirmar importacao ETL"}
+                {committingEtl ? <CircularProgress size={18} color="inherit" /> : commitActionLabel}
               </Button>
             )}
           </Stack>

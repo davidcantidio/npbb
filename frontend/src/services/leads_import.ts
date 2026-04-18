@@ -3,6 +3,7 @@ import { fetchWithAuth, handleApiResponse } from "./http";
 /**
  * Servidor le/parseia ficheiros grandes do lote; o timeout HTTP por defeito (20s) e insuficiente
  * com XLSX pesados, DB lenta ou GET de estado do lote durante o pipeline Gold (locks / fila).
+ * O estado do pipeline na UI usa polling com backoff quando step/pct ficam estagnados (Task 5).
  */
 const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
 const LEAD_BATCH_STATUS_TIMEOUT_MS = 15_000;
@@ -110,6 +111,8 @@ export type LeadImportEtlPreviewReady = {
   valid_rows: number;
   invalid_rows: number;
   dq_report: LeadImportEtlDQCheckResult[];
+  sheet_name?: string | null;
+  available_sheets?: string[];
 };
 
 export type LeadImportEtlHeaderRequired = {
@@ -118,6 +121,8 @@ export type LeadImportEtlHeaderRequired = {
   max_row: number;
   scanned_rows: number;
   required_fields: string[];
+  available_sheets?: string[];
+  active_sheet?: string | null;
 };
 
 export type LeadImportEtlCpfColumnRequired = {
@@ -126,6 +131,8 @@ export type LeadImportEtlCpfColumnRequired = {
   header_row: number;
   columns: LeadImportEtlHeaderColumn[];
   required_fields: string[];
+  available_sheets?: string[];
+  active_sheet?: string | null;
 };
 
 export type LeadImportEtlPreview =
@@ -141,9 +148,19 @@ export type LeadImportEtlFieldAliasSelection = {
   source_value?: string | null;
 };
 
+/** Limite alinhado ao backend (`ETL_MAX_SCAN_ROWS_CAP`). */
+export const LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP = 500;
+
 export type LeadImportEtlPreviewOptions = {
   headerRow?: number;
   fieldAliases?: Record<string, LeadImportEtlFieldAliasSelection>;
+  sheetName?: string;
+  maxScanRows?: number;
+};
+
+export type LeadImportEtlPersistenceFailure = {
+  row_number: number;
+  reason: string;
 };
 
 export type LeadImportEtlResult = {
@@ -156,8 +173,9 @@ export type LeadImportEtlResult = {
   skipped: number;
   errors: number;
   strict: boolean;
-  status: "previewed" | "committed" | "expired" | "rejected";
+  status: "previewed" | "committed" | "expired" | "rejected" | "partial_failure";
   dq_report: LeadImportEtlDQCheckResult[];
+  persistence_failures: LeadImportEtlPersistenceFailure[];
 };
 
 export type OrigemLoteLeadBatch = "proponente" | "ativacao";
@@ -189,10 +207,14 @@ export type LeadBatch = {
   origem_lote: OrigemLoteLeadBatch;
   tipo_lead_proponente: string | null;
   ativacao_id: number | null;
-  pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail";
+  pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail" | "stalled";
   pipeline_progress: PipelineProgress | null;
   pipeline_report: PipelineReport | null;
   created_at: string;
+  /** Segundos sem atualizacao de progresso antes de considerar orfao (API). */
+  gold_pipeline_stale_after_seconds?: number | null;
+  /** True quando o backend considera o progresso Gold obsoleto (worker morto). */
+  gold_pipeline_progress_is_stale?: boolean | null;
 };
 
 export type PipelineProgressStep =
@@ -294,6 +316,7 @@ export type PipelineReport = {
 export type ExecutarPipelineResult = {
   batch_id: number;
   status: "queued";
+  reclaimed_stale_lock?: boolean;
 };
 
 export type LeadBatchPreview = {
@@ -441,6 +464,12 @@ export async function previewLeadImportEtl(
   }
   if (options?.fieldAliases && Object.keys(options.fieldAliases).length > 0) {
     form.append("field_aliases_json", JSON.stringify(options.fieldAliases));
+  }
+  if (options?.sheetName?.trim()) {
+    form.append("sheet_name", options.sheetName.trim());
+  }
+  if (options?.maxScanRows != null && Number.isFinite(options.maxScanRows)) {
+    form.append("max_scan_rows", String(Math.floor(options.maxScanRows)));
   }
 
   const res = await fetchWithAuth("/leads/import/etl/preview", {

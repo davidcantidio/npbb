@@ -26,6 +26,7 @@ import {
   LeadImportEtlPreview,
   LeadImportEtlResult,
   listReferenciaEventos,
+  LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP,
   previewLeadImportEtl,
   ReferenciaEvento,
   supportsActivationImport,
@@ -129,6 +130,8 @@ export default function ImportacaoPage() {
   const [loadingEtlPreview, setLoadingEtlPreview] = useState(false);
   const [committingEtl, setCommittingEtl] = useState(false);
   const [etlWarningsPending, setEtlWarningsPending] = useState(false);
+  const [etlSheetName, setEtlSheetName] = useState("");
+  const [etlMaxScanRows, setEtlMaxScanRows] = useState("");
   const [quickCreateTarget, setQuickCreateTarget] = useState<QuickCreateTarget>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -297,6 +300,8 @@ export default function ImportacaoPage() {
     setEtlWarningsPending(false);
     setEtlHeaderRow("");
     setEtlCpfColumnIndex("");
+    setEtlSheetName("");
+    setEtlMaxScanRows("");
     setEventoId("");
   };
 
@@ -455,6 +460,8 @@ export default function ImportacaoPage() {
     setFile(nextFile);
     resetBronzeFlow();
     resetEtlPreviewOnly();
+    setEtlSheetName("");
+    setEtlMaxScanRows("");
   };
 
   const requestEtlPreview = async (
@@ -468,7 +475,14 @@ export default function ImportacaoPage() {
     setError(null);
     setEtlCommitResult(null);
     try {
-      const result = await previewLeadImportEtl(token, file, Number(eventoId), false, options);
+      const maxParsed =
+        etlMaxScanRows.trim() === "" ? undefined : Math.floor(Number(etlMaxScanRows));
+      const merged = {
+        ...(etlSheetName.trim() ? { sheetName: etlSheetName.trim() } : {}),
+        ...(maxParsed != null && Number.isFinite(maxParsed) ? { maxScanRows: maxParsed } : {}),
+        ...options,
+      };
+      const result = await previewLeadImportEtl(token, file, Number(eventoId), false, merged);
       setEtlPreview(result);
       setActiveStep(1);
       if (result.status === "cpf_column_required") {
@@ -601,9 +615,10 @@ export default function ImportacaoPage() {
     setCommittingEtl(true);
     setError(null);
     try {
+      const previewHasWarnings = etlPreview.dq_report.some((item) => item.severity === "warning");
       const result = await commitLeadImportEtl(token, etlPreview.session_token, Number(eventoId), forceWarnings);
       setEtlCommitResult(result);
-      setEtlWarningsPending(false);
+      setEtlWarningsPending(result.status === "partial_failure" && previewHasWarnings);
     } catch (err: unknown) {
       if (!forceWarnings && err instanceof ApiError && err.code === "ETL_COMMIT_BLOCKED") {
         setEtlWarningsPending(true);
@@ -723,7 +738,9 @@ export default function ImportacaoPage() {
             etlCommitResult={etlCommitResult}
             etlCpfColumnIndex={etlCpfColumnIndex}
             etlHeaderRow={etlHeaderRow}
+            etlMaxScanRows={etlMaxScanRows}
             etlPreview={etlPreview}
+            etlSheetName={etlSheetName}
             etlWarningsPending={etlWarningsPending}
             eventoId={eventoId}
             eventos={eventos}
@@ -783,6 +800,8 @@ export default function ImportacaoPage() {
                 setCanonicalStep("mapping", batch.id);
               }
             }}
+            onEtlMaxScanRowsChange={setEtlMaxScanRows}
+            onEtlSheetNameChange={setEtlSheetName}
             onHeaderRowChange={setEtlHeaderRow}
             onHeaderRowSubmit={handleSubmitHeaderRow}
             onImportFlowChange={resetForNewImport}

@@ -35,9 +35,10 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
   - Regra: **email + cpf + evento_nome + sessao** (quando aplicavel).
   - Em linhas validas o CPF esta sempre presente; na chave de dedupe usa-se o valor normalizado de cada campo disponivel.
   - Duplicidade no mesmo lote: **mantem a ultima ocorrencia**.
-- Upsert (politica):
-  - Atualiza apenas **campos nao-nulos** do import.
-  - Campos existentes nao sao sobrescritos por valores vazios.
+- Upsert (politica) — alinhada com o pipeline Gold; ver [ADR-0001](adr/0001-lead-import-merge-policy.md):
+  - Merge **nao destrutivo**: so preenche campos que no registo existente estao vazios (valor ausente, `None` ou string so com espacos).
+  - Valores ja preenchidos no `Lead` **nao** sao substituidos por valores novos do ficheiro, mesmo que diferentes.
+  - Valores vazios ou nulos no import **nunca** apagam um campo ja preenchido.
 - Batch size:
   - Valor padrao: **500** registros por lote.
 - Limite de upload:
@@ -107,14 +108,15 @@ Entrada (JSON):
 | `force_warnings` | bool | nao (default `false`) | Quando `true`, ignora warnings do DQ report |
 
 Saida (`ImportEtlResult`):
-- `session_token`, `total_rows`, `valid_rows`, `invalid_rows`, `created`, `updated`, `skipped`, `errors`, `strict`, `status`, `dq_report[]`.
+- `session_token`, `total_rows`, `valid_rows`, `invalid_rows`, `created`, `updated`, `skipped`, `errors`, `strict`, `status`, `dq_report[]`, `persistence_failures[]`.
 
 ### Regras do commit
 
 - **`strict=true`**: commit bloqueado quando o preview tem erros de validacao (`has_validation_errors`).
 - **`strict=false`**: commit prossegue com as linhas aprovadas, mesmo que existam linhas rejeitadas no preview.
 - **Warnings**: commit bloqueado por warnings (e.g. duplicatas no lote) a menos que `force_warnings=true`.
-- **Idempotencia**: reutilizar um `session_token` ja comitado retorna o mesmo resultado sem reprocessar.
+- **`status="committed"`**: persistencia concluida sem falhas reportadas; reutilizar o mesmo `session_token` devolve o mesmo resultado sem reprocessar.
+- **`status="partial_failure"`**: houve falha parcial de persistencia; `persistence_failures[]` devolve as linhas afectadas e o operador pode repetir `POST /leads/import/etl/commit` com o mesmo `session_token` para retentar.
 
 ### Codigos de erro ETL
 
@@ -129,7 +131,7 @@ Saida (`ImportEtlResult`):
 1) Operador seleciona evento e envia arquivo CSV/XLSX.
 2) Sistema retorna preview com contagens e DQ report. Se cabecalho nao detectado, pede `header_row`; se CPF ausente no cabecalho, pede `cpf_column_index`.
 3) Operador revisa preview e confirma commit (com `force_warnings` se necessario).
-4) Sistema persiste leads aprovados (dedupe por email+cpf+evento_nome+sessao, upsert nao-destrutivo).
+4) Sistema persiste leads aprovados (dedupe por email+cpf+evento_nome+sessao; merge nao-destrutivo igual ao legado e ao Gold — ver ADR-0001).
 5) Resultado final inclui contagens de `created`, `updated`, `skipped` e `errors`.
 
 ## Resposta de listagem (`GET /leads`)

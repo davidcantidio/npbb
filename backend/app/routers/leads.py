@@ -57,6 +57,7 @@ from app.modules.leads_publicidade.application.etl_import.exceptions import (
     EtlPreviewSessionConflictError,
     EtlPreviewSessionNotFoundError,
 )
+from app.modules.leads_publicidade.application.etl_import.extract import ETL_MAX_SCAN_ROWS_CAP
 from app.modules.leads_publicidade.application.etl_import.persistence import (
     build_dedupe_key,
     find_existing_lead,
@@ -1039,6 +1040,8 @@ def _serialize_etl_preview_response(
                 "max_row": result.max_row,
                 "scanned_rows": result.scanned_rows,
                 "required_fields": list(result.required_fields),
+                "available_sheets": list(getattr(result, "available_sheets", ()) or ()),
+                "active_sheet": getattr(result, "active_sheet", None),
             }
         )
     if getattr(result, "status", None) == "cpf_column_required":
@@ -1049,6 +1052,8 @@ def _serialize_etl_preview_response(
                 "header_row": result.header_row,
                 "columns": [column.__dict__ for column in result.columns],
                 "required_fields": list(result.required_fields),
+                "available_sheets": list(getattr(result, "available_sheets", ()) or ()),
+                "active_sheet": getattr(result, "active_sheet", None),
             }
         )
     return ImportEtlPreviewResponse.model_validate(
@@ -1059,6 +1064,8 @@ def _serialize_etl_preview_response(
             "valid_rows": result.valid_rows,
             "invalid_rows": result.invalid_rows,
             "dq_report": [item.__dict__ for item in result.dq_report],
+            "sheet_name": getattr(result, "sheet_name", None),
+            "available_sheets": list(getattr(result, "available_sheets", ()) or ()),
         }
     )
 
@@ -1674,10 +1681,19 @@ async def preview_import_etl(
     strict: bool = Form(False),
     header_row: int | None = Form(None),
     field_aliases_json: str | None = Form(None),
+    sheet_name: str | None = Form(None),
+    max_scan_rows: int | None = Form(None),
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
+    if max_scan_rows is not None and (max_scan_rows < 1 or max_scan_rows > ETL_MAX_SCAN_ROWS_CAP):
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code="ETL_INVALID_INPUT",
+            message=f"max_scan_rows deve estar entre 1 e {ETL_MAX_SCAN_ROWS_CAP}.",
+            field="max_scan_rows",
+        )
     try:
         result = await import_leads_with_etl(
             file=file,
@@ -1686,6 +1702,8 @@ async def preview_import_etl(
             strict=strict,
             header_row=header_row,
             field_aliases_json=field_aliases_json,
+            sheet_name=sheet_name,
+            max_scan_rows=max_scan_rows,
         )
     except Exception as exc:
         _map_etl_import_error(exc)

@@ -14,7 +14,13 @@ from .contracts import EtlCpfColumnRequired, EtlFieldAliasSelection, EtlHeaderRe
 from .dq_report_mapper import map_check_report
 from .dq_report_policy import compute_has_warnings
 from .exceptions import EtlImportContractError
-from .extract import compute_file_fingerprint, extract_csv_rows, extract_xlsx_rows, read_upload_bytes
+from .extract import (
+    clamp_etl_max_scan_rows,
+    compute_file_fingerprint,
+    extract_csv_rows,
+    extract_xlsx_rows,
+    read_upload_bytes,
+)
 from .preview_session_repository import create_snapshot
 from .transform_validate import run_preview_validation
 
@@ -64,6 +70,8 @@ def create_preview_snapshot(
     max_bytes: int,
     header_row: int | None = None,
     field_aliases_json: str | None = None,
+    sheet_name: str | None = None,
+    max_scan_rows: int | None = None,
 ) -> EtlPreviewSnapshot | EtlHeaderRequired | EtlCpfColumnRequired:
     evento = db.get(Evento, evento_id)
     if evento is None:
@@ -71,12 +79,15 @@ def create_preview_snapshot(
 
     filename, ext, payload = read_upload_bytes(file, max_bytes=max_bytes)
     field_aliases = _parse_field_aliases_json(field_aliases_json)
+    scan_rows = clamp_etl_max_scan_rows(max_scan_rows)
     if ext == ".xlsx":
         extracted = extract_xlsx_rows(
             payload,
             db=db,
             header_row=header_row,
             field_aliases=field_aliases,
+            sheet_name=sheet_name,
+            max_scan_rows=scan_rows,
         )
     elif ext == ".csv":
         extracted = extract_csv_rows(
@@ -84,6 +95,7 @@ def create_preview_snapshot(
             db=db,
             header_row=header_row,
             field_aliases=field_aliases,
+            max_scan_rows=scan_rows,
         )
     else:
         raise EtlImportContractError("Fluxo ETL suporta apenas arquivos .csv ou .xlsx.")
@@ -97,11 +109,22 @@ def create_preview_snapshot(
     header_context = {
         "header_row": metadata.get("header_row"),
         "field_aliases": metadata.get("applied_field_aliases") or {},
+        "sheet_name": metadata.get("sheet_name"),
+        "max_scan_rows": scan_rows,
     }
     header_context_digest = compute_file_fingerprint(
         "header-context",
         json.dumps(header_context, sort_keys=True, ensure_ascii=False).encode("utf-8"),
     )[:16]
+    sheet_snap: str | None = None
+    avail_snap: tuple[str, ...] = ()
+    if ext == ".xlsx":
+        raw_name = metadata.get("sheet_name")
+        sheet_snap = str(raw_name) if raw_name is not None else None
+        raw_list = metadata.get("available_sheets") or []
+        if isinstance(raw_list, list):
+            avail_snap = tuple(str(s) for s in raw_list if s is not None)
+
     snapshot = EtlPreviewSnapshot(
         session_token=secrets.token_urlsafe(24),
         filename=filename,
@@ -121,5 +144,7 @@ def create_preview_snapshot(
         ),
         has_validation_errors=any(item.severity == "error" for item in dq_report),
         has_warnings=compute_has_warnings(dq_report),
+        sheet_name=sheet_snap,
+        available_sheets=avail_snap,
     )
     return create_snapshot(db, snapshot)

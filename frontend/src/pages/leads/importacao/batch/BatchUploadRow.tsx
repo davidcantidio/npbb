@@ -68,6 +68,7 @@ function downstreamStatusLabel(row: BatchUploadRowDraft) {
   if (row.created_batch_id == null) return null;
   if (row.downstream_pipeline_status === "pass") return "Fluxo: Pipeline aprovado";
   if (row.downstream_pipeline_status === "pass_with_warnings") return "Fluxo: Pipeline com avisos";
+  if (row.downstream_pipeline_status === "stalled") return "Fluxo: Pipeline interrompido (retomavel)";
   if (row.downstream_pipeline_status === "fail") return "Fluxo: Pipeline reprovado";
   if (row.downstream_stage === "gold") return "Fluxo: Gold gerado";
   if (row.downstream_stage === "silver") return "Fluxo: Pronto para pipeline";
@@ -77,6 +78,7 @@ function downstreamStatusLabel(row: BatchUploadRowDraft) {
 function downstreamStatusColor(row: BatchUploadRowDraft) {
   if (row.downstream_pipeline_status === "pass" || row.downstream_stage === "gold") return "success";
   if (row.downstream_pipeline_status === "pass_with_warnings") return "warning";
+  if (row.downstream_pipeline_status === "stalled") return "warning";
   if (row.downstream_pipeline_status === "fail") return "error";
   if (row.downstream_stage === "silver") return "info";
   return "default";

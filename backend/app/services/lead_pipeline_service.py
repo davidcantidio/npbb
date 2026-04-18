@@ -48,6 +48,7 @@ from app.models.models import (
     LeadEventoSourceKind,
     TipoEvento,
 )
+from app.modules.leads_publicidade.application.lead_merge_policy import merge_lead_payload_fill_missing
 from app.modules.leads_publicidade.application.etl_import.persistence import (
     LeadLookupContext,
     _load_lead_lookup_context,
@@ -609,17 +610,19 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
     event_ids = {int(r.evento_id) for r in silver_rows if r.evento_id is not None}
     evento_por_id = _evento_lookup_por_ids(db, event_ids)
     fallback_source_file = _clean_text(batch.nome_arquivo_original if batch is not None else "")
+    batch_is_xlsx = Path(fallback_source_file or "").suffix.lower() == ".xlsx"
     fallback_source_sheet = ""
     fallback_source_row_offset = 2
-    needs_source_metadata_fallback = any(
-        not _clean_text((row.dados_brutos or {}).get("source_file"))
-        or not _clean_text((row.dados_brutos or {}).get("source_sheet"))
-        or (
-            _parse_int_value((row.dados_brutos or {}).get("source_row")) is None
-            and _parse_int_value((row.dados_brutos or {}).get("source_row_original")) is None
-        )
+    fallback_physical_lines_by_row_index: dict[int, int] = {}
+    needs_source_sheet_fallback = batch_is_xlsx and any(
+        not _clean_text((row.dados_brutos or {}).get("source_sheet")) for row in silver_rows
+    )
+    needs_source_row_fallback = any(
+        _parse_int_value((row.dados_brutos or {}).get("source_row")) is None
+        and _parse_int_value((row.dados_brutos or {}).get("source_row_original")) is None
         for row in silver_rows
     )
+    needs_source_metadata_fallback = needs_source_sheet_fallback or needs_source_row_fallback
     if batch is not None and needs_source_metadata_fallback and batch.arquivo_bronze and fallback_source_file:
         try:
             extracted = read_raw_file_rows(batch.arquivo_bronze, filename=fallback_source_file)
@@ -631,6 +634,10 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
         else:
             fallback_source_sheet = extracted.sheet_name or ""
             fallback_source_row_offset = extracted.start_index + 2
+            fallback_physical_lines_by_row_index = {
+                row_index: int(physical_line)
+                for row_index, physical_line in enumerate(extracted.physical_line_numbers)
+            }
 
     csv_path = tmp_dir / "silver_input.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as fh:
@@ -640,12 +647,16 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
             dados = row.dados_brutos or {}
             out_row = {col: str(dados.get(col, "") or "") for col in ALL_COLUMNS}
             source_file = _clean_text(dados.get("source_file")) or fallback_source_file
-            source_sheet = _clean_text(dados.get("source_sheet")) or fallback_source_sheet
-            source_row = (
-                _parse_int_value(dados.get("source_row_original"))
-                or _parse_int_value(dados.get("source_row"))
-                or (int(row.row_index) + fallback_source_row_offset)
-            )
+            source_sheet = _clean_text(dados.get("source_sheet"))
+            if source_sheet is None and batch_is_xlsx:
+                source_sheet = fallback_source_sheet
+            source_row = _parse_int_value(dados.get("source_row_original"))
+            if source_row is None:
+                source_row = _parse_int_value(dados.get("source_row"))
+            if source_row is None:
+                source_row = fallback_physical_lines_by_row_index.get(int(row.row_index))
+            if source_row is None:
+                source_row = int(row.row_index) + fallback_source_row_offset
             out_row["source_file"] = source_file or ""
             out_row["source_sheet"] = source_sheet or ""
             out_row["source_row"] = str(source_row)
@@ -1174,13 +1185,7 @@ def _build_lead_payload(row: dict[str, str], batch: LeadBatch) -> dict[str, Any]
 
 
 def _merge_lead_payload_if_missing(lead: Lead, payload: dict[str, Any]) -> None:
-    for field, value in payload.items():
-        if not _has_value(value):
-            continue
-        current = getattr(lead, field, None)
-        if _has_value(current):
-            continue
-        setattr(lead, field, value)
+    merge_lead_payload_fill_missing(lead, payload)
 
 
 def _find_lead_by_canonical_event(

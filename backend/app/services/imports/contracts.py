@@ -52,5 +52,6 @@ class ImportPreviewResult:
     rows: list[list[str]]
     delimiter: str | None
     start_index: int
+    sheet_name: Optional[str] = None
     suggestions: list[ColumnSuggestion] = field(default_factory=list)
     samples_by_column: list[list[str]] = field(default_factory=list)

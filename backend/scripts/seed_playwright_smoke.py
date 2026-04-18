@@ -44,6 +44,7 @@ from app.models.models import (
     Usuario,
     UsuarioTipo,
 )
+from app.services.default_event_activation import ensure_bb_activation
 from app.utils.security import hash_password, verify_password
 
 
@@ -238,6 +239,8 @@ def ensure_evento(
         )
         session.add(evento)
         session.commit()
+        ensure_bb_activation(session, evento_id=evento.id)
+        session.commit()
         session.refresh(evento)
         return evento
 
@@ -267,6 +270,9 @@ def ensure_evento(
         session.add(evento)
         session.commit()
         session.refresh(evento)
+    ensure_bb_activation(session, evento_id=evento.id)
+    session.commit()
+    session.refresh(evento)
     return evento
 
 

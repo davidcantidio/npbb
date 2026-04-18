@@ -20,6 +20,7 @@ from app.models.models import (
     Usuario,
 )
 from app.schemas.ativacao import AtivacaoCreate, AtivacaoUpdate
+from app.services.default_event_activation import ensure_bb_activation
 from app.utils.security import hash_password
 
 
@@ -101,7 +102,7 @@ def login_and_get_token(client: TestClient, email: str, password: str) -> str:
 def seed_evento(
     session: Session,
     *,
-    agencia_id: int,
+    agencia_id: int | None,
     tipo_id: int,
     nome: str,
     cidade: str,
@@ -125,6 +126,8 @@ def seed_evento(
         data_fim_prevista=fim,
     )
     session.add(evento)
+    session.commit()
+    ensure_bb_activation(session, evento_id=evento.id)
     session.commit()
     session.refresh(evento)
     return evento
@@ -218,13 +221,27 @@ def test_eventos_ativacoes_get_retorna_lista_vazia(client, engine):
             fim=date(2025, 1, 1),
         )
         evento_id = evento.id
+        ativacao = session.exec(select(Ativacao).where(Ativacao.evento_id == evento_id)).first()
+        assert ativacao is not None
+        ativacao_id = ativacao.id
+        updated_at_before = ativacao.updated_at
 
     token = login_and_get_token(client, "user@example.com", "Senha123!")
     resp = client.get(
         f"/eventos/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 200
-    assert resp.json() == []
+    payload = resp.json()
+    assert len(payload) == 1
+    assert payload[0]["nome"] == "BB"
+    assert payload[0]["landing_url"] == f"http://localhost:5173/landing/ativacoes/{ativacao_id}"
+    assert payload[0]["url_promotor"] == f"http://localhost:5173/landing/ativacoes/{ativacao_id}"
+    assert payload[0]["qr_code_url"].startswith("data:image/svg+xml;base64,")
+
+    with Session(engine) as session:
+        persisted = session.get(Ativacao, ativacao_id)
+        assert persisted is not None
+        assert persisted.updated_at == updated_at_before
 
 
 def test_eventos_ativacoes_post_cria_lista_e_get_by_id(client, engine):
@@ -280,9 +297,10 @@ def test_eventos_ativacoes_post_cria_lista_e_get_by_id(client, engine):
     )
     assert resp_list.status_code == 200
     payload = resp_list.json()
-    assert len(payload) == 1
-    assert payload[0]["id"] == created["id"]
-    assert payload[0]["conversao_unica"] is False
+    assert len(payload) == 2
+    assert payload[0]["nome"] == "BB"
+    assert payload[1]["id"] == created["id"]
+    assert payload[1]["conversao_unica"] is False
 
     resp_get_by_id = client.get(
         f"/eventos/{evento_id}/ativacoes/{created['id']}",
@@ -297,6 +315,35 @@ def test_eventos_ativacoes_post_cria_lista_e_get_by_id(client, engine):
     assert by_id_payload["landing_url"] == created["landing_url"]
     assert by_id_payload["url_promotor"] == created["url_promotor"]
     assert by_id_payload["qr_code_url"] == created["qr_code_url"]
+
+
+def test_evento_ativacoes_post_retorna_400_quando_evento_sem_agencia(client, engine):
+    with Session(engine) as session:
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=None,
+            tipo_id=tipo.id,
+            nome="Evento sem agencia",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+
+    resp_create = client.post(
+        f"/evento/{evento_id}/ativacoes",
+        json={"nome": "Ativacao bloqueada"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp_create.status_code == 400
+    detail = resp_create.json()["detail"]
+    assert detail["code"] == "EVENTO_AGENCIA_REQUIRED_FOR_ATIVACAO_IMPORT"
+    assert detail["message"] == "Vincule uma agencia ao evento antes de importar leads de ativacao."
 
 
 def test_eventos_ativacoes_patch_atualiza_campos(client, engine):
@@ -419,7 +466,137 @@ def test_ativacao_delete_remove(client, engine):
         f"/eventos/{evento_id}/ativacoes", headers={"Authorization": f"Bearer {token}"}
     )
     assert resp_list.status_code == 200
-    assert resp_list.json() == []
+    payload = resp_list.json()
+    assert len(payload) == 1
+    assert payload[0]["evento_id"] == evento_id
+    assert payload[0]["nome"] == "BB"
+    assert payload[0]["conversao_unica"] is False
+    assert payload[0]["landing_url"] == f"http://localhost:5173/landing/ativacoes/{payload[0]['id']}"
+    assert payload[0]["url_promotor"] == f"http://localhost:5173/landing/ativacoes/{payload[0]['id']}"
+    assert payload[0]["qr_code_url"].startswith("data:image/svg+xml;base64,")
+
+
+def test_eventos_ativacoes_post_bb_duplicada_retorna_409(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento BB",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    response = client.post(
+        f"/eventos/{evento_id}/ativacoes",
+        json={"nome": " bb "},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "ATIVACAO_BB_ALREADY_EXISTS"
+
+
+def test_eventos_ativacoes_patch_bb_retorna_409_quando_renomeia_outra_para_bb(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Patch",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        ativacao = seed_ativacao(session, evento_id=evento.id, nome="Stand")
+        evento_id = evento.id
+        ativacao_id = ativacao.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    response = client.patch(
+        f"/eventos/{evento_id}/ativacoes/{ativacao_id}",
+        json={"nome": "BB"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "ATIVACAO_BB_ALREADY_EXISTS"
+
+
+def test_eventos_ativacoes_patch_bb_canonica_retorna_409_quando_renomeada(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Canonico",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        bb = session.exec(
+            select(Ativacao)
+            .where(Ativacao.evento_id == evento.id)
+            .where(Ativacao.nome == "BB")
+        ).first()
+        assert bb is not None
+        evento_id = evento.id
+        bb_id = bb.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    response = client.patch(
+        f"/eventos/{evento_id}/ativacoes/{bb_id}",
+        json={"nome": "Outro nome"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "ATIVACAO_BB_REQUIRED"
+
+
+def test_ativacao_delete_bb_retorna_409(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Delete BB",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        bb = session.exec(
+            select(Ativacao)
+            .where(Ativacao.evento_id == evento.id)
+            .where(Ativacao.nome == "BB")
+        ).first()
+        assert bb is not None
+        bb_id = bb.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    response = client.delete(f"/ativacao/{bb_id}", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "ATIVACAO_BB_REQUIRED"
 
 
 def test_ativacao_delete_bloqueado_quando_existe_dependencia(client, engine):

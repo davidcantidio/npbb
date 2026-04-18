@@ -127,6 +127,7 @@ class EventoCreate(BaseModel):
 
     publico_projetado: Optional[int] = None
     publico_realizado: Optional[int] = None
+    criar_ativacao_padrao_bb: bool = False
 
     model_config = ConfigDict(extra="forbid")
 

@@ -63,6 +63,7 @@ class PipelineProgressEvent:
     step: str
     label: str
     pct: int | None = None
+    meta: dict[str, Any] | None = None
 
 
 @dataclass
@@ -509,7 +510,11 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             continue
         if REJECT_REASON_COL not in adapted_df.columns:
             adapted_df[REJECT_REASON_COL] = ""
-        adapted_df["source_file"] = input_file.name
+        if "source_file" not in adapted_df.columns:
+            adapted_df["source_file"] = input_file.name
+        else:
+            source_file = adapted_df["source_file"].fillna("").astype(str).str.strip()
+            adapted_df["source_file"] = source_file.mask(source_file == "", input_file.name)
         raw_frames.append(adapted_df)
 
     if raw_frames:

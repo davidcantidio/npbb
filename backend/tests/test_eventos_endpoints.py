@@ -27,6 +27,7 @@ from app.models.models import (
     TipoEvento,
     Usuario,
 )
+from app.services.default_event_activation import ensure_bb_activation
 from app.utils.security import hash_password
 from app.services.data_health import compute_event_data_health
 from types import SimpleNamespace
@@ -167,6 +168,8 @@ def seed_evento(
         data_fim_prevista=fim,
     )
     session.add(evento)
+    session.commit()
+    ensure_bb_activation(session, evento_id=evento.id)
     session.commit()
     session.refresh(evento)
     return evento
@@ -1148,6 +1151,43 @@ def test_evento_get_por_id_e_visibilidade_agencia(client, engine):
     assert forbidden.status_code == 404
 
 
+def test_evento_get_por_id_nao_persiste_qr_code_nem_updated_at(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento GET Sem Escrita",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+        persisted_before = session.get(Evento, evento_id)
+        assert persisted_before is not None
+        updated_at_before = persisted_before.updated_at
+        qr_code_url_before = persisted_before.qr_code_url
+
+        seed_user(session, "agencia-get@example.com", "Senha123!", "agencia", agencia_id=ag1.id)
+
+    token = login_and_get_token(client, "agencia-get@example.com", "Senha123!")
+
+    resp = client.get(f"/evento/{evento_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == evento_id
+    assert body["qr_code_url"]
+
+    with Session(engine) as session:
+        persisted_after = session.get(Evento, evento_id)
+        assert persisted_after is not None
+        assert persisted_after.updated_at == updated_at_before
+        assert persisted_after.qr_code_url == qr_code_url_before
+
+
 def test_evento_criar_atualizar_e_excluir(client, engine):
     with Session(engine) as session:
         ag1 = seed_agencia(session, "V3A", "v3a.com.br")
@@ -1210,6 +1250,10 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
     assert created["territorio_ids"] == [terr_a_id]
 
     evento_id = created["id"]
+    with Session(engine) as session:
+        ativacoes = session.exec(select(Ativacao).where(Ativacao.evento_id == evento_id)).all()
+        assert len(ativacoes) == 1
+        assert ativacoes[0].nome == "BB"
 
     update_resp = client.put(
         f"/evento/{evento_id}",
@@ -1240,6 +1284,103 @@ def test_evento_criar_atualizar_e_excluir(client, engine):
 
     get_resp = client.get(f"/evento/{evento_id}", headers={"Authorization": f"Bearer {token}"})
     assert get_resp.status_code == 404
+
+
+def test_evento_criacao_minima_para_fluxo_ad_hoc(client, engine):
+    with Session(engine) as session:
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        status_previsto = session.exec(
+            select(StatusEvento).where(StatusEvento.nome == "Previsto")
+        ).first()
+        assert status_previsto and status_previsto.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.post(
+        "/evento",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "nome": "Evento Ad Hoc",
+            "cidade": "Sao Paulo",
+            "estado": "sp",
+            "data_inicio_prevista": "2099-01-01",
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["nome"] == "Evento Ad Hoc"
+    assert body["cidade"] == "Sao Paulo"
+    assert body["estado"] == "SP"
+    assert body["status_id"] == status_previsto.id
+    assert body["diretoria_id"] is None
+
+    with Session(engine) as session:
+        created_evento = session.exec(select(Evento).where(Evento.nome == "Evento Ad Hoc")).first()
+        assert created_evento is not None
+        ativacoes = session.exec(select(Ativacao).where(Ativacao.evento_id == created_evento.id)).all()
+        assert len(ativacoes) == 1
+        assert ativacoes[0].nome == "BB"
+
+
+def test_evento_criacao_com_flag_legado_mantem_bb_unica(client, engine):
+    with Session(engine) as session:
+        agencia = seed_agencia(session, "Agencia Alpha", "alpha.com.br")
+        agencia_id = agencia.id
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    resp = client.post(
+        "/evento",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "nome": "Evento Rapido",
+            "cidade": "Sao Paulo",
+            "estado": "sp",
+            "agencia_id": agencia_id,
+            "data_inicio_prevista": "2099-01-01",
+            "data_fim_prevista": "2099-01-02",
+            "criar_ativacao_padrao_bb": True,
+        },
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["agencia_id"] == agencia_id
+    assert body["data_fim_prevista"] == "2099-01-02"
+
+    with Session(engine) as session:
+        ativacoes = session.exec(select(Ativacao).where(Ativacao.evento_id == body["id"])).all()
+        assert len(ativacoes) == 1
+        assert ativacoes[0].nome == "BB"
+        assert ativacoes[0].landing_url == f"http://localhost:5173/landing/ativacoes/{ativacoes[0].id}"
+        assert ativacoes[0].url_promotor == f"http://localhost:5173/landing/ativacoes/{ativacoes[0].id}"
+        assert ativacoes[0].qr_code_url is not None
+
+
+def test_evento_ativacoes_post_bb_duplicada_no_router_evento_retorna_409(client, engine):
+    with Session(engine) as session:
+        ag1 = seed_agencia(session, "V3A", "v3a.com.br")
+        tipo = seed_tipo(session)
+        seed_user(session, "user@example.com", "Senha123!", "npbb")
+        evento = seed_evento(
+            session,
+            agencia_id=ag1.id,
+            tipo_id=tipo.id,
+            nome="Evento Router Evento",
+            cidade="Sao Paulo",
+            estado="SP",
+            inicio=date(2025, 1, 1),
+            fim=date(2025, 1, 1),
+        )
+        evento_id = evento.id
+
+    token = login_and_get_token(client, "user@example.com", "Senha123!")
+    response = client.post(
+        f"/evento/{evento_id}/ativacoes",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"nome": "bb"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "ATIVACAO_BB_ALREADY_EXISTS"
 
 
 def test_evento_delete_com_cascata_exclui_dependencias(client, engine):

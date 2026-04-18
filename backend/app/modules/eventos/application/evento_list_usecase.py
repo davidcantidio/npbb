@@ -14,11 +14,10 @@ from app.models.models import (
     EventoTerritorio,
     StatusEvento,
     Usuario,
-    now_utc,
 )
 from app.schemas.evento import DataHealthRead, EventoListItem
 from app.services.data_health import compute_event_data_health
-from app.services.landing_pages import hydrate_evento_public_urls
+from app.services.landing_pages import build_evento_public_access_urls
 
 
 def listar_eventos_usecase(
@@ -98,17 +97,6 @@ def listar_eventos_usecase(
     if not eventos:
         return [], total
 
-    changed = False
-    for evento in eventos:
-        changed = hydrate_evento_public_urls(evento) or changed
-    if changed:
-        for evento in eventos:
-            evento.updated_at = now_utc()
-            session.add(evento)
-        session.commit()
-        for evento in eventos:
-            session.refresh(evento)
-
     evento_ids = [e.id for e in eventos if e.id is not None]
     status_ids = {e.status_id for e in eventos if e.status_id is not None}
 
@@ -162,6 +150,14 @@ def listar_eventos_usecase(
         data_health_model = DataHealthRead.model_validate(data_health)
 
         item = EventoListItem.model_validate(evento, from_attributes=True)
-        items.append(item.model_copy(update={"data_health": data_health_model}))
+        public_urls = build_evento_public_access_urls(evento.id or 0)
+        items.append(
+            item.model_copy(
+                update={
+                    "data_health": data_health_model,
+                    "qr_code_url": public_urls["qr_code_url"],
+                }
+            )
+        )
 
     return items, total

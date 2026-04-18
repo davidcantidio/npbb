@@ -37,6 +37,7 @@ class LeadBatchRead(BaseModel):
     data_envio: datetime
     data_upload: datetime
     nome_arquivo_original: str
+    arquivo_sha256: Optional[str] = None
     stage: BatchStage
     evento_id: Optional[int] = None
     origem_lote: str = "proponente"
@@ -57,6 +58,16 @@ class LeadBatchPreviewResponse(BaseModel):
     headers: list[str]
     rows: list[list[str]]
     total_rows: int
+
+
+class LeadReferenceEventoRead(BaseModel):
+    id: int
+    nome: str
+    data_inicio_prevista: str | None = None
+    agencia_id: int | None = None
+    supports_activation_import: bool = True
+    activation_import_block_reason: str | None = None
+    leads_count: int = 0
 
 
 # ---------------------------------------------------------------------------

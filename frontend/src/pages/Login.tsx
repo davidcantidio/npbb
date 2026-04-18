@@ -12,13 +12,33 @@ import {
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { useAuth } from "../store/auth";
 import { ForgotPasswordDialog } from "../components/ForgotPasswordDialog";
+import { ApiError, toApiErrorCode, toApiErrorMessage } from "../services/http";
+import { useAuth } from "../store/auth";
 
 type FormState = {
   email: string;
   password: string;
 };
+
+function resolveLoginErrorMessage(err: unknown): string {
+  const code = toApiErrorCode(err);
+  if (code === "TIMEOUT") {
+    return "O servidor demorou demais para responder. Confirme que o backend esta em execucao e tente novamente.";
+  }
+  if (code === "NETWORK_ERROR") {
+    return "Nao foi possivel alcancar a API. Verifique se o backend, o proxy do Vite e o CORS estao configurados corretamente.";
+  }
+  if (err instanceof ApiError && err.status === 503) {
+    if (code === "DB_TIMEOUT") {
+      return "A autenticacao esta temporariamente indisponivel porque o banco de dados demorou demais para responder.";
+    }
+    if (code === "DB_UNAVAILABLE") {
+      return "A autenticacao esta temporariamente indisponivel porque o backend nao conseguiu acessar o banco de dados.";
+    }
+  }
+  return toApiErrorMessage(err, "Erro ao autenticar");
+}
 
 export default function Login() {
   const [form, setForm] = useState<FormState>({ email: "", password: "" });
@@ -51,8 +71,8 @@ export default function Login() {
     try {
       await login(form.email, form.password);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err?.message || "Erro ao autenticar");
+    } catch (err: unknown) {
+      setError(resolveLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -122,7 +142,7 @@ export default function Login() {
               type="submit"
               disabled={loading || authLoading}
             >
-              {loading || authLoading ? <CircularProgress size={22} color="inherit" /> : "Entrar"}
+              {loading ? <CircularProgress size={22} color="inherit" /> : "Entrar"}
             </Button>
             <Button
               type="button"

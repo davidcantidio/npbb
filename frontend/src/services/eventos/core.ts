@@ -95,6 +95,7 @@ export type EventoCreate = {
   data_fim_realizada?: string | null;
   publico_projetado?: number | null;
   publico_realizado?: number | null;
+  criar_ativacao_padrao_bb?: boolean;
 };
 
 export type EventoUpdate = Partial<EventoCreate> & {

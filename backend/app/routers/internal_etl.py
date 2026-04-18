@@ -43,8 +43,10 @@ def list_etl_sources(
         session,
         statuses=[status_in] if status_in is not None else None,
         source_kinds=[source_type] if source_type is not None else None,
+        limit=limit,
+        offset=offset,
     )
-    return rows[offset : offset + limit]
+    return rows
 
 
 @router.get("/ingestions", response_model=list[CatalogIngestionRead])

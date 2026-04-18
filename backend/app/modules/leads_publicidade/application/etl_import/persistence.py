@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from sqlalchemy import or_
 from sqlmodel import Session, select
 
 from app.models.models import Lead, LeadEvento, LeadEventoSourceKind
@@ -50,6 +51,13 @@ class LeadBatchPersistenceResult:
         yield self.has_errors
 
 
+@dataclass(frozen=True)
+class LeadLookupContext:
+    candidates: list[Lead]
+    lead_ids_with_any_event_link: set[int]
+    lead_ids_with_target_event_link: set[int]
+
+
 def build_dedupe_key(
     payload: dict[str, object],
     *,
@@ -83,6 +91,144 @@ def _build_contact_filters(payload: dict[str, object]) -> list[object]:
     else:
         filters.append(Lead.cpf == cpf)
     return filters
+
+
+def _contact_matches_payload(lead: Lead, payload: dict[str, object]) -> bool:
+    email = payload.get("email")
+    cpf = payload.get("cpf")
+    if not email and not cpf:
+        return False
+
+    lead_email = getattr(lead, "email", None)
+    lead_cpf = getattr(lead, "cpf", None)
+    if email and lead_email == email:
+        return True
+    if cpf and lead_cpf == cpf:
+        return True
+    return False
+
+
+def _legacy_matches_payload(lead: Lead, payload: dict[str, object]) -> bool:
+    if not _contact_matches_payload(lead, payload):
+        return False
+
+    evento_nome = payload.get("evento_nome")
+    if evento_nome is not None and getattr(lead, "evento_nome", None) != evento_nome:
+        return False
+
+    sessao = payload.get("sessao")
+    if sessao is not None and getattr(lead, "sessao", None) != sessao:
+        return False
+
+    return True
+
+
+def _collect_lookup_terms(batch: list[tuple[dict[str, object], int]]) -> dict[str, set[object]]:
+    terms: dict[str, set[object]] = {
+        "email": set(),
+        "cpf": set(),
+        "evento_nome": set(),
+        "sessao": set(),
+    }
+    for payload, _row_number in batch:
+        email = payload.get("email")
+        cpf = payload.get("cpf")
+        evento_nome = payload.get("evento_nome")
+        sessao = payload.get("sessao")
+        if email:
+            terms["email"].add(email)
+        if cpf:
+            terms["cpf"].add(cpf)
+        if evento_nome is not None:
+            terms["evento_nome"].add(evento_nome)
+        if sessao is not None:
+            terms["sessao"].add(sessao)
+    return terms
+
+
+def _load_lead_lookup_context(
+    session: Session,
+    batch: list[tuple[dict[str, object], int]],
+    *,
+    canonical_evento_id: int | None = None,
+) -> LeadLookupContext:
+    terms = _collect_lookup_terms(batch)
+    filters = []
+    if terms["email"]:
+        filters.append(Lead.email.in_(sorted(str(value) for value in terms["email"])))
+    if terms["cpf"]:
+        filters.append(Lead.cpf.in_(sorted(str(value) for value in terms["cpf"])))
+    if terms["evento_nome"]:
+        filters.append(Lead.evento_nome.in_(sorted(str(value) for value in terms["evento_nome"])))
+    if terms["sessao"]:
+        filters.append(Lead.sessao.in_(sorted(str(value) for value in terms["sessao"])))
+
+    if not filters:
+        return LeadLookupContext([], set(), set())
+
+    candidates = list(session.exec(select(Lead).where(or_(*filters)).order_by(Lead.id.asc())).all())
+    candidate_ids = [int(lead.id) for lead in candidates if lead.id is not None]
+
+    lead_ids_with_any_event_link: set[int] = set()
+    lead_ids_with_target_event_link: set[int] = set()
+    if candidate_ids:
+        lead_ids_with_any_event_link = {
+            int(lead_id)
+            for lead_id in session.exec(
+                select(LeadEvento.lead_id).where(LeadEvento.lead_id.in_(candidate_ids))
+            ).all()
+            if lead_id is not None
+        }
+        if canonical_evento_id is not None:
+            lead_ids_with_target_event_link = {
+                int(lead_id)
+                for lead_id in session.exec(
+                    select(LeadEvento.lead_id).where(
+                        LeadEvento.lead_id.in_(candidate_ids),
+                        LeadEvento.evento_id == canonical_evento_id,
+                    )
+                ).all()
+                if lead_id is not None
+            }
+
+    return LeadLookupContext(
+        candidates=candidates,
+        lead_ids_with_any_event_link=lead_ids_with_any_event_link,
+        lead_ids_with_target_event_link=lead_ids_with_target_event_link,
+    )
+
+
+def find_existing_lead_from_lookup(
+    payload: dict[str, object],
+    lookup: LeadLookupContext,
+    *,
+    canonical_evento_id: int | None = None,
+) -> Lead | None:
+    if not _build_contact_filters(payload):
+        return None
+
+    if canonical_evento_id is not None:
+        for candidate in lookup.candidates:
+            if candidate.id is None:
+                continue
+            if candidate.id in lookup.lead_ids_with_target_event_link and _contact_matches_payload(
+                candidate, payload
+            ):
+                return candidate
+
+        for candidate in lookup.candidates:
+            if candidate.id is None:
+                continue
+            if candidate.id in lookup.lead_ids_with_any_event_link:
+                continue
+            if _legacy_matches_payload(candidate, payload):
+                return candidate
+        return None
+
+    for candidate in lookup.candidates:
+        if _legacy_matches_payload(candidate, payload):
+            return candidate
+    return None
 
 
 def _find_lead_by_canonical_event(
@@ -229,6 +375,11 @@ def persist_lead_batch(
         return LeadBatchPersistenceResult(failed_rows=validation_failed_rows)
 
     _ensure_outer_transaction(session)
+    lookup_context = _load_lead_lookup_context(
+        session,
+        effective_items,
+        canonical_evento_id=canonical_evento_id,
+    )
 
     try:
         with session.begin_nested():
@@ -236,6 +387,7 @@ def persist_lead_batch(
                 session,
                 effective_items,
                 canonical_evento_id=canonical_evento_id,
+                lookup_context=lookup_context,
             )
     except Exception as exc:
         logger.warning(
@@ -246,6 +398,7 @@ def persist_lead_batch(
             session,
             effective_items,
             canonical_evento_id=canonical_evento_id,
+            lookup_context=lookup_context,
         )
         result = _ensure_attempted_rows_are_reported(result, effective_items)
         result = _commit_or_failure(session, result, effective_items)
@@ -313,6 +466,7 @@ def _persist_lead_batch_bulk(
     batch: list[tuple[dict[str, object], int]],
     *,
     canonical_evento_id: int | None = None,
+    lookup_context: LeadLookupContext | None = None,
 ) -> tuple[int, int]:
     created = 0
     updated = 0
@@ -325,11 +479,18 @@ def _persist_lead_batch_bulk(
         key = build_dedupe_key(payload, canonical_evento_id=canonical_evento_id)
         existing = lead_cache.get(key) if key else None
         if existing is None:
-            existing = find_existing_lead(
-                session,
-                payload,
-                canonical_evento_id=canonical_evento_id,
-            )
+            if lookup_context is not None:
+                existing = find_existing_lead_from_lookup(
+                    payload,
+                    lookup_context,
+                    canonical_evento_id=canonical_evento_id,
+                )
+            else:
+                existing = find_existing_lead(
+                    session,
+                    payload,
+                    canonical_evento_id=canonical_evento_id,
+                )
             if existing and key:
                 lead_cache[key] = existing
         if existing:
@@ -369,6 +530,7 @@ def _persist_lead_batch_row_by_row(
     batch: list[tuple[dict[str, object], int]],
     *,
     canonical_evento_id: int | None = None,
+    lookup_context: LeadLookupContext | None = None,
 ) -> LeadBatchPersistenceResult:
     created = 0
     updated = 0
@@ -381,6 +543,7 @@ def _persist_lead_batch_row_by_row(
                     session,
                     payload,
                     canonical_evento_id=canonical_evento_id,
+                    lookup_context=lookup_context,
                 )
         except Exception as exc:
             reason = sanitize_exception(exc)
@@ -408,12 +571,20 @@ def _persist_single_lead_row(
     payload: dict[str, object],
     *,
     canonical_evento_id: int | None = None,
+    lookup_context: LeadLookupContext | None = None,
 ) -> str:
-    existing = find_existing_lead(
-        session,
-        payload,
-        canonical_evento_id=canonical_evento_id,
-    )
+    if lookup_context is not None:
+        existing = find_existing_lead_from_lookup(
+            payload,
+            lookup_context,
+            canonical_evento_id=canonical_evento_id,
+        )
+    else:
+        existing = find_existing_lead(
+            session,
+            payload,
+            canonical_evento_id=canonical_evento_id,
+        )
     if existing:
         merge_lead(existing, payload)
         session.add(existing)

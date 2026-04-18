@@ -28,6 +28,7 @@ import type {
   SocialProfileCreate,
   SocialProfileRead,
   SocialProfileUpdate,
+  SponsoredPersonRoleRead,
   SponsoredInstitutionCreate,
   SponsoredInstitutionRead,
   SponsoredInstitutionUpdate,
@@ -55,6 +56,10 @@ function request<T>(token: string, path: string, method = "GET", body?: unknown)
   return fetchWithAuth(path, body === undefined ? { token, method } : jsonOptions(token, method, body)).then(
     (res) => handleApiResponse<T>(res),
   );
+}
+
+export function listPersonRoles(token: string): Promise<SponsoredPersonRoleRead[]> {
+  return request(token, "sponsorship/person-roles");
 }
 
 export function listSponsoredPersons(token: string): Promise<SponsoredPersonRead[]> {

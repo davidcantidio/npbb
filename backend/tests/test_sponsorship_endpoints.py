@@ -19,6 +19,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.db.database import get_session
 from app.models.models import Usuario
+from app.models.sponsorship_models import SponsoredPersonRole
 from app.routers.auth import router as auth_router
 from app.routers.sponsorship import router as sponsorship_router
 from app.utils.security import hash_password
@@ -34,6 +35,24 @@ def create_test_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(sponsorship_router)
     return app
+
+
+def seed_sponsored_person_roles(session: Session) -> None:
+    """Insere papéis de lookup exigidos por ``SponsoredPerson.role_id`` (testes SQLite)."""
+    roles: list[tuple[str, str, int]] = [
+        ("atleta", "Atleta", 1),
+        ("staff", "Staff", 2),
+        ("fisioterapeuta", "Fisioterapeuta", 3),
+        ("medico", "Médico", 4),
+        ("tecnico", "Técnico", 5),
+        ("nutricionista", "Nutricionista", 6),
+        ("terapeuta", "Terapeuta", 7),
+        ("fotografo", "Fotógrafo", 8),
+        ("outro", "Outro", 9),
+    ]
+    for code, label, sort_order in roles:
+        session.add(SponsoredPersonRole(code=code, label=label, sort_order=sort_order))
+    session.commit()
 
 
 def make_engine():
@@ -70,6 +89,8 @@ def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
     eng = make_engine()
     SQLModel.metadata.create_all(eng)
+    with Session(eng) as session:
+        seed_sponsored_person_roles(session)
     return eng
 
 
@@ -218,7 +239,7 @@ def test_person_owner_first_flow_with_counts(client, engine):
         "/sponsorship/persons",
         json={
             "full_name": "Atleta Teste",
-            "role": "atleta",
+            "role_id": 1,
             "cpf": None,
             "email": "atleta@example.com",
             "phone": None,
@@ -476,7 +497,7 @@ def test_group_operational_flow_to_delivery_evidence(client, engine):
         "/sponsorship/persons",
         json={
             "full_name": "Atleta Operacional",
-            "role": "atleta",
+            "role_id": 1,
             "cpf": None,
             "email": "operacional@example.com",
             "phone": None,
@@ -653,7 +674,7 @@ def test_create_responsible_rejects_missing_member_with_real_foreign_key(client,
         "/sponsorship/persons",
         json={
             "full_name": "Atleta FK Real",
-            "role": "atleta",
+            "role_id": 1,
             "email": "fk-real@example.com",
         },
         headers=headers,
@@ -760,7 +781,7 @@ def test_create_requirement_rejects_clause_from_another_contract(client, engine)
         "/sponsorship/persons",
         json={
             "full_name": "Atleta Clausula Errada",
-            "role": "atleta",
+            "role_id": 1,
             "cpf": None,
             "email": "clausula-errada@example.com",
             "phone": None,
@@ -872,7 +893,7 @@ def test_occurrence_rejected_requires_rejection_reason(client, engine):
         "/sponsorship/persons",
         json={
             "full_name": "Atleta Rejeicao",
-            "role": "atleta",
+            "role_id": 1,
             "cpf": None,
             "email": "rejeicao@example.com",
             "phone": None,
@@ -1024,7 +1045,7 @@ def test_contract_create_persists_original_file_metadata(client, engine):
         "/sponsorship/persons",
         json={
             "full_name": "Atleta Contrato Arquivo",
-            "role": "atleta",
+            "role_id": 1,
             "email": "arquivo@example.com",
         },
         headers=headers,
@@ -1092,7 +1113,7 @@ def test_contract_patch_updates_original_file_metadata(client, engine):
         "/sponsorship/persons",
         json={
             "full_name": "Atleta Contrato Patch",
-            "role": "atleta",
+            "role_id": 1,
             "email": "patch@example.com",
         },
         headers=headers,
@@ -1156,14 +1177,14 @@ def test_create_responsible_rejects_member_from_different_group(client, engine):
 
     person_a = client.post(
         "/sponsorship/persons",
-        json={"full_name": "Atleta Grupo A", "role": "atleta"},
+        json={"full_name": "Atleta Grupo A", "role_id": 1},
         headers=headers,
     )
     assert person_a.status_code == 201
 
     person_b = client.post(
         "/sponsorship/persons",
-        json={"full_name": "Atleta Grupo B", "role": "atleta"},
+        json={"full_name": "Atleta Grupo B", "role_id": 1},
         headers=headers,
     )
     assert person_b.status_code == 201
@@ -1255,7 +1276,7 @@ def test_occurrence_validated_fills_validated_by_and_at(client, engine):
 
     person = client.post(
         "/sponsorship/persons",
-        json={"full_name": "Atleta Validacao", "role": "atleta"},
+        json={"full_name": "Atleta Validacao", "role_id": 1},
         headers=headers,
     )
     assert person.status_code == 201
@@ -1359,7 +1380,7 @@ def _setup_occurrence_with_member(client, engine, email_suffix, contract_number)
 
     person = client.post(
         "/sponsorship/persons",
-        json={"full_name": f"Atleta Card {email_suffix}", "role": "atleta"},
+        json={"full_name": f"Atleta Card {email_suffix}", "role_id": 1},
         headers=headers,
     )
     assert person.status_code == 201
@@ -1443,7 +1464,7 @@ def _create_member_for_group(client, headers, group_id, full_name):
     """
     person = client.post(
         "/sponsorship/persons",
-        json={"full_name": full_name, "role": "atleta"},
+        json={"full_name": full_name, "role_id": 1},
         headers=headers,
     )
     assert person.status_code == 201

@@ -354,6 +354,9 @@ class TestPostMapear:
             assert len(silver_rows) == 1
             assert silver_rows[0].dados_brutos["nome"] == "Alice"
             assert silver_rows[0].dados_brutos["email"] == "alice@ex.com"
+            assert silver_rows[0].dados_brutos["source_file"] == "leads.csv"
+            assert silver_rows[0].dados_brutos["source_sheet"] == ""
+            assert silver_rows[0].dados_brutos["source_row"] == 2
 
     def test_partial_mapping_ignores_unmapped_columns(self, client, engine):
         with Session(engine) as s:
@@ -376,8 +379,12 @@ class TestPostMapear:
         with Session(engine) as s:
             silver_rows = s.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all()
             assert len(silver_rows) == 1
-            # Apenas email deve estar nos dados_brutos
-            assert list(silver_rows[0].dados_brutos.keys()) == ["email"]
+            assert silver_rows[0].dados_brutos == {
+                "email": "alice@ex.com",
+                "source_file": "leads.csv",
+                "source_sheet": "",
+                "source_row": 2,
+            }
 
     def test_aliases_saved_after_mapping(self, client, engine):
         with Session(engine) as s:
@@ -485,11 +492,17 @@ class TestPostMapear:
                 "nome": "Alice",
                 "cpf": "12345678901",
                 "email": "alice@ex.com",
+                "source_file": "leads.xlsx",
+                "source_sheet": "Sheet",
+                "source_row": 10,
             }
             assert silver_rows[1].dados_brutos == {
                 "nome": "Bob",
                 "cpf": "98765432100",
                 "email": "bob@ex.com",
+                "source_file": "leads.xlsx",
+                "source_sheet": "Sheet",
+                "source_row": 11,
             }
 
     def test_mapping_persists_extended_lead_fields(self, client, engine):

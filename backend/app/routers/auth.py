@@ -35,15 +35,15 @@ def _normalizar_bb_aprovacao_legado(session: Session, usuario: Usuario) -> Usuar
     session.commit()
     session.refresh(usuario)
     return usuario
-
-SESSION_COOKIE_MAX_AGE_SECONDS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")) * 60
-
-
 def _cookie_secure() -> bool:
     env = os.getenv("COOKIE_SECURE")
     if env is not None:
         return env.lower() in {"1", "true", "yes"}
     return os.getenv("ENV", "").lower() in {"prod", "production"}
+
+
+def _get_session_cookie_max_age_seconds() -> int:
+    return int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720")) * 60
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -53,7 +53,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         httponly=True,
         secure=_cookie_secure(),
         samesite="lax",
-        max_age=SESSION_COOKIE_MAX_AGE_SECONDS,
+        max_age=_get_session_cookie_max_age_seconds(),
         path="/",
     )
 

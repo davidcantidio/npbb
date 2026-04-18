@@ -1,496 +1,155 @@
-# Deep research: localizar o CRUD no repositório e implementar mudanças no banco para atender o PRD
+# Auditoria aprofundada do fluxo de importação de leads no repositório npbb
 
 ## Resumo executivo
 
-O repositório que atende ao contexto do PRD é **`davidcantidio/npbb`** (privado) e a stack **não é Next.js/Nest/Express/Rails/Django/Laravel**: é **Backend em FastAPI + SQLModel + Alembic** e **Frontend em React/Vite**, com banco **Postgres no Supabase** acessado via **SQLAlchemy/psycopg2**. fileciteturn46file0L1-L1 fileciteturn47file1L1-L1
+O repositório tem **três trilhas reais de importação em massa**: o fluxo legado de preview/import direto, o fluxo Bronze → Silver → Gold com pipeline assíncrona em segundo plano, e o fluxo ETL de preview/commit em duas etapas. A base está longe de ser “superficial”: há documentação, modelos específicos, DQ no Gold, testes razoáveis em ETL/Silver/Gold e mecanismos de idempotência em partes do sistema. Ainda assim, a confiabilidade **não é homogênea** entre os três caminhos. fileciteturn96file0L1-L1 fileciteturn74file0L1-L1 fileciteturn80file0L1-L1 fileciteturn87file0L1-L1
 
-Para atender o PRD de publicidade (import CSV → staging → upsert final → consumo por dashboards/BI), a implementação recomendada é:
+Os riscos mais importantes que encontrei são: **validação incompatível com a regra de negócio documentada** (o código exige CPF válido mesmo quando a regra diz “email ou CPF”), **commit ETL que pode marcar a sessão como concluída mesmo após falha parcial de persistência**, **deduplicação protegida principalmente no código e não de forma robusta no banco para casos com `NULL`**, e **pipeline Gold dependente de background task em processo, sem fila durável, DLQ ou retomada real após queda do worker/processo**. fileciteturn86file0L1-L1 fileciteturn96file0L1-L1 fileciteturn84file0L1-L1 fileciteturn64file0L1-L1 fileciteturn61file0L1-L1 fileciteturn90file0L1-L1 fileciteturn81file0L1-L1
 
-- **Banco (DDL via Alembic ou SQL)**: criar `publicity_import_staging` + `event_publicity`, índices/constraints de idempotência e um mecanismo confiável de `updated_at`; adicionar `external_project_code` em `evento` para resolver `event_id`.
-- **CRUD (FastAPI)**: criar um novo módulo/rota de import no backend seguindo o padrão já usado para import de leads (preview/validate/import), com **hash por linha**, **ingestão idempotente em staging** e **UPSERT** na tabela final usando `INSERT ... ON CONFLICT DO UPDATE` (UPSERT) do Postgres. citeturn0search2
-- **Operação**: migrations e deploy com passos claros; segurança focada em chaves/roles e (se houver consumo direto do Supabase Data API pelo frontend) considerar RLS/policies. citeturn0search0
+Em performance e custo, o desenho atual tende a **carregar arquivo inteiro em memória**, **persistir blob bruto no banco**, **serializar previews grandes em JSON no banco**, **inserir linhas com lógica row-by-row/N+1**, e **manter polling agressivo no frontend**. O próprio frontend já carrega timeouts elevados para contornar operações demoradas. Isso não significa que o sistema já esteja quebrando em produção, mas significa que ele está operando perto de limites arquiteturais que vão aparecer primeiro em lotes grandes, reprocessamentos e concorrência. fileciteturn73file0L1-L1 fileciteturn88file0L1-L1 fileciteturn64file0L1-L1 fileciteturn81file0L1-L1 fileciteturn94file0L1-L1 fileciteturn95file0L1-L1
 
-Onde eu não consigo inferir com certeza sem abrir arquivos específicos (ex.: como o `Session` é injetado no FastAPI e como o `app.main` registra routers), marquei como **“não especificado”** e deixei comandos objetivos para o Codex/dev confirmar rapidamente no repo.
+Veredito: o fluxo é **funcional e relativamente evoluído**, mas hoje eu o classificaria como **confiável apenas em cenários controlados**. Para produção com volume, concorrência e necessidade de rastreabilidade forte, ele ainda tem **brechas importantes de corretude, retomada, proteção contra duplicação, observabilidade e custo operacional**. fileciteturn52file0L1-L1 fileciteturn53file0L1-L1 fileciteturn54file0L1-L1 fileciteturn55file0L1-L1 fileciteturn57file0L1-L1
 
-## Constatações do repositório e conectores
+## Mapa do fluxo
 
-Conectores habilitados: **GitHub**.
+### Fluxo legado de preview e import direto
 
-Repositório alvo: **`davidcantidio/npbb`** (encontrado no escopo do GitHub conectado). fileciteturn46file0L1-L1
+1. **Entrada do arquivo**: a UI chama `previewLeadImport()` e depois `POST /leads/import/preview`; no backend, o caminho auditado passa por `preview_import_sample_usecase()` em `backend/app/modules/leads_publicidade/application/leads_import_usecases.py`. Entradas: `file`, `sample_rows`. Saídas: `headers`, `rows`, `start_index`, sugestões e `alias_hits`. Dependências: leitores CSV/XLSX injetados, heurística de mapeamento, lookup de aliases em `lead_alias`. Persistência: nenhuma além de leitura de alias. Side effects: nenhum. Retry/resume: inexistente. fileciteturn94file0L1-L1 fileciteturn74file0L1-L1
 
-Stack declarada/documentada no repo:
+2. **Parsing e detecção de cabeçalho**: `backend/app/services/imports/file_reader.py` valida apenas extensão/tamanho, lê CSV/XLSX, detecta `start_index` por heurística tabular nas primeiras 50 linhas e devolve amostra ou todas as linhas. Entradas: bytes do upload. Saídas: preview estruturado. Persistência: nenhuma. Side effects: nenhum. Retry/resume: inexistente. fileciteturn73file0L1-L1
 
-- Backend: FastAPI + SQLModel; migrations com Alembic. fileciteturn46file0L1-L1 fileciteturn47file2L1-L1
-- Frontend: React + Vite; chama API do backend (não “direto no Supabase” por padrão). fileciteturn47file1L1-L1
-- Banco: Postgres no Supabase; variáveis importantes `DATABASE_URL` e `DIRECT_URL` (migrations preferem conexão direta). fileciteturn47file0L1-L1 fileciteturn47file2L1-L1
-- Estrutura do backend (padrão do repo): `backend/app/{models,schemas,routers,services,utils,db,core}`. fileciteturn47file1L1-L1
+3. **Validação de mapeamento**: `validar_mapeamento_usecase()` delega para `ensure_mapping_has_essential`, que segundo a documentação exige **email ou CPF**. Entradas: `mappings`. Saída: `{ok: true}` ou erro HTTP. Persistência: nenhuma. Retry/resume: inexistente. fileciteturn74file0L1-L1 fileciteturn96file0L1-L1
 
-Frameworks “comuns” solicitados:
-- Next.js: **não especificado / não indicado** no repo. fileciteturn46file0L1-L1
-- NestJS: **não especificado / não indicado**.
-- Express: **não especificado / não indicado**.
-- Rails: **não especificado / não indicado**.
-- Django: **não especificado / não indicado**.
-- Laravel: **não especificado / não indicado**.
+4. **Import efetivo**: `importar_leads_usecase()` reabre o arquivo, refaz preview curto para descobrir `start_index`, itera linhas, aplica `mappings`, opcionalmente enriquece CEP, monta payload, deduplica apenas no batch corrente via `key_to_index`, e delega a persistência para `process_batch()`. Persistência final: tabela `lead`. Side effects: enriquecimento externo de CEP quando habilitado. Retry/resume: nenhum; o retorno é apenas resumo agregado por batch. fileciteturn74file0L1-L1
 
-## Como localizar o CRUD que alimenta o Supabase no repo
+5. **Persistência e dedupe**: o caminho reaproveita `persist_lead_batch()` em `backend/app/modules/leads_publicidade/application/etl_import/persistence.py`, que valida payload normalizado, tenta um “bulk lógico” com `find_existing_lead()` + `session.flush()`, e faz fallback para row-by-row em caso de exceção. Persistência: `lead` e, quando resolvido, `lead_evento`. Side effects: criação/backfill de vínculo canônico de evento. Retry/resume: apenas fallback interno de bulk → row-by-row; não há resume operacional ou relatório por linha no endpoint legado. fileciteturn61file0L1-L1
 
-A regra simples: **o CRUD que “alimenta o Supabase” é o CRUD que grava no Postgres via SQLAlchemy/SQLModel**.
+### Fluxo Bronze → Silver → Gold
 
-### Mapas de onde olhar primeiro
+1. **Upload Bronze**: a UI chama `createLeadBatch()` e o backend persiste um `LeadBatch` com `arquivo_bronze` como `LargeBinary` na tabela `lead_batches`. Entradas: arquivo bruto + metadados (`plataforma_origem`, `data_envio`, `evento_id`, `origem_lote`, `ativacao_id` etc.). Saída: lote Bronze persistido. Side effects: retenção do arquivo bruto no banco. Retry/resume: inexistente no upload. fileciteturn94file0L1-L1 fileciteturn88file0L1-L1
 
-1) **Modelos (tabelas)**
-- `backend/app/models/models.py` é o arquivo central de modelos SQLModel (inclui `Evento` com `__tablename__ = "evento"`). fileciteturn30file6L1-L1
+2. **Sugestão de colunas Silver**: `suggest_column_mapping()` em `backend/app/services/lead_mapping.py` lê os headers do `arquivo_bronze`, cruza com `HEADER_SYNONYMS` e aliases persistidos em `lead_column_aliases`, e devolve sugestões. Persistência: leitura do lote e de aliases. Side effects: nenhum. Retry/resume: inexistente. fileciteturn80file0L1-L1
 
-2) **Schemas (contratos Pydantic)**
-- Eventos: `backend/app/schemas/evento.py` (Create/Update/Read/ListItem). fileciteturn30file0L1-L1
+3. **Mapeamento confirmado e materialização Silver**: `mapear_batch()` lê **todas** as linhas do Bronze, apaga `leads_silver` existentes do lote, recria linha por linha `LeadSilver`, grava aliases novos e atualiza `lead_batches.stage = silver`. Entradas: `batch_id`, `evento_id`, `mapeamento`, `user_id`. Saídas: `silver_count`, `stage`. Persistência: `leads_silver`, `lead_column_aliases`, `lead_batches`. Side effects: substituição integral do Silver do lote. Retry/resume: remapeamento é idempotente por apagar e recriar, mas sem checkpoint por linha. fileciteturn80file0L1-L1 fileciteturn88file0L1-L1
 
-3) **Routers (endpoints)**
-- Existem routers para eventos/leads/etc. (ex.: `backend/app/routers/eventos.py`, `backend/app/routers/leads.py`). fileciteturn33file6L1-L1 fileciteturn33file10L1-L1
+4. **Enfileiramento do Gold**: a UI chama `executarPipeline()` e passa a fazer polling de `getLeadBatch()` a cada 1,5 s em `PipelineStatusPage.tsx`. O serviço Gold usa `queue_pipeline_batch()` e `pipeline_progress` para estado operacional. Persistência: `lead_batches.pipeline_status`, `pipeline_progress`, `pipeline_report`. Side effects: polling constante no frontend. Retry/resume: bloqueio simples contra reexecução enquanto o lote aparece como pendente. fileciteturn94file0L1-L1 fileciteturn95file0L1-L1 fileciteturn81file0L1-L1
 
-4) **Migrations**
-- Alembic em `backend/alembic/` e revisões em `backend/alembic/versions/`. fileciteturn47file2L1-L1 fileciteturn44file1L1-L1
+5. **Materialização Silver → CSV**: `materializar_silver_como_csv()` em `backend/app/services/lead_pipeline_service.py` lê `LeadSilver`, monta `silver_input.csv` em `/tmp/npbb_pipeline/<batch_id>/`, e enriquece colunas usando o `Evento` ancorado no lote. Persistência: nenhuma nova; escrita temporária em `/tmp`. Side effects: IO local em disco. Retry/resume: inexistente; arquivos temporários são removidos ao final. fileciteturn81file0L1-L1
 
-5) **Config de migrations e conexão**
-- `backend/alembic/env.py` documenta por que usar `DIRECT_URL` no Supabase para migrations. fileciteturn47file2L1-L1
+6. **Pipeline de qualidade e consolidação Gold**: `executar_pipeline_gold()` chama `run_pipeline()` via executor, lê `report.json`, decide `promote` ou `hold`, e publica progresso intermediário no banco. Dependências: pacote local `lead_pipeline`. Persistência: `lead_batches.pipeline_report`, métricas DQ resumidas, status final. Side effects: escrita de relatórios temporários. Retry/resume: não há fila durável, DLQ nem checkpoint reaproveitável. fileciteturn81file0L1-L1
 
-### Comandos “cirúrgicos” que o Codex/dev deve rodar no repo
+7. **Inserção em `lead` e efeitos colaterais**: `_inserir_leads_gold()` abre o CSV consolidado, lê tudo em memória, encontra ou cria `Lead`, mescla apenas campos faltantes, cria `LeadEvento`, e, se `origem_lote=ativacao`, cria também `AtivacaoLead`. Persistência: `lead`, `lead_evento`, `ativacao_lead`. Side effects: vínculo canônico de evento/ativação. Retry/resume: apenas reprocessamento manual do lote; não há replay seletivo por linha. fileciteturn81file0L1-L1
 
-> Se algum item na seção seguinte ficar “não especificado”, rode isso e preencha.
+### Fluxo ETL de preview e commit
 
-```bash
-# na raiz do repo
-rg -n "SQLModel|__tablename__|class Evento" backend/app/models
-rg -n "APIRouter|router\\s*=|@router\\." backend/app/routers
-rg -n "get_db|Session\\(|Depends\\(" backend/app
-rg -n "alembic\\s+upgrade|revision\\s+--autogenerate|DIRECT_URL|DATABASE_URL" backend
-rg -n "import/preview|POST /leads/import|/leads/import" docs backend frontend
-```
+1. **Preview ETL**: a UI chama `previewLeadImportEtl()`; o backend executa `create_preview_snapshot()` via `import_leads_with_etl()`. O serviço valida evento, lê todo o upload em memória, extrai linhas via `extract_csv_rows()` ou `extract_xlsx_rows()`, roda `run_preview_validation()`, gera `dq_report`, calcula `idempotency_key` e persiste snapshot na tabela `lead_import_etl_preview_session`. Persistência: snapshot completo, incluindo `approved_rows_json`, `rejected_rows_json` e `dq_report_json`. Side effects: persistência integral do preview no banco. Retry/resume: idempotência por `idempotency_key`, mas não por conteúdo puro do arquivo. fileciteturn87file0L1-L1 fileciteturn71file0L1-L1 fileciteturn72file0L1-L1 fileciteturn64file0L1-L1 fileciteturn67file0L1-L1
 
-Por que isso funciona:
-- O repo tem padrão explícito de separação `models/schemas/routers/services` (logo você encontra o CRUD sem caça ao tesouro). fileciteturn47file1L1-L1
-- As migrations estão formalizadas via Alembic (`alembic upgrade head` faz parte do setup). fileciteturn47file0L1-L1
-- O pipeline de import de leads já existe e documenta o padrão de rotas (serve de “molde” para publicidade). fileciteturn51file0L1-L1
+2. **Extração e validação ETL**: `extract.py` trata BOM UTF-8, fallback `latin-1`, delimitador vírgula ou ponto e vírgula, apenas primeira aba do XLSX e detecção de header com CPF. `transform_validate.py` normaliza colunas, adapta para `LeadRow`, separa aprovadas/rejeitadas e gera checks de linhas rejeitadas e duplicatas no lote. Persistência: aliases manuais de header podem ser gravados em `import_alias`. Retry/resume: só no nível de snapshot inteiro. fileciteturn72file0L1-L1 fileciteturn85file0L1-L1 fileciteturn90file0L1-L1
 
-## Mapa de modelos/tabelas e migrations existentes
+3. **Commit ETL**: `commit_preview_session()` carrega snapshot, aplica gates (`strict`, warnings), reconstrói batch aprovado, deduplica intra-preview mantendo a última ocorrência e delega a `persist_lead_batch()`. Persistência: `lead`, `lead_evento` e atualização do snapshot com `commit_result_json` e `status=committed`. Side effects: marcação definitiva da sessão como comitada. Retry/resume: idempotência de `session_token`, mas não há replay seletivo de falhas parciais. fileciteturn84file0L1-L1 fileciteturn64file0L1-L1
 
-### Tabelas-base relevantes (já existentes)
+## Achados detalhados
 
-Pelos modelos SQLModel, o sistema tem (entre outras):
-- `evento` (tabela dos eventos; **não é `events`**).
-- `usuario`, `agencia`, `diretoria`, `funcionario`, `status_evento`.
-- `lead` e tabelas relacionadas (import e dashboards já existem). fileciteturn30file6L1-L1
+### Validador rejeita email-only, embora a regra documentada diga email ou CPF
 
-### Implicação direta para o PRD
+**Severidade:** crítica. **Categoria:** corretude, dados. **Tipo do achado:** bug confirmado. **Localização:** `backend/app/modules/leads_publicidade/application/etl_import/validators.py::validate_normalized_lead_payload`, com divergência explícita em `docs/leads_importacao.md`. **Evidência:** o código adiciona `CPF inválido` sempre que `is_valid_cpf(cpf)` for falso; como `None` e `""` também retornam falso, qualquer payload sem CPF é rejeitado, mesmo se o email for válido. A documentação do fluxo legado e ETL diz que o requisito essencial é **“email ou CPF”**. fileciteturn86file0L1-L1 fileciteturn96file0L1-L1
 
-O PRD pede vínculo `event_publicity.event_id → events.id`. No repo, o “evento” está em `evento.id`, então o correto é:
+**Impacto prático:** perda silenciosa de leads legítimos que chegam apenas com email, sobretudo em integrações/planilhas que não trazem CPF. Isso afeta tanto `persist_lead_batch()` quanto o preview ETL, porque ambos passam por `validate_normalized_lead_payload()`. **Cenário:** um CSV com `email=cliente@x.com` e `cpf` vazio será rejeitado no preview ou no import final, contrariando a regra de negócio documentada. **Risco em produção:** alto risco de descarte indevido e difícil reconciliação com o operador, porque ele tenderá a confiar na documentação e no requisito “email ou CPF”. **Correção recomendada:** mudar a validação para aceitar payload com **pelo menos um identificador válido**; em termos práticos, “email válido OU CPF válido”, e só rejeitar quando ambos estiverem ausentes/inválidos. **Prioridade de ataque:** P0. fileciteturn61file0L1-L1 fileciteturn85file0L1-L1 fileciteturn96file0L1-L1
 
-- `event_publicity.event_id` **FK para** `evento.id`
-- Precisamos adicionar em `evento` um campo de “ponte” para o CSV: `external_project_code` (mapeia `CodigoProjeto` → evento). fileciteturn30file6L1-L1
+**Como comprovar:** criar primeiro o teste unitário ausente para `validate_normalized_lead_payload({"email": "ok@example.com", "cpf": None})` e esperar lista vazia; depois criar um teste de integração para ETL preview com planilha contendo só email válido e confirmar que hoje a linha entra em `rejected_rows`. Também é reprodutível manualmente por upload via `/leads/import/etl/preview` com arquivo mínimo de uma linha. fileciteturn86file0L1-L1 fileciteturn54file0L1-L1
 
-### Migrations existentes e padrão de execução
+### Commit ETL pode concluir com falha parcial e bloquear reprocessamento real
 
-- As migrations são geridas por Alembic (`backend/alembic`) e o setup recomenda `alembic upgrade head`. fileciteturn47file0L1-L1
-- O `env.py` do Alembic deixa claro que migrations em Supabase devem usar **conexão direta** (`DIRECT_URL`) porque poolers podem causar bloqueios/timeout em alguns ambientes. fileciteturn47file2L1-L1
-- Quando usar autogenerate, Alembic compara o estado do banco (pela URL) com o metadata dos modelos e gera diffs “óbvios”, mas o dev deve revisar e ajustar. citeturn1search2
+**Severidade:** crítica. **Categoria:** corretude, dados, UX operacional. **Tipo do achado:** bug confirmado. **Localização:** `backend/app/modules/leads_publicidade/application/etl_import/commit_service.py::commit_preview_session` e `preview_session_repository.py::mark_committed/get_commit_result`. **Evidência:** o commit sempre monta um `EtlCommitResult(status="committed")` mesmo quando `persist_lead_batch()` retorna `skipped > 0` e `has_errors=True`; em seguida, `mark_committed()` persiste esse resultado e futuras chamadas com o mesmo `session_token` devolvem o cache de `get_commit_result()` sem tentar novamente as linhas que falharam. fileciteturn84file0L1-L1 fileciteturn64file0L1-L1 fileciteturn61file0L1-L1
 
-## Mudanças no banco para suportar publicidade
+**Impacto prático:** uma falha transitória de banco, conflito de integridade ou exceção em side effect pode produzir import parcial e, ao mesmo tempo, selar a sessão como “comitada”. O operador vê o commit concluído, mas não tem um resume verdadeiro para as linhas que falharam. **Cenário:** falha controlada na linha 10.000 durante a criação de `LeadEvento`, com 9.999 linhas já persistidas; o resultado é armazenado como `committed`, e repetir o commit retorna o mesmo resumo sem reprocessar a linha problemática. **Risco em produção:** altíssimo para lotes grandes e falhas parciais, porque o sistema aparenta idempotência, mas na prática ela congela o estado parcial. **Correção recomendada:** só marcar a sessão como `committed` quando não houver erros; em caso de parcial, persistir `status=partial_failure` com motivos por linha e oferecer `retry_failed_rows` ou replay integral seguro. **Prioridade de ataque:** P0. fileciteturn84file0L1-L1 fileciteturn64file0L1-L1
 
-A seguir, **SQL pronto para Postgres/Supabase** (DDL). Você pode aplicar via Alembic (`op.execute`) ou via SQL Editor do Supabase (em staging primeiro).
+**Como comprovar:** já existe cobertura de falha parcial em `test_persist_lead_batch_fallback_tracks_failed_rows_without_losing_successes`, mas falta o teste de integração no nível do commit ETL: monkeypatchar `_ensure_canonical_event_link` ou `db.commit()` para falhar em uma linha, executar `/leads/import/etl/commit`, verificar `status=="committed"` com `skipped>0`, e repetir a chamada para ver que o sistema apenas devolve o mesmo resultado sem replay. fileciteturn52file0L1-L1 fileciteturn84file0L1-L1
 
-### Tabela staging e tabela final
+### A deduplicação real depende demais do código e não fica robustamente protegida no banco
 
-**Objetivo técnico**:
-- `publicity_import_staging`: trilha de auditoria + idempotência por arquivo/linha.
-- `event_publicity`: tabela final de consumo por dashboard/BI; dedupe por chave natural.
-
-**DDL (Postgres)**
+**Severidade:** alta. **Categoria:** dados, arquitetura. **Tipo do achado:** risco provável fortemente sustentado pelo código e schema. **Localização:** `backend/app/models/lead_public_models.py::Lead`, `persistence.py::find_existing_lead/build_dedupe_key`, `lead_pipeline_service.py::_find_existing_lead`. **Evidência:** a constraint `uq_lead_ticketing_dedupe(email, cpf, evento_nome, sessao)` existe, mas esses quatro campos são `Optional`; em bancos como Postgres, valores `NULL` em constraint única não impedem duplicatas do jeito que a regra de negócio imagina. O código tenta compensar isso com busca prévia em aplicação, mas sem `ON CONFLICT`, sem lock e sem unique index alinhado à semântica “email ou CPF disponível”. fileciteturn90file0L1-L1 fileciteturn61file0L1-L1 fileciteturn81file0L1-L1
 
-```sql
--- 1) função de updated_at (opcional, mas deixa a vida menos triste)
-create or replace function public.set_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
+**Impacto prático:** reimportações concorrentes ou múltiplos workers podem criar duplicatas quando algum componente da chave vier `NULL` ou quando duas transações concorrentes fizerem o mesmo `find_existing_lead()` antes do `commit`. **Cenário:** dois imports paralelos do mesmo lead com `sessao` vazia, ou um lead identificado só por email/cpf em caminhos diferentes; ambos consultam e não acham, ambos inserem. **Risco em produção:** duplicação de leads e estados divergentes entre `lead` e `lead_evento`. **Correção recomendada:** endurecer a idempotência no banco com índices/constraints funcionais coerentes com a regra real, ou separar chaves de unicidade por caso de negócio; complementar com `INSERT ... ON CONFLICT`/upsert atômico. **Prioridade de ataque:** P1. fileciteturn90file0L1-L1 fileciteturn61file0L1-L1
 
--- 2) staging
-create table if not exists public.publicity_import_staging (
-  id bigint generated by default as identity primary key,
-  source_file text not null,
-  source_row_hash text not null,
-  imported_at timestamptz not null default now(),
+**Como comprovar:** criar teste concorrente em Postgres real, não SQLite, disparando dois imports simultâneos com o mesmo payload e `sessao` nula; consultar depois `select email, cpf, evento_nome, sessao, count(*) from lead group by 1,2,3,4 having count(*) > 1;`. Os testes atuais usam SQLite em memória e não exercitam essa semântica de unicidade nem corrida real. fileciteturn53file0L1-L1 fileciteturn54file0L1-L1 fileciteturn57file0L1-L1
 
-  codigo_projeto text not null,
-  projeto text not null,
-  data_vinculacao date not null,
-  meio text not null,
-  veiculo text not null,
-  uf text not null,
-  uf_extenso text not null,
-  municipio text null,
-  camada text not null,
+### O Gold roda como background task em processo, sem fila durável, sem DLQ e sem retomada automática
 
-  normalized jsonb null
-);
+**Severidade:** alta. **Categoria:** arquitetura, UX operacional, observabilidade. **Tipo do achado:** fragilidade operacional confirmada. **Localização:** `backend/app/services/lead_pipeline_service.py::executar_pipeline_gold`, `frontend/src/pages/leads/PipelineStatusPage.tsx`, `frontend/src/services/leads_import.ts`. **Evidência:** o próprio docstring do serviço define o fluxo como “Background task”; o estado operacional fica no próprio `lead_batches.pipeline_status/pipeline_progress`, o frontend fica em polling de 1,5 s esperando mudança de estado, e não há evidência, na trilha auditada, de Bull/RabbitMQ/SQS/Celery/Sidekiq ou worker dedicado para retomada. fileciteturn81file0L1-L1 fileciteturn95file0L1-L1 fileciteturn94file0L1-L1
 
-create unique index if not exists ux_publicity_import_staging_file_hash
-on public.publicity_import_staging (source_file, source_row_hash);
+**Impacto prático:** se o processo reiniciar, o container cair, o deployment reciclar workers ou ocorrer erro fora da janela de persistência final, o lote pode ficar marcado como `pending` ou com progresso desatualizado sem uma fila durável que reentregue a tarefa. **Cenário:** lote está em `normalize_rows`, o servidor reinicia; o operador continua vendo `pending`, mas não existe mecanismo automático de reexecução, timeout de job ou DLQ. **Risco em produção:** filas “fantasma”, lotes presos, necessidade de intervenção manual em banco para destravar. **Correção recomendada:** mover o Gold para uma fila durável com worker dedicado, identidade de job, retry explícito, timeout do job e trilha de falha separada; se isso for considerado grande demais agora, pelo menos adicionar “lease/heartbeat” de execução e comando administrativo de retry seguro. **Prioridade de ataque:** P1. fileciteturn81file0L1-L1 fileciteturn95file0L1-L1
 
--- 3) tabela final
-create table if not exists public.event_publicity (
-  id bigint generated by default as identity primary key,
+**Como comprovar:** subir um lote Silver, acionar `executar-pipeline`, matar o processo no meio da execução e observar o `lead_batches.pipeline_status/pipeline_progress`; hoje não há teste cobrindo queda do processo, apenas falhas internas tratáveis dentro do mesmo runtime. Um teste de integração com reinício controlado do app revelaria o gap. fileciteturn57file0L1-L1 fileciteturn81file0L1-L1
 
-  event_id bigint null references public.evento(id) on delete set null,
+### O desenho atual faz IO e memória em excesso e aumenta custo de banco desnecessariamente
 
-  publicity_project_code text not null,
-  publicity_project_name text not null,
-  linked_at date not null,
+**Severidade:** alta. **Categoria:** performance, custo, arquitetura. **Tipo do achado:** gargalo confirmado e risco operacional provável. **Localização:** `file_reader.py`, `extract.py`, `preview_session_repository.py`, `lead_batch.py`, `lead_pipeline_service.py`, `frontend/src/services/leads_import.ts`. **Evidência:** o sistema lê upload inteiro em memória (`file.file.read()`), o Bronze guarda o arquivo bruto como `LargeBinary` no banco, o preview ETL serializa `approved_rows_json/rejected_rows_json/dq_report_json` em `Text`, o Gold carrega o CSV consolidado inteiro em `rows = list(reader)`, e o frontend sobe timeouts para 60–120 s porque o fluxo já é reconhecidamente pesado. fileciteturn73file0L1-L1 fileciteturn72file0L1-L1 fileciteturn64file0L1-L1 fileciteturn88file0L1-L1 fileciteturn81file0L1-L1 fileciteturn94file0L1-L1
 
-  medium text not null,
-  vehicle text not null,
+**Impacto prático:** memória alta por lote, aumento do tamanho do banco e do custo de backup/replicação, mais tempo de resposta síncrona e maior risco de timeout em lote grande. **Cenário:** XLSX de dezenas de MB com milhares de linhas passa por upload, preview, snapshot ETL e pipeline Gold; o mesmo dado é mantido em blob bruto, reparseado, materializado e seriado em múltiplas formas. **Risco em produção:** degradação progressiva de throughput, picos de memória e latência, especialmente quando mais de um lote grande roda ao mesmo tempo. **Correção recomendada:** streaming onde for possível, storage externo para Bronze, snapshots mais compactos no ETL, inserção em blocos e leitura incremental do consolidado no Gold. **Prioridade de ataque:** P1. fileciteturn73file0L1-L1 fileciteturn88file0L1-L1 fileciteturn64file0L1-L1 fileciteturn81file0L1-L1
 
-  uf text not null,
-  uf_name text null,
-  municipality text null,
+**Como comprovar:** benchmark simples com lote de 100k linhas medindo RSS do processo, tempo de preview ETL, tamanho da linha em `lead_import_etl_preview_session` e latência de `executar-pipeline`. Também vale medir crescimento de `pg_total_relation_size('lead_batches')` e `pg_total_relation_size('lead_import_etl_preview_session')` por import. fileciteturn67file0L1-L1 fileciteturn88file0L1-L1
 
-  layer text not null,
+### A rastreabilidade por linha se perde do arquivo original até o Gold
 
-  source_file text null,
-  source_row_hash text null,
+**Severidade:** média. **Categoria:** observabilidade, dados. **Tipo do achado:** bug/limitação confirmada. **Localização:** `backend/app/services/lead_mapping.py::mapear_batch`, `backend/app/services/lead_pipeline_service.py::materializar_silver_como_csv`, `frontend/src/pages/leads/PipelineStatusPage.tsx`. **Evidência:** o Silver grava `row_index` usando `enumerate(data_rows)` a partir de zero, já depois de remover preâmbulo/cabeçalho; além disso, a exportação Silver → CSV consulta `LeadSilver` sem `ORDER BY`, enquanto o frontend apresenta `source_row` do relatório como se fosse uma referência operacional útil. fileciteturn80file0L1-L1 fileciteturn81file0L1-L1 fileciteturn95file0L1-L1
 
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+**Impacto prático:** a linha rejeitada que o operador vê no Gold nem sempre corresponde de forma estável à mesma linha da planilha original. Em casos com preâmbulos, remapeamentos e ordenação não determinística, a investigação manual vira tentativa e erro. **Cenário:** lote XLSX com oito linhas de preâmbulo; o operador recebe `source_row` no relatório do Gold, mas esse número refere-se ao CSV Silver gerado internamente, não à planilha original do upload. **Risco em produção:** baixa confiabilidade operacional na reconciliação de rejeições e auditoria. **Correção recomendada:** persistir `source_file`, `source_sheet`, `source_row_original` desde o Bronze/Silver e materializar Gold preservando essa ordem com `ORDER BY LeadSilver.row_index`. **Prioridade de ataque:** P2. fileciteturn80file0L1-L1 fileciteturn81file0L1-L1
 
--- dedupe lógico pro UPSERT
-create unique index if not exists ux_event_publicity_natural_key
-on public.event_publicity (
-  publicity_project_code, linked_at, medium, vehicle, uf, layer
-);
+**Como comprovar:** usar um XLSX com preâmbulo e linhas conhecidas, mapear para Silver, gerar Gold com uma rejeição controlada e comparar a linha exibida na UI com a linha física do arquivo original. Um teste de regressão deve falhar hoje se você exigir preservação exata de `source_row_original`. fileciteturn55file0L1-L1 fileciteturn95file0L1-L1
 
-create index if not exists ix_event_publicity_linked_at
-on public.event_publicity (linked_at);
+### O parser ETL tem limitações relevantes para casos reais de planilha
 
-create index if not exists ix_event_publicity_event_id
-on public.event_publicity (event_id);
+**Severidade:** média. **Categoria:** corretude, UX operacional. **Tipo do achado:** limitação confirmada. **Localização:** `backend/app/modules/leads_publicidade/application/etl_import/extract.py`. **Evidência:** o ETL processa apenas `workbook.worksheets[0]`, usa `promote_merged_header=False`, varre no máximo 40 linhas para achar cabeçalho, e o detector de delimitador CSV só escolhe entre vírgula e ponto e vírgula pela primeira linha. fileciteturn72file0L1-L1
 
--- trigger updated_at
-drop trigger if exists trg_event_publicity_updated_at on public.event_publicity;
-create trigger trg_event_publicity_updated_at
-before update on public.event_publicity
-for each row execute function public.set_updated_at();
-```
+**Impacto prático:** planilhas multiaba, cabeçalhos fundidos/mesclados, preâmbulos longos ou CSVs com formatação menos convencional podem cair em `header_required`/`cpf_column_required` ou serem importados de forma errada. **Cenário:** XLSX cujo cabeçalho real está na linha 55 ou em aba secundária; o preview não detecta automaticamente apesar de a planilha ser válida operacionalmente. **Risco em produção:** aumento de suporte manual e rejeições “falsas”. **Correção recomendada:** aceitar seleção de aba, ampliar ou parametrizar `max_scan_rows`, tratar merged cells de forma controlada e substituir a heurística de delimitador por sniffing mais robusto. **Prioridade de ataque:** P2. fileciteturn72file0L1-L1
 
-**Por que UPSERT depende do índice unique**: `INSERT ... ON CONFLICT DO UPDATE` precisa de um alvo de conflito com constraint/índice único (ou inferência), senão a operação não tem “chave” para escolher o que atualizar. citeturn0search2
+**Como comprovar:** criar fixtures com: XLSX de duas abas, cabeçalho após linha 40, merged cell no título do cabeçalho, e CSV com `\t` ou com delimitador ambíguo. Hoje o comportamento já é parcialmente coberto só para o caso “header row forçada” e “semicolon CSV”, não para esses limites. fileciteturn54file0L1-L1
 
-### Coluna de ponte no evento
+### O Gold reimporta sem atualizar dados já preenchidos, divergindo do comportamento dos outros fluxos
 
-```sql
-alter table public.evento
-add column if not exists external_project_code text null;
+**Severidade:** média. **Categoria:** dados, corretude. **Tipo do achado:** inconsistência confirmada. **Localização:** `backend/app/services/lead_pipeline_service.py::_merge_lead_payload_if_missing` versus `backend/app/modules/leads_publicidade/application/etl_import/persistence.py::merge_lead`. **Evidência:** no Gold, valores novos só entram quando o campo atual está vazio; já na persistência compartilhada de legado/ETL, campos não nulos do import podem atualizar o registro existente, exceto algumas exceções específicas. fileciteturn81file0L1-L1 fileciteturn61file0L1-L1
 
-create unique index if not exists ux_evento_external_project_code
-on public.evento (external_project_code)
-where external_project_code is not null;
-```
+**Impacto prático:** o mesmo lead pode ser atualizado em um caminho e permanecer congelado em outro. Isso cria divergência silenciosa entre “o que o operador importou por último” e “o que ficou persistido”. **Cenário:** um reprocessamento Gold traz nome corrigido, gênero ou endereço melhor, mas o lead antigo já tinha um valor preenchido; o sistema mantém o valor antigo sem alertar. **Risco em produção:** estado inconsistente e difícil explicação para o usuário. **Correção recomendada:** definir uma política única de merge para os três fluxos e cobri-la por testes explícitos; se o desenho quiser preservar Gold como não-destrutivo, isso precisa virar regra operacional explícita e não só detalhe de implementação. **Prioridade de ataque:** P2. fileciteturn81file0L1-L1 fileciteturn61file0L1-L1
 
-### RLS e policies (se aplicável)
+**Como comprovar:** criar dois lotes Gold sucessivos para o mesmo lead, com campo já preenchido no primeiro e valor diferente no segundo, e verificar que o valor não muda; em paralelo, repetir cenário equivalente no fluxo ETL/legado para mostrar a divergência de comportamento. Não encontrei teste cobrindo essa assimetria. fileciteturn57file0L1-L1 fileciteturn52file0L1-L1
 
-Se vocês expõem tabelas via Supabase Data API diretamente para browser (não aparenta ser o padrão aqui), **RLS vira obrigatório** em schemas expostos (por padrão `public`), e sem policies **não há acesso** via `anon key`. citeturn0search0
+### A superfície de upload continua validando basicamente extensão e tamanho, não tipo real do arquivo
 
-Recomendação pragmática:
-- Se o consumo é **via backend** (API FastAPI), mantenha acesso por role do backend e trate RLS como “defesa extra”.
-- Se o consumo é **via browser** (supabase-js), habilite RLS em `event_publicity` e crie policies de SELECT mínimas e explícitas. citeturn0search0
+**Severidade:** média. **Categoria:** segurança, UX operacional. **Tipo do achado:** fragilidade confirmada. **Localização:** `backend/app/services/imports/file_reader.py::_validate_extension/inspect_upload` e `extract.py::read_upload_bytes`. **Evidência:** a validação passeia por `Path(filename).suffix.lower()` e tamanho do stream; não há sniffing de MIME real, assinatura mágica nem validação de conteúdo antes de despachar para `csv`/`openpyxl`. fileciteturn73file0L1-L1 fileciteturn72file0L1-L1
 
-## Alterações no código do CRUD
+**Impacto prático:** arquivos com extensão forjada chegam mais longe do que deveriam; na melhor hipótese viram erro de parser, na pior aumentam superfície de negação de serviço e tratamento inconsistente de falha. **Cenário:** upload com nome `algo.xlsx` mas payload inválido ou malicioso; a triagem inicial aceita e o parser só falha depois. **Risco em produção:** médio, mais operacional do que exploratório no estado atual. **Correção recomendada:** combinar extensão com MIME esperado e uma verificação leve de assinatura/abertura segura antes de avançar o fluxo. **Prioridade de ataque:** P3. fileciteturn73file0L1-L1
 
-### O que criar/alterar no backend
+**Como comprovar:** teste manual enviando arquivo renomeado com extensão aceita e conteúdo incorreto; o comportamento esperado depois da correção é rejeição imediata por tipo inválido, e não falha tardia dentro do parser. Falta teste automatizado cobrindo esse caso. fileciteturn73file0L1-L1
 
-O padrão do repo sugere esta organização (models/schemas/routers/services/utils). fileciteturn47file1L1-L1
+## Checklist técnico percorrido
 
-#### Modelos (SQLModel)
+**Confiabilidade, corretude e tratamento de erros.** Há tratamento para BOM UTF-8 e fallback para `latin-1`, e o CSV usa `csv.reader`, mas o delimitador é heurístico e limitado; no ETL, linhas inválidas são rejeitadas com motivo por linha no preview, enquanto o legado devolve apenas resumo agregado, sem granularidade por linha. O batch legado aceita persistência parcial por fallback row-by-row; o ETL também pode ter parcial, mas hoje sela a sessão como `committed`, o que é um problema sério. Transações existem, mas a proteção contra corrida não é forte porque o upsert real não está no banco nem usa `ON CONFLICT`. No Gold não encontrei fila durável, DLQ nem resume de job após queda do processo. fileciteturn72file0L1-L1 fileciteturn85file0L1-L1 fileciteturn74file0L1-L1 fileciteturn61file0L1-L1 fileciteturn84file0L1-L1 fileciteturn81file0L1-L1
 
-Adicionar em `backend/app/models/models.py`:
-- `PublicityImportStaging` (`__tablename__="publicity_import_staging"`)
-- `EventPublicity` (`__tablename__="event_publicity"`)
+**Qualidade e consistência de dados.** A maior inconsistência é a divergência entre documentação e validação real para email/CPF. Além disso, o Gold atualiza só campos vazios, enquanto o legado/ETL podem atualizar campos preenchidos, o que produz regras distintas para o mesmo lead dependendo do caminho de importação. A rastreabilidade do dado bruto também se enfraquece no Silver/Gold, porque o índice da linha original não é preservado do arquivo fonte até o relatório final. fileciteturn96file0L1-L1 fileciteturn86file0L1-L1 fileciteturn61file0L1-L1 fileciteturn81file0L1-L1 fileciteturn80file0L1-L1
 
-Alterar `Evento`:
-- adicionar `external_project_code: Optional[str] = Field(default=None, max_length=...)`
+**Performance, escalabilidade e custo.** O repositório não mostra inserts realmente em massa nem uso de storage externo para o arquivo bruto. Há leitura repetida do arquivo, blob bruto em banco, snapshot ETL pesado em banco, reprocessamento inteiro de Silver e leitura inteira do consolidado no Gold. O frontend mostra que o time já sentiu isso na prática, elevando timeouts e mantendo polling frequente para acompanhar o pipeline. fileciteturn73file0L1-L1 fileciteturn88file0L1-L1 fileciteturn64file0L1-L1 fileciteturn81file0L1-L1 fileciteturn94file0L1-L1 fileciteturn95file0L1-L1
 
-> **Nota**: o repo usa `__tablename__="evento"`; respeite isso ao criar FK. fileciteturn30file6L1-L1
+**Segurança e compliance.** Há evidência de autenticação exigida nos testes dos endpoints auditados, mas não encontrei, nesta trilha, um controle mais fino de autorização por papel aplicado dentro dos use cases, que inclusive ignoram `current_user` em boa parte da lógica. Também não encontrei política de retenção/expurgo do `arquivo_bronze` nem dos previews ETL, embora ambos armazenem dados potencialmente sensíveis em banco. A validação de upload é por extensão/tamanho, não por tipo real do arquivo. fileciteturn54file0L1-L1 fileciteturn55file0L1-L1 fileciteturn74file0L1-L1 fileciteturn88file0L1-L1 fileciteturn67file0L1-L1 fileciteturn73file0L1-L1
 
-#### Schemas (Pydantic)
+**Observabilidade e operação.** Existem identificadores úteis — `batch_id` no Bronze/Silver/Gold e `session_token` no ETL — e o Gold persiste `pipeline_progress` e `pipeline_report`. Isso é positivo. O ponto fraco é que a correlação não é completa: o legado não entrega rejeição por linha, o Gold não preserva com confiança a linha original do arquivo, e o sistema não mostra mecanismo de request-id/job-id distribuído nem de recuperação automática de job travado. fileciteturn88file0L1-L1 fileciteturn64file0L1-L1 fileciteturn81file0L1-L1 fileciteturn95file0L1-L1
 
-Criar `backend/app/schemas/publicidade.py` com:
-- `PublicityImportReport` (contadores + erros por linha)
-- `EventPublicityRead` (para listar no dashboard)
-- (opcional) `PublicityImportPreview` e `PublicityImportValidateRequest` se adotar preview/validate igual ao leads
+## Lacunas de teste e observabilidade
 
-Alterar `backend/app/schemas/evento.py`:
-- incluir `external_project_code` em `EventoRead` e `EventoUpdate` (opcional no payload). fileciteturn30file0L1-L1
+O que já está razoavelmente coberto: ETL preview/commit com `strict`, warnings, cabeçalho forçado, alias de CPF, idempotência por `session_token`, persistência com fallback row-by-row, mapeamento Silver, resolução de evento canônico e Gold pipeline com métricas DQ, reprocessamento e vários cenários de evento ancorado. O conjunto de testes encontrados é particularmente bom em **ETL/Silver/Gold**. fileciteturn52file0L1-L1 fileciteturn53file0L1-L1 fileciteturn54file0L1-L1 fileciteturn55file0L1-L1 fileciteturn57file0L1-L1
 
-#### Service (regras)
+O que não está coberto e deveria estar: aceitação de lead com **somente email**; corrida concorrente em Postgres real; commit ETL com falha parcial e posterior replay; queda do processo durante o Gold deixando lote `pending`; planilhas multiaba, merged cells, cabeçalho após linha 40; preservação de `source_row_original`; upload com extensão forjada; e divergência de merge entre legado/ETL e Gold. Essas são precisamente as áreas onde hoje vejo maior risco de produção. fileciteturn86file0L1-L1 fileciteturn84file0L1-L1 fileciteturn72file0L1-L1 fileciteturn80file0L1-L1 fileciteturn81file0L1-L1
 
-Criar `backend/app/services/publicidade_import.py` com pipeline:
+Há uma **falsa sensação de segurança** importante: grande parte dos testes usa SQLite em memória e sessão única. Isso é ótimo para lógica funcional, mas ruim para expor semântica de `NULL` em unique constraints, contenção, `ON CONFLICT` ausente e corridas reais que só aparecem de verdade em Postgres e com execução paralela. Em outras palavras, a suíte atual valida bem o comportamento esperado do código, mas ainda não prova a robustez operacional do sistema sob concorrência. fileciteturn53file0L1-L1 fileciteturn54file0L1-L1 fileciteturn55file0L1-L1 fileciteturn57file0L1-L1 fileciteturn90file0L1-L1
 
-1) **Parse** (CSV; opcional XLSX)
-2) **Normalize** (trim, caixa, datas)
-3) **Hash por linha** (idempotência)
-4) **Insert staging** com `ON CONFLICT DO NOTHING`
-5) **Resolver `event_id`** via `evento.external_project_code == CodigoProjeto`
-6) **UPSERT final** em `event_publicity` usando a chave natural
+Os primeiros testes que eu criaria são, nesta ordem: um teste unitário para email-only; um teste de integração ETL que injeta falha parcial e verifica que a sessão **não** deve sair como `committed`; um teste concorrente em Postgres para duplicidade; um teste de reinício de processo no Gold; um teste de rastreabilidade da linha original; e um benchmark de memória/tempo com lote grande exercitando upload, preview ETL e Gold. Para observabilidade, eu adicionaria imediatamente logs/metrics por `batch_id` e `session_token`, contadores de linhas rejeitadas por motivo, duração por etapa e alerta de lotes `pending` sem heartbeat recente. fileciteturn84file0L1-L1 fileciteturn81file0L1-L1 fileciteturn95file0L1-L1
 
-**UPSERT no Postgres (conceito/contrato)**: `INSERT ... ON CONFLICT DO UPDATE` é explicitamente suportado e documentado. citeturn0search2
+## Próximos passos por prioridade
 
-#### Router (endpoints)
+**Quick wins.** Corrigir o validador para respeitar a regra “email ou CPF”; não marcar sessão ETL como `committed` quando houver erro de persistência; adicionar `ORDER BY LeadSilver.row_index` ao materializar o Silver; preservar `source_row_original/source_sheet/source_file` desde o Silver; endurecer a validação de upload além da extensão; e expor no legado pelo menos um relatório resumido de linhas rejeitadas e motivos. Isso entrega ganho alto com mudança localizada. fileciteturn86file0L1-L1 fileciteturn84file0L1-L1 fileciteturn80file0L1-L1 fileciteturn81file0L1-L1 fileciteturn73file0L1-L1 fileciteturn74file0L1-L1
 
-Criar `backend/app/routers/publicidade.py` e registrar no `app.main` (não especificado: arquivo exato de registro do router, confirmar via `rg "include_router"`).
+**Correções de alto impacto.** Reforçar deduplicação/idempotência no banco com estratégia compatível com casos `NULL`; revisar a política de merge para unificá-la entre legado, ETL e Gold; e redesenhar a trilha Gold para job durável com retry, timeout, heartbeat e recuperação de lote travado. Se houver só uma grande mudança estrutural a ser escolhida, eu priorizaria essa última, porque ela resolve o maior risco operacional do fluxo atual. fileciteturn90file0L1-L1 fileciteturn61file0L1-L1 fileciteturn81file0L1-L1
 
-Endpoints mínimos recomendados:
-- `POST /publicidade/import` (multipart: arquivo CSV; `source_file` opcional; `dry_run` opcional)
-- `GET /publicidade` (query: `date` ou `data_inicio/data_fim`, `uf`, `medium`, `event_id`)
-- (opcional) `POST /publicidade/import/preview` e `POST /publicidade/import/validate` para UX igual ao leads
+**Investigações adicionais.** Vale medir agora, em ambiente próximo ao real, o tamanho médio dos blobs em `lead_batches`, o tamanho dos snapshots ETL, a latência por etapa do Gold, o volume de polling por lote e o efeito do enriquecimento de CEP quando ligado. Também vale revisar se há operadores usando arquivos multiaba ou cabeçalhos fora das primeiras 40 linhas, porque isso muda imediatamente a prioridade do parser ETL. fileciteturn88file0L1-L1 fileciteturn64file0L1-L1 fileciteturn72file0L1-L1 fileciteturn74file0L1-L1 fileciteturn95file0L1-L1
 
-O repo já tem um padrão de import documentado para leads (preview/validate/import), o que é um bom template mental para publicidade. fileciteturn51file0L1-L1
-
-### Parser CSV e idempotência
-
-#### Contrato CSV (mínimo)
-
-Header esperado (exatamente como a planilha de origem):
-- `CodigoProjeto,Projeto,data_vinculacao,Meio,Veiculo,UF,UF_Extenso,Municipio,Camada`
-
-Regras:
-- obrigatórios: todos exceto `Municipio`
-- `data_vinculacao`: coerção para `date`
-- canonicalização/hash: usar campos do dedupe lógico
-
-#### Hash por linha (canônico)
-
-Sugestão (estável e simples):
-- `canonical = "{CodigoProjeto}|{data_vinculacao}|{Meio}|{Veiculo}|{UF}|{Camada}"` (com normalização)
-- `source_row_hash = sha256(canonical)`
-
-#### UPSERT: lógica
-
-- Staging: `ON CONFLICT (source_file, source_row_hash) DO NOTHING`
-- Final: `ON CONFLICT (publicity_project_code, linked_at, medium, vehicle, uf, layer) DO UPDATE SET ...`
-
-O Postgres documenta o comportamento e requisitos de privilégios/colunas em `INSERT ... ON CONFLICT`. citeturn0search2
-
-### Exemplos de trechos de código
-
-#### Hash e normalização (Python)
-
-```py
-import hashlib
-from datetime import date
-from typing import Any
-
-def norm_text(v: Any) -> str:
-    return str(v or "").strip().replace("\u00a0", " ")
-
-def upper(v: Any) -> str:
-    return norm_text(v).upper()
-
-def canonical_key(row: dict) -> str:
-    return "|".join([
-        norm_text(row["CodigoProjeto"]),
-        str(row["data_vinculacao"]),   # garantir YYYY-MM-DD
-        upper(row["Meio"]),
-        norm_text(row["Veiculo"]),
-        upper(row["UF"]),
-        upper(row["Camada"]),
-    ])
-
-def sha256_hex(s: str) -> str:
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
-```
-
-#### UPSERT via SQLAlchemy (Postgres dialect)
-
-```py
-from sqlalchemy.dialects.postgresql import insert
-
-stmt = insert(EventPublicity).values(payload_rows)
-stmt = stmt.on_conflict_do_update(
-    index_elements=[
-        EventPublicity.publicity_project_code,
-        EventPublicity.linked_at,
-        EventPublicity.medium,
-        EventPublicity.vehicle,
-        EventPublicity.uf,
-        EventPublicity.layer,
-    ],
-    set_={
-        "event_id": stmt.excluded.event_id,
-        "publicity_project_name": stmt.excluded.publicity_project_name,
-        "uf_name": stmt.excluded.uf_name,
-        "municipality": stmt.excluded.municipality,
-        "source_file": stmt.excluded.source_file,
-        "source_row_hash": stmt.excluded.source_row_hash,
-        "updated_at": func.now(),
-    },
-)
-await session.execute(stmt)
-await session.commit()
-```
-
-(Esse padrão é o equivalente ORM do `INSERT ... ON CONFLICT DO UPDATE` documentado pelo Postgres.) citeturn0search2
-
-## Execução: migrations, testes, deploy/rollback, segurança, entregáveis e esforço
-
-### Migrations e scripts (ordem)
-
-O repo orienta migrations via Alembic (`alembic upgrade head`). fileciteturn47file0L1-L1  
-O Alembic autogenerate ajuda, mas exige revisão manual. citeturn1search2
-
-Sequência recomendada:
-1) Criar/alterar modelos SQLModel (`Evento.external_project_code`, `PublicityImportStaging`, `EventPublicity`).
-2) Gerar migration Alembic:  
-   ```bash
-   cd backend
-   alembic revision --autogenerate -m "add event_publicity and staging + external_project_code"
-   ```
-3) Editar migration gerada para incluir:
-   - índices unique em staging/final
-   - trigger `set_updated_at` (provavelmente via `op.execute`, pois autogenerate não “adivinha” triggers)
-4) Aplicar local:
-   ```bash
-   alembic upgrade head
-   ```
-5) Aplicar em ambiente remoto (Supabase):
-   - confirmar `DIRECT_URL` apontando para conexão direta (não pooler), como recomendado. citeturn1search1  
-   - rodar `alembic upgrade head` no pipeline de deploy.
-
-**Nota importante sobre URLs no Supabase**
-- Supabase documenta diferenças entre conexão direta e poolers. Para serviços persistentes, a conexão direta é o padrão “ideal”; poolers são alternativa (especialmente quando IPv6 é problema). citeturn1search1
-
-### Testes automatizados sugeridos
-
-O setup do repo inclui pytest (`python -m pytest -q`). fileciteturn47file0L1-L1
-
-Sugestão mínima (unit):
-- Normalização (trim/upper/data)
-- Hash determinístico
-- Validação de header CSV
-- Montagem do relatório de import
-
-Sugestão (integration):
-- Duas importações do mesmo arquivo/linha → staging não duplica (unique `(source_file, source_row_hash)`)
-- Duas importações do mesmo registro lógico → `event_publicity` faz UPSERT (não duplica)
-- Resolução de `event_id` quando `evento.external_project_code` existe; `event_id = NULL` quando não existe (com contador no report)
-
-Comandos:
-```bash
-cd backend
-python -m pytest -q
-```
-
-Se integrações Postgres não estiverem no pipeline hoje: **não especificado** (Codex/dev deve decidir se roda em Postgres real no CI ou mantém unit tests puros).
-
-### Deploy e rollback
-
-Deploy:
-- Passo 1: aplicar migrations (Alembic) com `DIRECT_URL` configurada.
-- Passo 2: deploy da API com endpoints novos.
-- Passo 3: validar com CSV pequeno (10 linhas), depois carga completa.
-
-Rollback (sem drama):
-- Migration reversa (downgrade) removendo tabelas/coluna/índices/trigger.
-- Se import “sujo” entrou: delete por `source_file` na staging e por janela de datas/chave natural na final, depois reimport.
-
-### Checklist de segurança
-
-- Nunca versionar `.env`; manter `DATABASE_URL`/`DIRECT_URL`/`SECRET_KEY` em secret manager do deploy. fileciteturn47file0L1-L1
-- Para consumo direto do Supabase Data API no browser, habilitar RLS e policies explícitas; sem isso, (a) ou abre demais ou (b) não acessa nada. citeturn0search0
-- Para Power BI conectando direto ao Postgres, usar credenciais de menor privilégio possível (idealmente role read-only em views). (O conector PostgreSQL do Power Query/Power BI é padrão e bem suportado.) citeturn0search1
-
-### Tabelas comparativas solicitadas
-
-#### Arquivos/módulos a modificar vs responsabilidade
-
-| Arquivo/módulo | Responsabilidade | Status |
-|---|---|---|
-| `backend/app/models/models.py` fileciteturn30file6L1-L1 | adicionar modelos `publicity_import_staging`, `event_publicity`; adicionar `Evento.external_project_code` | a implementar |
-| `backend/app/schemas/evento.py` fileciteturn30file0L1-L1 | expor `external_project_code` no contrato (Create/Update/Read) | a implementar |
-| `backend/app/schemas/publicidade.py` | schemas de import/report e leitura de publicidade | a criar |
-| `backend/app/services/publicidade_import.py` | parser, normalização, hash, staging, upsert, resolução `event_id` | a criar |
-| `backend/app/routers/publicidade.py` fileciteturn33file10L1-L1 | endpoints de import e consulta | a criar |
-| `backend/alembic/versions/<nova>.py` fileciteturn44file1L1-L1 | migration (DDL completo + índices + trigger) | a criar |
-| Registro de routers em `app.main` | incluir o router de publicidade no FastAPI | **não especificado** (rodar `rg "include_router"` no repo) |
-
-#### Migrations vs SQL
-
-| Migration Alembic | Conteúdo (SQL/DDL) | Observação |
-|---|---|---|
-| `add_event_publicity_and_staging.py` | criar `publicity_import_staging` + `event_publicity` + índices + trigger | triggers exigem `op.execute` manual na prática |
-| `add_external_project_code_to_evento.py` | `alter table evento add column external_project_code` + unique index parcial | desbloqueia resolução do `event_id` |
-
-#### Endpoints vs payloads
-
-| Endpoint | Método | Request | Response |
-|---|---|---|---|
-| `/publicidade/import` | POST | `multipart/form-data`: `file` (CSV), `source_file?`, `dry_run?` | `{receivedRows, stagedInserted, stagedSkipped, upsertInserted, upsertUpdated, unresolvedEventId, errors[]}` |
-| `/publicidade` | GET | `date?`, `data_inicio?`, `data_fim?`, `uf?`, `medium?`, `event_id?` | lista/agrupados para dashboard |
-| `/publicidade/import/preview` (opcional) | POST | `multipart/form-data`: `file`, `sample_rows?` | headers + amostra + validações |
-| `/publicidade/import/validate` (opcional) | POST | JSON com mapeamento/validação | ok/erros |
-
-> Se qualquer item acima ficar “não especificado” para o Codex/dev, rode os comandos `rg` da seção de localização e preencha.
-
-### Artefatos a entregar ao Codex/dev
-
-- 1 PR: migration Alembic + modelos SQLModel + schemas + service + router.
-- Contrato do CSV (header, tipos, campos obrigatórios, regras de normalização/hash).
-- Exemplos de `curl`:
-  ```bash
-  curl -X POST http://localhost:8000/publicidade/import \
-    -H "Authorization: Bearer <token>" \
-    -F "file=@/caminho/publicidade.csv" \
-    -F "source_file=publicidade_2026-02-24.csv"
-  ```
-- Documento curto para Power BI: como conectar no PostgreSQL (se esse for o caminho). citeturn0search1
-
-### Estimativa de esforço e prioridades
-
-Prioridade máxima:
-- Banco (2 tabelas + índices + trigger + coluna em evento): **média**.
-- Serviço de import (parser + normalize + hash + staging + upsert + report): **grande**.
-- Endpoints + schemas + wiring no FastAPI: **média**.
-
-Prioridade alta:
-- Testes unit: **média**.
-- Testes integration (se rodarem Postgres no CI): **média/grande** (depende do pipeline atual — não especificado).
-
-Prioridade média:
-- Preview/validate UX (igual ao leads): **média**.
-- Views/consultas agregadas específicas para dashboard/Power BI: **pequena/média**.
-
-```mermaid
-flowchart LR
-  A[Upload CSV no Frontend] --> B[POST /publicidade/import]
-  B --> C[Parse + Normalize + Hash]
-  C --> D[(publicity_import_staging)]
-  D --> E[Resolve event_id por evento.external_project_code]
-  E --> F[(event_publicity UPSERT)]
-  F --> G[Dashboard URL / BI / Outros consumidores]
-```
-
-```mermaid
-gantt
-  title Timeline de migração e entrega
-  dateFormat  YYYY-MM-DD
-  section Banco
-  Criar modelos SQLModel                :a1, 2026-02-24, 1d
-  Gerar e ajustar migration Alembic     :a2, after a1, 1d
-  Aplicar migration (staging/prod)      :a3, after a2, 1d
-  section Backend
-  Implementar service import            :b1, after a1, 2d
-  Implementar endpoints + schemas       :b2, after b1, 1d
-  Testes unit + ajustes                 :b3, after b2, 1d
-  Deploy e validação com CSV real       :b4, after a3, 1d
-```
-
+**Mudanças estruturais só se realmente necessárias.** Só depois dos quick wins eu consideraria mover Bronze e previews pesados para storage externo, trocar o fluxo de persistência por bulk upsert atômico e reduzir o polling com transporte orientado a evento. Essas mudanças fazem sentido, mas hoje o repositório ainda tem problemas mais básicos e mais baratos de corrigir primeiro: corretude do validador, commit parcial do ETL, dedupe sob concorrência, rastreabilidade por linha e durabilidade do job Gold. fileciteturn88file0L1-L1 fileciteturn64file0L1-L1 fileciteturn81file0L1-L1 fileciteturn95file0L1-L1

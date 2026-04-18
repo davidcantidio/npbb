@@ -1,5 +1,8 @@
 import { fetchWithAuth, handleApiResponse } from "./http";
 
+/** Login/sessao: alinhar ao proxy Vite (120s) para cold start / DB lenta sem abort prematuro. */
+const AUTH_REQUEST_TIMEOUT_MS = 120_000;
+
 /**
  * Credentials payload used to authenticate a user.
  */
@@ -48,6 +51,7 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     retries: 0,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
   });
   return handleApiResponse<LoginResponse>(res);
 }
@@ -62,6 +66,7 @@ export async function getMe(token?: string | null): Promise<LoginUser> {
   const res = await fetchWithAuth("/auth/me", {
     token: token || undefined,
     retries: 0,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
   });
   return handleApiResponse<LoginUser>(res);
 }
@@ -70,6 +75,7 @@ export async function logout(): Promise<void> {
   await fetchWithAuth("/auth/logout", {
     method: "POST",
     retries: 0,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
   });
 }
 
@@ -78,6 +84,7 @@ export async function refreshSession(token?: string | null): Promise<LoginRespon
     method: "POST",
     token: token || undefined,
     retries: 0,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
   });
   return handleApiResponse<LoginResponse>(res);
 }
@@ -91,6 +98,7 @@ export async function getSessionStatus(token?: string | null): Promise<SessionSt
   const res = await fetchWithAuth("/auth/session", {
     token: token || undefined,
     retries: 0,
+    timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
   });
   return handleApiResponse<SessionStatusResponse>(res);
 }

@@ -1,0 +1,8 @@
+nome,cpf,data_nascimento,email,telefone,evento,tipo_evento,local,data_evento
+match_real_bb_lpad,1158635915,,pabloricoldy@gmail.com,61982001826,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025
+match_synthetic_bb_duplicate,11144477735,,cmturrini@gmail.com,11991441145,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025
+match_bb_precedence_over_lead,52998224725,2000-01-01,ferreiramaurylio@gmail.com,11964566482,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025
+valid_no_match_fallback_under18,24681357928,2008-01-15,emerson.nnunes@outlook.com,11990264209,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025
+valid_no_match_fallback_age40,98765432100,1985-12-31,lucassulpinolinsalves@gmail.com,84981387858,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025
+invalid_cpf_no_match,12345678909,,det_denise@hotmail.com,61982002197,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025
+duplicate_lead_row_preserved,11144477735,,ilma1castro@hotmail.com,35991885446,Aurea Tour 2025,Show,São Paulo-SP,6/28/2025

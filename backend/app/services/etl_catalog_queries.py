@@ -107,6 +107,8 @@ def latest_ingestion_by_source(
     *,
     statuses: Iterable[IngestionStatus] | None = None,
     source_kinds: Iterable[SourceKind] | None = None,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> list[LatestIngestionBySourceRow]:
     """Return latest ingestion run per source, with deterministic tie-break.
 
@@ -178,6 +180,10 @@ def latest_ingestion_by_source(
         stmt = stmt.where(Source.kind.in_(source_kind_filter))
     if status_filter:
         stmt = stmt.where(ranked_runs.c.status.in_(status_filter))
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    if offset:
+        stmt = stmt.offset(offset)
 
     rows = session.exec(stmt).all()
     results: list[LatestIngestionBySourceRow] = []

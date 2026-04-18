@@ -10,6 +10,10 @@ from pydantic import BaseModel, Field
 class LeadListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
+    long_running: bool = Field(
+        default=False,
+        description="Sinal interno para listagens pesadas, como exportacao CSV paginada.",
+    )
     data_inicio: date | None = Field(
         default=None,
         description="Inicio inclusivo (UTC) para filtrar por data de criacao do lead.",
@@ -21,7 +25,7 @@ class LeadListQuery(BaseModel):
     evento_id: int | None = Field(
         default=None,
         ge=1,
-        description="Filtra pela conversao mais recente do lead vinculada a este evento.",
+        description="Filtra pela conversao mais recente do lead ou pelo evento de origem do lote.",
     )
 
 
@@ -56,17 +60,25 @@ class LeadListItemRead(BaseModel):
     data_nascimento: date | None = None
     data_evento: str | None = Field(
         default=None,
-        description="Data do evento da conversao mais recente, texto YYYY-MM-DD 00:00:00.",
+        description="Data do evento priorizando a conversao mais recente e com fallback do evento de origem.",
     )
     soma_de_ano_evento: int | None = Field(
         default=None,
         description="Ano da data do evento (coluna 'Soma de ano_evento' no export).",
     )
     tipo_evento: str | None = None
+    local_evento: str | None = Field(
+        default=None,
+        description="Cidade-UF do evento priorizando a conversao mais recente e com fallback do evento de origem.",
+    )
     faixa_etaria: str | None = None
     soma_de_idade: int | None = Field(
         default=None,
         description="Idade na data de referencia do evento (coluna 'Soma de idade').",
+    )
+    origem: str | None = Field(
+        default=None,
+        description="Proponente ou Ativação (lote de importação / fonte do lead).",
     )
 
 

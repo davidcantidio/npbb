@@ -21,11 +21,14 @@ from sqlmodel import Session, select
 from lead_pipeline.constants import ALL_COLUMNS, HEADER_SYNONYMS
 from lead_pipeline.normalization import canonicalize_header
 
-from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver
+from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver, PipelineStatus
 from app.services.imports.file_reader import read_raw_file_headers, read_raw_file_rows
 
 
 CANONICAL_FIELDS = frozenset(ALL_COLUMNS)
+SOURCE_FILE_FIELD = "source_file"
+SOURCE_SHEET_FIELD = "source_sheet"
+SOURCE_ROW_FIELD = "source_row"
 
 Confidence = str  # "exact_match" | "synonym_match" | "alias_match" | "none"
 
@@ -121,6 +124,9 @@ def mapear_batch(
     )
     headers = extracted.headers
     data_rows = extracted.rows
+    source_file = batch.nome_arquivo_original or ""
+    source_sheet = extracted.sheet_name or ""
+    source_row_offset = extracted.start_index + 2
 
     existing_silver = db.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all()
     for row in existing_silver:
@@ -139,6 +145,10 @@ def mapear_batch(
 
         if not dados_brutos:
             continue
+
+        dados_brutos[SOURCE_FILE_FIELD] = source_file
+        dados_brutos[SOURCE_SHEET_FIELD] = source_sheet
+        dados_brutos[SOURCE_ROW_FIELD] = source_row_offset + row_index
 
         silver = LeadSilver(
             batch_id=batch_id,
@@ -173,6 +183,12 @@ def mapear_batch(
 
     batch.stage = BatchStage.SILVER
     batch.evento_id = evento_id
+    batch.pipeline_status = PipelineStatus.PENDING
+    batch.pipeline_report = None
+    batch.pipeline_progress = None
+    batch.gold_dq_discarded_rows = None
+    batch.gold_dq_issue_counts = None
+    batch.gold_dq_invalid_records_total = None
     db.add(batch)
 
     db.commit()

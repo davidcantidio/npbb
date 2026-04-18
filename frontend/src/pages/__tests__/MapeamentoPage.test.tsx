@@ -1,9 +1,11 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import MapeamentoPage from "../leads/MapeamentoPage";
+import { listAgencias } from "../../services/agencias";
+import { createEvento } from "../../services/eventos/core";
 import { useAuth } from "../../store/auth";
 import {
   getLeadBatchColunas,
@@ -12,16 +14,22 @@ import {
 } from "../../services/leads_import";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
+vi.mock("../../services/agencias", () => ({ listAgencias: vi.fn() }));
 vi.mock("../../services/leads_import", () => ({
   getLeadBatchColunas: vi.fn(),
   listReferenciaEventos: vi.fn(),
   mapearLeadBatch: vi.fn(),
 }));
+vi.mock("../../services/eventos/core", () => ({
+  createEvento: vi.fn(),
+}));
 
 const mockedUseAuth = vi.mocked(useAuth);
+const mockedListAgencias = vi.mocked(listAgencias);
 const mockedGetLeadBatchColunas = vi.mocked(getLeadBatchColunas);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 const mockedMapearLeadBatch = vi.mocked(mapearLeadBatch);
+const mockedCreateEvento = vi.mocked(createEvento);
 const EVENTOS_LOAD_ERROR = "Nao foi possivel carregar os eventos. Tente recarregar a pagina.";
 
 function PipelineProbe() {
@@ -61,6 +69,9 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
       login: vi.fn(),
       logout: vi.fn(),
     });
+    mockedListAgencias.mockResolvedValue([
+      { id: 10, nome: "Agencia Alpha", dominio: "alpha.com.br" },
+    ]);
     mockedGetLeadBatchColunas.mockResolvedValue({
       batch_id: 10,
       colunas: [
@@ -92,6 +103,86 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     await user.click(await screen.findByPlaceholderText("Selecione ou pesquise o evento..."));
 
     expect(await screen.findByRole("option", { name: /Evento Teste/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /\+ Criar evento rapidamente/i })).toBeInTheDocument();
+  });
+
+  it("creates an ad-hoc event from the mapping flow and uses it on confirmation", async () => {
+    mockedCreateEvento.mockResolvedValue({
+      id: 77,
+      nome: "Evento Ad Hoc",
+      cidade: "Sao Paulo",
+      estado: "SP",
+      concorrencia: false,
+      data_inicio_prevista: "2099-02-01",
+      data_fim_prevista: "2099-02-03",
+      data_inicio_realizada: null,
+      data_fim_realizada: null,
+      descricao: null,
+      investimento: null,
+      publico_projetado: null,
+      publico_realizado: null,
+      agencia_id: 10,
+      diretoria_id: null,
+      gestor_id: null,
+      tipo_id: null,
+      subtipo_id: null,
+      tag_ids: [],
+      territorio_ids: [],
+      status_id: 1,
+      created_at: "2026-04-16T10:00:00",
+      updated_at: "2026-04-16T10:00:00",
+    });
+    mockedMapearLeadBatch.mockResolvedValue({
+      batch_id: 10,
+      silver_count: 1,
+      stage: "silver",
+    });
+
+    renderMapeamentoPage();
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByPlaceholderText("Selecione ou pesquise o evento..."));
+    await user.click(await screen.findByRole("option", { name: /\+ Criar evento rapidamente/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/nome do evento/i), "Evento Ad Hoc");
+    fireEvent.change(within(dialog).getByLabelText(/data de inicio/i), {
+      target: { value: "2099-02-01" },
+    });
+    fireEvent.change(within(dialog).getByLabelText(/data de fim/i), {
+      target: { value: "2099-02-03" },
+    });
+    await user.type(within(dialog).getByLabelText(/cidade/i), "Sao Paulo");
+    await user.click(within(dialog).getByRole("combobox", { name: /estado/i }));
+    await user.click(await screen.findByRole("option", { name: "SP" }));
+    await user.click(within(dialog).getByRole("combobox", { name: /agencia responsavel/i }));
+    await user.click(await screen.findByRole("option", { name: "Agencia Alpha" }));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => {
+      expect(mockedCreateEvento).toHaveBeenCalledWith("token-123", {
+        nome: "Evento Ad Hoc",
+        data_inicio_prevista: "2099-02-01",
+        data_fim_prevista: "2099-02-03",
+        cidade: "Sao Paulo",
+        estado: "SP",
+        agencia_id: 10,
+        concorrencia: false,
+        criar_ativacao_padrao_bb: true,
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirmar Mapeamento" }));
+
+    await waitFor(() => {
+      expect(mockedMapearLeadBatch).toHaveBeenCalledWith("token-123", 10, {
+        evento_id: 77,
+        mapeamento: { Nome: "nome" },
+      });
+    });
   });
 
   it("lists extended lead fields in the canonical mapping dropdown", async () => {

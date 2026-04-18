@@ -1,4 +1,4 @@
-import { listLeads, type LeadListItem } from "../../services/leads_import";
+import { LEADS_EXPORT_TIMEOUT_MS, listLeads, type LeadListItem } from "../../services/leads_import";
 
 /** Max supported by GET /leads (backend LeadListQuery.page_size le=100). */
 export const LEADS_EXPORT_PAGE_SIZE = 100;
@@ -9,20 +9,30 @@ export type AppliedLeadsListFilters = {
   evento_id: number | null;
 };
 
-/** Cabecalhos iguais ao arquivo data 2.csv (pivot). */
+/** Cabecalhos identicos ao arquivo aurea_tour_2025_hevert(in).csv. */
 export const LEADS_LIST_CSV_HEADERS = [
-  "evento",
-  "data_evento",
-  "Soma de ano_evento",
-  "cliente",
-  "cod_sexo",
+  "nome",
   "cpf",
   "data_nascimento",
-  "faixa_etaria",
-  "Soma de idade",
-  "local",
+  "email",
+  "telefone",
+  "origem",
+  "evento",
   "tipo_evento",
+  "local",
+  "data_evento",
 ] as const;
+
+/**
+ * Contract for `/leads` CSV export:
+ * - Export the same dataset rendered by the list page.
+ * - The CSV contract matches `aurea_tour_2025_hevert(in).csv`.
+ * - `evento` prefers the latest conversion event and falls back to the lead origin event.
+ * - `tipo_evento`, `local` and `data_evento` prefer the latest conversion event and fall back to the origin event.
+ */
+export function resolveLeadListExportEvent(row: LeadListItem): string {
+  return row.evento_convertido_nome ?? row.evento_nome ?? "";
+}
 
 function formatDateTime(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -43,42 +53,28 @@ export function getLeadListDisplayCells(row: LeadListItem): [string, string, str
   ];
 }
 
-/** Data no formato do pivot: YYYY-MM-DD 00:00:00 */
-function formatDataPivot(isoDate: string | null | undefined): string {
+/** Datas no formato do arquivo de referencia: M/D/YYYY. */
+function formatReferenceDate(isoDate: string | null | undefined): string {
   if (!isoDate) return "";
-  const slice = isoDate.slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(slice)) return `${slice} 00:00:00`;
-  return isoDate;
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(isoDate) ? `${isoDate}T00:00:00Z` : isoDate;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return date.toLocaleDateString("en-US", { timeZone: "UTC" });
 }
 
-/** Local como no data 2.csv: "Cidade – UF" (travessao en). */
-function formatLocalPivot(cidade: string | null | undefined, estado: string | null | undefined): string {
-  const c = cidade?.trim();
-  const e = estado?.trim();
-  if (!c && !e) return "";
-  if (c && e) return `${c} \u2013 ${e}`;
-  return c ?? e ?? "";
-}
-
-function clienteCell(isClienteBb: boolean | null | undefined): string {
-  if (isClienteBb === null || isClienteBb === undefined) return "";
-  return String(isClienteBb);
-}
-
-/** Linha CSV alinhada a data 2.csv. */
+/** Linha CSV alinhada a aurea_tour_2025_hevert(in).csv. */
 export function getLeadListCsvCells(row: LeadListItem): readonly string[] {
   return [
-    row.evento_convertido_nome ?? "",
-    row.data_evento ?? "",
-    row.soma_de_ano_evento != null ? String(row.soma_de_ano_evento) : "",
-    clienteCell(row.is_cliente_bb ?? null),
-    row.genero ?? "",
+    row.nome ?? "",
     row.cpf ?? "",
-    formatDataPivot(row.data_nascimento ?? null),
-    row.faixa_etaria ?? "",
-    row.soma_de_idade != null ? String(row.soma_de_idade) : "",
-    formatLocalPivot(row.cidade, row.estado),
+    formatReferenceDate(row.data_nascimento ?? null),
+    row.email ?? "",
+    row.telefone ?? "",
+    row.origem ?? "",
+    resolveLeadListExportEvent(row),
     row.tipo_evento ?? "",
+    row.local_evento ?? "",
+    formatReferenceDate(row.data_evento ?? null),
   ];
 }
 
@@ -101,6 +97,8 @@ function listParamsForExport(page: number, appliedFilters: AppliedLeadsListFilte
   return {
     page,
     page_size: LEADS_EXPORT_PAGE_SIZE,
+    long_running: true,
+    timeoutMs: LEADS_EXPORT_TIMEOUT_MS,
     ...(appliedFilters.data_inicio ? { data_inicio: appliedFilters.data_inicio } : {}),
     ...(appliedFilters.data_fim ? { data_fim: appliedFilters.data_fim } : {}),
     ...(typeof appliedFilters.evento_id === "number" ? { evento_id: appliedFilters.evento_id } : {}),

@@ -15,13 +15,21 @@ export type OwnershipCounters = {
   social_profiles_count: number;
 };
 
+export type SponsoredPersonRoleRead = {
+  id: number;
+  code: string;
+  label: string;
+  sort_order: number;
+};
+
 export type SponsoredPersonRead = OwnershipCounters & {
   id: number;
   full_name: string;
   cpf: string | null;
   email: string | null;
   phone: string | null;
-  role: string;
+  role_id: number;
+  role: SponsoredPersonRoleRead;
   notes: string | null;
   created_at: string;
   updated_at: string | null;
@@ -32,7 +40,7 @@ export type SponsoredPersonCreate = {
   cpf?: string | null;
   email?: string | null;
   phone?: string | null;
-  role: string;
+  role_id: number;
   notes?: string | null;
 };
 

@@ -7,13 +7,18 @@ import LeadsListPage from "../leads/LeadsListPage";
 import { useAuth } from "../../store/auth";
 import { listLeads, type LeadListItem } from "../../services/leads_import";
 import { triggerBlobDownload } from "../../services/leads_export";
+import { exportLeadsListCsv } from "../../services/leads_list_export";
 
 vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/leads_import", () => ({
   listLeads: vi.fn(),
+  LEADS_EXPORT_TIMEOUT_MS: 15 * 60_000,
 }));
 vi.mock("../../services/leads_export", () => ({
   triggerBlobDownload: vi.fn(),
+}));
+vi.mock("../../services/leads_list_export", () => ({
+  exportLeadsListCsv: vi.fn(),
 }));
 vi.mock("../dashboard/useReferenciaEventos", () => ({
   useReferenciaEventos: () => ({
@@ -26,6 +31,7 @@ vi.mock("../dashboard/useReferenciaEventos", () => ({
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedListLeads = vi.mocked(listLeads);
 const mockedTriggerBlobDownload = vi.mocked(triggerBlobDownload);
+const mockedExportLeadsListCsv = vi.mocked(exportLeadsListCsv);
 
 function makeLead(id: number): LeadListItem {
   return {
@@ -51,7 +57,8 @@ function makeLead(id: number): LeadListItem {
     data_nascimento: "2000-06-20",
     data_evento: "2025-02-04 00:00:00",
     soma_de_ano_evento: 2025,
-    tipo_evento: "Esporte/Vôlei de Praia",
+    tipo_evento: "Esporte/Volei de Praia",
+    local_evento: "Navegantes-SC",
     faixa_etaria: "18-40",
     soma_de_idade: 25,
     logradouro: null,
@@ -90,6 +97,10 @@ describe("LeadsListPage", () => {
       refresh: vi.fn(),
     });
     mockedListLeads.mockResolvedValue(defaultListResponse);
+    mockedExportLeadsListCsv.mockResolvedValue({
+      blob: new Blob(["nome,cpf"]),
+      filename: "leads-2026-01-15.csv",
+    } as never);
   });
 
   afterEach(() => {
@@ -127,7 +138,7 @@ describe("LeadsListPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/leads/importar");
   });
 
-  it("exportar CSV usa page_size 100 e dispara download", async () => {
+  it("exportar CSV usa o backend dedicado e dispara download", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/leads"]}>
@@ -144,89 +155,19 @@ describe("LeadsListPage", () => {
     await user.click(screen.getByRole("button", { name: /exportar csv/i }));
 
     await waitFor(() => {
+      expect(mockedExportLeadsListCsv).toHaveBeenCalledTimes(1);
       expect(mockedTriggerBlobDownload).toHaveBeenCalledTimes(1);
     });
 
-    const exportCalls = mockedListLeads.mock.calls.filter(
-      ([, params]) => params?.page_size === 100,
-    );
-    expect(exportCalls.length).toBeGreaterThanOrEqual(1);
-    expect(exportCalls[0][1]).toMatchObject({ page: 1, page_size: 100 });
-
+    expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {});
     const [blob, filename] = mockedTriggerBlobDownload.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
-    expect(filename).toMatch(/^leads-\d{4}-\d{2}-\d{2}\.csv$/);
-
-    const text = await (blob as Blob).text();
-    expect(text).toMatch(/^\uFEFF?evento,data_evento/);
-    expect(text).toContain("Show X");
-    expect(text).toContain("Esporte/Vôlei de Praia");
+    expect(filename).toBe("leads-2026-01-15.csv");
   });
 
-  it("exportar CSV agrega multiplas paginas da API", async () => {
+  it("exportar CSV repete os filtros aplicados na consulta do backend", async () => {
     const user = userEvent.setup();
-    mockedListLeads.mockImplementation(async (_token, params) => {
-      const ps = params?.page_size ?? 20;
-      const pg = params?.page ?? 1;
-      if (ps === 20) {
-        const start = (pg - 1) * 20;
-        const items = Array.from({ length: 20 }, (_, i) => makeLead(start + i + 1));
-        return { page: pg, page_size: 20, total: 150, items };
-      }
-      if (ps === 100) {
-        if (pg === 1) {
-          return {
-            page: 1,
-            page_size: 100,
-            total: 150,
-            items: Array.from({ length: 100 }, (_, i) => makeLead(i + 1)),
-          };
-        }
-        if (pg === 2) {
-          return {
-            page: 2,
-            page_size: 100,
-            total: 150,
-            items: Array.from({ length: 50 }, (_, i) => makeLead(i + 101)),
-          };
-        }
-      }
-      return { page: pg, page_size: ps, total: 0, items: [] };
-    });
 
-    render(
-      <MemoryRouter initialEntries={["/leads"]}>
-        <Routes>
-          <Route path="/leads" element={<LeadsListPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(mockedListLeads).toHaveBeenCalled();
-    });
-
-    await user.click(screen.getByRole("button", { name: /exportar csv/i }));
-
-    await waitFor(() => {
-      expect(mockedTriggerBlobDownload).toHaveBeenCalled();
-    });
-
-    const exportCalls = mockedListLeads.mock.calls.filter(
-      ([, p]) => p?.page_size === 100,
-    );
-    expect(exportCalls).toHaveLength(2);
-    expect(exportCalls[0][1]).toMatchObject({ page: 1, page_size: 100 });
-    expect(exportCalls[1][1]).toMatchObject({ page: 2, page_size: 100 });
-
-    const [blob] = mockedTriggerBlobDownload.mock.calls[0];
-    const text = await (blob as Blob).text();
-    const lines = text.split("\r\n").filter((line) => line.length > 0);
-    expect(lines.length).toBe(151);
-  });
-
-  it("exportar CSV repete os filtros aplicados nas chamadas", async () => {
-    const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/leads"]}>
         <Routes>
@@ -250,22 +191,19 @@ describe("LeadsListPage", () => {
       expect(withFilters).toBe(true);
     });
 
-    mockedListLeads.mockClear();
+    mockedExportLeadsListCsv.mockResolvedValueOnce({
+      blob: new Blob(["csv"]),
+      filename: "leads-2026-01-15.csv",
+    } as never);
 
     await user.click(screen.getByRole("button", { name: /exportar csv/i }));
 
     await waitFor(() => {
-      expect(mockedTriggerBlobDownload).toHaveBeenCalled();
-    });
-
-    const exportCalls = mockedListLeads.mock.calls.filter(([, p]) => p?.page_size === 100);
-    expect(exportCalls.length).toBeGreaterThanOrEqual(1);
-    for (const [, params] of exportCalls) {
-      expect(params).toMatchObject({
+      expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {
         data_inicio: "2026-02-01",
         data_fim: "2026-02-28",
-        page_size: 100,
       });
-    }
+      expect(mockedTriggerBlobDownload).toHaveBeenCalledTimes(1);
+    });
   });
 });

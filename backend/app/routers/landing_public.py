@@ -20,9 +20,9 @@ from app.schemas.landing_public import (
     LandingTemplateConfigRead,
 )
 from app.services.landing_pages import (
+    build_ativacao_public_access_urls,
     build_landing_payload,
     get_template_config,
-    hydrate_ativacao_public_urls,
     normalize_template_override_input,
     track_landing_analytics,
 )
@@ -327,12 +327,8 @@ def get_ativacao_qr_code(
     session: Session = Depends(get_session),
 ):
     ativacao = _get_ativacao_or_404(session, ativacao_id)
-    changed = hydrate_ativacao_public_urls(ativacao, backend_base_url=str(request.base_url))
-    if changed:
-        session.add(ativacao)
-        session.commit()
-        session.refresh(ativacao)
-    svg = build_qr_code_svg(ativacao.landing_url or "")
+    urls = build_ativacao_public_access_urls(ativacao_id, backend_base_url=str(request.base_url))
+    svg = build_qr_code_svg(urls["landing_url"])
     return Response(content=svg, media_type="image/svg+xml")
 
 

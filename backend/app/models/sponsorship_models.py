@@ -161,7 +161,30 @@ class DraftReviewStatus(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# 1. SponsoredPerson
+# 1. SponsoredPersonRole (lookup)
+# ---------------------------------------------------------------------------
+
+
+class SponsoredPersonRole(SQLModel, table=True):
+    """Papel da pessoa patrocinada no cadastro (tabela de referência).
+
+    Attributes:
+        id: Chave primária.
+        code: Identificador estável (ex.: ``atleta``).
+        label: Texto exibido ao usuário.
+        sort_order: Ordem no dropdown.
+    """
+
+    __tablename__ = "sponsored_person_role"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    code: str = Field(max_length=40, unique=True)
+    label: str = Field(max_length=80)
+    sort_order: int = Field(default=0)
+
+
+# ---------------------------------------------------------------------------
+# 2. SponsoredPerson
 # ---------------------------------------------------------------------------
 
 
@@ -174,10 +197,11 @@ class SponsoredPerson(SQLModel, table=True):
         cpf: CPF único opcional.
         email: E-mail opcional.
         phone: Telefone opcional.
-        role: Papel ou função no contexto de patrocínio.
+        role_id: FK para papel no patrocínio.
         notes: Observações em texto longo.
         created_at: Criação do registro (UTC).
         updated_at: Última atualização (UTC).
+        person_role: Registro de papel (relacionamento ORM).
         group_memberships: Filiações a grupos de patrocínio.
     """
 
@@ -188,7 +212,7 @@ class SponsoredPerson(SQLModel, table=True):
     cpf: Optional[str] = Field(default=None, max_length=14, unique=True)
     email: Optional[str] = Field(default=None, max_length=200)
     phone: Optional[str] = Field(default=None, max_length=40)
-    role: str = Field(max_length=80)
+    role_id: int = Field(foreign_key="sponsored_person_role.id", index=True)
     notes: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     created_at: datetime = Field(default_factory=now_utc)
@@ -197,11 +221,12 @@ class SponsoredPerson(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc),
     )
 
+    person_role: SponsoredPersonRole = Relationship()
     group_memberships: List["GroupMember"] = Relationship(back_populates="person")
 
 
 # ---------------------------------------------------------------------------
-# 2. SponsoredInstitution
+# 3. SponsoredInstitution
 # ---------------------------------------------------------------------------
 
 
@@ -239,7 +264,7 @@ class SponsoredInstitution(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 3. SocialProfile
+# 4. SocialProfile
 # ---------------------------------------------------------------------------
 
 
@@ -284,7 +309,7 @@ class SocialProfile(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 4. SponsorshipGroup
+# 5. SponsorshipGroup
 # ---------------------------------------------------------------------------
 
 
@@ -318,7 +343,7 @@ class SponsorshipGroup(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 5. GroupMember
+# 6. GroupMember
 # ---------------------------------------------------------------------------
 
 
@@ -367,7 +392,7 @@ class GroupMember(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 6. SponsorshipContract
+# 7. SponsorshipContract
 # ---------------------------------------------------------------------------
 
 
@@ -433,7 +458,7 @@ class SponsorshipContract(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 7. ContractClause
+# 8. ContractClause
 # ---------------------------------------------------------------------------
 
 
@@ -470,7 +495,7 @@ class ContractClause(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 8. CounterpartRequirement
+# 9. CounterpartRequirement
 # ---------------------------------------------------------------------------
 
 
@@ -530,7 +555,7 @@ class CounterpartRequirement(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 9. RequirementOccurrence
+# 10. RequirementOccurrence
 # ---------------------------------------------------------------------------
 
 
@@ -588,7 +613,7 @@ class RequirementOccurrence(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 10. OccurrenceResponsible
+# 11. OccurrenceResponsible
 # ---------------------------------------------------------------------------
 
 
@@ -618,7 +643,7 @@ class OccurrenceResponsible(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 11. Delivery
+# 12. Delivery
 # ---------------------------------------------------------------------------
 
 
@@ -661,7 +686,7 @@ class Delivery(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 12. DeliveryEvidence
+# 13. DeliveryEvidence
 # ---------------------------------------------------------------------------
 
 
@@ -700,7 +725,7 @@ class DeliveryEvidence(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# 13. ContractExtractionDraft
+# 14. ContractExtractionDraft
 # ---------------------------------------------------------------------------
 
 

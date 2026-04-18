@@ -1,6 +1,7 @@
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -27,6 +28,7 @@ import {
 } from "@mui/material";
 import { ChangeEvent, FormEvent, useState } from "react";
 
+import { Agencia } from "../../../services/agencias";
 import {
   LeadBatch,
   LeadBatchPreview,
@@ -34,10 +36,15 @@ import {
   LeadImportEtlResult,
   ReferenciaEvento,
 } from "../../../services/leads_import";
-import { formatEventoLabel } from "../../../utils/formatters";
+import { formatReferenciaEventoOptionLabel } from "../../../utils/formatters";
 import BatchSummaryCard from "./BatchSummaryCard";
-
-const PLATAFORMAS = ["email", "whatsapp", "drive", "manual", "outro"];
+import BatchUploadTable from "./batch/BatchUploadTable";
+import {
+  BatchUploadAtivacaoOption,
+  BatchUploadRowDraft,
+  BronzeMode,
+} from "./batch/useBatchUploadDraft";
+import { LEADS_IMPORT_PLATFORMS, QUICK_CREATE_EVENTO_ID } from "./constants";
 
 type ImportFlow = "bronze" | "etl";
 
@@ -46,9 +53,20 @@ type AtivacaoOption = { id: number; nome: string };
 type Props = {
   activeStep: number;
   ativacoes: AtivacaoOption[];
+  ativacoesLoadError: string | null;
   batch: LeadBatch | null;
+  batchAgencias: Agencia[];
+  batchAgenciasLoadError: string | null;
+  batchAtivacoesByEventoId: Record<number, BatchUploadAtivacaoOption[]>;
+  batchAtivacoesLoadErrorByEventoId: Record<number, string | null>;
+  batchLoadingAgencias: boolean;
+  batchLoadingAtivacoesByEventoId: Record<number, boolean>;
+  batchRows: BatchUploadRowDraft[];
   bronzeAtivacaoId: string;
+  bronzeActivationImportBlockReason: string | null;
   bronzeEventoId: string;
+  bronzeEventoSupportsActivationImport: boolean;
+  bronzeMode: BronzeMode;
   bronzeOrigemLote: "proponente" | "ativacao";
   bronzeTipoLeadProponente: "bilheteria" | "entrada_evento";
   canSubmit: boolean;
@@ -73,13 +91,23 @@ type Props = {
   preview: LeadBatchPreview | null;
   quemEnviou: string;
   onBack: () => void;
+  onBatchAddFiles: (files: FileList | File[]) => void;
+  onBatchCreateAtivacao: (localId: string, nome: string) => Promise<unknown>;
+  onBatchFieldChange: (localId: string, patch: Partial<BatchUploadRowDraft>) => void;
+  onBatchOpenRowFlow: (row: BatchUploadRowDraft) => void;
+  onBatchOpenQuickCreateEvento: (localId: string) => void;
+  onBatchRemoveRow: (localId: string) => void;
+  onBatchRetryRow: (localId: string) => Promise<void>;
+  onBatchSaveAgency: (localId: string, agenciaId: number) => Promise<void>;
+  onBatchSubmit: () => Promise<void>;
+  onBronzeAtivacaoIdChange: (value: string) => void;
+  onBronzeEventoIdChange: (value: string) => void;
+  onBronzeModeChange: (value: BronzeMode) => void;
+  onBronzeOrigemLoteChange: (value: "proponente" | "ativacao") => void;
+  onBronzeTipoLeadProponenteChange: (value: "bilheteria" | "entrada_evento") => void;
   onCommitEtl: (forceWarnings: boolean) => void;
   onCpfColumnChange: (value: string) => void;
   onCpfColumnSubmit: () => void;
-  onBronzeAtivacaoIdChange: (value: string) => void;
-  onBronzeEventoIdChange: (value: string) => void;
-  onBronzeOrigemLoteChange: (value: "proponente" | "ativacao") => void;
-  onBronzeTipoLeadProponenteChange: (value: "bilheteria" | "entrada_evento") => void;
   onCreateAtivacaoAdHoc: (nome: string) => Promise<void>;
   onDataEnvioChange: (value: string) => void;
   onEventoIdChange: (value: string) => void;
@@ -88,16 +116,28 @@ type Props = {
   onHeaderRowChange: (value: string) => void;
   onHeaderRowSubmit: () => void;
   onImportFlowChange: (nextFlow: ImportFlow) => void;
+  onOpenQuickCreateEvento: () => void;
   onPlataformaOrigemChange: (value: string) => void;
   onQuemEnviouChange: (value: string) => void;
   onResetEtl: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-function BronzeUploadForm({
+function UploadStep({
   ativacoes,
+  ativacoesLoadError,
+  batchAgencias,
+  batchAgenciasLoadError,
+  batchAtivacoesByEventoId,
+  batchAtivacoesLoadErrorByEventoId,
+  batchLoadingAgencias,
+  batchLoadingAtivacoesByEventoId,
+  batchRows,
   bronzeAtivacaoId,
+  bronzeActivationImportBlockReason,
   bronzeEventoId,
+  bronzeEventoSupportsActivationImport,
+  bronzeMode,
   bronzeOrigemLote,
   bronzeTipoLeadProponente,
   canSubmit,
@@ -112,8 +152,18 @@ function BronzeUploadForm({
   loadingSubmit,
   plataformaOrigem,
   quemEnviou,
+  onBatchAddFiles,
+  onBatchCreateAtivacao,
+  onBatchFieldChange,
+  onBatchOpenRowFlow,
+  onBatchOpenQuickCreateEvento,
+  onBatchRemoveRow,
+  onBatchRetryRow,
+  onBatchSaveAgency,
+  onBatchSubmit,
   onBronzeAtivacaoIdChange,
   onBronzeEventoIdChange,
+  onBronzeModeChange,
   onBronzeOrigemLoteChange,
   onBronzeTipoLeadProponenteChange,
   onCreateAtivacaoAdHoc,
@@ -121,39 +171,97 @@ function BronzeUploadForm({
   onEventoIdChange,
   onFileChange,
   onImportFlowChange,
+  onOpenQuickCreateEvento,
   onPlataformaOrigemChange,
   onQuemEnviouChange,
   onSubmit,
-}: Omit<
+}: Pick<
   Props,
-  | "activeStep"
-  | "batch"
-  | "committingEtl"
-  | "isEtlFile"
-  | "etlCommitResult"
-  | "etlCpfColumnIndex"
-  | "etlHeaderRow"
-  | "etlPreview"
-  | "etlWarningsPending"
-  | "loadingPreview"
-  | "preview"
-  | "onBack"
-  | "onCommitEtl"
-  | "onCpfColumnChange"
-  | "onCpfColumnSubmit"
-  | "onGoToMapping"
-  | "onHeaderRowChange"
-  | "onHeaderRowSubmit"
-  | "onResetEtl"
+  | "ativacoes"
+  | "ativacoesLoadError"
+  | "batchAgencias"
+  | "batchAgenciasLoadError"
+  | "batchAtivacoesByEventoId"
+  | "batchAtivacoesLoadErrorByEventoId"
+  | "batchLoadingAgencias"
+  | "batchLoadingAtivacoesByEventoId"
+  | "batchRows"
+  | "bronzeAtivacaoId"
+  | "bronzeActivationImportBlockReason"
+  | "bronzeEventoId"
+  | "bronzeEventoSupportsActivationImport"
+  | "bronzeMode"
+  | "bronzeOrigemLote"
+  | "bronzeTipoLeadProponente"
+  | "canSubmit"
+  | "dataEnvio"
+  | "eventoId"
+  | "eventos"
+  | "file"
+  | "importFlow"
+  | "loadingAtivacoes"
+  | "loadingEtlPreview"
+  | "loadingEventos"
+  | "loadingSubmit"
+  | "plataformaOrigem"
+  | "quemEnviou"
+  | "onBatchAddFiles"
+  | "onBatchCreateAtivacao"
+  | "onBatchFieldChange"
+  | "onBatchOpenRowFlow"
+  | "onBatchOpenQuickCreateEvento"
+  | "onBatchRemoveRow"
+  | "onBatchRetryRow"
+  | "onBatchSaveAgency"
+  | "onBatchSubmit"
+  | "onBronzeAtivacaoIdChange"
+  | "onBronzeEventoIdChange"
+  | "onBronzeModeChange"
+  | "onBronzeOrigemLoteChange"
+  | "onBronzeTipoLeadProponenteChange"
+  | "onCreateAtivacaoAdHoc"
+  | "onDataEnvioChange"
+  | "onEventoIdChange"
+  | "onFileChange"
+  | "onImportFlowChange"
+  | "onOpenQuickCreateEvento"
+  | "onPlataformaOrigemChange"
+  | "onQuemEnviouChange"
+  | "onSubmit"
 >) {
   const [ativDialogOpen, setAtivDialogOpen] = useState(false);
   const [ativDialogNome, setAtivDialogNome] = useState("");
   const [ativSaving, setAtivSaving] = useState(false);
+
+  const activationImportBlocked = Boolean(bronzeEventoId) && !bronzeEventoSupportsActivationImport;
   const activationSelectionMissing =
     bronzeOrigemLote === "ativacao" &&
     Boolean(bronzeEventoId) &&
+    bronzeEventoSupportsActivationImport &&
     !loadingAtivacoes &&
     !bronzeAtivacaoId;
+  const selectedEtlEvento =
+    eventoId && Number.isFinite(Number(eventoId))
+      ? eventos.find((evento) => evento.id === Number(eventoId)) ?? null
+      : null;
+  const selectedBronzeEvento =
+    bronzeEventoId && Number.isFinite(Number(bronzeEventoId))
+      ? eventos.find((evento) => evento.id === Number(bronzeEventoId)) ?? null
+      : null;
+
+  const filterEventoOptions = (options: ReferenciaEvento[], inputValue: string) => {
+    const filtered = options.filter((evento) =>
+      formatReferenciaEventoOptionLabel(evento).toLowerCase().includes(inputValue.toLowerCase()),
+    );
+    if (!filtered.some((evento) => evento.id === QUICK_CREATE_EVENTO_ID)) {
+      filtered.push({
+        id: QUICK_CREATE_EVENTO_ID,
+        nome: "+ Criar evento rapidamente",
+        data_inicio_prevista: null,
+      });
+    }
+    return filtered;
+  };
 
   const handleConfirmNovaAtivacao = async () => {
     const nome = ativDialogNome.trim();
@@ -171,247 +279,332 @@ function BronzeUploadForm({
   };
 
   return (
-    <Box component="form" onSubmit={onSubmit}>
-      <Stack spacing={2}>
+    <Stack spacing={2}>
+      <TextField
+        select
+        label="Fluxo de processamento"
+        value={importFlow}
+        onChange={(event) => onImportFlowChange(event.target.value as ImportFlow)}
+        fullWidth
+      >
+        <MenuItem value="bronze">Bronze + mapeamento</MenuItem>
+        <MenuItem value="etl">ETL CSV/XLSX</MenuItem>
+      </TextField>
+
+      {importFlow === "bronze" ? (
         <TextField
           select
-          label="Fluxo de processamento"
-          value={importFlow}
-          onChange={(event) => onImportFlowChange(event.target.value as ImportFlow)}
+          label="Modo de upload Bronze"
+          value={bronzeMode}
+          onChange={(event) => onBronzeModeChange(event.target.value as BronzeMode)}
           fullWidth
         >
-          <MenuItem value="bronze">Bronze + mapeamento</MenuItem>
-          <MenuItem value="etl">ETL CSV/XLSX</MenuItem>
+          <MenuItem value="single">Upload simples</MenuItem>
+          <MenuItem value="batch">Upload batch</MenuItem>
         </TextField>
+      ) : null}
 
-        {importFlow === "etl" ? (
-          <TextField
-            select
-            label="Evento de referencia"
-            value={eventoId}
-            onChange={(event) => onEventoIdChange(event.target.value)}
-            required
-            fullWidth
-            disabled={loadingEventos}
-            helperText="Obrigatorio para o preview ETL. Pode ser escolhido antes ou depois de selecionar o arquivo."
-          >
-            <MenuItem value="">
-              <em>Selecione o evento</em>
-            </MenuItem>
-            {eventos.map((evento) => (
-              <MenuItem key={evento.id} value={String(evento.id)}>
-                {formatEventoLabel(evento.nome, evento.data_inicio_prevista)}
-              </MenuItem>
-            ))}
-            {eventos.length === 0 ? (
-              <MenuItem value="" disabled>
-                {loadingEventos ? "Carregando eventos..." : "Nenhum evento disponivel"}
-              </MenuItem>
-            ) : null}
-          </TextField>
-        ) : null}
-
-        <TextField
-          label="Quem enviou"
-          value={quemEnviou}
-          onChange={(event) => onQuemEnviouChange(event.target.value)}
-          required
-          fullWidth
-        />
-
-        {importFlow === "bronze" ? (
-          <>
-            <TextField
-              select
-              label="Plataforma de origem"
-              value={plataformaOrigem}
-              onChange={(event) => onPlataformaOrigemChange(event.target.value)}
-              required
-              fullWidth
-            >
-              {PLATAFORMAS.map((plataforma) => (
-                <MenuItem key={plataforma} value={plataforma}>
-                  {plataforma}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              label="Data de envio"
-              type="date"
-              value={dataEnvio}
-              onChange={(event) => onDataEnvioChange(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-              required
-              fullWidth
-            />
-
-            <TextField
-              select
-              label="Evento de referencia"
-              value={bronzeEventoId}
-              onChange={(event) => onBronzeEventoIdChange(event.target.value)}
-              required
-              fullWidth
-              disabled={loadingEventos}
-              helperText="Evento associado a esta importacao Bronze."
-            >
-              <MenuItem value="">
-                <em>Selecione o evento</em>
-              </MenuItem>
-              {eventos.map((evento) => (
-                <MenuItem key={evento.id} value={String(evento.id)}>
-                  {formatEventoLabel(evento.nome, evento.data_inicio_prevista)}
-                </MenuItem>
-              ))}
-              {eventos.length === 0 ? (
-                <MenuItem value="" disabled>
-                  {loadingEventos ? "Carregando eventos..." : "Nenhum evento disponivel"}
-                </MenuItem>
-              ) : null}
-            </TextField>
-
-            <FormControl component="fieldset" variant="standard" sx={{ width: "100%" }}>
-              <FormLabel component="legend">Origem dos leads</FormLabel>
-              <RadioGroup
-                row
-                value={bronzeOrigemLote}
-                onChange={(event) =>
-                  onBronzeOrigemLoteChange(event.target.value as "proponente" | "ativacao")
-                }
-              >
-                <FormControlLabel value="proponente" control={<Radio />} label="Proponente" />
-                <FormControlLabel value="ativacao" control={<Radio />} label="Ativacao (importacao)" />
-              </RadioGroup>
-            </FormControl>
-
-            {bronzeOrigemLote === "proponente" ? (
-              <TextField
-                select
-                label="Tipo (proponente)"
-                value={bronzeTipoLeadProponente}
-                onChange={(event) =>
-                  onBronzeTipoLeadProponenteChange(
-                    event.target.value as "bilheteria" | "entrada_evento",
-                  )
-                }
-                fullWidth
-              >
-                <MenuItem value="entrada_evento">Entrada no evento</MenuItem>
-                <MenuItem value="bilheteria">Bilheteria</MenuItem>
-              </TextField>
-            ) : null}
-
-            {bronzeOrigemLote === "ativacao" ? (
-              <Stack spacing={1}>
-                {!bronzeEventoId ? (
-                  <Alert severity="info">Selecione o evento acima para listar as ativacoes.</Alert>
-                ) : (
-                  <>
+      {importFlow === "bronze" && bronzeMode === "batch" ? (
+        <BatchUploadTable
+          rows={batchRows}
+          eventos={eventos}
+          ativacoesByEventoId={batchAtivacoesByEventoId}
+          ativacoesLoadErrorByEventoId={batchAtivacoesLoadErrorByEventoId}
+          loadingAtivacoesByEventoId={batchLoadingAtivacoesByEventoId}
+          agencias={batchAgencias}
+          loadingAgencias={batchLoadingAgencias}
+          agenciasLoadError={batchAgenciasLoadError}
+          onAddFiles={onBatchAddFiles}
+          onFieldChange={onBatchFieldChange}
+          onOpenQuickCreateEvento={onBatchOpenQuickCreateEvento}
+            onCreateAtivacao={onBatchCreateAtivacao}
+            onSaveAgency={onBatchSaveAgency}
+            onRemoveRow={onBatchRemoveRow}
+            onRetryRow={onBatchRetryRow}
+            onSubmitRows={onBatchSubmit}
+            onOpenRowFlow={onBatchOpenRowFlow}
+          />
+      ) : (
+        <>
+          <Box component="form" onSubmit={onSubmit}>
+            <Stack spacing={2}>
+              {importFlow === "etl" ? (
+                <Autocomplete<ReferenciaEvento, false, false, false>
+                  options={eventos}
+                  value={selectedEtlEvento}
+                  disabled={loadingEventos}
+                  getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
+                  filterOptions={(options, state) => filterEventoOptions(options, state.inputValue)}
+                  onChange={(_, selected) => {
+                    if (!selected) {
+                      onEventoIdChange("");
+                      return;
+                    }
+                    if (selected.id === QUICK_CREATE_EVENTO_ID) {
+                      onOpenQuickCreateEvento();
+                      return;
+                    }
+                    onEventoIdChange(String(selected.id));
+                  }}
+                  renderInput={(params) => (
                     <TextField
-                      select
-                      label="Ativacao vinculada"
-                      value={bronzeAtivacaoId}
-                      onChange={(event) => onBronzeAtivacaoIdChange(event.target.value)}
+                      {...params}
+                      label="Evento de referencia"
                       required
                       fullWidth
-                      error={activationSelectionMissing}
-                      disabled={loadingAtivacoes}
-                      helperText={
-                        activationSelectionMissing
-                          ? "Selecione a ativacao desta importacao para continuar."
-                          : "Obrigatorio: selecione a ativacao vinculada a estes leads."
+                      helperText="Obrigatorio para o preview ETL. Pode ser escolhido antes ou depois de selecionar o arquivo."
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box
+                      component="li"
+                      {...props}
+                      key={option.id}
+                      sx={option.id === QUICK_CREATE_EVENTO_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
+                    >
+                      {formatReferenciaEventoOptionLabel(option)}
+                    </Box>
+                  )}
+                />
+              ) : null}
+
+              <TextField
+                label="Quem enviou"
+                value={quemEnviou}
+                onChange={(event) => onQuemEnviouChange(event.target.value)}
+                required
+                fullWidth
+              />
+
+              {importFlow === "bronze" ? (
+                <>
+                  <TextField
+                    select
+                    label="Plataforma de origem"
+                    value={plataformaOrigem}
+                    onChange={(event) => onPlataformaOrigemChange(event.target.value)}
+                    required
+                    fullWidth
+                  >
+                    {LEADS_IMPORT_PLATFORMS.map((plataforma) => (
+                      <MenuItem key={plataforma} value={plataforma}>
+                        {plataforma}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    label="Data de envio"
+                    type="date"
+                    value={dataEnvio}
+                    onChange={(event) => onDataEnvioChange(event.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    required
+                    fullWidth
+                  />
+
+                  <Autocomplete<ReferenciaEvento, false, false, false>
+                    options={eventos}
+                    value={selectedBronzeEvento}
+                    disabled={loadingEventos}
+                    getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
+                    filterOptions={(options, state) => filterEventoOptions(options, state.inputValue)}
+                    onChange={(_, selected) => {
+                      if (!selected) {
+                        onBronzeEventoIdChange("");
+                        return;
+                      }
+                      if (selected.id === QUICK_CREATE_EVENTO_ID) {
+                        onOpenQuickCreateEvento();
+                        return;
+                      }
+                      onBronzeEventoIdChange(String(selected.id));
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Evento de referencia"
+                        required
+                        fullWidth
+                        helperText="Evento associado a esta importacao Bronze."
+                      />
+                    )}
+                    renderOption={(props, option) => (
+                      <Box
+                        component="li"
+                        {...props}
+                        key={option.id}
+                        sx={option.id === QUICK_CREATE_EVENTO_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
+                      >
+                        {formatReferenciaEventoOptionLabel(option)}
+                      </Box>
+                    )}
+                  />
+
+                  <FormControl component="fieldset" variant="standard" sx={{ width: "100%" }}>
+                    <FormLabel component="legend">Origem dos leads</FormLabel>
+                    <RadioGroup
+                      row
+                      value={bronzeOrigemLote}
+                      onChange={(event) =>
+                        onBronzeOrigemLoteChange(event.target.value as "proponente" | "ativacao")
                       }
                     >
-                      <MenuItem value="">
-                        <em>Selecione a ativacao</em>
-                      </MenuItem>
-                      {ativacoes.map((ativacao) => (
-                        <MenuItem key={ativacao.id} value={String(ativacao.id)}>
-                          {ativacao.nome}
-                        </MenuItem>
-                      ))}
-                      {ativacoes.length === 0 && !loadingAtivacoes ? (
-                        <MenuItem value="" disabled>
-                          Nenhuma ativacao cadastrada
-                        </MenuItem>
-                      ) : null}
+                      <FormControlLabel value="proponente" control={<Radio />} label="Proponente" />
+                      <FormControlLabel
+                        value="ativacao"
+                        control={<Radio />}
+                        label="Ativacao (importacao)"
+                        disabled={activationImportBlocked}
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  {activationImportBlocked && bronzeOrigemLote !== "ativacao" ? (
+                    <Alert severity="warning">
+                      {bronzeActivationImportBlockReason ??
+                        "Vincule uma agencia ao evento antes de importar leads de ativacao."}
+                    </Alert>
+                  ) : null}
+
+                  {bronzeOrigemLote === "proponente" ? (
+                    <TextField
+                      select
+                      label="Tipo (proponente)"
+                      value={bronzeTipoLeadProponente}
+                      onChange={(event) =>
+                        onBronzeTipoLeadProponenteChange(
+                          event.target.value as "bilheteria" | "entrada_evento",
+                        )
+                      }
+                      fullWidth
+                    >
+                      <MenuItem value="entrada_evento">Entrada no evento</MenuItem>
+                      <MenuItem value="bilheteria">Bilheteria</MenuItem>
                     </TextField>
-                    {!loadingAtivacoes && ativacoes.length === 0 ? (
-                      <Alert
-                        severity="warning"
-                        action={
-                          <Button color="inherit" size="small" onClick={() => setAtivDialogOpen(true)}>
-                            Criar ativacao
-                          </Button>
-                        }
-                      >
-                        Este evento ainda nao possui ativacoes. Crie uma para importar como ativacao.
-                      </Alert>
-                    ) : null}
-                  </>
-                )}
+                  ) : null}
+
+                  {bronzeOrigemLote === "ativacao" ? (
+                    <Stack spacing={1}>
+                      {activationImportBlocked ? (
+                        <Alert severity="warning">
+                          {bronzeActivationImportBlockReason ??
+                            "Vincule uma agencia ao evento antes de importar leads de ativacao."}
+                        </Alert>
+                      ) : !bronzeEventoId ? (
+                        <Alert severity="info">Selecione o evento acima para listar as ativacoes.</Alert>
+                      ) : (
+                        <>
+                          <TextField
+                            select
+                            label="Ativacao vinculada"
+                            value={bronzeAtivacaoId}
+                            onChange={(event) => onBronzeAtivacaoIdChange(event.target.value)}
+                            required
+                            fullWidth
+                            error={Boolean(ativacoesLoadError) || activationSelectionMissing}
+                            disabled={loadingAtivacoes || (Boolean(ativacoesLoadError) && ativacoes.length === 0)}
+                            helperText={
+                              activationSelectionMissing
+                                ? "Selecione a ativacao desta importacao para continuar."
+                                : "Obrigatorio: selecione a ativacao vinculada a estes leads."
+                            }
+                          >
+                            <MenuItem value="">
+                              <em>Selecione a ativacao</em>
+                            </MenuItem>
+                            {ativacoes.map((ativacao) => (
+                              <MenuItem key={ativacao.id} value={String(ativacao.id)}>
+                                {ativacao.nome}
+                              </MenuItem>
+                            ))}
+                            {ativacoes.length === 0 && !loadingAtivacoes ? (
+                              <MenuItem value="" disabled>
+                                Nenhuma ativacao cadastrada
+                              </MenuItem>
+                            ) : null}
+                          </TextField>
+                          {!loadingAtivacoes && ativacoesLoadError ? (
+                            <Alert severity="error">{ativacoesLoadError}</Alert>
+                          ) : null}
+                          {!loadingAtivacoes && !ativacoesLoadError && ativacoes.length === 0 ? (
+                            <Alert
+                              severity="warning"
+                              action={
+                                <Button color="inherit" size="small" onClick={() => setAtivDialogOpen(true)}>
+                                  Criar ativacao
+                                </Button>
+                              }
+                            >
+                              Este evento ainda nao possui ativacoes. Crie uma para importar como ativacao.
+                            </Alert>
+                          ) : null}
+                        </>
+                      )}
+                    </Stack>
+                  ) : null}
+                </>
+              ) : null}
+
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+                <Button variant="outlined" component="label" startIcon={<CloudUploadRoundedIcon />} sx={{ textTransform: "none" }}>
+                  Selecionar CSV/XLSX
+                  <input hidden type="file" accept=".csv,.xlsx" onChange={onFileChange} />
+                </Button>
+                <Typography variant="body2" color={file ? "text.primary" : "text.secondary"}>
+                  {file ? file.name : "Nenhum arquivo selecionado"}
+                </Typography>
               </Stack>
-            ) : null}
-          </>
-        ) : null}
 
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
-          <Button variant="outlined" component="label" startIcon={<CloudUploadRoundedIcon />} sx={{ textTransform: "none" }}>
-            Selecionar CSV/XLSX
-            <input hidden type="file" accept=".csv,.xlsx" onChange={onFileChange} />
-          </Button>
-          <Typography variant="body2" color={file ? "text.primary" : "text.secondary"}>
-            {file ? file.name : "Nenhum arquivo selecionado"}
-          </Typography>
-        </Stack>
+              {importFlow === "etl" ? (
+                <Alert severity="info">
+                  O fluxo ETL fecha preview e commit no mesmo shell. O contrato atual nao expoe batch_id para consulta de lote.
+                </Alert>
+              ) : null}
 
-        {importFlow === "etl" ? (
-          <Alert severity="info">
-            O fluxo ETL fecha preview e commit no mesmo shell. O contrato atual nao expoe batch_id para consulta de lote.
-          </Alert>
-        ) : null}
+              <Box>
+                <Button type="submit" variant="contained" disabled={!canSubmit}>
+                  {loadingSubmit || loadingEtlPreview ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : importFlow === "etl" ? (
+                    "Gerar preview ETL"
+                  ) : (
+                    "Enviar para Bronze"
+                  )}
+                </Button>
+              </Box>
+            </Stack>
+          </Box>
 
-        <Box>
-          <Button type="submit" variant="contained" disabled={!canSubmit}>
-            {loadingSubmit || loadingEtlPreview ? (
-              <CircularProgress size={18} color="inherit" />
-            ) : importFlow === "etl" ? (
-              "Gerar preview ETL"
-            ) : (
-              "Enviar para Bronze"
-            )}
-          </Button>
-        </Box>
-      </Stack>
-
-      <Dialog open={ativDialogOpen} onClose={() => !ativSaving && setAtivDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Nova ativacao no evento</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Nome da ativacao"
-            fullWidth
-            value={ativDialogNome}
-            onChange={(event) => setAtivDialogNome(event.target.value)}
-            disabled={ativSaving}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAtivDialogOpen(false)} disabled={ativSaving}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => void handleConfirmNovaAtivacao()}
-            disabled={!ativDialogNome.trim() || ativSaving}
-            variant="contained"
-          >
-            {ativSaving ? <CircularProgress size={18} color="inherit" /> : "Criar"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+          <Dialog open={ativDialogOpen} onClose={() => !ativSaving && setAtivDialogOpen(false)} fullWidth maxWidth="xs">
+            <DialogTitle>Nova ativacao no evento</DialogTitle>
+            <DialogContent>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Nome da ativacao"
+                fullWidth
+                value={ativDialogNome}
+                onChange={(event) => setAtivDialogNome(event.target.value)}
+                disabled={ativSaving}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setAtivDialogOpen(false)} disabled={ativSaving}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => void handleConfirmNovaAtivacao()}
+                disabled={!ativDialogNome.trim() || ativSaving}
+                variant="contained"
+              >
+                {ativSaving ? <CircularProgress size={18} color="inherit" /> : "Criar"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
+    </Stack>
   );
 }
 
@@ -630,8 +823,7 @@ function BronzePreviewStep({
 
 export default function ImportacaoUploadStep(props: Props) {
   if (props.activeStep === 0) {
-    const { isEtlFile: _isEtlFileUnused, ...uploadFormProps } = props;
-    return <BronzeUploadForm {...uploadFormProps} />;
+    return <UploadStep {...props} />;
   }
 
   if (props.importFlow === "etl") {

@@ -1,0 +1,8 @@
+evento,data_evento,Soma de ano_evento,cliente,cod_sexo,cpf,data_nascimento,faixa_etaria,Soma de idade,local,tipo_evento
+Aurea Tour 2025,2025-06-28,2025,True,,01158635915,1938-06-24,40+,87,São Paulo-SP,Show
+Aurea Tour 2025,2025-06-28,2025,True,,11144477735,1985-06-28,18-40,40,São Paulo-SP,Show
+Aurea Tour 2025,2025-06-28,2025,True,,52998224725,1970-03-15,40+,55,São Paulo-SP,Show
+Aurea Tour 2025,2025-06-28,2025,False,,24681357928,2008-01-15,<18,17,São Paulo-SP,Show
+Aurea Tour 2025,2025-06-28,2025,False,,98765432100,1985-12-31,18-40,40,São Paulo-SP,Show
+Aurea Tour 2025,2025-06-28,2025,False,,12345678909,,Desconhecido,,São Paulo-SP,Show
+Aurea Tour 2025,2025-06-28,2025,True,,11144477735,1985-06-28,18-40,40,São Paulo-SP,Show

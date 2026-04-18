@@ -1,6 +1,7 @@
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
   Paper,
   Stack,
@@ -9,11 +10,15 @@ import {
   Stepper,
   Typography,
 } from "@mui/material";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+
+import QuickCreateEventoModal from "../../components/QuickCreateEventoModal";
 import {
   commitLeadImportEtl,
   createLeadBatch,
+  DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON,
+  getActivationImportBlockReason,
   getLeadBatch,
   getLeadBatchPreview,
   LeadBatch,
@@ -23,25 +28,38 @@ import {
   listReferenciaEventos,
   previewLeadImportEtl,
   ReferenciaEvento,
+  supportsActivationImport,
 } from "../../services/leads_import";
+import type { EventoRead } from "../../services/eventos/core";
 import { createEventoAtivacao, listEventoAtivacoes } from "../../services/eventos/workflow";
 import { ApiError, toApiErrorMessage } from "../../services/http";
 import { useAuth } from "../../store/auth";
+import { getLocalDateInputValue } from "../../utils/date";
 import BatchSummaryCard from "./importacao/BatchSummaryCard";
 import ImportacaoUploadStep from "./importacao/ImportacaoUploadStep";
+import { LEADS_IMPORT_ALLOWED_EXTENSIONS } from "./importacao/constants";
+import {
+  BronzeMode,
+  useBatchUploadDraft,
+} from "./importacao/batch/useBatchUploadDraft";
 import MapeamentoPage from "./MapeamentoPage";
 import PipelineStatusPage from "./PipelineStatusPage";
 
 const BRONZE_WORKFLOW_STEPS = ["Upload", "Mapeamento", "Pipeline"];
 const ETL_WORKFLOW_STEPS = ["Arquivo e evento", "Preview ETL", "Commit ETL"];
-const ALLOWED_EXTENSIONS = [".csv", ".xlsx"];
 
 type ImportFlow = "bronze" | "etl";
 type ShellStep = "upload" | "mapping" | "pipeline" | "etl";
+type ShellContext = "batch" | null;
+type QuickCreateTarget =
+  | { kind: "bronze-single" }
+  | { kind: "etl" }
+  | { kind: "batch-row"; rowId: string }
+  | null;
 
 function hasAllowedExtension(file: File) {
   const name = file.name.toLowerCase();
-  return ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
+  return LEADS_IMPORT_ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
 function sanitizeShellStep(rawStep: string | null, batchId: number): ShellStep {
@@ -54,19 +72,38 @@ function sanitizeShellStep(rawStep: string | null, batchId: number): ShellStep {
   return "upload";
 }
 
+function sanitizeShellContext(rawContext: string | null): ShellContext {
+  return rawContext === "batch" ? "batch" : null;
+}
+
+function mapAtivacaoOptions(items: Array<{ id: number; nome: string }>) {
+  return items.map((item) => ({ id: item.id, nome: item.nome }));
+}
+
+function upsertAtivacaoOption(prev: Array<{ id: number; nome: string }>, next: { id: number; nome: string }) {
+  if (prev.some((item) => item.id === next.id)) {
+    return prev.map((item) => (item.id === next.id ? next : item));
+  }
+  return [...prev, next];
+}
+
 export default function ImportacaoPage() {
   const { token, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const routeBatchId = Number(searchParams.get("batch_id") ?? "0");
   const shellStep = sanitizeShellStep(searchParams.get("step"), routeBatchId);
+  const shellContext = sanitizeShellContext(searchParams.get("context"));
+  const today = useMemo(() => getLocalDateInputValue(), []);
+  const bronzeAtivacoesRequestIdRef = useRef(0);
 
   const [activeStep, setActiveStep] = useState(0);
   const [quemEnviou, setQuemEnviou] = useState(user?.email ?? "");
   const [plataformaOrigem, setPlataformaOrigem] = useState("");
-  const [dataEnvio, setDataEnvio] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dataEnvio, setDataEnvio] = useState(today);
   const [file, setFile] = useState<File | null>(null);
   const [importFlow, setImportFlow] = useState<ImportFlow>(() => (shellStep === "etl" ? "etl" : "bronze"));
+  const [bronzeMode, setBronzeMode] = useState<BronzeMode>("single");
   const [eventos, setEventos] = useState<ReferenciaEvento[]>([]);
   const [eventoId, setEventoId] = useState("");
   const [bronzeEventoId, setBronzeEventoId] = useState("");
@@ -76,6 +113,7 @@ export default function ImportacaoPage() {
   );
   const [bronzeAtivacaoId, setBronzeAtivacaoId] = useState("");
   const [ativacoes, setAtivacoes] = useState<{ id: number; nome: string }[]>([]);
+  const [ativacoesLoadError, setAtivacoesLoadError] = useState<string | null>(null);
   const [loadingAtivacoes, setLoadingAtivacoes] = useState(false);
   const [loadingEventos, setLoadingEventos] = useState(false);
   const [batch, setBatch] = useState<LeadBatch | null>(null);
@@ -91,7 +129,32 @@ export default function ImportacaoPage() {
   const [loadingEtlPreview, setLoadingEtlPreview] = useState(false);
   const [committingEtl, setCommittingEtl] = useState(false);
   const [etlWarningsPending, setEtlWarningsPending] = useState(false);
+  const [quickCreateTarget, setQuickCreateTarget] = useState<QuickCreateTarget>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const batchUpload = useBatchUploadDraft({
+    token,
+    defaultQuemEnviou: user?.email ?? "",
+    defaultDataEnvio: today,
+    eventos,
+    setEventos,
+  });
+  const batchContextRow = useMemo(() => {
+    if (shellContext !== "batch" || routeBatchId <= 0) return null;
+    return batchUpload.rows.find((row) => row.created_batch_id === routeBatchId) ?? null;
+  }, [batchUpload.rows, routeBatchId, shellContext]);
+  const hasBatchWorkspaceContext = shellContext === "batch" && batchContextRow != null;
+
+  const selectedBronzeEvento = useMemo(() => {
+    if (!bronzeEventoId || !Number.isFinite(Number(bronzeEventoId))) return null;
+    return eventos.find((evento) => evento.id === Number(bronzeEventoId)) ?? null;
+  }, [bronzeEventoId, eventos]);
+  const bronzeEventoSupportsActivationImport = supportsActivationImport(selectedBronzeEvento);
+  const bronzeActivationImportBlockReason =
+    getActivationImportBlockReason(selectedBronzeEvento) ??
+    (selectedBronzeEvento && !bronzeEventoSupportsActivationImport
+      ? DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON
+      : null);
 
   useEffect(() => {
     if (shellStep === "etl") {
@@ -114,18 +177,50 @@ export default function ImportacaoPage() {
   }, [importFlow, shellStep, token]);
 
   useEffect(() => {
-    if (!token || importFlow !== "bronze" || !bronzeEventoId) {
+    if (!token || importFlow !== "bronze" || !bronzeEventoId || !bronzeEventoSupportsActivationImport) {
+      bronzeAtivacoesRequestIdRef.current += 1;
       setAtivacoes([]);
+      setAtivacoesLoadError(null);
+      setLoadingAtivacoes(false);
       setBronzeAtivacaoId("");
       return;
     }
+
+    const requestId = bronzeAtivacoesRequestIdRef.current + 1;
+    bronzeAtivacoesRequestIdRef.current = requestId;
+
     setBronzeAtivacaoId("");
+    setAtivacoes([]);
+    setAtivacoesLoadError(null);
     setLoadingAtivacoes(true);
     listEventoAtivacoes(token, Number(bronzeEventoId))
-      .then((rows) => setAtivacoes(rows.map((a) => ({ id: a.id, nome: a.nome }))))
-      .catch(() => setAtivacoes([]))
-      .finally(() => setLoadingAtivacoes(false));
-  }, [bronzeEventoId, importFlow, token]);
+      .then((rows) => {
+        if (bronzeAtivacoesRequestIdRef.current !== requestId) return;
+        setAtivacoes(mapAtivacaoOptions(rows));
+        setAtivacoesLoadError(null);
+      })
+      .catch((error) => {
+        if (bronzeAtivacoesRequestIdRef.current !== requestId) return;
+        setAtivacoes([]);
+        setAtivacoesLoadError(toApiErrorMessage(error, "Nao foi possivel carregar as ativacoes deste evento."));
+      })
+      .finally(() => {
+        if (bronzeAtivacoesRequestIdRef.current !== requestId) return;
+        setLoadingAtivacoes(false);
+      });
+  }, [bronzeEventoId, bronzeEventoSupportsActivationImport, importFlow, token]);
+
+  useEffect(() => {
+    if (
+      importFlow === "bronze" &&
+      bronzeOrigemLote === "ativacao" &&
+      bronzeEventoId &&
+      !bronzeEventoSupportsActivationImport
+    ) {
+      setBronzeOrigemLote("proponente");
+      setBronzeAtivacaoId("");
+    }
+  }, [bronzeEventoId, bronzeEventoSupportsActivationImport, bronzeOrigemLote, importFlow]);
 
   useEffect(() => {
     if (!token || shellStep !== "mapping" || routeBatchId <= 0) {
@@ -148,7 +243,10 @@ export default function ImportacaoPage() {
     }
     const bronzeOrigemOk =
       bronzeOrigemLote === "proponente" ||
-      (bronzeOrigemLote === "ativacao" && Boolean(bronzeEventoId) && Boolean(bronzeAtivacaoId));
+      (bronzeOrigemLote === "ativacao" &&
+        bronzeEventoSupportsActivationImport &&
+        Boolean(bronzeEventoId) &&
+        Boolean(bronzeAtivacaoId));
     return Boolean(
       quemEnviou.trim() &&
         plataformaOrigem &&
@@ -161,6 +259,7 @@ export default function ImportacaoPage() {
   }, [
     bronzeAtivacaoId,
     bronzeEventoId,
+    bronzeEventoSupportsActivationImport,
     bronzeOrigemLote,
     dataEnvio,
     eventoId,
@@ -219,6 +318,7 @@ export default function ImportacaoPage() {
 
   const resetForNewImport = (nextFlow: ImportFlow) => {
     setImportFlow(nextFlow);
+    setBronzeMode("single");
     setPlataformaOrigem("");
     setFile(null);
     setBronzeEventoId("");
@@ -226,6 +326,9 @@ export default function ImportacaoPage() {
     setBronzeTipoLeadProponente("entrada_evento");
     setBronzeAtivacaoId("");
     setAtivacoes([]);
+    setAtivacoesLoadError(null);
+    setQuickCreateTarget(null);
+    batchUpload.reset();
     resetBronzeFlow();
     resetEtlFlow();
     resetErrorState();
@@ -234,13 +337,55 @@ export default function ImportacaoPage() {
     setSearchParams(nextParams);
   };
 
-  const setCanonicalStep = (nextStep: ShellStep, batchId?: number | null) => {
+  const setCanonicalStep = (nextStep: ShellStep, batchId?: number | null, context?: ShellContext) => {
     const nextParams = new URLSearchParams();
     nextParams.set("step", nextStep);
     if (batchId && (nextStep === "mapping" || nextStep === "pipeline")) {
       nextParams.set("batch_id", String(batchId));
     }
+    if (context === "batch" && (nextStep === "mapping" || nextStep === "pipeline")) {
+      nextParams.set("context", context);
+    }
     setSearchParams(nextParams);
+  };
+
+  const handleOpenBatchRowFlow = (row: (typeof batchUpload.rows)[number]) => {
+    if (row.created_batch_id == null) return;
+    const nextStep =
+      row.downstream_stage === "bronze" || row.downstream_stage == null ? "mapping" : "pipeline";
+    setError(null);
+    setCanonicalStep(nextStep, row.created_batch_id, "batch");
+  };
+
+  const handleReturnToBatchWorkspace = async () => {
+    if (!hasBatchWorkspaceContext) {
+      setCanonicalStep("upload");
+      return;
+    }
+
+    if (!token) {
+      setError("Sessao expirada. Faca login novamente.");
+      setCanonicalStep("upload");
+      return;
+    }
+
+    try {
+      const latestBatch = await getLeadBatch(token, routeBatchId);
+      batchUpload.syncCreatedBatch(latestBatch);
+      setError(null);
+    } catch (err) {
+      setError(toApiErrorMessage(err, "Falha ao sincronizar o lote ao voltar para o batch."));
+    } finally {
+      setCanonicalStep("upload");
+    }
+  };
+
+  const handleOpenQuickCreateEvento = () => {
+    if (importFlow === "etl") {
+      setQuickCreateTarget({ kind: "etl" });
+      return;
+    }
+    setQuickCreateTarget({ kind: "bronze-single" });
   };
 
   const handleCreateAtivacaoAdHoc = async (nome: string) => {
@@ -248,16 +393,60 @@ export default function ImportacaoPage() {
       setError("Sessao expirada ou evento nao selecionado.");
       throw new Error("invalid");
     }
+    if (!bronzeEventoSupportsActivationImport) {
+      setError(bronzeActivationImportBlockReason ?? DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON);
+      throw new Error("invalid");
+    }
     setError(null);
     try {
-      const created = await createEventoAtivacao(token, Number(bronzeEventoId), { nome });
-      const list = await listEventoAtivacoes(token, Number(bronzeEventoId));
-      setAtivacoes(list.map((a) => ({ id: a.id, nome: a.nome })));
+      const eventId = Number(bronzeEventoId);
+      const created = await createEventoAtivacao(token, eventId, { nome });
+      const createdOption = { id: created.id, nome: created.nome };
+
+      setAtivacoes((prev) => upsertAtivacaoOption(prev, createdOption));
+      setAtivacoesLoadError(null);
       setBronzeAtivacaoId(String(created.id));
+
+      void listEventoAtivacoes(token, eventId)
+        .then((rows) => {
+          setAtivacoes(mapAtivacaoOptions(rows));
+          setAtivacoesLoadError(null);
+        })
+        .catch(() => {
+          // Keep the optimistic activation selected when the post-create refresh fails.
+        });
     } catch (err) {
       setError(toApiErrorMessage(err, "Falha ao criar ativacao."));
       throw err;
     }
+  };
+
+  const handleEventoCreated = (created: EventoRead) => {
+    const supportsCreatedEventoActivationImport = created.agencia_id != null;
+    const referencia: ReferenciaEvento = {
+      id: created.id,
+      nome: created.nome,
+      data_inicio_prevista: created.data_inicio_prevista ?? null,
+      agencia_id: created.agencia_id ?? null,
+      supports_activation_import: supportsCreatedEventoActivationImport,
+      activation_import_block_reason: supportsCreatedEventoActivationImport
+        ? null
+        : DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON,
+      leads_count: 0,
+    };
+    setEventos((prev) => [referencia, ...prev.filter((item) => item.id !== referencia.id)]);
+
+    if (quickCreateTarget?.kind === "etl") {
+      setEventoId(String(created.id));
+    } else if (quickCreateTarget?.kind === "batch-row") {
+      batchUpload.attachCreatedEvento(quickCreateTarget.rowId, created);
+    } else {
+      setBronzeEventoId(String(created.id));
+      setBronzeAtivacaoId("");
+      setAtivacoes([]);
+    }
+
+    setQuickCreateTarget(null);
   };
 
   const handleSelectFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -332,6 +521,10 @@ export default function ImportacaoPage() {
     }
     if (bronzeOrigemLote === "ativacao" && !bronzeAtivacaoId) {
       setError("Selecione a ativacao desta importacao ou crie uma nova.");
+      return;
+    }
+    if (bronzeOrigemLote === "ativacao" && !bronzeEventoSupportsActivationImport) {
+      setError(bronzeActivationImportBlockReason ?? DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON);
       return;
     }
 
@@ -464,30 +657,64 @@ export default function ImportacaoPage() {
               <MapeamentoPage
                 batchId={routeBatchId}
                 fixedEventoId={mappingBatch?.evento_id ?? null}
+                cancelLabel={hasBatchWorkspaceContext ? "Voltar ao batch" : undefined}
                 onCancel={() => {
+                  if (hasBatchWorkspaceContext) {
+                    setCanonicalStep("upload");
+                    return;
+                  }
                   resetBronzeFlow();
                   setCanonicalStep("upload");
                 }}
                 onMapped={(result) => {
+                  if (hasBatchWorkspaceContext) {
+                    batchUpload.markRowMapped(result.batch_id);
+                    setCanonicalStep("upload");
+                    return;
+                  }
                   setCanonicalStep("pipeline", result.batch_id);
                 }}
               />
             </Stack>
           )
         ) : shellStep === "pipeline" ? (
-          <PipelineStatusPage
-            batchId={routeBatchId}
-            onNewImport={() => {
-              resetForNewImport("bronze");
-            }}
-          />
+          <Stack spacing={2}>
+            {hasBatchWorkspaceContext ? (
+              <Box>
+                <Button variant="outlined" onClick={() => void handleReturnToBatchWorkspace()}>
+                  Voltar ao batch
+                </Button>
+              </Box>
+            ) : null}
+            <PipelineStatusPage
+              batchId={routeBatchId}
+              onNewImport={
+                hasBatchWorkspaceContext
+                  ? undefined
+                  : () => {
+                      resetForNewImport("bronze");
+                    }
+              }
+            />
+          </Stack>
         ) : (
           <ImportacaoUploadStep
             activeStep={activeStep}
             ativacoes={ativacoes}
+            ativacoesLoadError={ativacoesLoadError}
             batch={batch}
+            batchAgencias={batchUpload.agencias}
+            batchAgenciasLoadError={batchUpload.agenciasLoadError}
+            batchAtivacoesByEventoId={batchUpload.ativacoesByEventoId}
+            batchAtivacoesLoadErrorByEventoId={batchUpload.ativacoesLoadErrorByEventoId}
+            batchLoadingAgencias={batchUpload.loadingAgencias}
+            batchLoadingAtivacoesByEventoId={batchUpload.loadingAtivacoesByEventoId}
+            batchRows={batchUpload.rows}
             bronzeAtivacaoId={bronzeAtivacaoId}
+            bronzeActivationImportBlockReason={bronzeActivationImportBlockReason}
             bronzeEventoId={bronzeEventoId}
+            bronzeEventoSupportsActivationImport={bronzeEventoSupportsActivationImport}
+            bronzeMode={bronzeMode}
             bronzeOrigemLote={bronzeOrigemLote}
             bronzeTipoLeadProponente={bronzeTipoLeadProponente}
             canSubmit={canSubmit}
@@ -512,18 +739,41 @@ export default function ImportacaoPage() {
             preview={preview}
             quemEnviou={quemEnviou}
             onBack={handleBackToStep1}
-            onCommitEtl={handleCommitEtl}
-            onCpfColumnChange={setEtlCpfColumnIndex}
-            onCpfColumnSubmit={handleSubmitCpfColumn}
+            onBatchAddFiles={batchUpload.addFiles}
+            onBatchCreateAtivacao={batchUpload.createAdHocAtivacao}
+            onBatchFieldChange={batchUpload.updateRow}
+            onBatchOpenRowFlow={handleOpenBatchRowFlow}
+            onBatchOpenQuickCreateEvento={(rowId) => setQuickCreateTarget({ kind: "batch-row", rowId })}
+            onBatchRemoveRow={batchUpload.removeRow}
+            onBatchRetryRow={batchUpload.retryRow}
+            onBatchSaveAgency={batchUpload.saveEventoAgency}
+            onBatchSubmit={() => batchUpload.submitRows()}
             onBronzeAtivacaoIdChange={setBronzeAtivacaoId}
             onBronzeEventoIdChange={setBronzeEventoId}
+            onBronzeModeChange={(nextMode) => {
+              setBronzeMode(nextMode);
+              resetBronzeFlow();
+              setError(null);
+            }}
             onBronzeOrigemLoteChange={(value) => {
+              if (
+                value === "ativacao" &&
+                bronzeEventoId &&
+                !bronzeEventoSupportsActivationImport
+              ) {
+                setBronzeOrigemLote("proponente");
+                setBronzeAtivacaoId("");
+                return;
+              }
               setBronzeOrigemLote(value);
               if (value === "proponente") {
                 setBronzeAtivacaoId("");
               }
             }}
             onBronzeTipoLeadProponenteChange={setBronzeTipoLeadProponente}
+            onCommitEtl={handleCommitEtl}
+            onCpfColumnChange={setEtlCpfColumnIndex}
+            onCpfColumnSubmit={handleSubmitCpfColumn}
             onCreateAtivacaoAdHoc={handleCreateAtivacaoAdHoc}
             onDataEnvioChange={setDataEnvio}
             onEventoIdChange={setEventoId}
@@ -536,6 +786,7 @@ export default function ImportacaoPage() {
             onHeaderRowChange={setEtlHeaderRow}
             onHeaderRowSubmit={handleSubmitHeaderRow}
             onImportFlowChange={resetForNewImport}
+            onOpenQuickCreateEvento={handleOpenQuickCreateEvento}
             onPlataformaOrigemChange={setPlataformaOrigem}
             onQuemEnviouChange={setQuemEnviou}
             onResetEtl={() => {
@@ -545,6 +796,12 @@ export default function ImportacaoPage() {
           />
         )}
       </Paper>
+
+      <QuickCreateEventoModal
+        open={quickCreateTarget != null}
+        onClose={() => setQuickCreateTarget(null)}
+        onCreated={handleEventoCreated}
+      />
     </Box>
   );
 }

@@ -6,11 +6,29 @@
 # =============================================================================
 
 # COMMAND ----------
-# CELULA 1 - Imports, constantes e widgets
+# MAGIC %md
+# MAGIC # Enriquecimento de Leads com Base BB
+# MAGIC
+# MAGIC Este notebook executa o enriquecimento de uma base de leads/eventos com dados do Banco do Brasil.
+# MAGIC
+# MAGIC Resultado esperado:
+# MAGIC - um `final_df` pronto para consumo analítico;
+# MAGIC - um `audit_df` com métricas de controle;
+# MAGIC - um `issues_df` com problemas de qualidade encontrados no caminho.
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 1. Imports, constantes e widgets
+# MAGIC
+# MAGIC Nesta primeira parte ficam:
+# MAGIC - imports PySpark;
+# MAGIC - constantes do notebook;
+# MAGIC - widgets do Databricks usados para parametrizar a execução.
 
 import re
 import unicodedata
 
+from pyspark import StorageLevel
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 from pyspark.sql.window import Window
@@ -37,6 +55,7 @@ FINAL_OUTPUT_COLUMNS = [
 ]
 
 CONTEXT_COLUMNS = ["evento", "tipo_evento", "local", "data_evento"]
+LEAD_STAGING_COLUMNS = set(CONTEXT_COLUMNS + ["cpf", "data_nascimento"])
 
 HEADER_ALIASES = {
     "dt_nascimento": "data_nascimento",
@@ -63,7 +82,7 @@ dbutils.widgets.text("output_audit_table", "")
 dbutils.widgets.text("output_issues_table", "")
 dbutils.widgets.text("csv_encoding", "UTF-8")
 dbutils.widgets.text("csv_delimiter", ",")
-dbutils.widgets.dropdown("lead_date_style", "AUTO_SAFE", ["AUTO_SAFE", "DMY", "MDY"])
+dbutils.widgets.dropdown("lead_date_style", "MDY", ["AUTO_SAFE", "DMY", "MDY"])
 dbutils.widgets.text("default_evento", "")
 dbutils.widgets.text("default_tipo_evento", "")
 dbutils.widgets.text("default_local", "")
@@ -71,15 +90,60 @@ dbutils.widgets.text("default_data_evento", "")
 
 
 # COMMAND ----------
-# CELULA 2 - Leitura e validacao dos parametros
+# MAGIC %md
+# MAGIC ## 2. Sobre os widgets
+# MAGIC
+# MAGIC `dbutils.widgets` não é uma biblioteca externa que precise ser instalada via `pip`.
+# MAGIC Ele é um recurso nativo do Databricks para passar parâmetros ao notebook.
+# MAGIC
+# MAGIC Neste notebook os widgets foram mantidos porque todos têm utilidade prática:
+# MAGIC - `lead_csv_path`: caminho do CSV de entrada;
+# MAGIC - `bb_table_name`: tabela BB de referência;
+# MAGIC - `output_*`: destinos opcionais de persistência;
+# MAGIC - `csv_*`: parsing do arquivo;
+# MAGIC - `default_*`: fallback quando a planilha não traz algum campo obrigatório.
+# MAGIC
+# MAGIC Ou seja: eles não são ornamentais. Eles evitam editar o código a cada execução.
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 3. Leitura e validação dos parâmetros
+# MAGIC
+# MAGIC A ideia aqui é transformar widgets em variáveis normais do notebook e falhar cedo quando algo essencial estiver ausente.
 
 def widget_text(name, default=None):
+    """Read a Databricks widget as normalized text.
+
+    Args:
+        name: Widget name registered in `dbutils.widgets`.
+        default: Value returned when the widget is empty or blank.
+
+    Returns:
+        A trimmed string value, or `default` when the widget has no usable
+        content.
+
+    Important:
+        This helper keeps parameter reading consistent and avoids repeating
+        `strip()` / empty checks all over the notebook.
+    """
     value = dbutils.widgets.get(name)
     value = "" if value is None else str(value).strip()
     return value if value else default
 
 
 def fail(message):
+    """Abort notebook execution with a clear validation error.
+
+    Args:
+        message: Human-readable explanation of what failed.
+
+    Returns:
+        This function does not return.
+
+    Important:
+        The notebook intentionally fails fast with `ValueError` whenever a
+        prerequisite or contract rule is violated.
+    """
     raise ValueError(message)
 
 
@@ -90,7 +154,7 @@ OUTPUT_AUDIT_TABLE = widget_text("output_audit_table")
 OUTPUT_ISSUES_TABLE = widget_text("output_issues_table")
 CSV_ENCODING = widget_text("csv_encoding", "UTF-8")
 CSV_DELIMITER = widget_text("csv_delimiter", ",")
-LEAD_DATE_STYLE = widget_text("lead_date_style", "AUTO_SAFE").upper()
+LEAD_DATE_STYLE = widget_text("lead_date_style", "MDY").upper()
 
 DEFAULT_CONTEXT = {
     "evento": widget_text("default_evento"),
@@ -110,25 +174,77 @@ if LEAD_DATE_STYLE not in DATE_STYLE_OPTIONS:
 
 
 # COMMAND ----------
-# CELULA 3 - Funcoes auxiliares puras
+# MAGIC %md
+# MAGIC ## 4. Funções auxiliares puras
+# MAGIC
+# MAGIC Estas funções são pequenas peças reutilizáveis de normalização, validação e construção de expressões técnicas.
 
 def strip_accents(value):
+    """Remove accents and diacritics from a text value.
+
+    Args:
+        value: Any value convertible to string.
+
+    Returns:
+        A normalized string without accent marks.
+
+    Important:
+        Esta função é usada apenas para normalizar nomes técnicos de coluna,
+        não para alterar dados de negócio.
+    """
     normalized = unicodedata.normalize("NFKD", str(value or ""))
     return "".join(char for char in normalized if not unicodedata.combining(char))
 
 
 def normalize_header(header):
+    """Normalize a raw CSV header into the notebook's canonical format.
+
+    Args:
+        header: Original column name found in the source CSV.
+
+    Returns:
+        A lowercase, accent-free, underscore-based technical column name,
+        applying aliases definidos em `HEADER_ALIASES` quando necessário.
+
+    Important:
+        Esta função permite aceitar pequenas variações de cabeçalho sem mudar
+        a lógica de negócio do notebook.
+    """
     value = strip_accents(str(header or "").lstrip("\ufeff").strip().lower())
     value = re.sub(r"[^a-z0-9]+", "_", value).strip("_")
     return HEADER_ALIASES.get(value, value)
 
 
 def safe_col(column_name):
+    """Build a Spark column reference safely escaped with backticks.
+
+    Args:
+        column_name: Name of the column to reference.
+
+    Returns:
+        A Spark `Column` object safe for unusual names.
+
+    Important:
+        This prevents parsing issues when source headers contain spaces,
+        punctuation or reserved characters.
+    """
     escaped = str(column_name).replace("`", "``")
     return F.col(f"`{escaped}`")
 
 
 def calc_cpf_check_digit(numbers, start_weight):
+    """Calculate one CPF verification digit.
+
+    Args:
+        numbers: Sequence of integer digits participating in the calculation.
+        start_weight: Descending weight applied to the first digit.
+
+    Returns:
+        The calculated verification digit as integer.
+
+    Important:
+        Esta é a base aritmética da validação oficial de CPF.
+    """
     total = 0
     weight = start_weight
     for number in numbers:
@@ -139,6 +255,20 @@ def calc_cpf_check_digit(numbers, start_weight):
 
 
 def is_valid_cpf(value):
+    """Validate a CPF after removing non-numeric characters.
+
+    Args:
+        value: Raw CPF value, possibly with punctuation or whitespace.
+
+    Returns:
+        `True` when the CPF is structurally valid; otherwise `False`.
+
+    Important:
+        Também rejeita:
+        - CPFs com tamanho diferente de 11;
+        - CPFs com todos os dígitos iguais;
+        - placeholders conhecidos listados em `KNOWN_INVALID_CPFS`.
+    """
     digits = re.sub(r"\D+", "", str(value or ""))
     if len(digits) != 11:
         return False
@@ -156,12 +286,37 @@ validate_cpf_udf = F.udf(is_valid_cpf, T.BooleanType())
 
 
 def try_timestamp(column_name, pattern):
+    """Build a safe Spark SQL timestamp parsing expression.
+
+    Args:
+        column_name: Column name to parse.
+        pattern: Spark-compatible datetime pattern.
+
+    Returns:
+        A Spark SQL expression using `try_to_timestamp`.
+
+    Important:
+        `try_to_timestamp` devolve null quando o parse falha, evitando
+        interrupções abruptas na execução.
+    """
     escaped = str(column_name).replace("`", "``")
     pattern_escaped = str(pattern).replace("'", "\\'")
     return F.expr(f"try_to_timestamp(`{escaped}`, '{pattern_escaped}')")
 
 
 def empty_issues_df():
+    """Create an empty issues DataFrame with the canonical schema.
+
+    Args:
+        This function receives no arguments.
+
+    Returns:
+        An empty Spark DataFrame following the exact `issues_df` schema.
+
+    Important:
+        Isso simplifica os unions posteriores e garante formato estável mesmo
+        quando nenhuma inconsistência for encontrada.
+    """
     schema = T.StructType(
         [
             T.StructField("__lead_row_id", T.StringType(), True),
@@ -177,7 +332,10 @@ def empty_issues_df():
 
 
 # COMMAND ----------
-# CELULA 4 - Leitura do CSV de leads e controle de linhas corrompidas
+# MAGIC %md
+# MAGIC ## 5. Leitura do CSV de leads e controle de linhas corrompidas
+# MAGIC
+# MAGIC Primeiro o notebook faz uma leitura leve do cabeçalho. Depois relê o CSV com schema explícito e falha se encontrar linhas corrompidas.
 
 csv_reader_options = {
     "header": "true",
@@ -217,7 +375,14 @@ if corrupt_rows_count > 0:
 
 
 # COMMAND ----------
-# CELULA 5 - Normalizacao de cabecalhos, contrato minimo e staging rastreavel
+# MAGIC %md
+# MAGIC ## 6. Normalização dos cabeçalhos e criação da staging dos leads
+# MAGIC
+# MAGIC Nesta etapa:
+# MAGIC - normalizamos os nomes das colunas;
+# MAGIC - verificamos colisões após normalização;
+# MAGIC - mantemos apenas as colunas úteis ao fluxo;
+# MAGIC - criamos colunas técnicas mínimas para rastreabilidade.
 
 source_columns = [column for column in raw_leads_df.columns if column != CORRUPT_RECORD_COLUMN]
 normalized_columns = [normalize_header(column) for column in source_columns]
@@ -232,14 +397,17 @@ duplicates = sorted(
 if duplicates:
     fail(f"Cabecalhos duplicados apos normalizacao: {', '.join(duplicates)}")
 
-raw_payload = F.to_json(F.struct(*[safe_col(column).alias(column) for column in source_columns]))
+lead_staging_pairs = [
+    (source, target)
+    for source, target in zip(source_columns, normalized_columns)
+    if target in LEAD_STAGING_COLUMNS
+]
 
 staging_leads_df = raw_leads_df.select(
     *[
         safe_col(source).alias(target)
-        for source, target in zip(source_columns, normalized_columns)
+        for source, target in lead_staging_pairs
     ],
-    raw_payload.alias("__lead_raw_payload_json"),
     F.input_file_name().alias("__input_file_name"),
 )
 
@@ -281,12 +449,14 @@ staging_leads_df = (
 for column in ["evento", "tipo_evento", "local", "data_evento", "data_nascimento"]:
     staging_leads_df = staging_leads_df.withColumn(column, F.col(column).cast("string"))
 
-input_leads_count = staging_leads_df.count()
 staging_leads_df.createOrReplaceTempView("staging_leads_df_raw")
 
 
 # COMMAND ----------
-# CELULA 6 - Padronizacao e validacao de CPF nos leads
+# MAGIC %md
+# MAGIC ## 7. Padronização e validação de CPF dos leads
+# MAGIC
+# MAGIC O CPF do lead é limpo, normalizado para 11 dígitos, classificado por tipo de problema e marcado como válido ou inválido para o join.
 
 cpf_digits = F.regexp_replace(F.coalesce(F.col("__cpf_raw"), F.lit("")), r"[^0-9]", "")
 cpf_digits_len = F.length(cpf_digits)
@@ -316,14 +486,48 @@ staging_leads_df = (
 
 
 # COMMAND ----------
-# CELULA 7 - Parsing seguro de datas dos leads
+# MAGIC %md
+# MAGIC ## 8. Funções auxiliares para limpeza e parsing de datas
+# MAGIC
+# MAGIC Estas funções tratam nulos textuais e convertem datas dos leads em colunas técnicas com status controlado.
 
 def clean_text_column(column_name):
+    """Normalize text values by trimming spaces and mapping null-like tokens.
+
+    Args:
+        column_name: Name of the Spark column to normalize.
+
+    Returns:
+        A Spark column expression where blank-like tokens become null.
+
+    Important:
+        Tokens como `nan`, `null`, `none` e string vazia passam a ser tratados
+        como ausência real de informação.
+    """
     cleaned = F.trim(F.col(column_name))
     return F.when(F.lower(cleaned).isin(*NULL_TOKENS), F.lit(None).cast("string")).otherwise(cleaned)
 
 
 def add_date_parse_columns(df, raw_column, prefix, date_kind):
+    """Add parsed date columns and validation status for one raw date field.
+
+    Args:
+        df: Spark DataFrame being transformed.
+        raw_column: Name of the raw string date column.
+        prefix: Prefix used to build technical output columns.
+        date_kind: Semantic type of date, such as `birth` or `event`.
+
+    Returns:
+        The same DataFrame enriched with:
+        - `<prefix>_clean`
+        - `<prefix>_candidate`
+        - `<prefix>_status`
+        - `<prefix>_valid`
+
+    Important:
+        A função suporta formatos ISO e datas com barra, respeitando o modo
+        configurado em `LEAD_DATE_STYLE`.
+    """
     clean_col = f"{prefix}_clean"
     candidate_col = f"{prefix}_candidate"
     status_col = f"{prefix}_status"
@@ -401,6 +605,14 @@ def add_date_parse_columns(df, raw_column, prefix, date_kind):
     )
 
 
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 9. Parsing e validação das datas dos leads
+# MAGIC
+# MAGIC Depois das funções auxiliares, o notebook aplica o parsing nas datas de nascimento e de evento, persiste a staging e consolida métricas básicas em uma única action.
+
+# COMMAND ----------
+
 staging_leads_df = add_date_parse_columns(
     staging_leads_df,
     "__data_nascimento_raw",
@@ -414,16 +626,27 @@ staging_leads_df = add_date_parse_columns(
     "event",
 )
 
-valid_event_rows = staging_leads_df.filter(F.col("lead_event_date_status") == F.lit("VALID")).count()
+staging_leads_df = staging_leads_df.persist(StorageLevel.MEMORY_AND_DISK)
+staging_metrics = staging_leads_df.agg(
+    F.count(F.lit(1)).alias("input_leads_count"),
+    F.sum(
+        F.when(F.col("lead_event_date_status") == F.lit("VALID"), F.lit(1)).otherwise(F.lit(0))
+    ).alias("valid_event_rows"),
+).collect()[0]
+input_leads_count = int(staging_metrics["input_leads_count"])
+valid_event_rows = int(staging_metrics["valid_event_rows"] or 0)
+
 if valid_event_rows == 0:
     fail("Nenhuma linha possui data_evento valida. Notebook abortado.")
 
-staging_leads_df = staging_leads_df.cache()
 staging_leads_df.createOrReplaceTempView("staging_leads_df")
 
 
 # COMMAND ----------
-# CELULA 8 - Shortlist de CPFs elegiveis para match
+# MAGIC %md
+# MAGIC ## 10. Shortlist de CPFs elegíveis para match
+# MAGIC
+# MAGIC Esta lista é a base para reduzir a tabela BB somente aos CPFs de leads válidos.
 
 lead_cpfs_matchable = (
     staging_leads_df.filter(F.col("cpf_valido"))
@@ -435,7 +658,14 @@ lead_cpfs_matchable.createOrReplaceTempView("lead_cpfs_matchable")
 
 
 # COMMAND ----------
-# CELULA 9 - Leitura enxuta, filtro tecnico e deduplicacao da base BB
+# MAGIC %md
+# MAGIC ## 11. Leitura enxuta, filtro técnico e deduplicação da base BB
+# MAGIC
+# MAGIC O desenho de escala é preservado:
+# MAGIC - poucas colunas desde o início;
+# MAGIC - somente pessoa física;
+# MAGIC - somente CPF utilizável;
+# MAGIC - `left_semi` com broadcast antes da deduplicação.
 
 bb_required_columns = {"cod_tipo", "cod_cpf_cgc", "dta_nasc_csnt", "dta_ulta_atlz", "dta_revisao", "cod"}
 bb_available_columns = set(spark.table(BB_TABLE_NAME).columns)
@@ -491,7 +721,7 @@ bb_pruned_df = (
             256,
         ),
     )
-    .cache()
+    .persist(StorageLevel.MEMORY_AND_DISK)
 )
 
 bb_rows_after_prune = bb_pruned_df.count()
@@ -507,18 +737,29 @@ bb_dedup_df = (
     bb_pruned_df.withColumn("bb_row_num", F.row_number().over(bb_window))
     .where(F.col("bb_row_num") == F.lit(1))
     .drop("bb_row_num")
-    .cache()
+    .persist(StorageLevel.MEMORY_AND_DISK)
 )
 
-bb_rows_after_dedupe = bb_dedup_df.count()
-bb_max_dta_ulta_atlz = bb_dedup_df.agg(F.max("bb_dta_ulta_atlz_ord").alias("max_date")).collect()[0]["max_date"]
+bb_dedup_metrics = bb_dedup_df.agg(
+    F.count(F.lit(1)).alias("bb_rows_after_dedupe"),
+    F.max("bb_dta_ulta_atlz_ord").alias("max_date"),
+).collect()[0]
+bb_rows_after_dedupe = int(bb_dedup_metrics["bb_rows_after_dedupe"])
+bb_max_dta_ulta_atlz = bb_dedup_metrics["max_date"]
 bb_max_dta_ulta_atlz = str(bb_max_dta_ulta_atlz) if bb_max_dta_ulta_atlz is not None else None
 
 bb_dedup_df.createOrReplaceTempView("bb_dedup_df")
 
 
 # COMMAND ----------
-# CELULA 10 - Join leads <- BB e reconciliacao dos campos
+# MAGIC %md
+# MAGIC ## 12. Join leads <- BB e reconciliação dos campos
+# MAGIC
+# MAGIC Aqui acontece o enriquecimento propriamente dito:
+# MAGIC - join apenas com CPF válido do lado dos leads;
+# MAGIC - definição de `cliente`;
+# MAGIC - escolha da origem do nascimento (`bb`, `lead`, `none`);
+# MAGIC - preparação das colunas técnicas do resultado.
 
 joined_df = staging_leads_df.join(
     bb_dedup_df,
@@ -552,19 +793,16 @@ joined_df = (
     )
 )
 
-joined_count = joined_df.count()
-unique_row_ids = joined_df.select("__lead_row_id").distinct().count()
-if joined_count != input_leads_count:
-    fail(f"Join alterou cardinalidade: entrada={input_leads_count}, saida={joined_count}")
-if unique_row_ids != input_leads_count:
-    fail(f"__lead_row_id perdeu unicidade: entrada={input_leads_count}, unicos={unique_row_ids}")
-
-joined_df = joined_df.cache()
-joined_df.createOrReplaceTempView("joined_df")
-
 
 # COMMAND ----------
-# CELULA 11 - Derivacoes de negocio e montagem do final_df
+# MAGIC %md
+# MAGIC ## 13. Derivações de negócio e montagem do `final_df`
+# MAGIC
+# MAGIC Nesta etapa final do enriquecimento são calculados:
+# MAGIC - `Soma de ano_evento`;
+# MAGIC - `Soma de idade`;
+# MAGIC - `faixa_etaria`;
+# MAGIC - validações estruturais do join.
 
 joined_df = (
     joined_df.withColumn("Soma de ano_evento", F.year(F.col("data_evento_final")).cast("int"))
@@ -582,7 +820,22 @@ joined_df = (
         .when(F.col("Soma de idade") <= 40, F.lit("18-40"))
         .otherwise(F.lit("40+")),
     )
+    .persist(StorageLevel.MEMORY_AND_DISK)
 )
+
+joined_metrics = joined_df.agg(
+    F.count(F.lit(1)).alias("joined_count"),
+    F.countDistinct("__lead_row_id").alias("unique_row_ids"),
+).collect()[0]
+joined_count = int(joined_metrics["joined_count"])
+unique_row_ids = int(joined_metrics["unique_row_ids"])
+
+if joined_count != input_leads_count:
+    fail(f"Join alterou cardinalidade: entrada={input_leads_count}, saida={joined_count}")
+if unique_row_ids != input_leads_count:
+    fail(f"__lead_row_id perdeu unicidade: entrada={input_leads_count}, unicos={unique_row_ids}")
+
+joined_df.createOrReplaceTempView("joined_df")
 
 final_df = joined_df.select(
     F.col("evento").alias("evento"),
@@ -601,14 +854,14 @@ final_df = joined_df.select(
 if final_df.columns != FINAL_OUTPUT_COLUMNS:
     fail("Layout final invalido: " + str(final_df.columns))
 
-if final_df.count() != input_leads_count:
-    fail("final_df nao preservou a cardinalidade dos leads")
-
 final_df.createOrReplaceTempView("final_df")
 
 
 # COMMAND ----------
-# CELULA 12 - Montagem do issues_df por linha
+# MAGIC %md
+# MAGIC ## 14. Montagem do `issues_df`
+# MAGIC
+# MAGIC Cada subconjunto abaixo representa um tipo específico de problema encontrado ao longo do processamento.
 
 issues_df = empty_issues_df()
 
@@ -695,12 +948,31 @@ issues_df.createOrReplaceTempView("issues_df")
 
 
 # COMMAND ----------
-# CELULA 13 - Montagem do audit_df em formato longo
+# MAGIC %md
+# MAGIC ## 15. Função auxiliar e montagem do `audit_df`
+# MAGIC
+# MAGIC O `audit_df` é gerado em formato longo para facilitar inspeção e consumo analítico.
 
 AUDIT_DIMENSION_COLUMNS = ["evento", "tipo_evento"]
 
 
 def metric_long_df(df, scope, metric_exprs, group_columns=None):
+    """Aggregate metrics and reshape them into the long audit format.
+
+    Args:
+        df: Spark DataFrame used as source for aggregation.
+        scope: Logical scope label, such as `global` or `evento`.
+        metric_exprs: List of tuples `(metric_name, spark_expression)`.
+        group_columns: Optional list of columns used to group the metrics.
+
+    Returns:
+        A Spark DataFrame with columns `escopo`, `evento`, `tipo_evento`,
+        `metrica` and `valor`.
+
+    Important:
+        O formato longo transforma cada métrica em linha, o que simplifica
+        inspeção, dashboards e extensões futuras.
+    """
     group_columns = group_columns or []
     metric_names = [name for name, _expr in metric_exprs]
 
@@ -779,7 +1051,11 @@ audit_df.createOrReplaceTempView("audit_df")
 
 
 # COMMAND ----------
-# CELULA 14 - Persistencia opcional e exibicao final
+# MAGIC %md
+# MAGIC ## 16. Persistência opcional e exibição final
+# MAGIC
+# MAGIC Se os widgets de saída estiverem preenchidos, os DataFrames são gravados como tabelas Delta.
+# MAGIC Depois disso, as saídas são exibidas no notebook para inspeção.
 
 if OUTPUT_FINAL_TABLE:
     final_df.write.format("delta").mode("overwrite").saveAsTable(OUTPUT_FINAL_TABLE)

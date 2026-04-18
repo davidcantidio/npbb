@@ -33,7 +33,7 @@ import {
   listReferenciaEventos,
   mapearLeadBatch,
 } from "../../services/leads_import";
-import { formatEventoLabel } from "../../utils/formatters";
+import { formatReferenciaEventoOptionLabel } from "../../utils/formatters";
 import { useAuth } from "../../store/auth";
 
 const QUICK_CREATE_ID = -1;
@@ -120,6 +120,7 @@ export type MapeamentoPageProps = {
   fixedEventoId?: number | null;
   onCancel?: () => void;
   onMapped?: (result: MapearBatchResult) => void;
+  cancelLabel?: string;
 };
 
 export default function MapeamentoPage({
@@ -128,6 +129,7 @@ export default function MapeamentoPage({
   fixedEventoId = null,
   onCancel,
   onMapped,
+  cancelLabel,
 }: MapeamentoPageProps = {}) {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -169,7 +171,7 @@ export default function MapeamentoPage({
     const evento = eventos.find((item) => item.id === initialEventoId);
     if (!evento) return;
     setEventoId(initialEventoId);
-    setEventoInputValue(formatEventoLabel(evento.nome, evento.data_inicio_prevista));
+    setEventoInputValue(formatReferenciaEventoOptionLabel(evento));
     eventoPrefillAppliedForBatchRef.current = batchId;
   }, [batchId, eventos, initialEventoId, usesFixedEvento]);
 
@@ -216,10 +218,11 @@ export default function MapeamentoPage({
         id: created.id,
         nome: created.nome,
         data_inicio_prevista: created.data_inicio_prevista ?? null,
+        leads_count: 0,
       };
       setEventos((prev) => [newRef, ...prev]);
       setEventoId(created.id);
-      setEventoInputValue(formatEventoLabel(created.nome, created.data_inicio_prevista ?? null));
+      setEventoInputValue(formatReferenciaEventoOptionLabel(newRef));
       setIsQuickCreateOpen(false);
     },
     [],
@@ -320,14 +323,14 @@ export default function MapeamentoPage({
                 ) : (
                   <Autocomplete<ReferenciaEvento, false, false, false>
                     options={eventos}
-                    getOptionLabel={(evento) => formatEventoLabel(evento.nome, evento.data_inicio_prevista)}
+                    getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
                     filterOptions={(options, state) => {
                       const filtered = options.filter((evento) =>
-                        formatEventoLabel(evento.nome, evento.data_inicio_prevista)
+                        formatReferenciaEventoOptionLabel(evento)
                           .toLowerCase()
                           .includes(state.inputValue.toLowerCase()),
                       );
-                      if (filtered.length === 0 || state.inputValue.trim()) {
+                      if (!filtered.some((evento) => evento.id === QUICK_CREATE_ID)) {
                         filtered.push({
                           id: QUICK_CREATE_ID,
                           nome: "+ Criar evento rapidamente",
@@ -358,9 +361,7 @@ export default function MapeamentoPage({
                         key={option.id}
                         sx={option.id === QUICK_CREATE_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
                       >
-                        {option.id === QUICK_CREATE_ID
-                          ? option.nome
-                          : formatEventoLabel(option.nome, option.data_inicio_prevista)}
+                        {formatReferenciaEventoOptionLabel(option)}
                       </MenuItem>
                     )}
                   />
@@ -461,7 +462,7 @@ export default function MapeamentoPage({
                 }}
                 disabled={submitting}
               >
-                Cancelar
+                {cancelLabel ?? "Cancelar"}
               </Button>
               <Button variant="contained" disabled={!canConfirm} onClick={handleConfirm}>
                 {submitting ? <CircularProgress size={18} color="inherit" /> : "Confirmar Mapeamento"}

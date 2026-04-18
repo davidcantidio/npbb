@@ -67,6 +67,10 @@ PASSWORD_RESET_DEBUG="false"
 DB_CONNECT_TIMEOUT=5
 DB_POOL_TIMEOUT=5
 DB_STATEMENT_TIMEOUT_MS=15000
+LEAD_GOLD_STATEMENT_TIMEOUT_MS=600000
+LEAD_GOLD_PROGRESS_HEARTBEAT_SECONDS=20
+LEAD_GOLD_INSERT_COMMIT_BATCH_SIZE_SUPABASE_POOLER_6543=25
+LEAD_GOLD_INSERT_MAX_TRANSACTION_SECONDS_SUPABASE_POOLER_6543=15
 ```
 
 Alternativa (PostgreSQL local para dev):
@@ -79,6 +83,10 @@ Observacoes:
 - `DATABASE_URL` e a conexao usada pela API.
 - `DIRECT_URL` e a conexao direta para migrations/seed.
 - `DB_CONNECT_TIMEOUT` deve ser menor que o timeout HTTP do frontend para a API retornar `503` estruturado quando o banco remoto estiver indisponivel, em vez de deixar o proxy do Vite abortar a conexao.
+- `DB_POOL_TIMEOUT` e `DB_CONNECT_TIMEOUT` continuam sendo limites de infraestrutura/pool; nao use esses valores para acomodar processamento longo do pipeline Gold.
+- `LEAD_GOLD_STATEMENT_TIMEOUT_MS` controla o limite por statement/transacao de cada chunk de persistencia do Gold; ele nao representa o tempo total permitido para a execucao inteira do pipeline.
+- `LEAD_GOLD_PROGRESS_HEARTBEAT_SECONDS` atualiza `pipeline_progress.updated_at` durante chunks lentos do Gold para evitar falso alerta de stall na UI sem mascarar falhas reais de banco ou rede.
+- Se `DATABASE_URL` usar o pooler transacional compartilhado do Supabase (`:6543`), o Gold aplica um cap efetivo de chunk por linhas (`LEAD_GOLD_INSERT_COMMIT_BATCH_SIZE_SUPABASE_POOLER_6543`) e um budget de tempo por transacao aberta (`LEAD_GOLD_INSERT_MAX_TRANSACTION_SECONDS_SUPABASE_POOLER_6543`) para reduzir pressao no pooler e evitar transacoes muito longas no plano Free.
 - O backend aceita variaveis separadas (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`) como fallback.
 - Em testes, o backend permite SQLite se `TESTING=true` ou `PYTEST_CURRENT_TEST` estiver setado.
 - Para startup local, rode com `PYTHONPATH=..` (ou use `./scripts/dev_api.sh`) porque o backend importa o pacote compartilhado `core/`.
@@ -186,6 +194,11 @@ Observacao:
 ```bash
 npm run dev
 ```
+
+Observacao:
+- O frontend em desenvolvimento tambem pode ser acessado de outro dispositivo na mesma rede por `http://<IPv4>:5173`.
+- No Windows, descubra o IP local com `ipconfig`.
+- O proxy `/api` continua apontando para o backend local da maquina que esta rodando o Vite.
 
 ## Comandos rapidos
 - Backend (raiz): `./scripts/dev_backend.sh`

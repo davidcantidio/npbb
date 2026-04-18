@@ -25,7 +25,15 @@ from app.models.models import (
     now_utc,
 )
 from app.schemas.ativacao import AtivacaoCreate, AtivacaoRead, AtivacaoUpdate
-from app.services.landing_pages import hydrate_ativacao_public_urls
+from app.services.default_event_activation import guard_bb_invariant_on_activation_write
+from app.services.evento_activation_import import (
+    ACTIVATION_IMPORT_REQUIRES_AGENCY_CODE,
+    get_activation_import_block_reason,
+)
+from app.services.landing_pages import (
+    build_ativacao_public_access_urls,
+    hydrate_ativacao_public_urls,
+)
 from app.utils.http_errors import raise_http_error
 
 router = APIRouter(prefix="/ativacao", tags=["ativacao"])
@@ -166,6 +174,13 @@ def _apply_ativacao_update(
         evento_id=ativacao.evento_id,
         gamificacao_id=data.get("gamificacao_id"),
     )
+    if "nome" in data:
+        data["nome"] = guard_bb_invariant_on_activation_write(
+            session,
+            evento_id=ativacao.evento_id,
+            ativacao_id=ativacao.id,
+            nome=str(data["nome"]) if data["nome"] is not None else None,
+        )
     for key, value in data.items():
         setattr(ativacao, key, value)
     ativacao.updated_at = now_utc()
@@ -206,19 +221,19 @@ def listar_ativacoes_por_evento(
     ativacoes = session.exec(
         select(Ativacao).where(Ativacao.evento_id == evento_id).order_by(Ativacao.id)
     ).all()
-    changed = False
+    items: list[AtivacaoRead] = []
     for ativacao in ativacoes:
-        changed = hydrate_ativacao_public_urls(ativacao) or changed
-
-    if changed:
-        for ativacao in ativacoes:
-            ativacao.updated_at = now_utc()
-            session.add(ativacao)
-        session.commit()
-        for ativacao in ativacoes:
-            session.refresh(ativacao)
-
-    return [AtivacaoRead.model_validate(ativacao, from_attributes=True) for ativacao in ativacoes]
+        public_urls = build_ativacao_public_access_urls(ativacao.id or 0)
+        items.append(
+            AtivacaoRead.model_validate(ativacao, from_attributes=True).model_copy(
+                update={
+                    "landing_url": public_urls["landing_url"],
+                    "qr_code_url": public_urls["qr_code_url"],
+                    "url_promotor": public_urls["url_promotor"],
+                }
+            )
+        )
+    return items
 
 
 @eventos_router.post(
@@ -237,20 +252,33 @@ def criar_ativacao_por_evento(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _get_visible_evento_or_404(
+    evento = _get_visible_evento_or_404(
         session=session,
         evento_id=evento_id,
         current_user=current_user,
     )
+    block_reason = get_activation_import_block_reason(evento)
+    if block_reason is not None:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code=ACTIVATION_IMPORT_REQUIRES_AGENCY_CODE,
+            message=block_reason,
+            field="evento_id",
+        )
     _validate_gamificacao_scope(
         session=session,
         evento_id=evento_id,
         gamificacao_id=payload.gamificacao_id,
     )
+    nome = guard_bb_invariant_on_activation_write(
+        session,
+        evento_id=evento_id,
+        nome=payload.nome,
+    )
 
     ativacao = Ativacao(
         evento_id=evento_id,
-        nome=payload.nome,
+        nome=nome or payload.nome,
         descricao=payload.descricao,
         mensagem_qrcode=payload.mensagem_qrcode,
         gamificacao_id=payload.gamificacao_id,
@@ -362,6 +390,12 @@ def deletar_ativacao(
         session=session,
         ativacao_id=ativacao_id,
         current_user=current_user,
+    )
+    guard_bb_invariant_on_activation_write(
+        session,
+        evento_id=ativacao.evento_id,
+        ativacao_id=ativacao.id,
+        deleting=True,
     )
     dependencies = _count_ativacao_dependencies(session, ativacao_id)
 

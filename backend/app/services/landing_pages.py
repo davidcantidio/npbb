@@ -123,6 +123,24 @@ def hydrate_evento_public_urls(
     return False
 
 
+def build_evento_public_access_urls(
+    evento_id: int, *, backend_base_url: str | None = None
+) -> dict[str, str]:
+    """Returns derived public event URLs without mutating ORM state."""
+    urls = build_evento_public_urls(evento_id, backend_base_url=backend_base_url)
+    urls["qr_code_url"] = build_qr_code_data_url(urls["url_landing"])
+    return urls
+
+
+def build_ativacao_public_access_urls(
+    ativacao_id: int, *, backend_base_url: str | None = None
+) -> dict[str, str]:
+    """Returns derived public activation URLs without mutating ORM state."""
+    urls = build_ativacao_public_urls(ativacao_id, backend_base_url=backend_base_url)
+    urls["qr_code_url"] = build_qr_code_data_url(urls["landing_url"])
+    return urls
+
+
 def build_landing_fields_from_config(campos: list[Any]) -> list[LandingFieldRead]:
     ordered_campos = sorted(
         list(campos),
@@ -257,13 +275,12 @@ def build_landing_payload(
     optional_keys = [field.key for field in fields if not field.required]
     submit_url = _build_submit_url(evento_id=evento.id or 0, ativacao=ativacao)
 
-    _persist_ativacao_public_urls_if_changed(
-        session,
-        ativacao=ativacao,
-        backend_base_url=backend_base_url,
+    event_urls = build_evento_public_access_urls(evento.id or 0, backend_base_url=backend_base_url)
+    ativacao_urls = (
+        build_ativacao_public_access_urls(ativacao.id or 0, backend_base_url=backend_base_url)
+        if ativacao
+        else None
     )
-
-    event_urls = build_evento_public_urls(evento.id or 0, backend_base_url=backend_base_url)
     ativacao_info = _build_ativacao_info(ativacao)
     gamificacoes = _build_gamificacoes_for_ativacao(session, ativacao=ativacao)
 
@@ -301,9 +318,9 @@ def build_landing_payload(
             tagline=BRAND_TAGLINE,
         ),
         acesso=LandingAccessRead(
-            landing_url=ativacao.landing_url if ativacao else event_urls["url_landing"],
-            qr_code_url=ativacao.qr_code_url if ativacao else None,
-            url_promotor=ativacao.url_promotor if ativacao else event_urls["url_landing"],
+            landing_url=ativacao_urls["landing_url"] if ativacao_urls else event_urls["url_landing"],
+            qr_code_url=ativacao_urls["qr_code_url"] if ativacao_urls else None,
+            url_promotor=ativacao_urls["url_promotor"] if ativacao_urls else event_urls["url_landing"],
         ),
         lead_reconhecido=lead_reconhecido,
         lead_ja_converteu_nesta_ativacao=lead_ja_converteu_nesta_ativacao,

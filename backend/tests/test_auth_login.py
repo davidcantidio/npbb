@@ -1,11 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, SQLModel, create_engine
 from sqlalchemy.pool import StaticPool
 
 from app.db.database import get_session
 from app.main import app
 from app.models.models import Usuario
+from app.routers import auth as auth_router
 from app.routers.auth import STATUS_APROVADO
 from app.utils.security import hash_password
 
@@ -84,6 +86,21 @@ def test_login_invalid_credentials(client, engine):
         json={"email": user.email, "password": "errada"},
     )
     assert response.status_code == 401
+
+
+def test_login_returns_503_when_database_is_unavailable(client, monkeypatch):
+    def raise_operational_error(*args, **kwargs):
+        raise OperationalError("select 1", {}, Exception("timed out connecting to database"))
+
+    monkeypatch.setattr(auth_router, "_authenticate", raise_operational_error)
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "user@example.com", "password": "senha123"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "DB_TIMEOUT"
 
 
 def test_login_inactive_user(client, engine):

@@ -11,12 +11,13 @@ import io
 import json
 from datetime import date as date_type, datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -511,6 +512,80 @@ def test_materializar_silver_csv_sobrescreve_local_pela_localidade_canonica_do_e
     assert rows[0]["local"] == "Rio de Janeiro-RJ"
 
 
+def test_materializar_silver_csv_orders_rows_by_row_index(engine, monkeypatch):
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        evento = _seed_evento(s)
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="leads.xlsx",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=evento.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+
+        rows = [
+            (
+                10,
+                {
+                    **_base_gold_row(cpf="11144477735"),
+                    "nome": "Linha Dez",
+                    "source_file": "leads.xlsx",
+                    "source_sheet": "Participantes",
+                    "source_row": 21,
+                },
+            ),
+            (
+                0,
+                {
+                    **_base_gold_row(cpf="52998224725"),
+                    "nome": "Linha Zero",
+                    "source_file": "leads.xlsx",
+                    "source_sheet": "Participantes",
+                    "source_row": 11,
+                },
+            ),
+            (
+                1,
+                {
+                    **_base_gold_row(cpf="39053344705"),
+                    "nome": "Linha Um",
+                    "source_file": "leads.xlsx",
+                    "source_sheet": "Participantes",
+                    "source_row": 12,
+                },
+            ),
+        ]
+        for row_index, dados in rows:
+            s.add(LeadSilver(batch_id=batch.id, row_index=row_index, dados_brutos=dados, evento_id=evento.id))
+        s.commit()
+        batch_id = int(batch.id)
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        materialized_rows = list(csv.DictReader(fh))
+
+    assert [row["nome"] for row in materialized_rows] == ["Linha Zero", "Linha Um", "Linha Dez"]
+    assert [row["source_row"] for row in materialized_rows] == ["11", "12", "21"]
+    assert all(row["source_file"] == "leads.xlsx" for row in materialized_rows)
+    assert all(row["source_sheet"] == "Participantes" for row in materialized_rows)
+
+
 def test_configure_lead_gold_statement_timeout_sets_local_timeout_for_postgres(monkeypatch):
     from app.services.lead_pipeline_service import _configure_lead_gold_statement_timeout
 
@@ -644,6 +719,36 @@ class TestGetBatch:
         }
 
 
+def test_load_batch_without_bronze_defers_blob_column(engine):
+    from app.services.lead_pipeline_service import load_batch_without_bronze
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        batch = LeadBatch(
+            enviado_por=user.id or 0,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            data_upload=datetime.now(timezone.utc),
+            nome_arquivo_original="gigante.xlsx",
+            arquivo_bronze=b"x" * 1024,
+            stage=BatchStage.SILVER,
+            pipeline_status=PipelineStatus.PENDING,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+        batch_id = int(batch.id)
+
+    with Session(engine) as s:
+        batch = load_batch_without_bronze(s, batch_id)
+        assert batch is not None
+        assert "arquivo_bronze" in sa_inspect(batch).unloaded
+        assert batch.nome_arquivo_original == "gigante.xlsx"
+        assert "arquivo_bronze" in sa_inspect(batch).unloaded
+        assert batch.arquivo_bronze == b"x" * 1024
+        assert "arquivo_bronze" not in sa_inspect(batch).unloaded
+
+
 class TestExecutarPipeline:
     def test_returns_400_if_stage_not_silver(self, client, engine):
         with Session(engine) as s:
@@ -685,8 +790,7 @@ class TestExecutarPipeline:
             s.commit()
 
         with patch(
-            "app.routers.leads.executar_pipeline_gold",
-            new_callable=AsyncMock,
+            "app.routers.leads.executar_pipeline_gold_em_thread",
         ):
             resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
 
@@ -711,13 +815,54 @@ class TestExecutarPipeline:
             assert str(batch.pipeline_progress["updated_at"]).endswith("Z")
 
         with patch(
-            "app.routers.leads.executar_pipeline_gold",
-            new_callable=AsyncMock,
+            "app.routers.leads.executar_pipeline_gold_em_thread",
         ):
             duplicate_resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
 
         assert duplicate_resp.status_code == 409
         assert duplicate_resp.json()["detail"]["code"] == "PIPELINE_ALREADY_RUNNING"
+
+    def test_failed_insert_rerun_keeps_resume_checkpoint_in_queued_progress(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            batch.pipeline_status = PipelineStatus.FAIL
+            batch.pipeline_report = {
+                "gate": {"status": "FAIL", "decision": "hold", "fail_reasons": [], "warnings": []},
+                "failure_context": {
+                    "step": "insert_leads",
+                    "resume_context": {
+                        "step": "insert_leads",
+                        "committed_rows": 2,
+                        "total_rows": 3,
+                    },
+                },
+            }
+            s.add(batch)
+            s.commit()
+
+        with patch("app.routers.leads.executar_pipeline_gold_em_thread"):
+            resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
+
+        assert resp.status_code == 202, resp.text
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_report is None
+            assert batch.pipeline_progress is not None
+            assert batch.pipeline_progress["step"] == "queued"
+            assert batch.pipeline_progress["resume_step"] == "insert_leads"
+            assert batch.pipeline_progress["committed_rows"] == 2
+            assert batch.pipeline_progress["total_rows"] == 3
 
 
 class TestExecutarPipelineServiceProgress:
@@ -735,6 +880,9 @@ class TestExecutarPipelineServiceProgress:
         monkeypatch.setattr(database_module, "engine", engine)
 
         seen_steps: list[str] = []
+        persisted_events: list[tuple[str, str, int | None]] = []
+
+        original_persist_progress = lead_pipeline_service._persist_pipeline_progress
 
         def fake_run_pipeline(config):
             assert config.on_progress is not None
@@ -806,17 +954,244 @@ class TestExecutarPipelineServiceProgress:
                 exit_code=0,
             )
 
+        def record_progress(engine_arg, persisted_batch_id, event):
+            persisted_events.append((event.step, event.label, event.pct))
+            original_persist_progress(engine_arg, persisted_batch_id, event)
+
         monkeypatch.setattr(lead_pipeline_service, "run_pipeline", fake_run_pipeline)
+        monkeypatch.setattr(lead_pipeline_service, "_persist_pipeline_progress", record_progress)
 
         asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
 
         assert seen_steps == ["silver_csv", "normalize_rows"]
+        assert persisted_events[0][0] == "normalize_rows"
+        assert "Normalizando campos" in persisted_events[0][1]
+        assert persisted_events[0][2] == 40
+        assert persisted_events[1:] == [
+            ("insert_leads", "Inserindo leads Gold no banco (0/1)", 0),
+            ("insert_leads", "Inserindo leads Gold no banco (1/1)", 100),
+        ]
 
         with Session(engine) as s:
             batch = s.get(LeadBatch, batch_id)
             assert batch.pipeline_status == PipelineStatus.PASS
             assert batch.stage == BatchStage.GOLD
             assert batch.pipeline_progress is None
+
+    def test_insert_failure_persists_resume_context_from_last_committed_chunk(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        tmp_root = Path("backend/tmp-pytest") / f"insert-resume-fail-{uuid4().hex}"
+        report_dir = tmp_root / "output" / str(batch_id)
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "report.json"
+        consolidated_path = report_dir / FINAL_FILENAME
+        summary_path = report_dir / "summary.md"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "gate": {
+                        "status": "PASS",
+                        "decision": "promote",
+                        "fail_reasons": [],
+                        "warnings": [],
+                    },
+                    "totals": {"discarded_rows": 0},
+                    "quality_metrics": {"cpf_invalid_discarded": 0},
+                    "invalid_records": [],
+                    "exit_code": 0,
+                }
+            ),
+            encoding="utf-8",
+        )
+        consolidated_path.write_text(
+            "nome,cpf,email\nA,1,a@example.com\nB,2,b@example.com\nC,3,c@example.com\n",
+            encoding="utf-8",
+        )
+        summary_path.write_text("# summary\n", encoding="utf-8")
+
+        def fake_run_pipeline(_config):
+            return PipelineResult(
+                lote_id=str(batch_id),
+                status="PASS",
+                decision="promote",
+                output_dir=report_dir,
+                report_path=report_path,
+                summary_path=summary_path,
+                consolidated_path=consolidated_path,
+                exit_code=0,
+            )
+
+        def fake_insert_failure(_batch, _consolidated_path, _db, *, on_progress=None, resume_context=None):
+            assert resume_context is None
+            assert on_progress is not None
+            on_progress(
+                lead_pipeline_service._build_insert_leads_progress_event(
+                    processed_rows=0,
+                    total_rows=3,
+                    committed_rows=0,
+                )
+            )
+            on_progress(
+                lead_pipeline_service._build_insert_leads_progress_event(
+                    processed_rows=2,
+                    total_rows=3,
+                    committed_rows=2,
+                )
+            )
+            raise RuntimeError("insert exploded after checkpoint")
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", fake_run_pipeline)
+        monkeypatch.setattr(lead_pipeline_service, "_inserir_leads_gold", fake_insert_failure)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.FAIL
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["failure_context"]["resume_context"] == {
+                "step": "insert_leads",
+                "committed_rows": 2,
+                "total_rows": 3,
+            }
+
+    def test_rerun_after_failed_insert_resumes_from_last_committed_row(
+        self, client, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth, evento_id=evento.id)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            preexisting_rows = [
+                ("Alice", "52998224725", "alice@ex.com"),
+                ("Bruno", "11144477735", "bruno@ex.com"),
+            ]
+            for nome, cpf, email in preexisting_rows:
+                lead = Lead(
+                    batch_id=batch_id,
+                    nome=nome,
+                    email=email,
+                    cpf=cpf,
+                    evento_nome=evento.nome,
+                    sessao="Sao Paulo-SP",
+                )
+                s.add(lead)
+                s.commit()
+                s.refresh(lead)
+                s.add(
+                    LeadEvento(
+                        lead_id=lead.id,
+                        evento_id=evento.id,
+                        source_kind=LeadEventoSourceKind.LEAD_BATCH,
+                        source_ref_id=batch_id,
+                        tipo_lead=TipoLead.ENTRADA_EVENTO,
+                        responsavel_tipo=TipoResponsavel.PROPONENTE,
+                        responsavel_nome=evento.nome,
+                    )
+                )
+                s.commit()
+
+            batch.pipeline_status = PipelineStatus.FAIL
+            batch.pipeline_report = {
+                "gate": {"status": "FAIL", "decision": "hold", "fail_reasons": [], "warnings": []},
+                "failure_context": {
+                    "step": "insert_leads",
+                    "resume_context": {
+                        "step": "insert_leads",
+                        "committed_rows": 2,
+                        "total_rows": 3,
+                    },
+                },
+            }
+            s.add(batch)
+            s.commit()
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        tmp_root = Path("backend/tmp-pytest") / f"insert-resume-success-{uuid4().hex}"
+        report_dir = tmp_root / "output" / str(batch_id)
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "report.json"
+        consolidated_path = report_dir / FINAL_FILENAME
+        summary_path = report_dir / "summary.md"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "gate": {
+                        "status": "PASS",
+                        "decision": "promote",
+                        "fail_reasons": [],
+                        "warnings": [],
+                    },
+                    "totals": {"discarded_rows": 0},
+                    "quality_metrics": {"cpf_invalid_discarded": 0},
+                    "invalid_records": [],
+                    "exit_code": 0,
+                }
+            ),
+            encoding="utf-8",
+        )
+        consolidated_path.write_text(
+            (
+                "nome,cpf,email,local,data_evento\n"
+                "Alice,52998224725,alice@ex.com,Sao Paulo-SP,2026-06-08\n"
+                "Bruno,11144477735,bruno@ex.com,Sao Paulo-SP,2026-06-08\n"
+                "Carla,39053344705,carla@ex.com,Sao Paulo-SP,2026-06-08\n"
+            ),
+            encoding="utf-8",
+        )
+        summary_path.write_text("# summary\n", encoding="utf-8")
+
+        def fake_run_pipeline(_config):
+            return PipelineResult(
+                lote_id=str(batch_id),
+                status="PASS",
+                decision="promote",
+                output_dir=report_dir,
+                report_path=report_path,
+                summary_path=summary_path,
+                consolidated_path=consolidated_path,
+                exit_code=0,
+            )
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", fake_run_pipeline)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS
+            assert batch.stage == BatchStage.GOLD
+            leads = s.exec(select(Lead).where(Lead.batch_id == batch_id).order_by(Lead.email)).all()
+            assert [lead.email for lead in leads] == [
+                "alice@ex.com",
+                "bruno@ex.com",
+                "carla@ex.com",
+            ]
 
 
 class TestNormalizeRowCPFValidation:
@@ -1331,6 +1706,67 @@ class TestLeadEventoInGoldPipeline:
                 assert le.tipo_lead == TipoLead.ATIVACAO
                 assert le.responsavel_tipo == TipoResponsavel.AGENCIA
 
+    def test_activation_batch_without_event_agencia_persists_fail_with_context(
+        self, engine, monkeypatch
+    ):
+        with Session(engine) as s:
+            user = _seed_user(s)
+            evento = _seed_evento(s, agencia_id=None)
+            ativacao = Ativacao(nome="Stand import", evento_id=evento.id)
+            s.add(ativacao)
+            s.commit()
+            s.refresh(ativacao)
+            evento_id = evento.id
+
+            batch = LeadBatch(
+                enviado_por=user.id or 0,
+                plataforma_origem="email",
+                data_envio=datetime(2026, 3, 5, 10, 0, 0, tzinfo=timezone.utc),
+                nome_arquivo_original="leads.csv",
+                arquivo_bronze=CSV_CONTENT,
+                stage=BatchStage.SILVER,
+                evento_id=evento.id,
+                origem_lote="ativacao",
+                ativacao_id=ativacao.id,
+                pipeline_status=PipelineStatus.PENDING,
+            )
+            s.add(batch)
+            s.commit()
+            s.refresh(batch)
+            batch_id = batch.id
+            silver = LeadSilver(
+                batch_id=batch_id,
+                row_index=0,
+                evento_id=evento.id,
+                dados_brutos=_base_gold_row(),
+            )
+            s.add(silver)
+            s.commit()
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.FAIL
+            assert batch.stage == BatchStage.SILVER
+            assert batch.pipeline_progress is None
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["gate"]["status"] == "FAIL"
+            assert batch.pipeline_report["gate"]["decision"] == "hold"
+            assert (
+                batch.pipeline_report["failure_context"]["message"]
+                == "Falha interna em 'Inserindo leads Gold no banco': "
+                f"ValueError: Evento {evento_id} precisa de agencia_id para canonicalizar LeadEvento de ativacao."
+            )
+            assert batch.pipeline_report["failure_context"]["step"] == "insert_leads"
+            assert "precisa de agencia_id" in batch.pipeline_report["gate"]["fail_reasons"][0]
+
     def test_failed_rerun_clears_previous_pipeline_snapshot(self, client, engine, monkeypatch):
         with Session(engine) as s:
             auth = _auth_header(client, s)
@@ -1476,6 +1912,83 @@ class TestLeadEventoInGoldPipeline:
             assert batch.gold_dq_issue_counts.get("cpf_invalid_discarded") == 1
             assert batch.gold_dq_invalid_records_total == 0
 
+    def test_missing_consolidated_csv_marks_batch_as_failed(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        import app.db.database as database_module
+        import app.services.lead_pipeline_service as lead_pipeline_service
+
+        monkeypatch.setattr(database_module, "engine", engine)
+
+        tmp_root = Path("backend/tmp-pytest") / f"insert-missing-{uuid4().hex}"
+        report_dir = tmp_root / "output" / str(batch_id)
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "report.json"
+        consolidated_path = report_dir / "missing-consolidated.csv"
+        summary_path = report_dir / "summary.md"
+        report_payload = {
+            "lote_id": str(batch_id),
+            "run_timestamp": "2026-04-15T18:00:00Z",
+            "totals": {"raw_rows": 4, "valid_rows": 3, "discarded_rows": 1},
+            "quality_metrics": {
+                "cpf_invalid_discarded": 1,
+                "telefone_invalid": 0,
+                "data_evento_invalid": 0,
+                "data_nascimento_invalid": 0,
+                "data_nascimento_missing": 0,
+                "duplicidades_cpf_evento": 0,
+                "cidade_fora_mapeamento": 0,
+                "localidade_invalida": 0,
+                "localidade_nao_resolvida": 0,
+                "localidade_fora_brasil": 0,
+                "localidade_cidade_uf_inconsistente": 0,
+            },
+            "gate": {
+                "status": "PASS",
+                "decision": "promote",
+                "fail_reasons": [],
+                "warnings": [],
+            },
+            "invalid_records": [],
+            "data_nascimento_controle": [],
+            "localidade_controle": [],
+            "cidade_fora_mapeamento_controle": [],
+        }
+        report_path.write_text(json.dumps(report_payload), encoding="utf-8")
+        summary_path.write_text("# resumo\n", encoding="utf-8")
+
+        def _fake_run_pipeline(*_args, **_kwargs):
+            return PipelineResult(
+                lote_id=str(batch_id),
+                status="PASS",
+                decision="promote",
+                output_dir=report_dir,
+                report_path=report_path,
+                summary_path=summary_path,
+                consolidated_path=consolidated_path,
+                exit_code=0,
+            )
+
+        monkeypatch.setattr(lead_pipeline_service, "run_pipeline", _fake_run_pipeline)
+
+        asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.FAIL
+            assert batch.stage == BatchStage.SILVER
+            assert batch.pipeline_report is not None
+            assert batch.pipeline_report["gate"]["status"] == "FAIL"
+            assert batch.pipeline_report["gate"]["decision"] == "hold"
+            assert "FileNotFoundError" in batch.pipeline_report["gate"]["fail_reasons"][0]
+            assert batch.pipeline_report["failure_context"]["step"] == "insert_leads"
+
     def test_missing_birth_date_keeps_lead_and_records_dq(self, client, engine, monkeypatch):
         with Session(engine) as s:
             auth = _auth_header(client, s)
@@ -1486,7 +1999,12 @@ class TestLeadEventoInGoldPipeline:
             engine,
             batch_id,
             evento.id,
-            dados_brutos_extra={"data_nascimento": "   "},
+            dados_brutos_extra={
+                "data_nascimento": "   ",
+                "source_file": "leads.xlsx",
+                "source_sheet": "Participantes",
+                "source_row": 1514,
+            },
         )
 
         import app.db.database as database_module
@@ -1509,9 +2027,9 @@ class TestLeadEventoInGoldPipeline:
             assert batch.pipeline_report["gate"]["warnings"] == ["DATA_NASCIMENTO_AUSENTE"]
             controle = batch.pipeline_report["data_nascimento_controle"]
             assert len(controle) == 1
-            assert controle[0]["source_file"] == "silver_input.csv"
-            assert controle[0]["source_sheet"] == ""
-            assert controle[0]["source_row"] > 0
+            assert controle[0]["source_file"] == "leads.xlsx"
+            assert controle[0]["source_sheet"] == "Participantes"
+            assert controle[0]["source_row"] == 1514
             assert controle[0]["issue"] == "missing"
 
             lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
@@ -1562,9 +2080,9 @@ class TestLeadEventoInGoldPipeline:
             assert batch.pipeline_report["gate"]["warnings"] == ["LOCALIDADE_INVALIDA"]
             controle = batch.pipeline_report["localidade_controle"]
             assert len(controle) == 1
-            assert controle[0]["source_file"] == "silver_input.csv"
+            assert controle[0]["source_file"] == "leads.csv"
             assert controle[0]["source_sheet"] == ""
-            assert controle[0]["source_row"] > 0
+            assert controle[0]["source_row"] == 2
             assert controle[0]["issue"] == "cidade_uf_mismatch"
             assert controle[0]["raw_cidade"] == "Sao Paulo"
             assert controle[0]["raw_estado"] == "RJ"
@@ -1624,9 +2142,9 @@ class TestLeadEventoInGoldPipeline:
             assert batch.pipeline_report["gate"]["warnings"] == ["DATA_NASCIMENTO_INVALIDA"]
             controle = batch.pipeline_report["data_nascimento_controle"]
             assert len(controle) == 1
-            assert controle[0]["source_file"] == "silver_input.csv"
+            assert controle[0]["source_file"] == "leads.csv"
             assert controle[0]["source_sheet"] == ""
-            assert controle[0]["source_row"] > 0
+            assert controle[0]["source_row"] == 2
             assert controle[0]["issue"] == expected_issue
 
             lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()

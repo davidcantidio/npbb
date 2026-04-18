@@ -29,14 +29,10 @@ import { ALL_EVENTS_OPTION_ID } from "../../components/dashboard/AgeAnalysisFilt
 import { toApiErrorMessage } from "../../services/http";
 import { listLeads, type LeadListItem, type ReferenciaEvento } from "../../services/leads_import";
 import { triggerBlobDownload } from "../../services/leads_export";
+import { exportLeadsListCsv } from "../../services/leads_list_export";
 import { useAuth } from "../../store/auth";
 import { useReferenciaEventos } from "../dashboard/useReferenciaEventos";
-import {
-  buildLeadsListCsvContent,
-  fetchAllLeadsMatchingFilters,
-  getLeadListDisplayCells,
-  leadsExportCsvFilename,
-} from "./leadsListExport";
+import { getLeadListDisplayCells } from "./leadsListExport";
 
 const ALL_EVENTS_OPTION: ReferenciaEvento = {
   id: ALL_EVENTS_OPTION_ID,
@@ -142,10 +138,9 @@ export default function LeadsListPage() {
     setExporting(true);
     setExportError(null);
     try {
-      const items = await fetchAllLeadsMatchingFilters(token, appliedFilters);
-      const csv = buildLeadsListCsvContent(items);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      triggerBlobDownload(blob, leadsExportCsvFilename());
+      const result = await exportLeadsListCsv(token, appliedFilters);
+      if (!result) return;
+      triggerBlobDownload(result.blob, result.filename);
     } catch (err) {
       setExportError(toApiErrorMessage(err, "Nao foi possivel exportar os leads."));
     } finally {
@@ -161,7 +156,7 @@ export default function LeadsListPage() {
             Leads
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-            Lista de leads cadastrados. Filtre por periodo de criacao e pelo evento da conversao mais recente.
+            Lista de leads cadastrados. Filtre por periodo de criacao e pelo evento relacionado ao lead.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -212,7 +207,7 @@ export default function LeadsListPage() {
                     }))
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Evento (conversao mais recente)" placeholder="Todos" />
+                    <TextField {...params} label="Evento" placeholder="Todos" />
                   )}
                 />
               </Grid>

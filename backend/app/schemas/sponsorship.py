@@ -26,6 +26,24 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 
+class SponsoredPersonRoleRead(BaseModel):
+    """Papel da pessoa patrocinada (lookup).
+
+    Attributes:
+        id: Identificador do papel.
+        code: Código estável (ex.: ``atleta``).
+        label: Rótulo para exibição.
+        sort_order: Ordem sugerida no dropdown.
+    """
+
+    id: int
+    code: str
+    label: str
+    sort_order: int = 0
+
+    model_config = {"from_attributes": True}
+
+
 class SponsoredPersonBase(BaseModel):
     """Campos comuns de pessoa patrocinada (entrada e leitura base).
 
@@ -34,7 +52,6 @@ class SponsoredPersonBase(BaseModel):
         cpf: CPF opcional (único quando informado).
         email: E-mail de contato opcional.
         phone: Telefone opcional.
-        role: Função ou papel da pessoa no contexto do patrocínio.
         notes: Observações livres opcionais.
     """
 
@@ -42,7 +59,6 @@ class SponsoredPersonBase(BaseModel):
     cpf: Optional[str] = Field(default=None, max_length=14)
     email: Optional[str] = Field(default=None, max_length=200)
     phone: Optional[str] = Field(default=None, max_length=40)
-    role: str = Field(..., max_length=80)
     notes: Optional[str] = None
 
 
@@ -50,11 +66,10 @@ class SponsoredPersonCreate(SponsoredPersonBase):
     """Payload de criação de pessoa patrocinada.
 
     Attributes:
-        Mesmos atributos declarados em ``SponsoredPersonBase`` (herança direta;
-        sem campos extras nesta classe).
+        role_id: Identificador do papel (FK ``sponsored_person_role``).
     """
 
-    pass
+    role_id: int = Field(..., ge=1)
 
 
 class SponsoredPersonUpdate(BaseModel):
@@ -65,7 +80,7 @@ class SponsoredPersonUpdate(BaseModel):
         cpf: Novo CPF, se informado.
         email: Novo e-mail, se informado.
         phone: Novo telefone, se informado.
-        role: Novo papel, se informado.
+        role_id: Novo papel, se informado.
         notes: Novas observações, se informado.
     """
 
@@ -73,7 +88,7 @@ class SponsoredPersonUpdate(BaseModel):
     cpf: Optional[str] = Field(default=None, max_length=14)
     email: Optional[str] = Field(default=None, max_length=200)
     phone: Optional[str] = Field(default=None, max_length=40)
-    role: Optional[str] = Field(default=None, max_length=80)
+    role_id: Optional[int] = Field(default=None, ge=1)
     notes: Optional[str] = None
 
 
@@ -82,20 +97,18 @@ class SponsoredPersonRead(SponsoredPersonBase):
 
     Attributes:
         id: Identificador persistido.
+        role_id: FK do papel.
+        role: Dados do papel (lookup).
         created_at: Data/hora de criação.
         updated_at: Data/hora da última atualização, se houver.
         groups_count: Quantidade de grupos associados.
         contracts_count: Quantidade de contratos alcançados via grupos.
         social_profiles_count: Quantidade de perfis sociais do dono.
-        full_name: Nome completo (herdado da base).
-        cpf: CPF (herdado da base).
-        email: E-mail (herdado da base).
-        phone: Telefone (herdado da base).
-        role: Papel (herdado da base).
-        notes: Observações (herdado da base).
     """
 
     id: int
+    role_id: int
+    role: SponsoredPersonRoleRead
     created_at: datetime
     updated_at: Optional[datetime] = None
     groups_count: int = 0

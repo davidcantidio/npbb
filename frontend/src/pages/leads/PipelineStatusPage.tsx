@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toApiErrorMessage } from "../../services/http";
+import { toApiErrorCode, toApiErrorMessage } from "../../services/http";
 import {
   type BirthDateControlIssue,
   type LeadBatch,
@@ -29,6 +29,68 @@ import {
 import { useAuth } from "../../store/auth";
 
 const POLL_INTERVAL_MS = 1500;
+const PIPELINE_STALL_THRESHOLD_MS = 60_000;
+const POLLING_NOTICE_ESCALATION_ATTEMPTS = 3;
+
+type NoticeSeverity = "warning" | "error";
+
+function logPipelineStatus(level: "info" | "warn" | "error", event: string, context: Record<string, unknown>) {
+  const payload = {
+    ...context,
+    ts: new Date().toISOString(),
+  };
+  const logger = level === "error" ? console.error : level === "warn" ? console.warn : console.info;
+  logger(`[lead-gold-pipeline-ui] ${event}`, payload);
+}
+
+function describePipelineStatusError(error: unknown, fallback: string) {
+  return {
+    code: toApiErrorCode(error),
+    message: toApiErrorMessage(error, fallback),
+  };
+}
+
+function buildPipelineContext(batch: LeadBatch | null) {
+  return {
+    stage: batch?.stage ?? null,
+    pipelineStatus: batch?.pipeline_status ?? null,
+    step: batch?.pipeline_progress?.step ?? null,
+    label: batch?.pipeline_progress?.label ?? null,
+    pct: batch?.pipeline_progress?.pct ?? null,
+    updatedAt: batch?.pipeline_progress?.updated_at ?? null,
+  };
+}
+
+function buildPollingNotice(batch: LeadBatch, error: unknown, attempt: number) {
+  const { code } = describePipelineStatusError(error, "Erro ao carregar o status do lote.");
+  const progress = batch.pipeline_progress;
+  const failureKind = code === "TIMEOUT" ? "timeout" : code === "NETWORK_ERROR" ? "rede" : "erro";
+  if (attempt >= POLLING_NOTICE_ESCALATION_ATTEMPTS) {
+    return {
+      severity: "error" as const,
+      message:
+        `Falha recorrente ao consultar o lote #${batch.id} (${failureKind}, ${attempt} tentativas consecutivas). ` +
+        `Etapa atual: "${progress?.label ?? "desconhecida"}" (step=${progress?.step ?? "desconhecido"}). ` +
+        `Ultima atualizacao do backend: ${progress?.updated_at ?? "desconhecida"}. O polling continua ativo.`,
+    };
+  }
+  return {
+    severity: "warning" as const,
+    message:
+      `Falha temporaria ao consultar o lote #${batch.id} (${failureKind}, tentativa ${attempt}). ` +
+      `Etapa atual: "${progress?.label ?? "desconhecida"}" (step=${progress?.step ?? "desconhecido"}). ` +
+      "Tentando novamente automaticamente.",
+  };
+}
+
+function buildStallNotice(batch: LeadBatch) {
+  const progress = batch.pipeline_progress;
+  return (
+    `Processo lento ou possivelmente travado no lote #${batch.id}. ` +
+    `Etapa atual: "${progress?.label ?? "desconhecida"}" (step=${progress?.step ?? "desconhecido"}). ` +
+    `Ultima atualizacao do backend: ${progress?.updated_at ?? "desconhecida"}. O polling continua ativo.`
+  );
+}
 
 type GateStatus = "PASS" | "PASS_WITH_WARNINGS" | "FAIL";
 
@@ -134,7 +196,14 @@ function uniqueSortedRefs(refs: SourceRowRef[]): SourceRowRef[] {
 }
 
 function formatSourceRowRef(r: SourceRowRef): string {
+  const file = (r.source_file || "").trim();
   const sheet = (r.source_sheet || "").trim();
+  if (file && sheet) {
+    return `${file} · ${sheet} · linha ${r.source_row}`;
+  }
+  if (file) {
+    return `${file} · linha ${r.source_row}`;
+  }
   if (sheet) {
     return `${sheet} · linha ${r.source_row}`;
   }
@@ -305,7 +374,7 @@ function QualityMetricsSection({
   const rowIndex = buildQualityMetricRowIndex(report);
 
   const items = [
-    { key: "cpf_invalid_discarded", label: "CPFs inválidos descartados" },
+    { key: "cpf_invalid_discarded", label: "CPFs ausentes/inválidos descartados" },
     { key: "telefone_invalid", label: "Telefones inválidos" },
     { key: "data_evento_invalid", label: "Datas de evento inválidas" },
     { key: "data_nascimento_invalid", label: "Datas de nascimento inválidas" },
@@ -367,6 +436,8 @@ function QualityMetricsSection({
 export type PipelineStatusPageProps = {
   batchId?: number;
   onNewImport?: () => void;
+  onBack?: () => void;
+  backLabel?: string;
 };
 
 export default function PipelineStatusPage({
@@ -381,11 +452,18 @@ export default function PipelineStatusPage({
 
   const [batch, setBatch] = useState<LeadBatch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
+  const [pollingNotice, setPollingNotice] = useState<{ severity: NoticeSeverity; message: string } | null>(null);
+  const [stallNotice, setStallNotice] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
+  const batchRef = useRef<LeadBatch | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stallRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const readinessCheckedRef = useRef(false);
+  const pollingFailureCountRef = useRef(0);
+  const lastProgressSignatureRef = useRef<string | null>(null);
+  const lastTerminalSignatureRef = useRef<string | null>(null);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -394,11 +472,23 @@ export default function PipelineStatusPage({
     }
   };
 
+  const stopStallTimer = () => {
+    if (stallRef.current) {
+      clearTimeout(stallRef.current);
+      stallRef.current = null;
+    }
+  };
+
   const schedulePolling = () => {
     stopPolling();
+    logPipelineStatus("info", "polling.scheduled", {
+      batchId,
+      intervalMs: POLL_INTERVAL_MS,
+      ...buildPipelineContext(batchRef.current),
+    });
     pollRef.current = setTimeout(() => {
       pollRef.current = null;
-      void fetchBatch();
+      void fetchBatch("polling");
     }, POLL_INTERVAL_MS);
   };
 
@@ -408,30 +498,96 @@ export default function PipelineStatusPage({
     readinessCheckedRef.current = true;
   };
 
-  const fetchBatch = async () => {
+  const fetchBatch = async (reason: "initial_load" | "polling" | "post_execute") => {
     if (!token || !batchId) return;
+    const currentBatch = batchRef.current;
+    logPipelineStatus("info", "status-fetch.start", {
+      batchId,
+      reason,
+      ...buildPipelineContext(currentBatch),
+    });
     try {
       await ensureApiReady();
       const data = await getLeadBatch(token, batchId);
+      pollingFailureCountRef.current = 0;
+      batchRef.current = data;
       setBatch(data);
-      if (!(data.pipeline_status === "pending" && data.pipeline_progress !== null)) {
+      setFatalError(null);
+      setPollingNotice(null);
+      if (
+        currentBatch?.pipeline_progress?.updated_at !== data.pipeline_progress?.updated_at ||
+        data.pipeline_status !== "pending" ||
+        data.pipeline_progress === null
+      ) {
+        setStallNotice(null);
+      }
+      logPipelineStatus("info", "status-fetch.success", {
+        batchId,
+        reason,
+        ...buildPipelineContext(data),
+      });
+      if (data.pipeline_status === "pending" && data.pipeline_progress !== null) {
+        schedulePolling();
+      } else {
         stopPolling();
       }
     } catch (err) {
-      setError(toApiErrorMessage(err, "Erro ao carregar o status do lote."));
+      const isTransientPollingFailure =
+        currentBatch?.pipeline_status === "pending" &&
+        currentBatch.pipeline_progress !== null &&
+        (toApiErrorCode(err) === "TIMEOUT" || toApiErrorCode(err) === "NETWORK_ERROR");
+      if (isTransientPollingFailure) {
+        pollingFailureCountRef.current += 1;
+        const notice = buildPollingNotice(currentBatch, err, pollingFailureCountRef.current);
+        setPollingNotice(notice);
+        logPipelineStatus(
+          notice.severity === "error" ? "error" : "warn",
+          "status-fetch.transient-failure",
+          {
+            batchId,
+            reason,
+            attempt: pollingFailureCountRef.current,
+            ...buildPipelineContext(currentBatch),
+            ...describePipelineStatusError(err, "Erro ao carregar o status do lote."),
+          },
+        );
+        schedulePolling();
+        return;
+      }
+      const message = toApiErrorMessage(err, "Erro ao carregar o status do lote.");
+      setFatalError(message);
+      setPollingNotice(null);
+      setStallNotice(null);
+      logPipelineStatus("error", "status-fetch.failed", {
+        batchId,
+        reason,
+        ...buildPipelineContext(currentBatch),
+        ...describePipelineStatusError(err, message),
+      });
       stopPolling();
+      stopStallTimer();
     }
   };
 
   useEffect(() => {
+    batchRef.current = batch;
+  }, [batch]);
+
+  useEffect(() => {
     if (!batchId) {
-      setError("batch_id ausente na URL.");
+      setFatalError("batch_id ausente na URL.");
       setLoading(false);
       return;
     }
     readinessCheckedRef.current = false;
-    fetchBatch().finally(() => setLoading(false));
-    return () => stopPolling();
+    pollingFailureCountRef.current = 0;
+    setPollingNotice(null);
+    setStallNotice(null);
+    fetchBatch("initial_load").finally(() => setLoading(false));
+    return () => {
+      stopPolling();
+      stopStallTimer();
+    };
   }, [batchId, token]);
 
   useEffect(() => {
@@ -440,21 +596,110 @@ export default function PipelineStatusPage({
       batch.pipeline_status === "pending" && batch.pipeline_progress !== null;
     if (!hasActiveProgress) {
       stopPolling();
+      stopStallTimer();
+      setStallNotice(null);
+      if (batch.pipeline_status !== "pending") {
+        setPollingNotice(null);
+      }
       return;
     }
     if (!pollRef.current) schedulePolling();
   }, [batch?.pipeline_status, batch?.pipeline_progress?.updated_at]);
 
+  useEffect(() => {
+    const hasActiveProgress =
+      batch?.pipeline_status === "pending" && batch.pipeline_progress !== null;
+    stopStallTimer();
+    if (!batch || !hasActiveProgress) {
+      setStallNotice(null);
+      return;
+    }
+    setStallNotice(null);
+    stallRef.current = setTimeout(() => {
+      const message = buildStallNotice(batch);
+      setStallNotice(message);
+      logPipelineStatus("warn", "progress.stalled", {
+        batchId: batch.id,
+        ...buildPipelineContext(batch),
+      });
+    }, PIPELINE_STALL_THRESHOLD_MS);
+
+    return () => stopStallTimer();
+  }, [batch?.id, batch?.pipeline_status, batch?.pipeline_progress?.step, batch?.pipeline_progress?.label, batch?.pipeline_progress?.updated_at]);
+
+  useEffect(() => {
+    if (!batch) return;
+    if (batch.pipeline_status === "pending" && batch.pipeline_progress !== null) {
+      const progressSignature = [
+        batch.id,
+        batch.pipeline_status,
+        batch.pipeline_progress.step,
+        batch.pipeline_progress.pct ?? "na",
+        batch.pipeline_progress.updated_at,
+      ].join(":");
+      if (lastProgressSignatureRef.current !== progressSignature) {
+        lastProgressSignatureRef.current = progressSignature;
+        logPipelineStatus("info", "progress.changed", {
+          batchId: batch.id,
+          stage: batch.stage,
+          pipelineStatus: batch.pipeline_status,
+          step: batch.pipeline_progress.step,
+          label: batch.pipeline_progress.label,
+          pct: batch.pipeline_progress.pct,
+          updatedAt: batch.pipeline_progress.updated_at,
+        });
+      }
+      return;
+    }
+
+    if (batch.pipeline_status === "pending" && batch.pipeline_progress === null) {
+      logPipelineStatus("warn", "progress.missing", {
+        batchId: batch.id,
+        stage: batch.stage,
+        pipelineStatus: batch.pipeline_status,
+      });
+      return;
+    }
+
+    const terminalSignature = [batch.id, batch.stage, batch.pipeline_status].join(":");
+    if (lastTerminalSignatureRef.current !== terminalSignature) {
+      lastTerminalSignatureRef.current = terminalSignature;
+      logPipelineStatus("info", "status.terminal", {
+        batchId: batch.id,
+        stage: batch.stage,
+        pipelineStatus: batch.pipeline_status,
+        hasReport: batch.pipeline_report != null,
+      });
+    }
+  }, [batch?.id, batch?.stage, batch?.pipeline_status, batch?.pipeline_progress?.step, batch?.pipeline_progress?.pct, batch?.pipeline_progress?.updated_at, batch?.pipeline_report]);
+
   const handleExecutar = async () => {
     if (!token || !batchId) return;
     setRunning(true);
-    setError(null);
+    setFatalError(null);
+    setPollingNotice(null);
+    setStallNotice(null);
     stopPolling();
+    stopStallTimer();
+    logPipelineStatus("info", "execute.clicked", {
+      batchId,
+      ...buildPipelineContext(batchRef.current),
+    });
     try {
-      await executarPipeline(token, batchId);
-      await fetchBatch();
+      const result = await executarPipeline(token, batchId);
+      logPipelineStatus("info", "execute.accepted", {
+        batchId,
+        status: result.status,
+      });
+      await fetchBatch("post_execute");
     } catch (err) {
-      setError(toApiErrorMessage(err, "Erro ao executar o pipeline."));
+      const message = toApiErrorMessage(err, "Erro ao executar o pipeline.");
+      setFatalError(message);
+      logPipelineStatus("error", "execute.failed", {
+        batchId,
+        ...buildPipelineContext(batchRef.current),
+        ...describePipelineStatusError(err, message),
+      });
     } finally {
       setRunning(false);
     }
@@ -468,10 +713,10 @@ export default function PipelineStatusPage({
     );
   }
 
-  if (error && !batch) {
+  if (fatalError && !batch) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{fatalError}</Alert>
       </Box>
     );
   }
@@ -509,9 +754,19 @@ export default function PipelineStatusPage({
         </Button>
       </Stack>
 
-      {error && (
+      {fatalError && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {fatalError}
+        </Alert>
+      )}
+      {pollingNotice && (
+        <Alert severity={pollingNotice.severity} sx={{ mb: 2 }}>
+          {pollingNotice.message}
+        </Alert>
+      )}
+      {stallNotice && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {stallNotice}
         </Alert>
       )}
 

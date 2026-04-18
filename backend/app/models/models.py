@@ -623,6 +623,7 @@ from app.models.sponsorship_models import (
     SocialProfile,
     SponsoredInstitution,
     SponsoredPerson,
+    SponsoredPersonRole,
     SponsorshipContract,
     SponsorshipGroup,
 )

@@ -71,6 +71,8 @@ const EMPTY_FILTERS: Filters = {
   diretoriaId: "",
 };
 
+const EVENT_FILTER_CATALOG_PAGE_SIZE = 200;
+
 function normalizeFilters(filters: Filters): Filters {
   const clean = (v: string) => v.trim();
   return {
@@ -147,6 +149,15 @@ async function getCidadesData(): Promise<{ map: Record<string, string[]>; all: s
   return { map, all: cachedAllCidades };
 }
 
+function collectEventoNames(eventos: Pick<EventoListItem, "nome">[]): string[] {
+  const names = new Set<string>();
+  for (const item of eventos) {
+    const name = String(item.nome || "").trim();
+    if (name) names.add(name);
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
 export default function EventsList() {
   const { token } = useAuth();
 
@@ -174,6 +185,8 @@ export default function EventsList() {
   const [statuses, setStatuses] = useState<StatusEvento[]>([]);
   const [domainsLoading, setDomainsLoading] = useState(false);
   const [domainsError, setDomainsError] = useState<string | null>(null);
+  const [catalogEventoOptions, setCatalogEventoOptions] = useState<string[]>([]);
+  const [eventoOptionsLoading, setEventoOptionsLoading] = useState(false);
 
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -192,13 +205,13 @@ export default function EventsList() {
   }, [agencias]);
 
   const eventoOptions = useMemo(() => {
-    const names = new Set<string>();
+    const names = new Set<string>(catalogEventoOptions);
     for (const item of items) {
       const name = String(item.nome || "").trim();
       if (name) names.add(name);
     }
     return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  }, [catalogEventoOptions, items]);
 
   const pageCount = useMemo(() => {
     if (typeof total !== "number") return 0;
@@ -237,6 +250,46 @@ export default function EventsList() {
   useEffect(() => {
     loadDomains();
   }, [loadDomains]);
+
+  const loadEventoOptions = useCallback(async () => {
+    if (!token) {
+      setCatalogEventoOptions([]);
+      return;
+    }
+
+    setEventoOptionsLoading(true);
+    try {
+      const allItems: EventoListItem[] = [];
+      let skip = 0;
+      let totalCount: number | null = null;
+
+      while (true) {
+        const res = await listEventos(token, {
+          skip,
+          limit: EVENT_FILTER_CATALOG_PAGE_SIZE,
+        });
+
+        allItems.push(...res.items);
+        totalCount = typeof res.total === "number" ? res.total : totalCount;
+
+        if (!res.items.length) break;
+
+        skip += res.items.length;
+        if (typeof totalCount === "number" && skip >= totalCount) break;
+        if (typeof totalCount !== "number" && res.items.length < EVENT_FILTER_CATALOG_PAGE_SIZE) break;
+      }
+
+      setCatalogEventoOptions(collectEventoNames(allItems));
+    } catch {
+      setCatalogEventoOptions([]);
+    } finally {
+      setEventoOptionsLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadEventoOptions();
+  }, [loadEventoOptions]);
 
   useEffect(() => {
     setFiltersContainer(
@@ -431,6 +484,7 @@ export default function EventsList() {
 
         if (result.success > 0) {
           await load();
+          await loadEventoOptions();
         }
       } catch (err: any) {
         setError(err?.message || "Erro ao importar CSV");
@@ -438,7 +492,7 @@ export default function EventsList() {
         setImporting(false);
       }
     },
-    [load, token],
+    [load, loadEventoOptions, token],
   );
 
   const filtersPanel = (
@@ -450,6 +504,7 @@ export default function EventsList() {
         <Autocomplete
           freeSolo
           options={eventoOptions}
+          loading={eventoOptionsLoading}
           inputValue={filtersDraft.search}
           onInputChange={(_, value) =>
             setFiltersDraft((prev) => ({
@@ -465,7 +520,21 @@ export default function EventsList() {
           }
           fullWidth
           renderInput={(params) => (
-            <TextField {...params} label="Evento" placeholder="Todos" fullWidth />
+            <TextField
+              {...params}
+              label="Evento"
+              placeholder="Todos"
+              fullWidth
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {eventoOptionsLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
           )}
         />
 

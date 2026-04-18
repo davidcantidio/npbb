@@ -1,0 +1,224 @@
+{
+  "status": "passed",
+  "real_reference": {
+    "aurea_rows": 292,
+    "data_2_rows": 29999,
+    "schema_bb_sample_rows": 20
+  },
+  "synthetic_fixture": {
+    "lead_rows": 7,
+    "synthetic_bb_rows": 3,
+    "bb_candidates_after_validation": 22,
+    "bb_dedup_index_size": 21
+  },
+  "checks": {
+    "layout_matches_data_2": true,
+    "cardinality_preserved": true,
+    "audit_scopes": [
+      "evento",
+      "evento_tipo_evento",
+      "global",
+      "tipo_evento"
+    ]
+  },
+  "final_rows": [
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": true,
+      "cod_sexo": null,
+      "cpf": "01158635915",
+      "data_nascimento": "1938-06-24",
+      "faixa_etaria": "40+",
+      "Soma de idade": 87,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    },
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": true,
+      "cod_sexo": null,
+      "cpf": "11144477735",
+      "data_nascimento": "1985-06-28",
+      "faixa_etaria": "18-40",
+      "Soma de idade": 40,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    },
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": true,
+      "cod_sexo": null,
+      "cpf": "52998224725",
+      "data_nascimento": "1970-03-15",
+      "faixa_etaria": "40+",
+      "Soma de idade": 55,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    },
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": false,
+      "cod_sexo": null,
+      "cpf": "24681357928",
+      "data_nascimento": "2008-01-15",
+      "faixa_etaria": "<18",
+      "Soma de idade": 17,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    },
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": false,
+      "cod_sexo": null,
+      "cpf": "98765432100",
+      "data_nascimento": "1985-12-31",
+      "faixa_etaria": "18-40",
+      "Soma de idade": 40,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    },
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": false,
+      "cod_sexo": null,
+      "cpf": "12345678909",
+      "data_nascimento": "",
+      "faixa_etaria": "Desconhecido",
+      "Soma de idade": null,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    },
+    {
+      "evento": "Aurea Tour 2025",
+      "data_evento": "2025-06-28",
+      "Soma de ano_evento": 2025,
+      "cliente": true,
+      "cod_sexo": null,
+      "cpf": "11144477735",
+      "data_nascimento": "1985-06-28",
+      "faixa_etaria": "18-40",
+      "Soma de idade": 40,
+      "local": "São Paulo-SP",
+      "tipo_evento": "Show"
+    }
+  ],
+  "debug_rows": [
+    {
+      "row_num": 1,
+      "case": "match_real_bb_lpad",
+      "cpf_issue": null,
+      "lead_birthdate_status": "MISSING",
+      "event_status": "VALID",
+      "birthdate_source": "bb",
+      "cpf_lpad_applied": true
+    },
+    {
+      "row_num": 2,
+      "case": "match_synthetic_bb_duplicate",
+      "cpf_issue": null,
+      "lead_birthdate_status": "MISSING",
+      "event_status": "VALID",
+      "birthdate_source": "bb",
+      "cpf_lpad_applied": false
+    },
+    {
+      "row_num": 3,
+      "case": "match_bb_precedence_over_lead",
+      "cpf_issue": null,
+      "lead_birthdate_status": "VALID",
+      "event_status": "VALID",
+      "birthdate_source": "bb",
+      "cpf_lpad_applied": false
+    },
+    {
+      "row_num": 4,
+      "case": "valid_no_match_fallback_under18",
+      "cpf_issue": null,
+      "lead_birthdate_status": "VALID",
+      "event_status": "VALID",
+      "birthdate_source": "lead",
+      "cpf_lpad_applied": false
+    },
+    {
+      "row_num": 5,
+      "case": "valid_no_match_fallback_age40",
+      "cpf_issue": null,
+      "lead_birthdate_status": "VALID",
+      "event_status": "VALID",
+      "birthdate_source": "lead",
+      "cpf_lpad_applied": false
+    },
+    {
+      "row_num": 6,
+      "case": "invalid_cpf_no_match",
+      "cpf_issue": "CPF_KNOWN_PLACEHOLDER",
+      "lead_birthdate_status": "MISSING",
+      "event_status": "VALID",
+      "birthdate_source": "none",
+      "cpf_lpad_applied": false
+    },
+    {
+      "row_num": 7,
+      "case": "duplicate_lead_row_preserved",
+      "cpf_issue": null,
+      "lead_birthdate_status": "MISSING",
+      "event_status": "VALID",
+      "birthdate_source": "bb",
+      "cpf_lpad_applied": false
+    }
+  ],
+  "issues": [
+    {
+      "row_num": 6,
+      "field": "cpf",
+      "issue_code": "CPF_KNOWN_PLACEHOLDER"
+    }
+  ],
+  "audit": [
+    {
+      "escopo": "global",
+      "total_rows": 7,
+      "cliente_true_rows": 4,
+      "cliente_false_rows": 3,
+      "final_birthdate_null_rows": 1,
+      "CPF_KNOWN_PLACEHOLDER": 1
+    },
+    {
+      "escopo": "evento",
+      "evento": "Aurea Tour 2025",
+      "total_rows": 7,
+      "cliente_true_rows": 4,
+      "cliente_false_rows": 3,
+      "final_birthdate_null_rows": 1
+    },
+    {
+      "escopo": "tipo_evento",
+      "tipo_evento": "Show",
+      "total_rows": 7,
+      "cliente_true_rows": 4,
+      "cliente_false_rows": 3,
+      "final_birthdate_null_rows": 1
+    },
+    {
+      "escopo": "evento_tipo_evento",
+      "evento": "Aurea Tour 2025",
+      "tipo_evento": "Show",
+      "total_rows": 7,
+      "cliente_true_rows": 4,
+      "cliente_false_rows": 3,
+      "final_birthdate_null_rows": 1
+    }
+  ]
+}

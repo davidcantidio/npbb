@@ -45,6 +45,7 @@ class LeadBatch(SQLModel, table=True):
     )
     data_upload: datetime = Field(default_factory=now_utc)
     nome_arquivo_original: str = Field(max_length=255)
+    arquivo_sha256: Optional[str] = Field(default=None, max_length=64, index=True)
 
     arquivo_bronze: bytes = Field(
         sa_column=Column(LargeBinary, nullable=False)

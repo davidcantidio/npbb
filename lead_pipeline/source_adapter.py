@@ -41,6 +41,9 @@ SHEET_COL_SOURCE = "__source_sheet"
 ROW_COL_SOURCE = "__source_row"
 CITY_OUT_COL = "__cidade_fora_mapeamento"
 REJECT_REASON_COL = "__reject_reason"
+SOURCE_FILE_COL = "source_file"
+SOURCE_SHEET_INPUT_COL = "source_sheet"
+SOURCE_ROW_INPUT_COL = "source_row"
 
 
 VERT_BATTLE_EVENT_MAP = {
@@ -108,6 +111,7 @@ def _empty_dataframe() -> pd.DataFrame:
     return pd.DataFrame(
         columns=[
             *ALL_COLUMNS,
+            SOURCE_FILE_COL,
             CITY_OUT_COL,
             SHEET_COL_SOURCE,
             ROW_COL_SOURCE,
@@ -252,10 +256,28 @@ def _adapt_canonical(df: pd.DataFrame, input_file: Path) -> tuple[pd.DataFrame, 
         if column not in canonical_df.columns:
             canonical_df[column] = ""
 
+    if SOURCE_FILE_COL in canonical_df.columns:
+        source_file = _clean_series(canonical_df[SOURCE_FILE_COL])
+    else:
+        source_file = pd.Series([input_file.name] * len(canonical_df), index=canonical_df.index, dtype="object")
+
+    if SOURCE_SHEET_INPUT_COL in canonical_df.columns:
+        source_sheet = _clean_series(canonical_df[SOURCE_SHEET_INPUT_COL])
+    else:
+        source_sheet = pd.Series([""] * len(canonical_df), index=canonical_df.index, dtype="object")
+
+    if SOURCE_ROW_INPUT_COL in canonical_df.columns:
+        source_row = pd.to_numeric(canonical_df[SOURCE_ROW_INPUT_COL], errors="coerce")
+        fallback_source_row = pd.Series(canonical_df.index + 2, index=canonical_df.index, dtype="float64")
+        source_row = source_row.where(source_row.notna(), fallback_source_row).astype(int)
+    else:
+        source_row = pd.Series(canonical_df.index + 2, index=canonical_df.index, dtype="int64")
+
     canonical_df = canonical_df[ALL_COLUMNS].copy()
+    canonical_df[SOURCE_FILE_COL] = source_file
     canonical_df[CITY_OUT_COL] = False
-    canonical_df[SHEET_COL_SOURCE] = ""
-    canonical_df[ROW_COL_SOURCE] = canonical_df.index + 2
+    canonical_df[SHEET_COL_SOURCE] = source_sheet
+    canonical_df[ROW_COL_SOURCE] = source_row
     canonical_df[REJECT_REASON_COL] = ""
     return canonical_df, fail_reasons
 

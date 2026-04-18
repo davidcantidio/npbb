@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import distinct as sa_distinct
 from sqlalchemy import func as sa_func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.core.auth import get_current_user
@@ -38,6 +39,7 @@ from app.models.sponsorship_models import (
     SocialProfile,
     SponsoredInstitution,
     SponsoredPerson,
+    SponsoredPersonRole,
     SponsorshipContract,
     SponsorshipGroup,
     now_utc,
@@ -71,6 +73,7 @@ from app.schemas.sponsorship import (
     SponsoredInstitutionUpdate,
     SponsoredPersonCreate,
     SponsoredPersonRead,
+    SponsoredPersonRoleRead,
     SponsoredPersonUpdate,
     SponsorshipContractCreate,
     SponsorshipContractRead,
@@ -331,6 +334,23 @@ def _owner_counts(db: Session, owner_type: OwnerType, owner_id: int) -> dict[str
     }
 
 
+def _person_read_payload(db: Session, person: SponsoredPerson) -> dict[str, Any]:
+    """Monta dict para ``SponsoredPersonRead`` com papel aninhado e contagens."""
+    role = person.person_role
+    if role is None:
+        role = db.get(SponsoredPersonRole, person.role_id)
+    if role is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Papel da pessoa patrocinada nao encontrado (role_id invalido).",
+        )
+    return {
+        **person.model_dump(exclude={"person_role"}),
+        "role": SponsoredPersonRoleRead.model_validate(role),
+        **_owner_counts(db, OwnerType.PERSON, cast(int, person.id)),
+    }
+
+
 def _list_groups_for_owner(
     db: Session, owner_type: OwnerType, owner_id: int
 ) -> list[SponsorshipGroupRead]:
@@ -364,6 +384,21 @@ def _list_groups_for_owner(
 # ===========================================================================
 
 
+@router.get("/person-roles", response_model=list[SponsoredPersonRoleRead])
+def list_person_roles(db: Session = Depends(_db)):
+    """Lista papéis disponíveis para pessoa patrocinada (dropdown).
+
+    Returns:
+        Registros de ``sponsored_person_role`` ordenados para exibição.
+    """
+    stmt = (
+        select(SponsoredPersonRole)
+        .order_by(SponsoredPersonRole.sort_order, SponsoredPersonRole.id)
+    )
+    items = db.exec(stmt).all()
+    return [SponsoredPersonRoleRead.model_validate(r) for r in items]
+
+
 @router.get("/persons", response_model=list[SponsoredPersonRead])
 def list_persons(
     skip: int = 0,
@@ -382,13 +417,15 @@ def list_persons(
     Returns:
         Lista de ``SponsoredPersonRead`` ordenada por nome completo.
     """
-    items = db.exec(
-        select(SponsoredPerson).order_by(SponsoredPerson.full_name).offset(skip).limit(limit)
-    ).all()
-    return [
-        SponsoredPersonRead.model_validate({**item.model_dump(), **_owner_counts(db, OwnerType.PERSON, item.id)})
-        for item in items
-    ]
+    stmt = (
+        select(SponsoredPerson)
+        .options(selectinload(SponsoredPerson.person_role))
+        .order_by(SponsoredPerson.full_name)
+        .offset(skip)
+        .limit(limit)
+    )
+    items = db.exec(stmt).all()
+    return [SponsoredPersonRead.model_validate(_person_read_payload(db, item)) for item in items]
 
 
 @router.get("/persons/{person_id}", response_model=SponsoredPersonRead)
@@ -408,12 +445,15 @@ def get_person(person_id: int, db: Session = Depends(_db)):
     Raises:
         HTTPException: 404 se a pessoa não existir.
     """
-    item = db.get(SponsoredPerson, person_id)
+    stmt = (
+        select(SponsoredPerson)
+        .where(SponsoredPerson.id == person_id)
+        .options(selectinload(SponsoredPerson.person_role))
+    )
+    item = db.exec(stmt).first()
     if not item:
         raise HTTPException(status_code=404, detail="Pessoa nao encontrada")
-    return SponsoredPersonRead.model_validate(
-        {**item.model_dump(), **_owner_counts(db, OwnerType.PERSON, item.id)}
-    )
+    return SponsoredPersonRead.model_validate(_person_read_payload(db, item))
 
 
 @router.post("/persons", response_model=SponsoredPersonRead, status_code=201)
@@ -437,13 +477,14 @@ def create_person(
             do banco (ex.: CPF duplicado). Este handler não converte o erro em
             ``HTTPException``.
     """
+    if not db.get(SponsoredPersonRole, body.role_id):
+        raise HTTPException(status_code=400, detail="role_id invalido")
     obj = SponsoredPerson(**body.model_dump(exclude_unset=True))
     db.add(obj)
     db.commit()
     db.refresh(obj)
-    return SponsoredPersonRead.model_validate(
-        {**obj.model_dump(), **_owner_counts(db, OwnerType.PERSON, obj.id)}
-    )
+    db.refresh(obj, attribute_names=["person_role"])
+    return SponsoredPersonRead.model_validate(_person_read_payload(db, obj))
 
 
 @router.patch("/persons/{person_id}", response_model=SponsoredPersonRead)
@@ -468,15 +509,18 @@ def update_person(person_id: int, body: SponsoredPersonUpdate, db: Session = Dep
     obj = db.get(SponsoredPerson, person_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Pessoa nao encontrada")
-    for k, v in body.model_dump(exclude_unset=True).items():
+    payload = body.model_dump(exclude_unset=True)
+    if "role_id" in payload and payload["role_id"] is not None:
+        if not db.get(SponsoredPersonRole, payload["role_id"]):
+            raise HTTPException(status_code=400, detail="role_id invalido")
+    for k, v in payload.items():
         setattr(obj, k, v)
     obj.updated_at = now_utc()
     db.add(obj)
     db.commit()
     db.refresh(obj)
-    return SponsoredPersonRead.model_validate(
-        {**obj.model_dump(), **_owner_counts(db, OwnerType.PERSON, obj.id)}
-    )
+    db.refresh(obj, attribute_names=["person_role"])
+    return SponsoredPersonRead.model_validate(_person_read_payload(db, obj))
 
 
 @router.delete("/persons/{person_id}", status_code=204)

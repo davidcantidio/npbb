@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 
 import pytest
@@ -12,7 +13,16 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
-from app.models.models import Agencia, Ativacao, Evento, StatusEvento, Usuario
+from app.models.models import (
+    Agencia,
+    Ativacao,
+    Evento,
+    Lead,
+    LeadEvento,
+    LeadEventoSourceKind,
+    StatusEvento,
+    Usuario,
+)
 from app.services.imports.contracts import ImportPreviewResult
 from app.utils.security import hash_password
 
@@ -146,6 +156,7 @@ class TestPostLeadsBatches:
         assert body["pipeline_status"] == "pending"
         assert body["pipeline_progress"] is None
         assert body["nome_arquivo_original"] == "leads.csv"
+        assert body["arquivo_sha256"] == hashlib.sha256(CSV_CONTENT).hexdigest()
         assert body["plataforma_origem"] == "email"
         assert body["id"] is not None
         assert body.get("origem_lote") == "proponente"
@@ -154,7 +165,8 @@ class TestPostLeadsBatches:
     def test_upload_origem_ativacao_requires_ativacao_id(self, client, engine):
         with Session(engine) as s:
             headers = _auth_header(client, s)
-            ev = _seed_evento(s)
+            ag = _seed_agencia(s)
+            ev = _seed_evento(s, agencia_id=ag.id)
             evento_id = ev.id
 
         resp = client.post(
@@ -198,6 +210,34 @@ class TestPostLeadsBatches:
         )
         assert resp.status_code == 400
         assert resp.json()["detail"].get("code") == "ATIVACAO_EVENTO_MISMATCH"
+
+    def test_upload_origem_ativacao_rejects_evento_without_agencia(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+            ev = _seed_evento(s, agencia_id=None)
+            ativ = Ativacao(nome="Stand sem agencia", evento_id=ev.id)
+            s.add(ativ)
+            s.commit()
+            s.refresh(ativ)
+            evento_id = ev.id
+            ativacao_id = ativ.id
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={
+                "plataforma_origem": "email",
+                "data_envio": "2026-03-01T10:00:00",
+                "evento_id": str(evento_id),
+                "origem_lote": "ativacao",
+                "ativacao_id": str(ativacao_id),
+            },
+        )
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert detail.get("code") == "EVENTO_AGENCIA_REQUIRED_FOR_ATIVACAO_IMPORT"
+        assert detail.get("message") == "Vincule uma agencia ao evento antes de importar leads de ativacao."
 
     def test_upload_origem_ativacao_persists(self, client, engine):
         with Session(engine) as s:
@@ -251,6 +291,62 @@ class TestPostLeadsBatches:
         get_resp = client.get(f"/leads/batches/{body['id']}", headers=headers)
         assert get_resp.status_code == 200
         assert get_resp.json()["evento_id"] == evento_id
+
+    def test_listar_referencia_eventos_includes_activation_import_metadata(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+            ag = _seed_agencia(s)
+            evento_supported = _seed_evento(s, nome="Evento com agencia", agencia_id=ag.id)
+            evento_blocked = _seed_evento(s, nome="Evento sem agencia", agencia_id=None)
+            supported_evento_id = evento_supported.id
+            blocked_evento_id = evento_blocked.id
+            agencia_id = ag.id
+
+        resp = client.get("/leads/referencias/eventos", headers=headers)
+        assert resp.status_code == 200
+
+        body = resp.json()
+        by_id = {row["id"]: row for row in body}
+
+        assert by_id[supported_evento_id]["agencia_id"] == agencia_id
+        assert by_id[supported_evento_id]["supports_activation_import"] is True
+        assert by_id[supported_evento_id]["activation_import_block_reason"] is None
+        assert by_id[supported_evento_id]["leads_count"] == 0
+
+        assert by_id[blocked_evento_id]["agencia_id"] is None
+        assert by_id[blocked_evento_id]["supports_activation_import"] is False
+        assert (
+            by_id[blocked_evento_id]["activation_import_block_reason"]
+            == "Vincule uma agencia ao evento antes de importar leads de ativacao."
+        )
+        assert by_id[blocked_evento_id]["leads_count"] == 0
+
+    def test_listar_referencia_eventos_includes_leads_count_from_lead_evento(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+            ev_with_lead = _seed_evento(s, nome="Evento com lead vinculado")
+            ev_without_lead = _seed_evento(s, nome="Evento sem lead vinculado")
+            lead = Lead()
+            s.add(lead)
+            s.commit()
+            s.refresh(lead)
+            s.add(
+                LeadEvento(
+                    lead_id=lead.id,
+                    evento_id=ev_with_lead.id,
+                    source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+                )
+            )
+            s.commit()
+            with_lead_id = ev_with_lead.id
+            without_lead_id = ev_without_lead.id
+
+        resp = client.get("/leads/referencias/eventos", headers=headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        by_id = {row["id"]: row for row in body}
+        assert by_id[with_lead_id]["leads_count"] == 1
+        assert by_id[without_lead_id]["leads_count"] == 0
 
     def test_upload_rejects_unknown_evento_id(self, client, engine):
         with Session(engine) as s:

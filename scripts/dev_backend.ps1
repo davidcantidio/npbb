@@ -46,6 +46,50 @@ if ($env:PYTHONPATH) {
 $uvHost = if ($env:UVICORN_HOST) { $env:UVICORN_HOST } else { "127.0.0.1" }
 $uvPort = if ($env:UVICORN_PORT) { $env:UVICORN_PORT } else { "8000" }
 
+$portListeners = Get-NetTCPConnection -LocalPort ([int]$uvPort) -State Listen -ErrorAction SilentlyContinue
+if ($portListeners) {
+    $listenerPids = @($portListeners | Select-Object -ExpandProperty OwningProcess -Unique)
+    $listenerDescriptions = @(
+        foreach ($listenerPid in $listenerPids) {
+            $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $listenerPid" -ErrorAction SilentlyContinue
+            if ($proc) {
+                "PID ${listenerPid}: $($proc.CommandLine)"
+            } else {
+                "PID ${listenerPid}"
+            }
+        }
+    )
+    Write-Error ("Ja existe processo escutando em {0}:{1}. Finalize a instancia anterior antes de subir outro backend.`n{2}" -f $uvHost, $uvPort, ($listenerDescriptions -join "`n"))
+    exit 1
+}
+
 Set-Location -LiteralPath $RepoRoot
 Write-Host "Backend Python: $VenvPython"
+
+$skipDbPreflight = $env:SKIP_DB_PREFLIGHT -and $env:SKIP_DB_PREFLIGHT.ToLower() -in @("1", "true", "yes")
+if (-not $skipDbPreflight) {
+    Write-Host "Verificando conectividade com o banco..."
+    @'
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+from app.db.database import engine, get_database_endpoint_info
+
+try:
+    with engine.connect() as connection:
+        connection.execute(text('select 1'))
+except OperationalError as exc:
+    endpoint = get_database_endpoint_info()
+    detail = str(getattr(exc, "orig", exc)).strip()
+    print(f"ERRO: banco indisponivel para o backend dev. endpoint={endpoint}")
+    print(detail)
+    raise SystemExit(2)
+else:
+    print(f"Banco acessivel. endpoint={get_database_endpoint_info()}")
+'@ | & $VenvPython -
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Falha no preflight do banco. Corrija DATABASE_URL/DIRECT_URL ou a conectividade de rede antes de subir a API. Se quiser ignorar esse check, defina SKIP_DB_PREFLIGHT=true."
+        exit $LASTEXITCODE
+    }
+}
+
 & $VenvPython -m uvicorn app.main:app --reload --app-dir backend --host $uvHost --port $uvPort

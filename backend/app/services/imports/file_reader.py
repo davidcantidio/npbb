@@ -83,6 +83,7 @@ def _build_preview_result(
     filename: str,
     rows: list[list[str]],
     delimiter: str | None,
+    sheet_name: str | None = None,
 ) -> ImportPreviewResult:
     start_index = detect_data_start_index(rows)
     headers = rows[start_index] if rows else []
@@ -93,6 +94,7 @@ def _build_preview_result(
         rows=data_rows,
         delimiter=delimiter,
         start_index=start_index,
+        sheet_name=sheet_name,
     )
 
 
@@ -102,6 +104,7 @@ def _read_preview_window_from_rows(
     filename: str,
     delimiter: str | None,
     sample_rows: int,
+    sheet_name: str | None = None,
     scan_rows: int = HEADER_SCAN_LIMIT,
 ) -> ImportPreviewResult:
     buffered_rows: list[list[str]] = []
@@ -137,6 +140,7 @@ def _read_preview_window_from_rows(
         rows=data_rows[:sample_rows],
         delimiter=delimiter,
         start_index=start_index,
+        sheet_name=sheet_name,
     )
 
 
@@ -148,11 +152,11 @@ def _read_csv_rows_from_raw(raw: bytes) -> tuple[list[list[str]], str]:
     return rows, delimiter
 
 
-def _read_xlsx_rows_from_raw(raw: bytes) -> list[list[str]]:
+def _read_xlsx_rows_from_raw(raw: bytes) -> tuple[list[list[str]], str | None]:
     wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
     try:
         ws = wb.worksheets[0]
-        return [_normalize_row(row) for row in ws.iter_rows(values_only=True)]
+        return [_normalize_row(row) for row in ws.iter_rows(values_only=True)], ws.title
     finally:
         wb.close()
 
@@ -180,6 +184,7 @@ def _read_xlsx_preview_from_raw(raw: bytes, *, filename: str, sample_rows: int) 
             filename=filename,
             delimiter=None,
             sample_rows=sample_rows,
+            sheet_name=ws.title,
         )
     finally:
         wb.close()
@@ -218,8 +223,13 @@ def inspect_upload(
 def read_raw_file_rows(raw: bytes, *, filename: str) -> ImportPreviewResult:
     ext = _validate_extension(filename)
     if ext == ".xlsx":
-        rows = _read_xlsx_rows_from_raw(raw)
-        return _build_preview_result(filename=filename, rows=rows, delimiter=None)
+        rows, sheet_name = _read_xlsx_rows_from_raw(raw)
+        return _build_preview_result(
+            filename=filename,
+            rows=rows,
+            delimiter=None,
+            sheet_name=sheet_name,
+        )
 
     rows, delimiter = _read_csv_rows_from_raw(raw)
     return _build_preview_result(filename=filename, rows=rows, delimiter=delimiter)

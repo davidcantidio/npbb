@@ -153,7 +153,7 @@ export default function PatrocinadosPage() {
                         {person.email || "sem email"}
                       </Typography>
                     </TableCell>
-                    <TableCell>{person.role}</TableCell>
+                    <TableCell>{person.role.label}</TableCell>
                     <TableCell align="center">{person.social_profiles_count}</TableCell>
                     <TableCell align="center">{person.groups_count}</TableCell>
                     <TableCell align="center">{person.contracts_count}</TableCell>

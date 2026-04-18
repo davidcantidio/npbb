@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import logging
 import os
@@ -14,12 +15,16 @@ from collections.abc import Iterator
 
 import httpx
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
 from fastapi import Response as FastAPIResponse
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
+from sqlalchemy.orm import aliased
 from sqlalchemy import and_, func
+from sqlalchemy import or_
+from sqlalchemy.sql import text
 from sqlmodel import Session, select
+from lead_pipeline.constants import TIPO_EVENTO_PADRAO
 
 from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
@@ -32,6 +37,7 @@ from app.models.models import (
     LeadAlias,
     LeadAliasTipo,
     LeadConversao,
+    LeadEvento,
     TipoEvento,
     Usuario,
     now_utc,
@@ -59,13 +65,23 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
 )
 from app.services.imports.file_reader import ImportFileError, read_raw_file_preview
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
-from app.services.lead_pipeline_service import executar_pipeline_gold, queue_pipeline_batch
+from app.services.lead_pipeline_service import (
+    executar_pipeline_gold_em_thread,
+    load_batch_without_bronze,
+    queue_pipeline_batch,
+)
+from app.services.evento_activation_import import (
+    ACTIVATION_IMPORT_REQUIRES_AGENCY_CODE,
+    get_activation_import_block_reason,
+    get_activation_import_block_reason_from_agencia_id,
+)
 from app.schemas.lead_batch import (
     ColunasResponse,
     ColumnSuggestionRead,
     ExecutarPipelineResponse,
     LeadBatchPreviewResponse,
     LeadBatchRead,
+    LeadReferenceEventoRead,
     MapearBatchRequest,
     MapearBatchResponse,
 )
@@ -356,7 +372,17 @@ def _faixa_etaria_export_data2(idade: int | None) -> str | None:
     return "40+"
 
 
-def _lead_list_filters(params: LeadListQuery) -> list:
+def _format_local_evento_export(cidade: str | None, estado: str | None) -> str | None:
+    cidade_value = (cidade or "").strip()
+    estado_value = (estado or "").strip()
+    if not cidade_value and not estado_value:
+        return None
+    if cidade_value and estado_value:
+        return f"{cidade_value}-{estado_value}"
+    return cidade_value or estado_value
+
+
+def _lead_list_filters(params: LeadListQuery, origem_evento_id_col=None) -> list:
     filters: list = []
     if params.data_inicio is not None:
         start_at, _ = _lead_list_day_window_bounds(params.data_inicio)
@@ -365,8 +391,27 @@ def _lead_list_filters(params: LeadListQuery) -> list:
         _, end_exclusive = _lead_list_day_window_bounds(params.data_fim)
         filters.append(Lead.data_criacao < end_exclusive)
     if params.evento_id is not None:
-        filters.append(LeadConversao.evento_id == params.evento_id)
+        if origem_evento_id_col is None:
+            filters.append(LeadConversao.evento_id == params.evento_id)
+        else:
+            filters.append(
+                or_(
+                    LeadConversao.evento_id == params.evento_id,
+                    origem_evento_id_col == params.evento_id,
+                )
+            )
     return filters
+
+
+def _configure_listar_leads_statement_timeout(session: Session, params: LeadListQuery) -> None:
+    if not params.long_running:
+        return
+    bind = session.get_bind()
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
+    if dialect_name != "postgresql":
+        return
+    timeout_ms = max(int(os.getenv("LEADS_EXPORT_STATEMENT_TIMEOUT_MS", "900000")), 0)
+    session.exec(text(f"SET LOCAL statement_timeout = {timeout_ms}"))
 
 
 @router.get("", response_model=LeadListResponse)
@@ -377,7 +422,10 @@ def listar_leads(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
+    _configure_listar_leads_statement_timeout(session, params)
     offset = (params.page - 1) * params.page_size
+    evento_origem = aliased(Evento)
+    tipo_evento_origem = aliased(TipoEvento)
 
     latest_conversao_subquery = (
         select(
@@ -388,7 +436,7 @@ def listar_leads(
         .subquery()
     )
 
-    list_filters = _lead_list_filters(params)
+    list_filters = _lead_list_filters(params, LeadBatch.evento_id)
 
     base_from = (
         select(
@@ -410,7 +458,15 @@ def listar_leads(
             LeadConversao.evento_id,
             Evento.nome.label("evento_convertido_nome"),
             Evento.data_inicio_prevista.label("evento_data_inicio_prevista"),
+            Evento.cidade.label("evento_cidade"),
+            Evento.estado.label("evento_estado"),
             TipoEvento.nome.label("tipo_evento_nome"),
+            LeadBatch.evento_id.label("evento_origem_id"),
+            evento_origem.data_inicio_prevista.label("evento_origem_data_inicio_prevista"),
+            evento_origem.cidade.label("evento_origem_cidade"),
+            evento_origem.estado.label("evento_origem_estado"),
+            evento_origem.tipo_id.label("evento_origem_tipo_id"),
+            tipo_evento_origem.nome.label("tipo_evento_origem_nome"),
             Lead.rg,
             Lead.genero,
             Lead.is_cliente_bb,
@@ -420,12 +476,18 @@ def listar_leads(
             Lead.complemento,
             Lead.bairro,
             Lead.cep,
+            Lead.fonte_origem,
+            LeadBatch.origem_lote,
+            LeadBatch.plataforma_origem,
         )
         .select_from(Lead)
         .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
         .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
         .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
         .outerjoin(TipoEvento, TipoEvento.id == Evento.tipo_id)
+        .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
+        .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
+        .outerjoin(tipo_evento_origem, tipo_evento_origem.id == evento_origem.tipo_id)
     )
     if list_filters:
         base_from = base_from.where(and_(*list_filters))
@@ -436,6 +498,7 @@ def listar_leads(
         .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
         .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
         .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
+        .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
     )
     if list_filters:
         count_stmt = count_stmt.where(and_(*list_filters))
@@ -465,7 +528,15 @@ def listar_leads(
         evento_convertido_id,
         evento_convertido_nome,
         evento_data_inicio_prevista,
+        evento_cidade,
+        evento_estado,
         tipo_evento_nome,
+        evento_origem_id,
+        evento_origem_data_inicio_prevista,
+        evento_origem_cidade,
+        evento_origem_estado,
+        evento_origem_tipo_id,
+        tipo_evento_origem_nome,
         rg,
         genero,
         is_cliente_bb,
@@ -475,6 +546,9 @@ def listar_leads(
         complemento,
         bairro,
         cep,
+        fonte_origem,
+        origem_lote,
+        plataforma_origem,
     ) in rows:
         tipo_conversao_value = None
         if tipo_conversao is not None:
@@ -487,9 +561,24 @@ def listar_leads(
             if part and part.strip()
         ) or None
         data_conv = data_conversao_evento or data_conversao_criada
-        ref_date = _ref_date_for_age(evento_data_inicio_prevista, data_conv)
+        has_evento_convertido = evento_convertido_id is not None
+        evento_data_export = (
+            evento_data_inicio_prevista if has_evento_convertido else evento_origem_data_inicio_prevista
+        )
+        local_evento = _format_local_evento_export(
+            evento_cidade if has_evento_convertido else evento_origem_cidade,
+            evento_estado if has_evento_convertido else evento_origem_estado,
+        )
+        tipo_evento_export = tipo_evento_nome
+        if not has_evento_convertido:
+            if tipo_evento_origem_nome:
+                tipo_evento_export = tipo_evento_origem_nome
+            elif evento_origem_id is not None and evento_origem_tipo_id is None:
+                tipo_evento_export = TIPO_EVENTO_PADRAO
+        ref_date = _ref_date_for_age(evento_data_export, data_conv if has_evento_convertido else None)
         idade_val = _idade_na_data_ref(data_nascimento, ref_date)
         faixa_val = _faixa_etaria_export_data2(idade_val)
+        origem_export = _format_origem_lead_export(fonte_origem, origem_lote, plataforma_origem)
         items.append(
             LeadListItemRead(
                 id=int(lead_id),
@@ -517,11 +606,19 @@ def listar_leads(
                 bairro=bairro,
                 cep=cep,
                 data_nascimento=data_nascimento,
-                data_evento=_format_data_evento_export(evento_data_inicio_prevista, data_conv),
-                soma_de_ano_evento=_ano_evento_export(evento_data_inicio_prevista, data_conv),
-                tipo_evento=tipo_evento_nome,
+                data_evento=_format_data_evento_export(
+                    evento_data_export,
+                    data_conv if has_evento_convertido else None,
+                ),
+                soma_de_ano_evento=_ano_evento_export(
+                    evento_data_export,
+                    data_conv if has_evento_convertido else None,
+                ),
+                tipo_evento=tipo_evento_export,
+                local_evento=local_evento,
                 faixa_etaria=faixa_val,
                 soma_de_idade=idade_val,
+                origem=origem_export or None,
             )
         )
 
@@ -530,6 +627,154 @@ def listar_leads(
         page_size=params.page_size,
         total=total,
         items=items,
+    )
+
+
+LEADS_LIST_EXPORT_PAGE_SIZE = 100
+LEADS_LIST_EXPORT_HEADERS = [
+    "nome",
+    "cpf",
+    "data_nascimento",
+    "email",
+    "telefone",
+    "origem",
+    "evento",
+    "tipo_evento",
+    "local",
+    "data_evento",
+]
+
+
+def _format_origem_lead_export(
+    fonte_origem: str | None,
+    origem_lote: str | None,
+    plataforma_origem: str | None,
+) -> str:
+    """Rotulo para CSV: Proponente | Ativação (prioriza metadados do lote, depois fonte do lead)."""
+    for raw in (origem_lote, fonte_origem, plataforma_origem):
+        if not raw:
+            continue
+        s = raw.strip().lower()
+        if s in ("ativacao", "ativação") or "ativacao" in s or "ativação" in s:
+            return "Ativação"
+        if s == "proponente" or "proponente" in s:
+            return "Proponente"
+    return ""
+
+
+def _format_leads_list_export_date(value: date | datetime | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        value = value.date()
+    return f"{value.month}/{value.day}/{value.year}"
+
+
+def _resolve_leads_list_export_event(item: LeadListItemRead) -> str:
+    return item.evento_convertido_nome or item.evento_nome or ""
+
+
+def _build_leads_list_export_cells(item: LeadListItemRead) -> list[str]:
+    return [
+        item.nome or "",
+        item.cpf or "",
+        _format_leads_list_export_date(item.data_nascimento),
+        item.email or "",
+        item.telefone or "",
+        item.origem or "",
+        _resolve_leads_list_export_event(item),
+        item.tipo_evento or "",
+        item.local_evento or "",
+        _format_leads_list_export_date(item.data_evento),
+    ]
+
+
+def _iter_leads_list_export_csv(
+    session: Session,
+    current_user: Usuario,
+    first_page: LeadListResponse,
+    *,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    evento_id: int | None = None,
+):
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer, delimiter=",", quoting=csv.QUOTE_MINIMAL, lineterminator="\r\n")
+
+    csv_buffer.write("\ufeff")
+    writer.writerow(LEADS_LIST_EXPORT_HEADERS)
+    for item in first_page.items:
+        writer.writerow(_build_leads_list_export_cells(item))
+    yield csv_buffer.getvalue().encode("utf-8")
+    csv_buffer.seek(0)
+    csv_buffer.truncate(0)
+
+    page = 2
+    while True:
+        response = FastAPIResponse()
+        result = listar_leads(
+            LeadListQuery(
+                page=page,
+                page_size=LEADS_LIST_EXPORT_PAGE_SIZE,
+                long_running=True,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                evento_id=evento_id,
+            ),
+            session=session,
+            current_user=current_user,
+        )
+
+        for item in result.items:
+            writer.writerow(_build_leads_list_export_cells(item))
+
+        chunk = csv_buffer.getvalue()
+        if chunk:
+            yield chunk.encode("utf-8")
+        csv_buffer.seek(0)
+        csv_buffer.truncate(0)
+
+        if len(result.items) < LEADS_LIST_EXPORT_PAGE_SIZE:
+            break
+        page += 1
+
+
+@router.get("/export/csv")
+@router.get("/export/csv/")
+def exportar_leads_csv(
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+    data_inicio: date | None = Query(None),
+    data_fim: date | None = Query(None),
+    evento_id: int | None = Query(None, ge=1),
+):
+    first_page = listar_leads(
+        LeadListQuery(
+            page=1,
+            page_size=LEADS_LIST_EXPORT_PAGE_SIZE,
+            long_running=True,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            evento_id=evento_id,
+        ),
+        session=session,
+        current_user=current_user,
+    )
+    if first_page.total == 0:
+        return FastAPIResponse(status_code=204)
+
+    filename = f"leads-{date.today().isoformat()}.csv"
+    return StreamingResponse(
+        _iter_leads_list_export_csv(
+            session,
+            current_user,
+            first_page,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            evento_id=evento_id,
+        ),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -632,15 +877,24 @@ def validar_upload_import(
     return {"filename": filename, "size_bytes": size}
 
 
-@router.get("/referencias/eventos")
-@router.get("/referencias/eventos/")
+@router.get("/referencias/eventos", response_model=list[LeadReferenceEventoRead])
+@router.get("/referencias/eventos/", response_model=list[LeadReferenceEventoRead])
 def listar_referencia_eventos(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
+    count_stmt = (
+        select(LeadEvento.evento_id, func.count(func.distinct(LeadEvento.lead_id)))
+        .group_by(LeadEvento.evento_id)
+    )
+    lead_counts: dict[int, int] = {}
+    for evento_id, cnt in session.exec(count_stmt).all():
+        if evento_id is not None:
+            lead_counts[int(evento_id)] = int(cnt or 0)
+
     stmt = (
-        select(Evento.id, Evento.nome, Evento.data_inicio_prevista)
+        select(Evento.id, Evento.nome, Evento.data_inicio_prevista, Evento.agencia_id)
         .order_by(Evento.data_inicio_prevista.desc().nulls_last(), Evento.nome)
     )
     eventos = session.exec(stmt).all()
@@ -649,8 +903,12 @@ def listar_referencia_eventos(
             "id": int(eid),
             "nome": nome,
             "data_inicio_prevista": str(data_inicio) if data_inicio else None,
+            "agencia_id": int(agencia_id) if agencia_id is not None else None,
+            "supports_activation_import": bool(agencia_id is not None),
+            "activation_import_block_reason": get_activation_import_block_reason_from_agencia_id(agencia_id),
+            "leads_count": lead_counts.get(int(eid), 0),
         }
-        for eid, nome, data_inicio in eventos
+        for eid, nome, data_inicio, agencia_id in eventos
         if eid is not None and nome
     ]
 
@@ -1516,6 +1774,7 @@ def criar_batch(
         )
 
     raw = file.file.read()
+    arquivo_sha256 = hashlib.sha256(raw).hexdigest()
     if len(raw) == 0:
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
@@ -1565,6 +1824,7 @@ def criar_batch(
             field="data_envio",
         )
 
+    resolved_evento: Evento | None = None
     resolved_evento_id: int | None = None
     if evento_id is not None:
         evento = session.get(Evento, evento_id)
@@ -1575,6 +1835,7 @@ def criar_batch(
                 message="Evento informado nao existe",
                 field="evento_id",
             )
+        resolved_evento = evento
         resolved_evento_id = evento_id
 
     origem_clean = (origem_lote or "proponente").strip().lower()
@@ -1597,6 +1858,15 @@ def criar_batch(
                 message="evento_id e obrigatorio para importacao por ativacao",
                 field="evento_id",
             )
+        if resolved_evento is not None:
+            block_reason = get_activation_import_block_reason(resolved_evento)
+            if block_reason is not None:
+                raise_http_error(
+                    status.HTTP_400_BAD_REQUEST,
+                    code=ACTIVATION_IMPORT_REQUIRES_AGENCY_CODE,
+                    message=block_reason,
+                    field="evento_id",
+                )
         if ativacao_id is None:
             raise_http_error(
                 status.HTTP_400_BAD_REQUEST,
@@ -1644,6 +1914,7 @@ def criar_batch(
         plataforma_origem=plataforma_origem.strip(),
         data_envio=parsed_data_envio,
         nome_arquivo_original=filename,
+        arquivo_sha256=arquivo_sha256,
         arquivo_bronze=raw,
         stage=BatchStage.BRONZE,
         evento_id=resolved_evento_id,
@@ -1836,7 +2107,7 @@ def get_batch(
     current_user: Usuario = Depends(get_current_user),
 ):
     _ = current_user
-    batch = session.get(LeadBatch, batch_id)
+    batch = load_batch_without_bronze(session, batch_id)
     if not batch:
         raise_http_error(
             status.HTTP_404_NOT_FOUND,
@@ -1863,9 +2134,15 @@ async def disparar_pipeline(
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _ = current_user
-    batch = session.get(LeadBatch, batch_id)
+    user_id = getattr(current_user, "id", None)
+    batch = load_batch_without_bronze(session, batch_id)
     if not batch:
+        logger.warning(
+            "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r",
+            batch_id,
+            user_id,
+            "BATCH_NOT_FOUND",
+        )
         raise_http_error(
             status.HTTP_404_NOT_FOUND,
             code="BATCH_NOT_FOUND",
@@ -1873,6 +2150,15 @@ async def disparar_pipeline(
         )
 
     if batch.stage != BatchStage.SILVER:
+        logger.warning(
+            "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r stage=%r pipeline_status=%r evento_id=%r",
+            batch_id,
+            user_id,
+            "INVALID_STAGE",
+            batch.stage,
+            batch.pipeline_status,
+            batch.evento_id,
+        )
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
             code="INVALID_STAGE",
@@ -1881,6 +2167,15 @@ async def disparar_pipeline(
         )
 
     if batch.pipeline_progress is not None:
+        logger.warning(
+            "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r stage=%r pipeline_status=%r evento_id=%r",
+            batch_id,
+            user_id,
+            "PIPELINE_ALREADY_RUNNING",
+            batch.stage,
+            batch.pipeline_status,
+            batch.evento_id,
+        )
         raise_http_error(
             status.HTTP_409_CONFLICT,
             code="PIPELINE_ALREADY_RUNNING",
@@ -1891,5 +2186,13 @@ async def disparar_pipeline(
     session.add(batch)
     session.commit()
 
-    background_tasks.add_task(executar_pipeline_gold, batch_id)
+    logger.info(
+        "lead_gold_pipeline.dispatch.accepted batch_id=%r user_id=%r stage=%r pipeline_status=%r evento_id=%r",
+        batch_id,
+        user_id,
+        batch.stage,
+        batch.pipeline_status,
+        batch.evento_id,
+    )
+    background_tasks.add_task(executar_pipeline_gold_em_thread, batch_id)
     return ExecutarPipelineResponse(batch_id=batch_id, status="queued")

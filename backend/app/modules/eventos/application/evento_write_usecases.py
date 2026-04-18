@@ -58,6 +58,7 @@ from app.models.models import (
 from app.models.tmj_analytics_models import EventSession, FestivalLead
 from app.schemas.evento import EventoCreate, EventoRead, EventoUpdate
 from app.services.data_health import compute_event_data_health
+from app.services.default_event_activation import ensure_bb_activation
 from app.services.landing_pages import hydrate_evento_public_urls, normalize_template_override_input
 from app.utils.http_errors import raise_http_error
 
@@ -256,6 +257,7 @@ def criar_evento_usecase(payload: EventoCreate, session: Session, current_user: 
         )
 
     hydrate_evento_public_urls(evento)
+    ensure_bb_activation(session, evento_id=evento.id)
 
     for territorio_id in territorio_ids:
         session.add(EventoTerritorio(evento_id=evento.id, territorio_id=territorio_id))

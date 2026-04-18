@@ -6,6 +6,40 @@ import { fetchWithAuth, handleApiResponse } from "./http";
  */
 const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
 const LEAD_BATCH_STATUS_TIMEOUT_MS = 15_000;
+const LEAD_BATCH_READINESS_TIMEOUT_MS = 20_000;
+export const LEADS_EXPORT_TIMEOUT_MS = 15 * 60_000;
+export const DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON =
+  "Vincule uma agencia ao evento antes de importar leads de ativacao.";
+
+type LeadGoldLogLevel = "info" | "warn" | "error";
+
+function logLeadGoldFlow(level: LeadGoldLogLevel, event: string, context: Record<string, unknown>) {
+  const payload = {
+    ...context,
+    ts: new Date().toISOString(),
+  };
+  const logger = level === "error" ? console.error : level === "warn" ? console.warn : console.info;
+  logger(`[lead-gold-flow] ${event}`, payload);
+}
+
+function describeLeadGoldError(error: unknown) {
+  if (error instanceof Error) {
+    const details: Record<string, unknown> = {
+      name: error.name,
+      message: error.message,
+    };
+    const maybeCode = (error as { code?: unknown }).code;
+    const maybeStatus = (error as { status?: unknown }).status;
+    if (typeof maybeCode === "string") {
+      details.code = maybeCode;
+    }
+    if (typeof maybeStatus === "number") {
+      details.status = maybeStatus;
+    }
+    return details;
+  }
+  return { error };
+}
 
 export type ApiReadiness = {
   status: "ready";
@@ -18,7 +52,7 @@ export type ApiReadiness = {
 
 export async function getApiReadiness(): Promise<ApiReadiness> {
   const res = await fetchWithAuth("/health/ready", {
-    timeoutMs: 8_000,
+    timeoutMs: LEAD_BATCH_READINESS_TIMEOUT_MS,
     retries: 0,
   });
   return handleApiResponse<ApiReadiness>(res);
@@ -303,8 +337,11 @@ export type LeadListItem = {
   data_evento?: string | null;
   soma_de_ano_evento?: number | null;
   tipo_evento?: string | null;
+  local_evento?: string | null;
   faixa_etaria?: string | null;
   soma_de_idade?: number | null;
+  /** Proponente | Ativação (export CSV / listagem). */
+  origem?: string | null;
 };
 
 /**
@@ -445,7 +482,22 @@ export type ReferenciaEvento = {
   id: number;
   nome: string;
   data_inicio_prevista: string | null;
+  agencia_id?: number | null;
+  supports_activation_import?: boolean;
+  activation_import_block_reason?: string | null;
+  /** Distinct leads com registro em `lead_evento` para este evento (Gold). */
+  leads_count?: number;
 };
+
+export function supportsActivationImport(evento: Pick<ReferenciaEvento, "supports_activation_import"> | null | undefined) {
+  return evento?.supports_activation_import ?? true;
+}
+
+export function getActivationImportBlockReason(
+  evento: Pick<ReferenciaEvento, "activation_import_block_reason"> | null | undefined,
+) {
+  return evento?.activation_import_block_reason ?? null;
+}
 
 /**
  * Lists reference events available for mapping helpers.
@@ -514,25 +566,75 @@ export async function mapearLeadBatch(
 }
 
 export async function getLeadBatch(token: string, batchId: number): Promise<LeadBatch> {
-  const res = await fetchWithAuth(`/leads/batches/${batchId}`, {
-    token,
-    retries: 0,
+  const path = `/leads/batches/${batchId}`;
+  logLeadGoldFlow("info", "get-batch.request", {
+    batchId,
+    path,
     timeoutMs: LEAD_BATCH_STATUS_TIMEOUT_MS,
   });
-  return handleApiResponse<LeadBatch>(res);
+  try {
+    const res = await fetchWithAuth(path, {
+      token,
+      retries: 0,
+      timeoutMs: LEAD_BATCH_STATUS_TIMEOUT_MS,
+    });
+    const data = await handleApiResponse<LeadBatch>(res);
+    logLeadGoldFlow("info", "get-batch.response", {
+      batchId,
+      path,
+      httpStatus: res.status,
+      stage: data.stage,
+      pipelineStatus: data.pipeline_status,
+      pipelineStep: data.pipeline_progress?.step ?? null,
+      pipelinePct: data.pipeline_progress?.pct ?? null,
+      pipelineUpdatedAt: data.pipeline_progress?.updated_at ?? null,
+    });
+    return data;
+  } catch (error) {
+    logLeadGoldFlow("error", "get-batch.error", {
+      batchId,
+      path,
+      timeoutMs: LEAD_BATCH_STATUS_TIMEOUT_MS,
+      ...describeLeadGoldError(error),
+    });
+    throw error;
+  }
 }
 
 export async function executarPipeline(
   token: string,
   batchId: number,
 ): Promise<ExecutarPipelineResult> {
-  const res = await fetchWithAuth(`/leads/batches/${batchId}/executar-pipeline`, {
-    method: "POST",
-    token,
-    retries: 0,
+  const path = `/leads/batches/${batchId}/executar-pipeline`;
+  logLeadGoldFlow("info", "execute-pipeline.request", {
+    batchId,
+    path,
     timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
   });
-  return handleApiResponse<ExecutarPipelineResult>(res);
+  try {
+    const res = await fetchWithAuth(path, {
+      method: "POST",
+      token,
+      retries: 0,
+      timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+    });
+    const data = await handleApiResponse<ExecutarPipelineResult>(res);
+    logLeadGoldFlow("info", "execute-pipeline.response", {
+      batchId,
+      path,
+      httpStatus: res.status,
+      status: data.status,
+    });
+    return data;
+  } catch (error) {
+    logLeadGoldFlow("error", "execute-pipeline.error", {
+      batchId,
+      path,
+      timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+      ...describeLeadGoldError(error),
+    });
+    throw error;
+  }
 }
 
 /**
@@ -550,6 +652,8 @@ export async function listLeads(
     data_inicio?: string;
     data_fim?: string;
     evento_id?: number;
+    long_running?: boolean;
+    timeoutMs?: number;
   },
 ): Promise<LeadListResponse> {
   const qs = new URLSearchParams();
@@ -558,8 +662,12 @@ export async function listLeads(
   if (params?.data_inicio) qs.set("data_inicio", params.data_inicio);
   if (params?.data_fim) qs.set("data_fim", params.data_fim);
   if (typeof params?.evento_id === "number") qs.set("evento_id", String(params.evento_id));
+  if (params?.long_running) qs.set("long_running", "true");
   const url = `/leads${qs.toString() ? `?${qs}` : ""}`;
 
-  const res = await fetchWithAuth(url, { token });
+  const res = await fetchWithAuth(url, {
+    token,
+    ...(typeof params?.timeoutMs === "number" ? { timeoutMs: params.timeoutMs } : {}),
+  });
   return handleApiResponse<LeadListResponse>(res);
 }

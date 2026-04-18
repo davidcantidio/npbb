@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import PipelineStatusPage from "../leads/PipelineStatusPage";
+import { ApiError } from "../../services/http";
 import { useAuth } from "../../store/auth";
 import {
   executarPipeline,
@@ -86,7 +87,13 @@ function renderPipelineStatusPage() {
 
 describe("PipelineStatusPage", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockedUseAuth.mockReset();
+    mockedExecutarPipeline.mockReset();
+    mockedGetApiReadiness.mockReset();
+    mockedGetLeadBatch.mockReset();
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockedUseAuth.mockReturnValue({
       token: "token-123",
       user: { id: 1, email: "demo@npbb.com.br", tipo_usuario: "admin", agencia_id: null },
@@ -111,6 +118,7 @@ describe("PipelineStatusPage", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("renders with minimal route and auth context", async () => {
@@ -240,6 +248,161 @@ describe("PipelineStatusPage", () => {
     });
   }, 10000);
 
+  it("keeps polling after a transient timeout while pipeline progress is active", async () => {
+    mockedGetLeadBatch
+      .mockResolvedValueOnce(
+        createBatch({
+          stage: "silver",
+          pipeline_status: "pending",
+          pipeline_progress: {
+            step: "normalize_rows",
+            label: "Normalizando campos",
+            pct: 40,
+            updated_at: "2026-04-14T12:34:56.789Z",
+          },
+          pipeline_report: null,
+        }),
+      )
+      .mockRejectedValueOnce(
+        new ApiError({
+          message: "Tempo limite da requisicao excedido.",
+          status: 0,
+          detail: "TIMEOUT",
+          code: "TIMEOUT",
+          method: "GET",
+          url: "/leads/batches/10",
+        }),
+      )
+      .mockResolvedValueOnce(
+        createBatch({
+          stage: "gold",
+          pipeline_status: "pass",
+          pipeline_progress: null,
+        }),
+      );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText("Normalizando campos")).toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+
+    expect(
+      await screen.findByText(/Falha temporaria ao consultar o lote #10 \(timeout, tentativa 1\)/i),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+
+    expect(await screen.findByText("3 leads promovidos para Gold")).toBeInTheDocument();
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(3);
+  }, 10000);
+
+  it("escalates the notice after three consecutive transient polling failures", async () => {
+    mockedGetLeadBatch
+      .mockResolvedValueOnce(
+        createBatch({
+          stage: "silver",
+          pipeline_status: "pending",
+          pipeline_progress: {
+            step: "insert_leads",
+            label: "Inserindo leads Gold no banco (20/100)",
+            pct: 20,
+            updated_at: "2026-04-14T12:34:56.789Z",
+          },
+          pipeline_report: null,
+        }),
+      )
+      .mockRejectedValueOnce(
+        new ApiError({
+          message: "Tempo limite da requisicao excedido.",
+          status: 0,
+          detail: "TIMEOUT",
+          code: "TIMEOUT",
+          method: "GET",
+          url: "/leads/batches/10",
+        }),
+      )
+      .mockRejectedValueOnce(
+        new ApiError({
+          message: "Falha de rede ao comunicar com a API.",
+          status: 0,
+          detail: "NETWORK_ERROR",
+          code: "NETWORK_ERROR",
+          method: "GET",
+          url: "/leads/batches/10",
+        }),
+      )
+      .mockRejectedValueOnce(
+        new ApiError({
+          message: "Tempo limite da requisicao excedido.",
+          status: 0,
+          detail: "TIMEOUT",
+          code: "TIMEOUT",
+          method: "GET",
+          url: "/leads/batches/10",
+        }),
+      );
+
+    renderPipelineStatusPage();
+
+    expect(await screen.findByText(/Inserindo leads Gold no banco \(20\/100\)/)).toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+    expect(await screen.findByText(/tentativa 1/i)).toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+    expect(await screen.findByText(/tentativa 2/i)).toBeInTheDocument();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    });
+
+    expect(await screen.findByText(/3 tentativas consecutivas/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ultima atualizacao do backend: 2026-04-14T12:34:56.789Z/i)).toBeInTheDocument();
+    expect(mockedGetLeadBatch).toHaveBeenCalledTimes(4);
+  }, 10000);
+
+  it("shows an explicit stall warning when pipeline progress stops updating for too long", async () => {
+    vi.useFakeTimers();
+
+    mockedGetLeadBatch.mockResolvedValue(
+      createBatch({
+        stage: "silver",
+        pipeline_status: "pending",
+        pipeline_progress: {
+          step: "insert_leads",
+          label: "Inserindo leads Gold no banco (20/100)",
+          pct: 20,
+          updated_at: "2026-04-14T12:34:56.789Z",
+        },
+        pipeline_report: null,
+      }),
+    );
+
+    renderPipelineStatusPage();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText(/Inserindo leads Gold no banco \(20\/100\)/)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+
+    expect(screen.getByText(/Processo lento ou possivelmente travado no lote #10/i)).toBeInTheDocument();
+    expect(screen.getByText(/step=insert_leads/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ultima atualizacao do backend: 2026-04-14T12:34:56.789Z/i)).toBeInTheDocument();
+  }, 10000);
+
   it("shows indeterminate progress when pct is null", async () => {
     mockedGetLeadBatch.mockResolvedValue(
       createBatch({
@@ -293,8 +456,8 @@ describe("PipelineStatusPage", () => {
     renderPipelineStatusPage();
 
     expect(await screen.findByText("Linhas:")).toBeInTheDocument();
-    expect(screen.getByText(/Participantes · linha 3/)).toBeInTheDocument();
-    expect(screen.getByText(/Participantes · linha 10/)).toBeInTheDocument();
+    expect(screen.getByText(/leads\.xlsx .* Participantes .* linha 3/)).toBeInTheDocument();
+    expect(screen.getByText(/leads\.xlsx .* Participantes .* linha 10/)).toBeInTheDocument();
   });
 
   it("shows warning feedback when the pipeline passes with warnings", async () => {

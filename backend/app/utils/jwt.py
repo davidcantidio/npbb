@@ -15,7 +15,7 @@ def _get_secret_key() -> str:
 
 
 def _get_default_exp_minutes() -> int:
-    return int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    return int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "720"))
 
 
 def create_access_token(data: Dict[str, Any], expires_minutes: int | None = None) -> str:

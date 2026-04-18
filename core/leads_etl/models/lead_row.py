@@ -14,7 +14,14 @@ from ._field_catalog import LEAD_ROW_EXCLUDED_FIELDS, LEAD_ROW_FIELDS
 
 
 class LeadRow(BaseModel):
-    """Canonical input contract for one reusable lead row."""
+    """Contrato canónico de entrada para uma linha de lead reutilizável.
+
+    Campos como ``cpf`` e ``email`` permanecem opcionais no modelo para
+    compatibilidade com payloads parciais e leituras legadas. Nos fluxos de
+    importação de leads (legado e ETL), cada linha importável exige CPF
+    válido; a validação aplicada após materializar ``LeadRow`` rejeita CPF
+    ausente ou inválido antes de persistir.
+    """
 
     model_config = ConfigDict(extra="forbid")
 

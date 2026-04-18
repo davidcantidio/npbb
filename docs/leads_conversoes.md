@@ -106,7 +106,7 @@ Relatorios e analises devem considerar:
   - ignorados
 
 ### 7.6 Regras importantes
-- Mapeamento **obrigatorio** para campos essenciais (email ou CPF).
+- Mapeamento **obrigatorio** para o campo **CPF** (e demais essenciais do fluxo); o email e recomendado mas nao substitui o CPF.
 - Campos opcionais podem ficar vazios.
 - Dados incompletos nao bloqueiam o import (quando possivel).
 

@@ -7,6 +7,7 @@ from collections.abc import Mapping
 
 
 MALFORMED_EMAIL_REASON = "email malformado"
+MISSING_CPF_REASON = "CPF ausente"
 INVALID_CPF_REASON = "CPF inválido"
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -58,7 +59,7 @@ def validate_normalized_lead_payload(payload: Mapping[str, object]) -> list[str]
     if email not in (None, "") and not is_valid_email(email):
         reasons.append(MALFORMED_EMAIL_REASON)
     if not is_valid_cpf(cpf):
-        reasons.append(INVALID_CPF_REASON)
+        reasons.append(MISSING_CPF_REASON if cpf in (None, "") else INVALID_CPF_REASON)
 
     return reasons
 

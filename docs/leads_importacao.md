@@ -12,7 +12,7 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
 - `POST /leads/import/preview`  
   Retorna headers, amostra, `start_index`, `suggestions`, `samples_by_column`, `alias_hits`.
 - `POST /leads/import/validate`  
-  Valida mapeamento (exige email ou CPF).
+  Valida mapeamento (exige coluna **CPF** mapeada).
 - `POST /leads/import`  
   Executa import com mapeamento confirmado.
 - `GET /leads/referencias/*`  
@@ -21,7 +21,7 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
   Lookup e persistencia de alias.
 
 ## Regras principais
-- Campos essenciais: **email ou CPF**.
+- Campos essenciais: **CPF** — cada linha importavel deve ter CPF normalizado valido (11 digitos, digitos verificadores corretos). O mapeamento do ficheiro deve incluir sempre a coluna **CPF**. O **email** e recomendado para contacto e enriquecimento, mas nao substitui o CPF.
 - Colunas sem correspondencia podem ser **ignoradas**.
 - Campos mapeaveis adicionais (opcionais):
   - Endereco: `endereco_rua`, `endereco_numero`, `bairro`, `cidade`, `estado`, `cep`
@@ -33,7 +33,7 @@ Importar leads via CSV/XLSX com mapeamento assistido, aliases e tratamento de da
   - Confianca automatica e **capada em 0.9**.
 - Dedupe (chave unica):
   - Regra: **email + cpf + evento_nome + sessao** (quando aplicavel).
-  - Quando email ou cpf estiverem vazios, usa o campo disponivel.
+  - Em linhas validas o CPF esta sempre presente; na chave de dedupe usa-se o valor normalizado de cada campo disponivel.
   - Duplicidade no mesmo lote: **mantem a ultima ocorrencia**.
 - Upsert (politica):
   - Atualiza apenas **campos nao-nulos** do import.

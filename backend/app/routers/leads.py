@@ -1299,13 +1299,12 @@ def _iter_xlsx_data_rows(file: UploadFile, start_index: int) -> Iterator[list[st
 
 
 def _ensure_mapping_has_essential(mappings: list[LeadImportMapping]) -> None:
-    essential = {"email", "cpf"}
     mapped_fields = {m.campo for m in mappings if m.campo}
-    if not (mapped_fields & essential):
+    if "cpf" not in mapped_fields:
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
             code="MAPPING_MISSING_ESSENTIAL",
-            message="Informe email ou CPF",
+            message="O mapeamento deve incluir a coluna CPF.",
         )
 
 

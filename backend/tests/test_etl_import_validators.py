@@ -5,6 +5,7 @@ import pytest
 from app.modules.leads_publicidade.application.etl_import.validators import (
     INVALID_CPF_REASON,
     MALFORMED_EMAIL_REASON,
+    MISSING_CPF_REASON,
     is_valid_cpf,
     is_valid_email,
     validate_normalized_lead_payload,
@@ -79,4 +80,15 @@ def test_validate_normalized_lead_payload_reports_reasons_in_deterministic_order
     ) == [
         MALFORMED_EMAIL_REASON,
         INVALID_CPF_REASON,
+    ]
+
+
+def test_validate_normalized_lead_payload_reports_missing_cpf_when_absent() -> None:
+    assert validate_normalized_lead_payload({"email": "ok@example.com", "cpf": None}) == [MISSING_CPF_REASON]
+    assert validate_normalized_lead_payload({"email": "ok@example.com", "cpf": ""}) == [MISSING_CPF_REASON]
+
+
+def test_validate_normalized_lead_payload_invalid_cpf_digits_when_present() -> None:
+    assert validate_normalized_lead_payload({"email": "ok@example.com", "cpf": "12345678901"}) == [
+        INVALID_CPF_REASON
     ]

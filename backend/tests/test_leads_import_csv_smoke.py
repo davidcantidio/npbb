@@ -91,7 +91,7 @@ def test_leads_import_csv_smoke_flow(client: TestClient, engine) -> None:
     )
     assert create_event.status_code == 201
 
-    csv_content = "Email;CPF;Nome;Evento\nsmoke@example.com;12345678901;Smoke Lead;SMOKE-EVENTO-TESTE\n"
+    csv_content = "Email;CPF;Nome;Evento\nsmoke@example.com;52998224725;Smoke Lead;SMOKE-EVENTO-TESTE\n"
 
     preview = client.post(
         "/leads/import/preview",
@@ -139,3 +139,21 @@ def test_leads_import_csv_smoke_flow(client: TestClient, engine) -> None:
     with Session(engine) as session:
         leads_count = session.exec(select(Lead)).all()
         assert len(leads_count) == 1
+
+
+def test_leads_import_validate_rejects_mapping_without_cpf_column(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+    auth = {"Authorization": f"Bearer {token}"}
+
+    email_only_mappings = [
+        {"coluna": "Email", "campo": "email", "confianca": 1},
+        {"coluna": "Nome", "campo": "nome", "confianca": 1},
+        {"coluna": "Evento", "campo": "evento_nome", "confianca": 1},
+    ]
+    validate_no_cpf = client.post("/leads/import/validate", headers=auth, json=email_only_mappings)
+    assert validate_no_cpf.status_code == 400
+    detail = validate_no_cpf.json()["detail"]
+    assert detail["code"] == "MAPPING_MISSING_ESSENTIAL"
+    assert "CPF" in detail["message"]

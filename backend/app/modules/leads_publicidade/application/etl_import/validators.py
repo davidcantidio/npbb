@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 
+from app.utils.cpf import is_valid_cpf as _is_valid_cpf_any_format
+
 
 MALFORMED_EMAIL_REASON = "email malformado"
 MISSING_CPF_REASON = "CPF ausente"
@@ -21,32 +23,14 @@ def is_valid_email(value: object) -> bool:
     return bool(_EMAIL_RE.fullmatch(value))
 
 
-def _calculate_cpf_check_digit(numbers: list[int], *, start_weight: int) -> int:
-    total = sum(
-        number * weight
-        for number, weight in zip(numbers, range(start_weight, 1, -1), strict=False)
-    )
-    remainder = total % 11
-    return 0 if remainder < 2 else 11 - remainder
-
-
 def is_valid_cpf(value: object) -> bool:
-    """Return True when a normalized CPF has valid Mod 11 check digits."""
+    """Return True when a normalized CPF passes the canonical backend rules."""
 
     if not isinstance(value, str):
         return False
     if len(value) != 11 or not value.isdigit():
         return False
-    if value == value[0] * 11:
-        return False
-
-    numbers = [int(character) for character in value]
-    first = _calculate_cpf_check_digit(numbers[:9], start_weight=10)
-    if first != numbers[9]:
-        return False
-
-    second = _calculate_cpf_check_digit(numbers[:10], start_weight=11)
-    return second == numbers[10]
+    return _is_valid_cpf_any_format(value)
 
 
 def validate_normalized_lead_payload(payload: Mapping[str, object]) -> list[str]:

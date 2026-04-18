@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import csv
 from copy import deepcopy
 from dataclasses import asdict, dataclass
@@ -28,7 +29,13 @@ from sqlmodel import Session, select
 from lead_pipeline.constants import ALL_COLUMNS, TIPO_EVENTO_PADRAO
 from lead_pipeline.geo_normalize import normalize_brazilian_locality
 from lead_pipeline.normalization import strip_accents
-from lead_pipeline.pipeline import PipelineConfig, PipelineProgressEvent, QualityMetrics, run_pipeline
+from lead_pipeline.pipeline import (
+    PipelineConfig,
+    PipelineProgressEvent,
+    PipelineResult,
+    QualityMetrics,
+    run_pipeline,
+)
 from app.models.lead_batch import BatchStage, LeadBatch, LeadSilver, PipelineStatus
 from app.models.lead_public_models import TipoLead, TipoResponsavel
 from app.models.models import (
@@ -42,8 +49,12 @@ from app.models.models import (
     TipoEvento,
 )
 from app.modules.leads_publicidade.application.etl_import.persistence import (
-    find_existing_lead_from_lookup,
+    LeadLookupContext,
     _load_lead_lookup_context,
+    find_existing_lead_from_lookup,
+    find_lead_by_ticketing_dedupe_key,
+    is_ticketing_dedupe_integrity_error,
+    merge_lead_lookup_context,
 )
 from app.services.lead_event_service import ensure_lead_event
 from app.services.imports.file_reader import read_raw_file_rows
@@ -53,11 +64,14 @@ logger = logging.getLogger(__name__)
 TMP_ROOT = Path("/tmp/npbb_pipeline")
 SOURCE_METADATA_COLUMNS = ("source_file", "source_sheet", "source_row")
 DEFAULT_GOLD_INSERT_COMMIT_BATCH_SIZE = 100
+DEFAULT_GOLD_INSERT_LOOKUP_CHUNK_SIZE = 1500
 DEFAULT_GOLD_INSERT_PROGRESS_HEARTBEAT_SECONDS = 20
 DEFAULT_GOLD_INSERT_COMMIT_BATCH_SIZE_SUPABASE_POOLER_6543 = 25
 DEFAULT_GOLD_INSERT_MAX_TRANSACTION_SECONDS_SUPABASE_POOLER_6543 = 15.0
 DEFAULT_GOLD_OBSERVABILITY_ENABLED = "1"
 DEFAULT_GOLD_SQL_OBSERVABILITY_ENABLED = "1"
+DEFAULT_PIPELINE_STALE_AFTER_SECONDS = 420
+DEFAULT_PIPELINE_HEARTBEAT_DURING_RUN_SECONDS = 15
 
 PIPELINE_PROGRESS_LABELS: dict[str, str] = {
     "queued": "Na fila para processamento",
@@ -122,6 +136,137 @@ def load_batch_without_bronze(db: Session, batch_id: int) -> LeadBatch | None:
         .options(load_only(*LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE))
         .where(LeadBatch.id == batch_id)
     ).first()
+
+
+def load_batch_without_bronze_for_update(db: Session, batch_id: int) -> LeadBatch | None:
+    """Carrega o lote sem blob Bronze com bloqueio de linha para despacho seguro da pipeline."""
+    return db.exec(
+        select(LeadBatch)
+        .options(load_only(*LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE))
+        .where(LeadBatch.id == batch_id)
+        .with_for_update()
+    ).first()
+
+
+def pipeline_stale_after_seconds() -> int:
+    raw = os.getenv("NPBB_PIPELINE_STALE_AFTER_SECONDS", str(DEFAULT_PIPELINE_STALE_AFTER_SECONDS)).strip()
+    try:
+        n = int(raw)
+    except ValueError:
+        return DEFAULT_PIPELINE_STALE_AFTER_SECONDS
+    return max(60, min(n, 86_400))
+
+
+def pipeline_heartbeat_during_run_seconds() -> float:
+    raw = os.getenv(
+        "NPBB_PIPELINE_HEARTBEAT_DURING_RUN_SECONDS",
+        str(DEFAULT_PIPELINE_HEARTBEAT_DURING_RUN_SECONDS),
+    ).strip()
+    try:
+        n = float(raw)
+    except ValueError:
+        return float(DEFAULT_PIPELINE_HEARTBEAT_DURING_RUN_SECONDS)
+    return max(5.0, min(n, 300.0))
+
+
+def _parse_pipeline_progress_updated_at(batch: LeadBatch) -> datetime_type | None:
+    progress = batch.pipeline_progress
+    if not isinstance(progress, dict):
+        return None
+    raw = progress.get("updated_at")
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    text = raw.strip().replace("Z", "+00:00")
+    try:
+        dt = datetime_type.fromisoformat(text)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def is_gold_pipeline_progress_stale(batch: LeadBatch, *, now: datetime_type | None = None) -> bool:
+    """True se progresso Gold parece orfao (pending + progresso sem atualizacao recente)."""
+    if batch.pipeline_status != PipelineStatus.PENDING:
+        return False
+    if batch.pipeline_progress is None:
+        return False
+    parsed = _parse_pipeline_progress_updated_at(batch)
+    if parsed is None:
+        return False
+    clock = now or datetime_type.now(timezone.utc)
+    age = (clock - parsed).total_seconds()
+    return age > float(pipeline_stale_after_seconds())
+
+
+def _build_worker_lost_stall_report(
+    *,
+    batch_id: int,
+    silver_row_count: int,
+    last_step: str | None,
+    resume_context: dict[str, Any] | None,
+    reason_code: str,
+) -> dict[str, Any]:
+    base = _build_contextual_pipeline_report(
+        batch_id=batch_id,
+        silver_row_count=silver_row_count,
+        fail_reasons=[reason_code],
+    )
+    gate = base.setdefault("gate", {})
+    gate["status"] = "FAIL"
+    gate["decision"] = "hold"
+    msgs = [str(x) for x in (gate.get("fail_reasons") or []) if str(x).strip()]
+    extra = (
+        f"Execucao Gold interrompida ({reason_code})"
+        + (f" na etapa '{last_step}'." if last_step else ".")
+    )
+    if extra not in msgs:
+        msgs.append(extra)
+    gate["fail_reasons"] = msgs
+    base["exit_code"] = 3
+    fc: dict[str, Any] = {
+        "step": last_step or "unknown",
+        "stage": PIPELINE_FAILURE_STAGE_LABELS.get(last_step or "", last_step or ""),
+        "exception_type": reason_code,
+        "detail": reason_code,
+        "message": extra,
+    }
+    normalized_resume_context = _normalize_insert_resume_context(resume_context)
+    if normalized_resume_context is not None:
+        fc["resume_context"] = normalized_resume_context
+    base["failure_context"] = fc
+    return base
+
+
+def mark_gold_pipeline_batch_stalled_worker_lost(
+    db: Session,
+    batch: LeadBatch,
+    *,
+    batch_id: int,
+    reason_code: str = "WORKER_LOST",
+) -> None:
+    """Marca stalled com relatorio minimo; `queue_pipeline_batch` pode retomar usando resume em failure_context."""
+    silver_row_count = _silver_row_count(db, batch_id=batch_id)
+    resume_context = _resume_context_from_batch(batch)
+    last_step = None
+    if isinstance(batch.pipeline_progress, dict):
+        last_step = str(batch.pipeline_progress.get("step") or "").strip() or None
+    report = _build_worker_lost_stall_report(
+        batch_id=batch_id,
+        silver_row_count=silver_row_count,
+        last_step=last_step,
+        resume_context=resume_context,
+        reason_code=reason_code,
+    )
+    batch.pipeline_status = PipelineStatus.STALLED
+    batch.pipeline_report = report
+    _clear_pipeline_progress(batch)
+    disc, issues, inv_n = _gold_dq_snapshot_from_report(report)
+    batch.gold_dq_discarded_rows = disc
+    batch.gold_dq_issue_counts = issues
+    batch.gold_dq_invalid_records_total = inv_n
+    db.add(batch)
 
 
 @dataclass(frozen=True)
@@ -458,7 +603,7 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
     silver_rows = db.exec(
         select(LeadSilver)
         .where(LeadSilver.batch_id == batch_id)
-        .order_by(LeadSilver.row_index)
+        .order_by(LeadSilver.row_index, LeadSilver.id)
     ).all()
 
     event_ids = {int(r.evento_id) for r in silver_rows if r.evento_id is not None}
@@ -469,7 +614,10 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
     needs_source_metadata_fallback = any(
         not _clean_text((row.dados_brutos or {}).get("source_file"))
         or not _clean_text((row.dados_brutos or {}).get("source_sheet"))
-        or _parse_int_value((row.dados_brutos or {}).get("source_row")) is None
+        or (
+            _parse_int_value((row.dados_brutos or {}).get("source_row")) is None
+            and _parse_int_value((row.dados_brutos or {}).get("source_row_original")) is None
+        )
         for row in silver_rows
     )
     if batch is not None and needs_source_metadata_fallback and batch.arquivo_bronze and fallback_source_file:
@@ -493,8 +641,10 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
             out_row = {col: str(dados.get(col, "") or "") for col in ALL_COLUMNS}
             source_file = _clean_text(dados.get("source_file")) or fallback_source_file
             source_sheet = _clean_text(dados.get("source_sheet")) or fallback_source_sheet
-            source_row = _parse_int_value(dados.get("source_row")) or (
-                int(row.row_index) + fallback_source_row_offset
+            source_row = (
+                _parse_int_value(dados.get("source_row_original"))
+                or _parse_int_value(dados.get("source_row"))
+                or (int(row.row_index) + fallback_source_row_offset)
             )
             out_row["source_file"] = source_file or ""
             out_row["source_sheet"] = source_sheet or ""
@@ -1209,6 +1359,26 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _count_consolidated_csv_data_rows(path: Path) -> int:
+    """Conta linhas de dados (exclui cabecalho) sem materializar o CSV inteiro."""
+    with path.open(encoding="utf-8") as fh:
+        reader = csv.reader(fh)
+        if next(reader, None) is None:
+            return 0
+        return sum(1 for _ in reader)
+
+
+def _lead_gold_insert_lookup_chunk_size() -> int:
+    raw = os.getenv(
+        "NPBB_LEAD_GOLD_INSERT_LOOKUP_CHUNK_SIZE",
+        str(DEFAULT_GOLD_INSERT_LOOKUP_CHUNK_SIZE),
+    )
+    try:
+        return max(min(int(raw), 50_000), 50)
+    except ValueError:
+        return DEFAULT_GOLD_INSERT_LOOKUP_CHUNK_SIZE
+
+
 def _build_insert_leads_progress_event(
     processed_rows: int,
     total_rows: int,
@@ -1250,11 +1420,8 @@ def _inserir_leads_gold(
     content_hash = _sha256_file(consolidated_path)
     batch_file_hash = _lead_batch_file_sha256(batch)
 
-    with consolidated_path.open(encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        rows = list(reader)
-
-    if not rows:
+    total_rows = _count_consolidated_csv_data_rows(consolidated_path)
+    if total_rows <= 0:
         raise ValueError(
             f"CSV consolidado da pipeline Gold vazio para o batch {batch.id}"
         )
@@ -1274,7 +1441,6 @@ def _inserir_leads_gold(
     commit_batch_size = _lead_gold_insert_commit_batch_size(db)
     max_transaction_seconds = _lead_gold_insert_max_transaction_seconds(db)
     heartbeat_interval = _lead_gold_progress_heartbeat_seconds()
-    total_rows = len(rows)
     resume_from_rows = 0
     if normalized_resume_context is not None:
         resume_content_hash = _normalize_sha256(normalized_resume_context.get("content_hash"))
@@ -1342,6 +1508,7 @@ def _inserir_leads_gold(
         max_transaction_seconds=max_transaction_seconds or None,
         uses_supabase_pooler_6543=_lead_gold_uses_supabase_transaction_pooler(db),
         consolidated_path=str(consolidated_path),
+        lookup_chunk_size=_lead_gold_insert_lookup_chunk_size(),
     )
     if on_progress is not None:
         on_progress(
@@ -1354,201 +1521,285 @@ def _inserir_leads_gold(
             )
         )
 
-    pending_rows = rows[resume_from_rows:]
-    payload_build_started_at = time_module.perf_counter()
-    lead_payloads = [_build_lead_payload(row, batch) for row in pending_rows]
-    metrics.time_in_payload_build_ms = _duration_ms(payload_build_started_at)
-    lookup_context_started_at = time_module.perf_counter()
-    lookup_context = _load_lead_lookup_context(
-        db,
-        [(payload, resume_from_rows + index + 1) for index, payload in enumerate(lead_payloads)],
-        canonical_evento_id=batch.evento_id,
-    )
-    candidate_lead_ids = {
-        int(candidate.id)
-        for candidate in lookup_context.candidates
-        if getattr(candidate, "id", None) is not None
-    }
+    lookup_chunk_size = _lead_gold_insert_lookup_chunk_size()
+    lookup_context = LeadLookupContext([], set(), set())
+    candidate_lead_ids: set[int] = set()
     activation_insert_context: ActivationInsertContext | None = None
+    if is_ativacao_batch and batch.evento_id is not None:
+        activation_insert_context = _load_activation_insert_context(db, batch=batch)
     activation_relation_cache_loaded_ids: set[int] = set()
     existing_ativacao_links_by_lead_id: dict[int, AtivacaoLead] = {}
     existing_lead_events_by_lead_id: dict[int, LeadEvento] = {}
-    if is_ativacao_batch and batch.evento_id is not None:
-        activation_insert_context = _load_activation_insert_context(db, batch=batch)
-        if activation_insert_context is not None:
-            activation_relation_cache_loaded_ids = set(candidate_lead_ids)
-            existing_ativacao_links_by_lead_id = _load_existing_ativacao_leads(
-                db,
-                ativacao_id=activation_insert_context.ativacao_id,
-                lead_ids=candidate_lead_ids,
-            )
-            existing_lead_events_by_lead_id = _load_existing_lead_eventos(
-                db,
-                evento_id=activation_insert_context.evento_id,
-                lead_ids=candidate_lead_ids,
-            )
-    metrics.time_in_lookup_context_ms = _duration_ms(lookup_context_started_at)
-    for row in pending_rows:
-        row_bytes = len(json.dumps(row, ensure_ascii=False).encode("utf-8"))
-        metrics.bytes_total += row_bytes
-        chunk_row_sizes.append(row_bytes)
+    first_ativacao_bulk = True
 
-    for row, lead_payload in zip(pending_rows, lead_payloads, strict=False):
-        if pending_since_commit == 0:
-            _configure_lead_gold_statement_timeout(db)
+    with consolidated_path.open(encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        for _ in range(resume_from_rows):
+            if next(reader, None) is None:
+                break
 
-        lookup_started_at = time_module.perf_counter()
-        lead = find_existing_lead_from_lookup(
-            lead_payload,
-            lookup_context,
-            canonical_evento_id=batch.evento_id,
-        )
-        metrics.time_in_lookup_ms += _duration_ms(lookup_started_at)
-        if lead is None:
-            metrics.fallback_lookup_calls += 1
-            fallback_lookup_started_at = time_module.perf_counter()
-            lead = _find_existing_lead(
+        window: list[dict[str, Any]] = []
+
+        def _refill_lookup_window() -> bool:
+            window.clear()
+            while len(window) < lookup_chunk_size:
+                try:
+                    window.append(next(reader))
+                except StopIteration:
+                    break
+            return bool(window)
+
+        while _refill_lookup_window():
+            payload_build_started_at = time_module.perf_counter()
+            lead_payloads = [_build_lead_payload(row, batch) for row in window]
+            metrics.time_in_payload_build_ms += _duration_ms(payload_build_started_at)
+
+            lookup_context_started_at = time_module.perf_counter()
+            pending_offset = processed_rows - resume_from_rows
+            batch_tuples = [
+                (lead_payloads[i], resume_from_rows + pending_offset + i + 1)
+                for i in range(len(window))
+            ]
+            chunk_lookup = _load_lead_lookup_context(
                 db,
-                lead_payload,
-                anchored_evento_id=batch.evento_id,
+                batch_tuples,
+                canonical_evento_id=batch.evento_id,
             )
-            metrics.time_in_lookup_ms += _duration_ms(fallback_lookup_started_at)
-        lead_was_created = False
-        if lead is None:
-            lead = Lead(**lead_payload, batch_id=batch.id)
-            db.add(lead)
-            flush_started_at = time_module.perf_counter()
-            db.flush()
-            metrics.time_in_flush_ms += _duration_ms(flush_started_at)
-            metrics.flush_calls += 1
-            count += 1
-            lead_was_created = True
-        else:
-            _merge_lead_payload_if_missing(lead, lead_payload)
-            db.add(lead)
-            updated_count += 1
-        if lead.id is not None and int(lead.id) not in candidate_lead_ids:
-            lookup_context.candidates.append(lead)
-            candidate_lead_ids.add(int(lead.id))
-        if lead.id is not None and activation_insert_context is not None and lead_was_created:
-            activation_relation_cache_loaded_ids.add(int(lead.id))
-        if lead.id is not None and batch.evento_id is not None:
-            if is_ativacao_batch:
-                if (
-                    activation_insert_context is not None
-                    and not lead_was_created
-                    and int(lead.id) not in activation_relation_cache_loaded_ids
-                ):
-                    existing_ativacao_links_by_lead_id.update(
-                        _load_existing_ativacao_leads(
-                            db,
-                            ativacao_id=activation_insert_context.ativacao_id,
-                            lead_ids={int(lead.id)},
-                        )
-                    )
-                    existing_lead_events_by_lead_id.update(
-                        _load_existing_lead_eventos(
-                            db,
-                            evento_id=activation_insert_context.evento_id,
-                            lead_ids={int(lead.id)},
-                        )
-                    )
-                    activation_relation_cache_loaded_ids.add(int(lead.id))
-                metrics.ativacao_link_calls += 1
-                ativacao_link_started_at = time_module.perf_counter()
-                if activation_insert_context is None:
-                    ativacao_lead = _get_or_create_ativacao_lead(
-                        db,
-                        ativacao_id=int(batch.ativacao_id),
-                        lead_id=int(lead.id),
-                    )
-                else:
-                    ativacao_lead, ativacao_link_flush_ms = _get_or_create_ativacao_lead_fast(
-                        db,
-                        lead_id=int(lead.id),
-                        context=activation_insert_context,
-                        existing_links_by_lead_id=existing_ativacao_links_by_lead_id,
-                    )
-                    metrics.time_in_flush_ms += ativacao_link_flush_ms
-                    if ativacao_link_flush_ms > 0:
-                        metrics.flush_calls += 1
-                metrics.time_in_ativacao_link_ms += _duration_ms(ativacao_link_started_at)
-                metrics.lead_event_calls += 1
-                lead_event_started_at = time_module.perf_counter()
-                if activation_insert_context is None or ativacao_lead.id is None:
-                    ensure_lead_event(
-                        db,
-                        lead_id=lead.id,
-                        evento_id=batch.evento_id,
-                        source_kind=LeadEventoSourceKind.ACTIVATION,
-                        source_ref_id=ativacao_lead.id,
-                    )
-                else:
-                    _ensure_activation_lead_event_fast(
-                        db,
-                        lead_id=int(lead.id),
-                        source_ref_id=int(ativacao_lead.id),
-                        context=activation_insert_context,
-                        existing_events_by_lead_id=existing_lead_events_by_lead_id,
-                    )
-                lookup_context.lead_ids_with_any_event_link.add(int(lead.id))
-                lookup_context.lead_ids_with_target_event_link.add(int(lead.id))
-                metrics.time_in_lead_event_ms += _duration_ms(lead_event_started_at)
-            else:
-                metrics.lead_event_calls += 1
-                lead_event_started_at = time_module.perf_counter()
-                ensure_lead_event(
+            merge_lead_lookup_context(lookup_context, chunk_lookup)
+            metrics.time_in_lookup_context_ms += _duration_ms(lookup_context_started_at)
+
+            for c in chunk_lookup.candidates:
+                lid = getattr(c, "id", None)
+                if lid is not None:
+                    candidate_lead_ids.add(int(lid))
+
+            if (
+                activation_insert_context is not None
+                and first_ativacao_bulk
+                and candidate_lead_ids
+            ):
+                activation_relation_cache_loaded_ids = set(candidate_lead_ids)
+                existing_ativacao_links_by_lead_id = _load_existing_ativacao_leads(
                     db,
-                    lead_id=lead.id,
-                    evento_id=batch.evento_id,
-                    source_kind=LeadEventoSourceKind.LEAD_BATCH,
-                    source_ref_id=batch.id,
-                    tipo_lead=tipo_lead_proponente,
+                    ativacao_id=activation_insert_context.ativacao_id,
+                    lead_ids=candidate_lead_ids,
                 )
-                metrics.time_in_lead_event_ms += _duration_ms(lead_event_started_at)
-        processed_rows += 1
-        pending_since_commit += 1
-        now: float | None = None
-        if (
-            on_progress is not None
-            and heartbeat_interval > 0
-            and 0 < pending_since_commit < commit_batch_size
-        ):
-            now = time_module.perf_counter()
-            if (now - last_progress_emit_at) >= heartbeat_interval:
-                event = _build_insert_leads_progress_event(
-                    processed_rows=processed_rows,
-                    total_rows=total_rows,
-                    committed_rows=last_committed_rows,
-                    content_hash=content_hash,
-                    arquivo_sha256=batch_file_hash,
+                existing_lead_events_by_lead_id = _load_existing_lead_eventos(
+                    db,
+                    evento_id=activation_insert_context.evento_id,
+                    lead_ids=candidate_lead_ids,
                 )
-                on_progress(event)
-                last_progress_emit_at = now
-                _log_pipeline_event(
-                    logging.INFO,
-                    "insert.heartbeat",
-                    batch_id=batch.id,
-                    processed_rows=processed_rows,
-                    total_rows=total_rows,
-                    pct=event.pct,
-                    pending_since_commit=pending_since_commit,
-                    heartbeat_interval_seconds=heartbeat_interval,
-                    elapsed_ms=round((now - started_at) * 1000),
+                first_ativacao_bulk = False
+
+            for row, lead_payload in zip(window, lead_payloads, strict=False):
+                row_bytes = len(json.dumps(row, ensure_ascii=False).encode("utf-8"))
+                metrics.bytes_total += row_bytes
+                chunk_row_sizes.append(row_bytes)
+
+                if pending_since_commit == 0:
+                    _configure_lead_gold_statement_timeout(db)
+
+                lookup_started_at = time_module.perf_counter()
+                lead = find_existing_lead_from_lookup(
+                    lead_payload,
+                    lookup_context,
+                    canonical_evento_id=batch.evento_id,
                 )
-        commit_check_at = now if now is not None else time_module.perf_counter()
-        commit_due_to_time_budget = (
-            max_transaction_seconds > 0
-            and pending_since_commit > 0
-            and (commit_check_at - chunk_started_at) >= max_transaction_seconds
-        )
-        if pending_since_commit >= commit_batch_size or commit_due_to_time_budget:
+                metrics.time_in_lookup_ms += _duration_ms(lookup_started_at)
+                if lead is None:
+                    metrics.fallback_lookup_calls += 1
+                    fallback_lookup_started_at = time_module.perf_counter()
+                    lead = _find_existing_lead(
+                        db,
+                        lead_payload,
+                        anchored_evento_id=batch.evento_id,
+                    )
+                    metrics.time_in_lookup_ms += _duration_ms(fallback_lookup_started_at)
+                lead_was_created = False
+                if lead is None:
+                    flush_started_at = time_module.perf_counter()
+                    try:
+                        with db.begin_nested():
+                            lead = Lead(**lead_payload, batch_id=batch.id)
+                            db.add(lead)
+                            db.flush()
+                    except IntegrityError as exc:
+                        if not is_ticketing_dedupe_integrity_error(exc):
+                            raise
+                        lead = find_lead_by_ticketing_dedupe_key(db, lead_payload)
+                        if lead is None:
+                            raise RuntimeError(
+                                "Ticketing dedupe conflict without resolvable row"
+                            ) from exc
+                        _merge_lead_payload_if_missing(lead, lead_payload)
+                        db.add(lead)
+                        db.flush()
+                        metrics.time_in_flush_ms += _duration_ms(flush_started_at)
+                        metrics.flush_calls += 2
+                        updated_count += 1
+                        lead_was_created = False
+                    else:
+                        metrics.time_in_flush_ms += _duration_ms(flush_started_at)
+                        metrics.flush_calls += 1
+                        count += 1
+                        lead_was_created = True
+                else:
+                    _merge_lead_payload_if_missing(lead, lead_payload)
+                    db.add(lead)
+                    updated_count += 1
+                if lead.id is not None and int(lead.id) not in candidate_lead_ids:
+                    lookup_context.candidates.append(lead)
+                    candidate_lead_ids.add(int(lead.id))
+                if lead.id is not None and activation_insert_context is not None and lead_was_created:
+                    activation_relation_cache_loaded_ids.add(int(lead.id))
+                if lead.id is not None and batch.evento_id is not None:
+                    if is_ativacao_batch:
+                        if (
+                            activation_insert_context is not None
+                            and not lead_was_created
+                            and int(lead.id) not in activation_relation_cache_loaded_ids
+                        ):
+                            existing_ativacao_links_by_lead_id.update(
+                                _load_existing_ativacao_leads(
+                                    db,
+                                    ativacao_id=activation_insert_context.ativacao_id,
+                                    lead_ids={int(lead.id)},
+                                )
+                            )
+                            existing_lead_events_by_lead_id.update(
+                                _load_existing_lead_eventos(
+                                    db,
+                                    evento_id=activation_insert_context.evento_id,
+                                    lead_ids={int(lead.id)},
+                                )
+                            )
+                            activation_relation_cache_loaded_ids.add(int(lead.id))
+                        metrics.ativacao_link_calls += 1
+                        ativacao_link_started_at = time_module.perf_counter()
+                        if activation_insert_context is None:
+                            ativacao_lead = _get_or_create_ativacao_lead(
+                                db,
+                                ativacao_id=int(batch.ativacao_id),
+                                lead_id=int(lead.id),
+                            )
+                        else:
+                            ativacao_lead, ativacao_link_flush_ms = _get_or_create_ativacao_lead_fast(
+                                db,
+                                lead_id=int(lead.id),
+                                context=activation_insert_context,
+                                existing_links_by_lead_id=existing_ativacao_links_by_lead_id,
+                            )
+                            metrics.time_in_flush_ms += ativacao_link_flush_ms
+                            if ativacao_link_flush_ms > 0:
+                                metrics.flush_calls += 1
+                        metrics.time_in_ativacao_link_ms += _duration_ms(ativacao_link_started_at)
+                        metrics.lead_event_calls += 1
+                        lead_event_started_at = time_module.perf_counter()
+                        if activation_insert_context is None or ativacao_lead.id is None:
+                            ensure_lead_event(
+                                db,
+                                lead_id=lead.id,
+                                evento_id=batch.evento_id,
+                                source_kind=LeadEventoSourceKind.ACTIVATION,
+                                source_ref_id=ativacao_lead.id,
+                            )
+                        else:
+                            _ensure_activation_lead_event_fast(
+                                db,
+                                lead_id=int(lead.id),
+                                source_ref_id=int(ativacao_lead.id),
+                                context=activation_insert_context,
+                                existing_events_by_lead_id=existing_lead_events_by_lead_id,
+                            )
+                        lookup_context.lead_ids_with_any_event_link.add(int(lead.id))
+                        lookup_context.lead_ids_with_target_event_link.add(int(lead.id))
+                        metrics.time_in_lead_event_ms += _duration_ms(lead_event_started_at)
+                    else:
+                        metrics.lead_event_calls += 1
+                        lead_event_started_at = time_module.perf_counter()
+                        ensure_lead_event(
+                            db,
+                            lead_id=lead.id,
+                            evento_id=batch.evento_id,
+                            source_kind=LeadEventoSourceKind.LEAD_BATCH,
+                            source_ref_id=batch.id,
+                            tipo_lead=tipo_lead_proponente,
+                        )
+                        metrics.time_in_lead_event_ms += _duration_ms(lead_event_started_at)
+                processed_rows += 1
+                pending_since_commit += 1
+                now: float | None = None
+                if (
+                    on_progress is not None
+                    and heartbeat_interval > 0
+                    and 0 < pending_since_commit < commit_batch_size
+                ):
+                    now = time_module.perf_counter()
+                    if (now - last_progress_emit_at) >= heartbeat_interval:
+                        event = _build_insert_leads_progress_event(
+                            processed_rows=processed_rows,
+                            total_rows=total_rows,
+                            committed_rows=last_committed_rows,
+                            content_hash=content_hash,
+                            arquivo_sha256=batch_file_hash,
+                        )
+                        on_progress(event)
+                        last_progress_emit_at = now
+                        _log_pipeline_event(
+                            logging.INFO,
+                            "insert.heartbeat",
+                            batch_id=batch.id,
+                            processed_rows=processed_rows,
+                            total_rows=total_rows,
+                            pct=event.pct,
+                            pending_since_commit=pending_since_commit,
+                            heartbeat_interval_seconds=heartbeat_interval,
+                            elapsed_ms=round((now - started_at) * 1000),
+                        )
+                commit_check_at = now if now is not None else time_module.perf_counter()
+                commit_due_to_time_budget = (
+                    max_transaction_seconds > 0
+                    and pending_since_commit > 0
+                    and (commit_check_at - chunk_started_at) >= max_transaction_seconds
+                )
+                if pending_since_commit >= commit_batch_size or commit_due_to_time_budget:
+                    commit_started_at = time_module.perf_counter()
+                    db.commit()
+                    metrics.time_in_commit_ms += _duration_ms(commit_started_at)
+                    metrics.chunks_committed += 1
+                    pending_since_commit = 0
+                    commit_at = commit_check_at
+                    last_committed_rows = processed_rows
+                    event = _build_insert_leads_progress_event(
+                        processed_rows=processed_rows,
+                        total_rows=total_rows,
+                        committed_rows=last_committed_rows,
+                        content_hash=content_hash,
+                        arquivo_sha256=batch_file_hash,
+                    )
+                    if on_progress is not None:
+                        on_progress(event)
+                    last_progress_emit_at = commit_at
+                    chunk_started_at = commit_at
+                    _log_pipeline_event(
+                        logging.INFO,
+                        "insert.chunk_committed",
+                        batch_id=batch.id,
+                        processed_rows=processed_rows,
+                        total_rows=total_rows,
+                        pct=event.pct,
+                        commit_batch_size=commit_batch_size,
+                        commit_reason="transaction_seconds" if commit_due_to_time_budget else "batch_size",
+                        max_transaction_seconds=max_transaction_seconds or None,
+                        elapsed_ms=round((commit_at - started_at) * 1000),
+                    )
+    
+        if pending_since_commit > 0:
             commit_started_at = time_module.perf_counter()
             db.commit()
             metrics.time_in_commit_ms += _duration_ms(commit_started_at)
             metrics.chunks_committed += 1
-            pending_since_commit = 0
-            commit_at = commit_check_at
+            commit_at = time_module.perf_counter()
             last_committed_rows = processed_rows
             event = _build_insert_leads_progress_event(
                 processed_rows=processed_rows,
@@ -1560,7 +1811,6 @@ def _inserir_leads_gold(
             if on_progress is not None:
                 on_progress(event)
             last_progress_emit_at = commit_at
-            chunk_started_at = commit_at
             _log_pipeline_event(
                 logging.INFO,
                 "insert.chunk_committed",
@@ -1569,43 +1819,13 @@ def _inserir_leads_gold(
                 total_rows=total_rows,
                 pct=event.pct,
                 commit_batch_size=commit_batch_size,
-                commit_reason="transaction_seconds" if commit_due_to_time_budget else "batch_size",
-                max_transaction_seconds=max_transaction_seconds or None,
                 elapsed_ms=round((commit_at - started_at) * 1000),
             )
-
-    if pending_since_commit > 0:
-        commit_started_at = time_module.perf_counter()
-        db.commit()
-        metrics.time_in_commit_ms += _duration_ms(commit_started_at)
-        metrics.chunks_committed += 1
-        commit_at = time_module.perf_counter()
-        last_committed_rows = processed_rows
-        event = _build_insert_leads_progress_event(
-            processed_rows=processed_rows,
-            total_rows=total_rows,
-            committed_rows=last_committed_rows,
-            content_hash=content_hash,
-            arquivo_sha256=batch_file_hash,
-        )
-        if on_progress is not None:
-            on_progress(event)
-        last_progress_emit_at = commit_at
-        _log_pipeline_event(
-            logging.INFO,
-            "insert.chunk_committed",
-            batch_id=batch.id,
-            processed_rows=processed_rows,
-            total_rows=total_rows,
-            pct=event.pct,
-            commit_batch_size=commit_batch_size,
-            elapsed_ms=round((commit_at - started_at) * 1000),
-        )
     metrics.created_rows = count
     metrics.updated_rows = updated_count
     metrics.time_in_insert_total_ms = _duration_ms(started_at)
     processed_in_run = processed_rows - resume_from_rows
-    pending_row_count = len(pending_rows)
+    pending_row_count = max(0, total_rows - resume_from_rows)
     metrics.avg_row_bytes = round(metrics.bytes_total / pending_row_count, 2) if pending_row_count else 0.0
     metrics.avg_chunk_rows = round(processed_in_run / metrics.chunks_committed, 2) if metrics.chunks_committed else 0.0
     metrics.estimated_chunk_bytes = (
@@ -1643,8 +1863,54 @@ async def executar_pipeline_gold(batch_id: int) -> None:
     report_data: dict[str, Any] | None = None
     failure_step = "queued"
 
+    last_pipeline_event: dict[str, PipelineProgressEvent | None] = {"ev": None}
+
     def on_progress(event: PipelineProgressEvent) -> None:
+        last_pipeline_event["ev"] = event
         _persist_pipeline_progress(engine, batch_id, event)
+
+    async def _run_pipeline_with_heartbeat(cfg: PipelineConfig) -> PipelineResult:
+        stop = asyncio.Event()
+        interval = pipeline_heartbeat_during_run_seconds()
+
+        async def heartbeat_loop() -> None:
+            while not stop.is_set():
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=interval)
+                    return
+                except asyncio.TimeoutError:
+                    ev = last_pipeline_event["ev"]
+                    try:
+                        if ev is not None:
+                            await asyncio.to_thread(_persist_pipeline_progress, engine, batch_id, ev)
+                        else:
+                            await asyncio.to_thread(
+                                _persist_pipeline_progress,
+                                engine,
+                                batch_id,
+                                PipelineProgressEvent(
+                                    step="normalize_rows",
+                                    label=PIPELINE_PROGRESS_LABELS["normalize_rows"],
+                                    pct=None,
+                                    meta=None,
+                                ),
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(
+                            "lead_gold_pipeline.heartbeat.failed batch_id=%r err=%r",
+                            batch_id,
+                            exc,
+                        )
+
+        hb = asyncio.create_task(heartbeat_loop())
+        loop = asyncio.get_event_loop()
+        try:
+            return await loop.run_in_executor(None, run_pipeline, cfg)
+        finally:
+            stop.set()
+            hb.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await hb
 
     try:
         _log_pipeline_event(logging.INFO, "execution.start", batch_id=batch_id)
@@ -1736,9 +2002,8 @@ async def executar_pipeline_gold(batch_id: int) -> None:
                 output_root=str(output_root),
                 anchored_on_evento_id=config.anchored_on_evento_id,
             )
-            loop = asyncio.get_event_loop()
             run_pipeline_started_at = time_module.perf_counter()
-            result = await loop.run_in_executor(None, run_pipeline, config)
+            result = await _run_pipeline_with_heartbeat(config)
             _log_pipeline_event(
                 logging.INFO,
                 "run_pipeline.completed",

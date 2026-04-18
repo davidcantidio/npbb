@@ -176,6 +176,7 @@ def _upload_batch(
     origem_lote: str | None = None,
     ativacao_id: int | None = None,
     tipo_lead_proponente: str | None = None,
+    file_content: bytes | None = None,
 ) -> int:
     data: dict[str, str] = {
         "plataforma_origem": plataforma,
@@ -190,10 +191,11 @@ def _upload_batch(
     if tipo_lead_proponente is not None:
         data["tipo_lead_proponente"] = tipo_lead_proponente
 
+    payload = file_content if file_content is not None else CSV_CONTENT
     resp = client.post(
         "/leads/batches",
         headers=auth,
-        files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+        files={"file": ("leads.csv", io.BytesIO(payload), "text/csv")},
         data=data,
     )
     assert resp.status_code == 201, resp.text
@@ -586,6 +588,47 @@ def test_materializar_silver_csv_orders_rows_by_row_index(engine, monkeypatch):
     assert all(row["source_sheet"] == "Participantes" for row in materialized_rows)
 
 
+def test_materializar_prefers_source_row_original_over_source_row(engine, monkeypatch):
+    import csv
+
+    tmp_root = Path("backend/tmp-pytest") / f"mat-orig-{uuid4().hex}"
+    tmp_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("app.services.lead_pipeline_service.TMP_ROOT", tmp_root)
+
+    from app.services.lead_pipeline_service import materializar_silver_como_csv
+
+    with Session(engine) as s:
+        user = _seed_user(s)
+        evento = _seed_evento(s)
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="leads.csv",
+            arquivo_bronze=b"a,b\n1,2\n",
+            stage=BatchStage.SILVER,
+            evento_id=evento.id,
+        )
+        s.add(batch)
+        s.commit()
+        s.refresh(batch)
+        dados = _base_gold_row()
+        dados["source_file"] = "leads.csv"
+        dados["source_sheet"] = ""
+        dados["source_row"] = 99
+        dados["source_row_original"] = 42
+        s.add(LeadSilver(batch_id=batch.id, row_index=0, dados_brutos=dados, evento_id=evento.id))
+        s.commit()
+        batch_id = int(batch.id)
+
+    with Session(engine) as s:
+        path = materializar_silver_como_csv(batch_id, s)
+
+    with path.open(encoding="utf-8") as fh:
+        row = next(csv.DictReader(fh))
+    assert row["source_row"] == "42"
+
+
 def test_configure_lead_gold_statement_timeout_sets_local_timeout_for_postgres(monkeypatch):
     from app.services.lead_pipeline_service import _configure_lead_gold_statement_timeout
 
@@ -703,7 +746,8 @@ class TestGetBatch:
                 "step": "normalize_rows",
                 "label": "Normalizando campos (CPF, datas, telefone, local…)",
                 "pct": 40,
-                "updated_at": "2026-04-14T12:34:56.789Z",
+                # Futuro: garante que o heuristica de orfao nao marca como stale neste teste.
+                "updated_at": "2099-01-01T12:34:56.789Z",
             }
             s.add(batch)
             s.commit()
@@ -715,8 +759,34 @@ class TestGetBatch:
             "step": "normalize_rows",
             "label": "Normalizando campos (CPF, datas, telefone, local…)",
             "pct": 40,
-            "updated_at": "2026-04-14T12:34:56.789Z",
+            "updated_at": "2099-01-01T12:34:56.789Z",
         }
+        assert isinstance(body.get("gold_pipeline_stale_after_seconds"), int)
+        assert body.get("gold_pipeline_progress_is_stale") is False
+
+    def test_get_batch_marks_progress_stale_when_updated_at_old(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            batch.pipeline_progress = {
+                "step": "normalize_rows",
+                "label": "Normalizando campos (CPF, datas, telefone, local…)",
+                "pct": 10,
+                "updated_at": "2000-01-01T00:00:00Z",
+            }
+            s.add(batch)
+            s.commit()
+
+        resp = client.get(f"/leads/batches/{batch_id}", headers=auth)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["gold_pipeline_progress_is_stale"] is True
 
 
 def test_load_batch_without_bronze_defers_blob_column(engine):
@@ -798,6 +868,7 @@ class TestExecutarPipeline:
         body = resp.json()
         assert body["batch_id"] == batch_id
         assert body["status"] == "queued"
+        assert body.get("reclaimed_stale_lock") is False
 
         with Session(engine) as s:
             batch = s.get(LeadBatch, batch_id)
@@ -863,6 +934,74 @@ class TestExecutarPipeline:
             assert batch.pipeline_progress["resume_step"] == "insert_leads"
             assert batch.pipeline_progress["committed_rows"] == 2
             assert batch.pipeline_progress["total_rows"] == 3
+
+    def test_reclaims_stale_pipeline_progress_lock(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            batch.pipeline_progress = {
+                "step": "normalize_rows",
+                "label": "Normalizando campos (CPF, datas, telefone, local…)",
+                "pct": 22,
+                "updated_at": "2000-01-01T00:00:00Z",
+            }
+            batch.pipeline_status = PipelineStatus.PENDING
+            s.add(batch)
+            s.commit()
+
+        with patch("app.routers.leads.executar_pipeline_gold_em_thread"):
+            resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
+
+        assert resp.status_code == 202, resp.text
+        body = resp.json()
+        assert body.get("reclaimed_stale_lock") is True
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch.pipeline_progress is not None
+            assert batch.pipeline_progress["step"] == "queued"
+
+    def test_allows_dispatch_when_pipeline_status_stalled(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            batch.pipeline_status = PipelineStatus.STALLED
+            batch.pipeline_report = {
+                "gate": {"status": "FAIL", "decision": "hold", "fail_reasons": ["WORKER_LOST"], "warnings": []},
+                "failure_context": {
+                    "step": "normalize_rows",
+                    "message": "Execucao interrompida",
+                    "resume_context": {
+                        "step": "insert_leads",
+                        "committed_rows": 1,
+                        "total_rows": 5,
+                    },
+                },
+            }
+            batch.pipeline_progress = None
+            s.add(batch)
+            s.commit()
+
+        with patch("app.routers.leads.executar_pipeline_gold_em_thread"):
+            resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=auth)
+
+        assert resp.status_code == 202, resp.text
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch.pipeline_status == PipelineStatus.PENDING
+            assert batch.pipeline_progress is not None
+            assert batch.pipeline_progress["step"] == "queued"
 
 
 class TestExecutarPipelineServiceProgress:
@@ -2035,6 +2174,63 @@ class TestLeadEventoInGoldPipeline:
             lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
             assert lead is not None
             assert lead.data_nascimento is None
+
+    def test_missing_birth_date_dq_reports_physical_line_after_blank_csv_row(
+        self, client, engine, monkeypatch
+    ):
+        """Linha em branco após o cabeçalho: source_row no relatório Gold = linha física no CSV."""
+        from app.models.lead_batch import LeadSilver
+
+        csv_blank = (
+            b"nome,cpf,email,telefone,data_nascimento\n"
+            b"\n"
+            b"Alice,52998224725,alice@ex.com,11999990000,   \n"
+        )
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth, file_content=csv_blank)
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {
+                    "nome": "nome",
+                    "cpf": "cpf",
+                    "email": "email",
+                    "telefone": "telefone",
+                    "data_nascimento": "data_nascimento",
+                },
+            },
+        )
+        assert resp.status_code == 200, resp.text
+
+        with Session(engine) as s:
+            silver = s.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).first()
+            assert silver is not None
+            assert silver.dados_brutos.get("source_row") == 3
+            assert silver.dados_brutos.get("source_row_original") == 3
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.pipeline_status == PipelineStatus.PASS_WITH_WARNINGS
+            assert batch.pipeline_report is not None
+            controle = batch.pipeline_report["data_nascimento_controle"]
+            assert len(controle) == 1
+            assert controle[0]["source_file"] == "leads.csv"
+            assert controle[0]["source_sheet"] == ""
+            assert controle[0]["source_row"] == 3
+            assert controle[0]["issue"] == "missing"
 
     def test_anchored_batch_keeps_lead_locality_dq_without_blaming_event_local(self, client, engine, monkeypatch):
         with Session(engine) as s:

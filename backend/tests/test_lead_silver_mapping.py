@@ -180,6 +180,7 @@ class TestGetColunas:
                 rows=[],
                 delimiter=",",
                 start_index=8,
+                physical_line_numbers=[],
             )
 
         def fail_full_read(*args, **kwargs):
@@ -357,6 +358,7 @@ class TestPostMapear:
             assert silver_rows[0].dados_brutos["source_file"] == "leads.csv"
             assert silver_rows[0].dados_brutos["source_sheet"] == ""
             assert silver_rows[0].dados_brutos["source_row"] == 2
+            assert silver_rows[0].dados_brutos["source_row_original"] == 2
 
     def test_partial_mapping_ignores_unmapped_columns(self, client, engine):
         with Session(engine) as s:
@@ -384,6 +386,7 @@ class TestPostMapear:
                 "source_file": "leads.csv",
                 "source_sheet": "",
                 "source_row": 2,
+                "source_row_original": 2,
             }
 
     def test_aliases_saved_after_mapping(self, client, engine):
@@ -495,6 +498,7 @@ class TestPostMapear:
                 "source_file": "leads.xlsx",
                 "source_sheet": "Sheet",
                 "source_row": 10,
+                "source_row_original": 10,
             }
             assert silver_rows[1].dados_brutos == {
                 "nome": "Bob",
@@ -503,7 +507,40 @@ class TestPostMapear:
                 "source_file": "leads.xlsx",
                 "source_sheet": "Sheet",
                 "source_row": 11,
+                "source_row_original": 11,
             }
+
+    def test_mapping_csv_blank_line_between_rows_sets_physical_source_rows(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        csv_data = (
+            b"nome,cpf,email\n"
+            b"Alice,12345678901,alice@ex.com\n"
+            b"\n"
+            b"Bob,98765432100,bob@ex.com\n"
+        )
+        batch_id = _upload_batch(client, auth, csv_data)
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {"nome": "nome", "cpf": "cpf", "email": "email"},
+            },
+        )
+        assert resp.status_code == 200, resp.text
+
+        with Session(engine) as s:
+            silver_rows = s.exec(
+                select(LeadSilver).where(LeadSilver.batch_id == batch_id).order_by(LeadSilver.row_index)
+            ).all()
+            assert len(silver_rows) == 2
+            assert silver_rows[0].dados_brutos["source_row"] == 2
+            assert silver_rows[0].dados_brutos["source_row_original"] == 2
+            assert silver_rows[1].dados_brutos["source_row"] == 4
+            assert silver_rows[1].dados_brutos["source_row_original"] == 4
 
     def test_mapping_persists_extended_lead_fields(self, client, engine):
         with Session(engine) as s:

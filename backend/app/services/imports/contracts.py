@@ -55,3 +55,5 @@ class ImportPreviewResult:
     sheet_name: Optional[str] = None
     suggestions: list[ColumnSuggestion] = field(default_factory=list)
     samples_by_column: list[list[str]] = field(default_factory=list)
+    #: Linha física 1-based no ficheiro/aba, alinhada a `rows` (após filtrar linhas vazias).
+    physical_line_numbers: list[int] = field(default_factory=list)

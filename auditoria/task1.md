@@ -1,29 +1,31 @@
-# Task 1 — Validador: aceitar email válido OU CPF válido
+# Task 1 — Validador: exigir CPF válido como requisito obrigatório
 
 **Prioridade:** P0
 
 ## Problema
 
-A documentação (`docs/leads_importacao.md`) e a regra de mapeamento descrevem o requisito essencial como **email ou CPF**. Em `validate_normalized_lead_payload`, o código trata CPF ausente ou vazio como inválido e acumula erro de CPF, o que **rejeita leads só com email válido**. Isso contradiz a regra de negócio e provoca perda silenciosa de dados em preview ETL e em `persist_lead_batch()`.
+A regra vigente de produto é que **CPF é o único identificador obrigatório** para leads importáveis. Versões anteriores desta auditoria ficaram desalinhadas com essa decisão. Esta tarefa deve garantir que validação, mapeamento e documentação tratem **CPF válido como requisito obrigatório**, com email apenas como dado complementar.
 
 ## Escopo
 
 - `backend/app/modules/leads_publicidade/application/etl_import/validators.py` — função `validate_normalized_lead_payload`
-- `docs/leads_importacao.md` — alinhar texto se necessário após mudança de comportamento
+- `backend/app/routers/leads.py` e validação de mapeamento legado — exigir a coluna canónica `cpf`
+- `docs/leads_importacao.md` e documentação correlata — alinhar texto à regra de CPF obrigatório
 - Fluxos que chamam esta validação: preview ETL, persistência em `backend/app/modules/leads_publicidade/application/etl_import/persistence.py`
 
 ## Critérios de aceite
 
-1. Payload com **email válido** e CPF ausente, vazio ou inválido **não** gera erro de identificação (lista de erros vazia ou sem bloqueio equivalente ao atual).
-2. Payload **sem** email válido **e** sem CPF válido continua rejeitado de forma clara.
-3. CPF válido continua aceito com ou sem email.
-4. Testes automatizados cobrem o caso `{"email": "ok@example.com", "cpf": None}` (e variantes de string vazia).
+1. Payload com CPF ausente ou vazio gera erro claro de obrigatoriedade (`CPF ausente` ou equivalente definido).
+2. Payload com CPF presente mas inválido continua rejeitado de forma clara.
+3. Payload com CPF válido continua aceito, com email opcional.
+4. A validação de mapeamento rejeita importações que não mapeiem a coluna canónica `cpf`.
+5. Testes automatizados cobrem ausência vs. invalidez de CPF e a rejeição de mapeamento sem `cpf`.
 
 ## Plano de verificação
 
-- Teste unitário em `validate_normalized_lead_payload` com email-only (esperado: sem erro de “CPF inválido” por ausência de CPF).
-- Teste de integração ou de serviço ETL: planilha de uma linha só com email válido deve aparecer em **linhas aprovadas** (não em `rejected_rows` por validação de identificador).
-- Repro manual: `POST /leads/import/etl/preview` com CSV mínimo uma linha, coluna email preenchida, CPF vazio.
+- Teste unitário em `validate_normalized_lead_payload` com `{"email": "ok@example.com", "cpf": None}` (esperado: erro explícito de CPF ausente).
+- Teste de integração ou de serviço ETL: planilha de uma linha com email válido e CPF vazio deve aparecer em `rejected_rows`.
+- Repro manual: `POST /leads/import/validate` sem mapear `cpf` deve falhar; `POST /leads/import/etl/preview` com CSV mínimo e CPF vazio deve rejeitar a linha.
 
 ## Skills recomendadas (acionar na execução)
 
@@ -46,4 +48,4 @@ O handoff deve permitir continuidade sem reler toda a conversa.
 
 ## Referência
 
-Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — secção **Achados detalhados** → **Validador rejeita email-only, embora a regra documentada diga email ou CPF**.
+Decisão vigente e continuidade: [auditoria/handoff-task1.md](handoff-task1.md). O relatório em [auditoria/deep-research-report.md](deep-research-report.md) foi reconciliado para refletir a mesma decisão consolidada de produto.

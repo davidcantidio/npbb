@@ -5,7 +5,7 @@ from datetime import date, datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models.models import Lead
 from core.leads_etl.models import LEAD_ROW_EXCLUDED_FIELDS, LEAD_ROW_FIELDS, coerce_lead_field
@@ -61,6 +61,41 @@ def test_lead_dedupe_por_evento_e_sessao():
         session.add(lead3)
         with pytest.raises(IntegrityError):
             session.commit()
+
+
+def test_lead_blank_cpf_stays_outside_ticketing_unique_index() -> None:
+    engine = make_engine()
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        session.add(
+            Lead(
+                id_salesforce="blank-cpf-1",
+                nome="Lead 1",
+                cpf="",
+                email="blank-cpf@example.com",
+                evento_nome="Evento Blank CPF",
+                sessao="Sessao 1",
+            )
+        )
+        session.commit()
+
+        session.add(
+            Lead(
+                id_salesforce="blank-cpf-2",
+                nome="Lead 2",
+                cpf="",
+                email="blank-cpf@example.com",
+                evento_nome="Evento Blank CPF",
+                sessao="Sessao 1",
+            )
+        )
+        session.commit()
+
+        leads = session.exec(
+            select(Lead).where(Lead.email == "blank-cpf@example.com")
+        ).all()
+        assert len(leads) == 2
 
 
 def test_lead_campos_cliente_bb_e_estilo_sao_opcionais() -> None:

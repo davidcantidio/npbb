@@ -43,5 +43,5 @@ python -m pytest tests/test_leads_import_etl_endpoint.py::test_preview_etl_repor
 
 ## Notas
 
-- Relatórios em `auditoria/deep-research-report.md` / `task1.md` que descrevem o achado “email ou CPF” ficam **historicamente desatualizados** face a esta decisão; não foram editados neste trabalho.
+- A trilha de auditoria foi posteriormente alinhada para refletir explicitamente a decisão consolidada de produto: **CPF obrigatório** e demais campos opcionais com reporte quando inválidos.
 - Migrações ou contratos OpenAPI gerados automaticamente: **nenhuma** alteração.

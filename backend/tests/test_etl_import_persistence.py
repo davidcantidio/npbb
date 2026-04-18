@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.lead_public_models import LeadEventoSourceKind
@@ -7,8 +9,12 @@ from app.models.models import Evento, Lead, LeadEvento, StatusEvento
 from app.modules.leads_publicidade.application.etl_import import persistence
 from app.modules.leads_publicidade.application.etl_import.persistence import (
     LeadBatchPersistenceResult,
+    LeadLookupContext,
     build_dedupe_key,
     find_existing_lead,
+    find_lead_by_ticketing_dedupe_key,
+    is_ticketing_dedupe_integrity_error,
+    merge_lead_lookup_context,
     persist_lead_batch,
 )
 
@@ -76,6 +82,66 @@ def test_persist_lead_batch_bulk_result_is_structured_and_tuple_compatible(
 
     leads = db_session.exec(select(Lead)).all()
     assert [lead.email for lead in leads] == ["bulk@example.com"]
+
+
+def test_find_lead_by_ticketing_dedupe_key_treats_blank_cpf_as_missing(
+    db_session: Session,
+) -> None:
+    db_session.add(
+        Lead(
+            id_salesforce="blank-cpf-existing",
+            email="blank-cpf@example.com",
+            cpf="",
+            nome="Lead Blank CPF",
+            evento_nome="Evento Persistencia",
+            sessao="Sessao A",
+        )
+    )
+    db_session.commit()
+
+    winner = find_lead_by_ticketing_dedupe_key(
+        db_session,
+        {
+            "email": "blank-cpf@example.com",
+            "cpf": "   ",
+            "evento_nome": "Evento Persistencia",
+            "sessao": "Sessao A",
+        },
+    )
+
+    assert winner is None
+
+
+def test_is_ticketing_dedupe_integrity_error_rejects_id_salesforce_unique_violation(
+    db_session: Session,
+) -> None:
+    db_session.add(
+        Lead(
+            id_salesforce="sf-duplicate",
+            email="primeiro@example.com",
+            cpf="52998224725",
+            nome="Lead 1",
+            evento_nome="Evento Persistencia",
+            sessao="Sessao A",
+        )
+    )
+    db_session.commit()
+
+    db_session.add(
+        Lead(
+            id_salesforce="sf-duplicate",
+            email="segundo@example.com",
+            cpf="39053344705",
+            nome="Lead 2",
+            evento_nome="Outro Evento",
+            sessao="Sessao B",
+        )
+    )
+    with pytest.raises(IntegrityError) as exc_info:
+        db_session.commit()
+    db_session.rollback()
+
+    assert is_ticketing_dedupe_integrity_error(exc_info.value) is False
 
 
 def test_persist_lead_batch_fallback_tracks_failed_rows_without_losing_successes(
@@ -331,3 +397,18 @@ def test_persist_lead_batch_updates_existing_lead_by_canonical_evento_id_after_e
     lead_eventos = db_session.exec(select(LeadEvento).where(LeadEvento.lead_id == existing_id)).all()
     assert len(lead_eventos) == 1
     assert lead_eventos[0].evento_id == evento.id
+
+
+def test_merge_lead_lookup_context_deduplicates_lead_ids() -> None:
+    class _StubLead:
+        def __init__(self, lead_id: int) -> None:
+            self.id = lead_id
+
+    a = _StubLead(1)
+    b = _StubLead(2)
+    acc = LeadLookupContext([a], {1}, set())
+    inc = LeadLookupContext([a, b], {2}, {2})
+    merge_lead_lookup_context(acc, inc)
+    assert [getattr(x, "id") for x in acc.candidates] == [1, 2]
+    assert acc.lead_ids_with_any_event_link == {1, 2}
+    assert acc.lead_ids_with_target_event_link == {2}

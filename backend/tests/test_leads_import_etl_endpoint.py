@@ -15,7 +15,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_public_models import LeadEventoSourceKind
-from app.models.models import Evento, ImportAlias, Lead, LeadEvento, StatusEvento, Usuario
+from app.models.models import Evento, ImportAlias, Lead, LeadEvento, LeadImportEtlPreviewSession, StatusEvento, Usuario
 from app.routers.leads import _map_etl_import_error
 from app.schemas.lead_import_etl import ImportEtlPreviewResponse, ImportEtlResult
 from app.utils.security import hash_password
@@ -460,6 +460,93 @@ def test_commit_etl_reuses_committed_result_idempotently(client: TestClient, eng
     assert second.json() == first.json()
 
 
+def test_commit_etl_partial_failure_allows_retry_then_idempotent_committed(
+    client: TestClient,
+    engine,
+    monkeypatch,
+) -> None:
+    from app.modules.leads_publicidade.application.etl_import import commit_service
+    from app.modules.leads_publicidade.application.etl_import.persistence import (
+        LeadBatchPersistenceResult,
+        LeadPersistenceFailedRow,
+        persist_lead_batch as real_persist_lead_batch,
+    )
+
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["partial-retry-a@example.com", "52998224725", "Lead A", "Show 1"],
+            ["partial-retry-b@example.com", "39053344705", "Lead B", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("partial-retry.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert preview.status_code == 200
+    session_token = preview.json()["session_token"]
+
+    attempt = {"n": 0}
+
+    def persist_stub(db, batch, canonical_evento_id=None):
+        attempt["n"] += 1
+        if attempt["n"] == 1:
+            return LeadBatchPersistenceResult(
+                created=1,
+                updated=0,
+                failed_rows=[
+                    LeadPersistenceFailedRow(row_index=3, reason="injected persistence failure"),
+                ],
+            )
+        return real_persist_lead_batch(db, batch, canonical_evento_id=canonical_evento_id)
+
+    monkeypatch.setattr(commit_service, "persist_lead_batch", persist_stub)
+
+    first = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+    assert first.status_code == 200
+    body1 = ImportEtlResult.model_validate(first.json())
+    assert body1.status == "partial_failure"
+    assert len(body1.persistence_failures) == 1
+    assert body1.persistence_failures[0].row_number == 3
+    assert "injected" in body1.persistence_failures[0].reason
+
+    with Session(engine) as session:
+        row = session.get(LeadImportEtlPreviewSession, session_token)
+        assert row is not None
+        assert row.status == "partial_failure"
+        stored = json.loads(row.commit_result_json or "{}")
+        assert stored.get("status") == "partial_failure"
+
+    second = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+    assert second.status_code == 200
+    body2 = ImportEtlResult.model_validate(second.json())
+    assert body2.status == "committed"
+    assert attempt["n"] == 2
+
+    third = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+    assert third.status_code == 200
+    assert third.json() == second.json()
+
+
 def test_commit_etl_keeps_canonical_event_link_when_event_is_renamed_after_preview(client: TestClient, engine) -> None:
     seed_statuses(engine)
     user = seed_user(engine)
@@ -702,6 +789,42 @@ def test_preview_etl_reports_invalid_email_and_cpf_validation_errors(client: Tes
         {
             "row_number": 2,
             "errors": ["email malformado", "CPF inválido"],
+        }
+    ]
+
+
+def test_preview_etl_rejects_known_placeholder_cpf_sequence(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine, nome="ETL-EVENTO-CPF-PLACEHOLDER")
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    invalid_xlsx = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["placeholder@example.com", "12345678909", "Lead Placeholder", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("invalid-placeholder-cpf.xlsx", invalid_xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "true"},
+    )
+
+    assert preview.status_code == 200
+    payload = ImportEtlPreviewResponse.model_validate(preview.json())
+    assert payload.valid_rows == 0
+    assert payload.invalid_rows == 1
+
+    rejected_rows = [
+        item for item in payload.dq_report if item.check_id == "dq.preview.rejected_rows"
+    ]
+    assert rejected_rows
+    assert rejected_rows[0].sample == [
+        {
+            "row_number": 2,
+            "errors": ["CPF inválido"],
         }
     ]
 

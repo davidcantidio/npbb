@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 import csv
 import io
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ ALLOWED_IMPORT_EXTENSIONS = {".csv", ".xlsx"}
 DEFAULT_IMPORT_MAX_BYTES = 50 * 1024 * 1024
 BYTES_PER_MEGABYTE = 1024 * 1024
 HEADER_SCAN_LIMIT = 50
+CSV_STREAM_SNIFF_BYTES = 8192
+CSV_STREAM_UTF8_VALIDATION_CHUNK_BYTES = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,29 @@ def _decode_payload(raw: bytes) -> str:
         return raw.decode("latin-1")
 
 
+def _detect_csv_stream_encoding(file_obj: io.BufferedIOBase) -> tuple[str, str]:
+    """Valida UTF-8 incrementalmente e faz fallback para latin-1 sem materializar o upload."""
+    start_pos = file_obj.tell()
+    utf8_decoder = codecs.getincrementaldecoder("utf-8-sig")()
+    sniff_bytes = bytearray()
+    try:
+        while True:
+            chunk = file_obj.read(CSV_STREAM_UTF8_VALIDATION_CHUNK_BYTES)
+            if not chunk:
+                break
+            if len(sniff_bytes) < CSV_STREAM_SNIFF_BYTES:
+                missing = CSV_STREAM_SNIFF_BYTES - len(sniff_bytes)
+                sniff_bytes.extend(chunk[:missing])
+            try:
+                utf8_decoder.decode(chunk, final=False)
+            except UnicodeDecodeError:
+                return "latin-1", bytes(sniff_bytes).decode("latin-1")
+        utf8_decoder.decode(b"", final=True)
+        return "utf-8-sig", bytes(sniff_bytes).decode("utf-8-sig")
+    finally:
+        file_obj.seek(start_pos)
+
+
 def _normalize_row(row: list[object] | tuple[object, ...]) -> list[str]:
     return [("" if cell is None else str(cell)).strip() for cell in row]
 
@@ -87,7 +113,12 @@ def _build_preview_result(
 ) -> ImportPreviewResult:
     start_index = detect_data_start_index(rows)
     headers = rows[start_index] if rows else []
-    data_rows = [row for row in rows[start_index + 1 :] if any(cell.strip() for cell in row)]
+    data_rows: list[list[str]] = []
+    physical_line_numbers: list[int] = []
+    for idx, row in enumerate(rows[start_index + 1 :], start=start_index + 2):
+        if any(cell.strip() for cell in row):
+            data_rows.append(row)
+            physical_line_numbers.append(idx)
     return ImportPreviewResult(
         filename=filename,
         headers=headers,
@@ -95,6 +126,7 @@ def _build_preview_result(
         delimiter=delimiter,
         start_index=start_index,
         sheet_name=sheet_name,
+        physical_line_numbers=physical_line_numbers,
     )
 
 
@@ -120,19 +152,30 @@ def _read_preview_window_from_rows(
             rows=[],
             delimiter=delimiter,
             start_index=0,
+            physical_line_numbers=[],
         )
 
     start_index = detect_data_start_index(buffered_rows)
     headers = buffered_rows[start_index] if start_index < len(buffered_rows) else []
-    data_rows = [row for row in buffered_rows[start_index + 1 :] if any(cell.strip() for cell in row)]
+    data_rows: list[list[str]] = []
+    physical_line_numbers: list[int] = []
+    for idx in range(start_index + 1, len(buffered_rows)):
+        row = buffered_rows[idx]
+        if any(cell.strip() for cell in row):
+            data_rows.append(row)
+            physical_line_numbers.append(idx + 1)
 
+    next_row_idx = len(buffered_rows)
     while len(data_rows) < sample_rows:
         try:
             row = next(rows_iter)
         except StopIteration:
             break
+        physical_here = next_row_idx + 1
+        next_row_idx += 1
         if any(cell.strip() for cell in row):
             data_rows.append(row)
+            physical_line_numbers.append(physical_here)
 
     return ImportPreviewResult(
         filename=filename,
@@ -141,6 +184,7 @@ def _read_preview_window_from_rows(
         delimiter=delimiter,
         start_index=start_index,
         sheet_name=sheet_name,
+        physical_line_numbers=physical_line_numbers[:sample_rows],
     )
 
 
@@ -298,11 +342,15 @@ def iter_data_rows(
         return
 
     file.file.seek(0)
-    raw = file.file.read()
-    text = _decode_payload(raw)
-    active_delimiter = delimiter or _detect_csv_delimiter(text[:4096])
-    reader = csv.reader(io.StringIO(text), delimiter=active_delimiter)
-    for idx, row in enumerate(reader):
-        if idx <= start_index:
-            continue
-        yield [str(cell).strip() for cell in row]
+    encoding, sample_text = _detect_csv_stream_encoding(file.file)
+    text_io = io.TextIOWrapper(file.file, encoding=encoding, newline="")
+    try:
+        active_delimiter = delimiter or _detect_csv_delimiter(sample_text[:4096] if sample_text else "")
+        text_io.seek(0)
+        reader = csv.reader(text_io, delimiter=active_delimiter)
+        for idx, row in enumerate(reader):
+            if idx <= start_index:
+                continue
+            yield [str(cell).strip() for cell in row]
+    finally:
+        text_io.detach()

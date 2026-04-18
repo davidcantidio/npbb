@@ -4,7 +4,9 @@ from datetime import date, datetime, time
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import CheckConstraint, Column, DateTime, Enum as SQLEnum, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, Enum as SQLEnum, Index, Text, UniqueConstraint
+from sqlalchemy.orm import declared_attr
+from sqlalchemy.sql import func as sa_func
 from sqlmodel import Field, Relationship
 
 from app.db.metadata import SQLModel
@@ -36,9 +38,6 @@ class TipoResponsavel(str, Enum):
 
 class Lead(SQLModel, table=True):
     __tablename__ = "lead"
-    __table_args__ = (
-        UniqueConstraint("email", "cpf", "evento_nome", "sessao", name="uq_lead_ticketing_dedupe"),
-    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     id_salesforce: Optional[str] = Field(default=None, max_length=200, unique=True)
@@ -95,6 +94,23 @@ class Lead(SQLModel, table=True):
     conversoes: List["LeadConversao"] = Relationship(back_populates="lead")
     conversoes_ativacao: List["ConversaoAtivacao"] = Relationship(back_populates="lead")
     reconhecimento_tokens: List["LeadReconhecimentoToken"] = Relationship(back_populates="lead")
+
+    # Partial unique index: NULL/empty optional components normalize like COALESCE(TRIM(col), '').
+    # CPF null/empty stays outside the index to match Task 3 semantics and conflict recovery.
+    @declared_attr.directive
+    def __table_args__(cls) -> tuple:
+        return (
+            Index(
+                "uq_lead_ticketing_dedupe_norm",
+                sa_func.coalesce(sa_func.trim(cls.email), ""),
+                cls.cpf,
+                sa_func.coalesce(sa_func.trim(cls.evento_nome), ""),
+                sa_func.coalesce(sa_func.trim(cls.sessao), ""),
+                unique=True,
+                sqlite_where=sa_func.nullif(sa_func.trim(cls.cpf), "").is_not(None),
+                postgresql_where=sa_func.nullif(sa_func.trim(cls.cpf), "").is_not(None),
+            ),
+        )
 
 
 class LeadEvento(SQLModel, table=True):

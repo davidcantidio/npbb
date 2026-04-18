@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 
-PreviewStatus = Literal["previewed", "committed", "expired", "rejected"]
+PreviewStatus = Literal["previewed", "committed", "expired", "rejected", "partial_failure"]
 
 
 @dataclass(frozen=True)
@@ -89,3 +89,4 @@ class EtlCommitResult:
     strict: bool
     status: PreviewStatus
     dq_report: tuple[EtlPreviewDQItem, ...]
+    persistence_failures: tuple[tuple[int, str], ...] = field(default_factory=tuple)

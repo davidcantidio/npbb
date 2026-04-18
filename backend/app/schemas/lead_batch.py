@@ -50,6 +50,9 @@ class LeadBatchRead(BaseModel):
     gold_dq_issue_counts: Optional[dict[str, int]] = None
     gold_dq_invalid_records_total: Optional[int] = None
     created_at: datetime
+    # Metadados de recuperacao Gold (nao sao colunas ORM; preenchidos no router).
+    gold_pipeline_stale_after_seconds: Optional[int] = None
+    gold_pipeline_progress_is_stale: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -106,3 +109,4 @@ class MapearBatchResponse(BaseModel):
 class ExecutarPipelineResponse(BaseModel):
     batch_id: int
     status: str  # "queued"
+    reclaimed_stale_lock: bool = False

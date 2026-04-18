@@ -488,6 +488,7 @@ class TestGetBatchPreview:
                 rows=[["Alice", "alice@ex.com", "12345678901"]],
                 delimiter=",",
                 start_index=8,
+                physical_line_numbers=[10],
             )
 
         monkeypatch.setattr("app.routers.leads.read_raw_file_preview", fake_preview)

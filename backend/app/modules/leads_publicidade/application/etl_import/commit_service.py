@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from core.leads_etl.models import backend_payload_to_lead_row
 
-from .contracts import EtlCommitResult
+from .contracts import EtlCommitResult, PreviewStatus
 from .exceptions import EtlImportValidationError, EtlPreviewSessionConflictError
 from .persistence import build_dedupe_key, persist_lead_batch
 from .preview_session_repository import get_commit_result, get_snapshot, mark_committed
@@ -51,22 +51,26 @@ def commit_preview_session(
             key_to_index[key] = len(batch)
         batch.append((payload, row.row_number))
 
-    created, updated, skipped, has_errors = persist_lead_batch(
+    batch_result = persist_lead_batch(
         db,
         batch,
         canonical_evento_id=snapshot.evento_id,
     )
+    has_errors = batch_result.has_errors
+    persistence_failures = tuple((row.row_index, row.reason) for row in batch_result.failed_rows)
+    outcome_status: PreviewStatus = "partial_failure" if has_errors else "committed"
     result = EtlCommitResult(
         session_token=session_token,
         total_rows=snapshot.total_rows,
         valid_rows=snapshot.valid_rows,
         invalid_rows=snapshot.invalid_rows,
-        created=created,
-        updated=updated,
-        skipped=skipped,
-        errors=skipped if has_errors else 0,
+        created=batch_result.created,
+        updated=batch_result.updated,
+        skipped=batch_result.skipped,
+        errors=batch_result.skipped if has_errors else 0,
         strict=bool(snapshot.strict),
-        status="committed",
+        status=outcome_status,
         dq_report=snapshot.dq_report,
+        persistence_failures=persistence_failures,
     )
     return mark_committed(db, result)

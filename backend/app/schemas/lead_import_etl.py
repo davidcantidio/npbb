@@ -69,6 +69,13 @@ class ImportEtlCommitRequest(BaseModel):
     force_warnings: bool = False
 
 
+class ImportEtlPersistenceFailure(BaseModel):
+    row_number: int
+    reason: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ImportEtlResult(BaseModel):
     session_token: str
     total_rows: int
@@ -79,7 +86,15 @@ class ImportEtlResult(BaseModel):
     skipped: int
     errors: int
     strict: bool
-    status: Literal["previewed", "committed", "expired", "rejected"]
+    status: Literal["previewed", "committed", "expired", "rejected", "partial_failure"]
     dq_report: list[DQCheckResult]
+    persistence_failures: list[ImportEtlPersistenceFailure] = Field(
+        default_factory=list,
+        description=(
+            "Linhas que falharam na persistencia do commit. "
+            "Enquanto status for partial_failure, o commit nao esta fechado; "
+            "repetir POST /leads/import/etl/commit com o mesmo session_token para retentar."
+        ),
+    )
 
     model_config = ConfigDict(from_attributes=True)

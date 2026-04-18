@@ -11,7 +11,7 @@ A unicidade no modelo `Lead` usa `uq_lead_ticketing_dedupe(email, cpf, evento_no
 - `backend/app/models/lead_public_models.py` — modelo `Lead`, constraints
 - `backend/app/modules/leads_publicidade/application/etl_import/persistence.py` — `find_existing_lead`, `build_dedupe_key`, fluxo de insert
 - `backend/app/services/lead_pipeline_service.py` — `_find_existing_lead` no caminho Gold
-- Migrações Alembic para índices únicos funcionais ou estratégia de chave canónica (email-only / cpf-only) alinhada à regra “email ou CPF”
+- Migrações Alembic para índices únicos funcionais ou estratégia de chave canónica alinhada à regra atual de **CPF obrigatório** (com tratamento consistente para email opcional)
 
 ## Critérios de aceite
 

@@ -31,6 +31,8 @@ class PipelineStatus(str, Enum):
     PASS = "pass"
     PASS_WITH_WARNINGS = "pass_with_warnings"
     FAIL = "fail"
+    # Execucao Gold interrompida (processo morto / deploy) ou libertada pelo operador; retomavel.
+    STALLED = "stalled"
 
 
 class LeadBatch(SQLModel, table=True):

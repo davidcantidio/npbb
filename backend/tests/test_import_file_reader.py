@@ -10,8 +10,11 @@ from app.services.imports.file_reader import (
     BYTES_PER_MEGABYTE,
     ImportFileError,
     inspect_upload,
+    iter_data_rows,
+    read_file_sample,
     read_raw_file_headers,
     read_raw_file_preview,
+    read_raw_file_rows,
 )
 
 
@@ -51,6 +54,7 @@ def test_inspect_upload_too_large_message_includes_received_size_and_limit_in_mb
 class _FakeWorksheet:
     def __init__(self, limit: int = 60) -> None:
         self.limit = limit
+        self.title = "Sheet1"
 
     def iter_rows(self, values_only: bool = True):
         assert values_only is True
@@ -91,6 +95,22 @@ def test_read_raw_file_preview_avoids_full_xlsx_scan(monkeypatch) -> None:
         ["Lead 1", "lead1@example.com", "00000000001"],
         ["Lead 2", "lead2@example.com", "00000000002"],
     ]
+    assert preview.physical_line_numbers == [10, 11, 12]
+
+
+def test_read_raw_file_rows_csv_physical_lines_skip_blank_rows() -> None:
+    raw = (
+        b"nome,cpf,email\n"
+        b"Alice,12345678901,alice@ex.com\n"
+        b"\n"
+        b"Bob,98765432100,bob@ex.com\n"
+    )
+    result = read_raw_file_rows(raw, filename="leads.csv")
+    assert result.rows == [
+        ["Alice", "12345678901", "alice@ex.com"],
+        ["Bob", "98765432100", "bob@ex.com"],
+    ]
+    assert result.physical_line_numbers == [2, 4]
 
 
 def test_read_raw_file_headers_avoids_full_xlsx_scan(monkeypatch) -> None:
@@ -104,3 +124,23 @@ def test_read_raw_file_headers_avoids_full_xlsx_scan(monkeypatch) -> None:
     assert preview.start_index == 8
     assert preview.headers == ["nome", "email", "cpf"]
     assert preview.rows == []
+
+
+def test_iter_data_rows_csv_streams_without_loading_whole_file_into_string() -> None:
+    content = "nome,email\nlinha1,v1@example.com\nlinha2,v2@example.com\n".encode("utf-8")
+    file = _upload_file("leads.csv", content)
+    rows = list(iter_data_rows(file, ext=".csv", start_index=0, delimiter=","))
+    assert rows == [["linha1", "v1@example.com"], ["linha2", "v2@example.com"]]
+    file.file.seek(0)
+    assert file.file.read() == content
+
+
+def test_iter_data_rows_csv_preserves_latin1_fallback_consistent_with_preview() -> None:
+    content = "nome,email\nJoão,joao@example.com\n".encode("latin-1")
+    file = _upload_file("leads.csv", content)
+    preview, ext = read_file_sample(file, sample_rows=5)
+
+    rows = list(iter_data_rows(file, ext=ext, start_index=preview.start_index, delimiter=preview.delimiter))
+
+    assert preview.rows == [["João", "joao@example.com"]]
+    assert rows == preview.rows

@@ -29,6 +29,7 @@ CANONICAL_FIELDS = frozenset(ALL_COLUMNS)
 SOURCE_FILE_FIELD = "source_file"
 SOURCE_SHEET_FIELD = "source_sheet"
 SOURCE_ROW_FIELD = "source_row"
+SOURCE_ROW_ORIGINAL_FIELD = "source_row_original"
 
 Confidence = str  # "exact_match" | "synonym_match" | "alias_match" | "none"
 
@@ -127,6 +128,7 @@ def mapear_batch(
     source_file = batch.nome_arquivo_original or ""
     source_sheet = extracted.sheet_name or ""
     source_row_offset = extracted.start_index + 2
+    physical_lines = extracted.physical_line_numbers
 
     existing_silver = db.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all()
     for row in existing_silver:
@@ -146,9 +148,15 @@ def mapear_batch(
         if not dados_brutos:
             continue
 
+        if len(physical_lines) == len(data_rows):
+            physical_line = int(physical_lines[row_index])
+        else:
+            physical_line = source_row_offset + row_index
+
         dados_brutos[SOURCE_FILE_FIELD] = source_file
         dados_brutos[SOURCE_SHEET_FIELD] = source_sheet
-        dados_brutos[SOURCE_ROW_FIELD] = source_row_offset + row_index
+        dados_brutos[SOURCE_ROW_ORIGINAL_FIELD] = physical_line
+        dados_brutos[SOURCE_ROW_FIELD] = physical_line
 
         silver = LeadSilver(
             batch_id=batch_id,

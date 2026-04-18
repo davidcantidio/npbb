@@ -67,7 +67,10 @@ from app.services.imports.file_reader import ImportFileError, read_raw_file_prev
 from app.services.lead_mapping import mapear_batch, suggest_column_mapping
 from app.services.lead_pipeline_service import (
     executar_pipeline_gold_em_thread,
+    is_gold_pipeline_progress_stale,
     load_batch_without_bronze,
+    load_batch_without_bronze_for_update,
+    pipeline_stale_after_seconds,
     queue_pipeline_batch,
 )
 from app.services.evento_activation_import import (
@@ -1074,6 +1077,10 @@ def _serialize_etl_commit_response(result) -> ImportEtlResult:
             "strict": result.strict,
             "status": result.status,
             "dq_report": [item.__dict__ for item in result.dq_report],
+            "persistence_failures": [
+                {"row_number": row_number, "reason": reason}
+                for row_number, reason in result.persistence_failures
+            ],
         }
     )
 
@@ -2113,7 +2120,13 @@ def get_batch(
             code="BATCH_NOT_FOUND",
             message="Lote nao encontrado",
         )
-    return LeadBatchRead.model_validate(batch, from_attributes=True)
+    base = LeadBatchRead.model_validate(batch, from_attributes=True)
+    return base.model_copy(
+        update={
+            "gold_pipeline_stale_after_seconds": pipeline_stale_after_seconds(),
+            "gold_pipeline_progress_is_stale": is_gold_pipeline_progress_stale(batch),
+        }
+    )
 
 
 @router.post(
@@ -2134,7 +2147,7 @@ async def disparar_pipeline(
     current_user: Usuario = Depends(get_current_user),
 ):
     user_id = getattr(current_user, "id", None)
-    batch = load_batch_without_bronze(session, batch_id)
+    batch = load_batch_without_bronze_for_update(session, batch_id)
     if not batch:
         logger.warning(
             "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r",
@@ -2165,33 +2178,50 @@ async def disparar_pipeline(
             extra={"stage_atual": batch.stage},
         )
 
+    reclaimed_stale_lock = False
     if batch.pipeline_progress is not None:
-        logger.warning(
-            "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r stage=%r pipeline_status=%r evento_id=%r",
-            batch_id,
-            user_id,
-            "PIPELINE_ALREADY_RUNNING",
-            batch.stage,
-            batch.pipeline_status,
-            batch.evento_id,
-        )
-        raise_http_error(
-            status.HTTP_409_CONFLICT,
-            code="PIPELINE_ALREADY_RUNNING",
-            message="Pipeline Gold ja esta em execucao para este lote",
-        )
+        if batch.pipeline_status == PipelineStatus.PENDING and is_gold_pipeline_progress_stale(batch):
+            reclaimed_stale_lock = True
+            logger.warning(
+                "lead_gold_pipeline.dispatch.reclaimed_stale_lock batch_id=%r user_id=%r stage=%r pipeline_status=%r evento_id=%r",
+                batch_id,
+                user_id,
+                batch.stage,
+                batch.pipeline_status,
+                batch.evento_id,
+            )
+        else:
+            logger.warning(
+                "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r stage=%r pipeline_status=%r evento_id=%r",
+                batch_id,
+                user_id,
+                "PIPELINE_ALREADY_RUNNING",
+                batch.stage,
+                batch.pipeline_status,
+                batch.evento_id,
+            )
+            raise_http_error(
+                status.HTTP_409_CONFLICT,
+                code="PIPELINE_ALREADY_RUNNING",
+                message="Pipeline Gold ja esta em execucao para este lote",
+            )
 
     queue_pipeline_batch(batch)
     session.add(batch)
     session.commit()
 
     logger.info(
-        "lead_gold_pipeline.dispatch.accepted batch_id=%r user_id=%r stage=%r pipeline_status=%r evento_id=%r",
+        "lead_gold_pipeline.dispatch.accepted batch_id=%r user_id=%r stage=%r pipeline_status=%r evento_id=%r reclaimed_stale=%r",
         batch_id,
         user_id,
         batch.stage,
         batch.pipeline_status,
         batch.evento_id,
+        reclaimed_stale_lock,
     )
     background_tasks.add_task(executar_pipeline_gold_em_thread, batch_id)
-    return ExecutarPipelineResponse(batch_id=batch_id, status="queued")
+    return ExecutarPipelineResponse(
+        batch_id=batch_id,
+        status="queued",
+        reclaimed_stale_lock=reclaimed_stale_lock,
+    )

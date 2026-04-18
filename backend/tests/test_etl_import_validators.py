@@ -57,6 +57,7 @@ def test_is_valid_cpf_accepts_valid_normalized_cpf(cpf: str) -> None:
     [
         "52998224726",
         "11111111111",
+        "12345678909",
         "12345678901",
         "5299822472",
         "529982247250",
@@ -90,5 +91,11 @@ def test_validate_normalized_lead_payload_reports_missing_cpf_when_absent() -> N
 
 def test_validate_normalized_lead_payload_invalid_cpf_digits_when_present() -> None:
     assert validate_normalized_lead_payload({"email": "ok@example.com", "cpf": "12345678901"}) == [
+        INVALID_CPF_REASON
+    ]
+
+
+def test_validate_normalized_lead_payload_rejects_known_placeholder_cpf_sequence() -> None:
+    assert validate_normalized_lead_payload({"email": "ok@example.com", "cpf": "12345678909"}) == [
         INVALID_CPF_REASON
     ]

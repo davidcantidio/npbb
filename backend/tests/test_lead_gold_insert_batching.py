@@ -1,4 +1,5 @@
 import csv
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,19 @@ class _FakeSession:
 
     def get_bind(self):
         return self._bind
+
+    def begin_nested(self):
+        return nullcontext()
+
+    def exec(self, _stmt):
+        class _ExecResult:
+            def all(self_inner):
+                return []
+
+            def first(self_inner):
+                return None
+
+        return _ExecResult()
 
 
 class _FakeDialect:
@@ -170,7 +184,7 @@ def test_inserir_leads_gold_emits_heartbeat_progress_before_final_commit(monkeyp
     assert timeout_calls == ["timeout"]
     assert progress_events == [
         ("insert_leads", "Inserindo leads Gold no banco (0/3)", 0),
-        ("insert_leads", "Inserindo leads Gold no banco (2/3)", 66),
+        ("insert_leads", "Inserindo leads Gold no banco (1/3)", 33),
         ("insert_leads", "Inserindo leads Gold no banco (3/3)", 100),
     ]
 
@@ -254,7 +268,7 @@ def test_inserir_leads_gold_commits_early_on_supabase_transaction_budget(monkeyp
     assert timeout_calls == ["timeout", "timeout"]
     assert progress_events == [
         ("insert_leads", "Inserindo leads Gold no banco (0/3)", 0),
-        ("insert_leads", "Inserindo leads Gold no banco (2/3)", 66),
+        ("insert_leads", "Inserindo leads Gold no banco (1/3)", 33),
         ("insert_leads", "Inserindo leads Gold no banco (3/3)", 100),
     ]
 
@@ -355,3 +369,71 @@ def test_inserir_leads_gold_ignores_resume_when_content_hash_differs(monkeypatch
 
     assert created == 3
     assert progress_events[0] == ("insert_leads", "Inserindo leads Gold no banco (0/3)", 0)
+
+
+def test_inserir_leads_gold_loads_lookup_in_fixed_windows(monkeypatch, tmp_path):
+    csv_path = tmp_path / "gold-lookup-window.csv"
+    rows = [
+        {
+            "nome": f"Lead {idx}",
+            "cpf": f"{idx + 1:011d}",
+            "email": f"lead{idx}@example.com",
+        }
+        for idx in range(120)
+    ]
+    _write_csv(csv_path, rows)
+
+    fake_db = _FakeSession()
+    fake_batch = type(
+        "FakeBatch",
+        (),
+        {
+            "id": 58,
+            "origem_lote": "proponente",
+            "ativacao_id": None,
+            "tipo_lead_proponente": "entrada_evento",
+            "evento_id": None,
+            "plataforma_origem": "drive",
+        },
+    )()
+
+    lookup_chunk_sizes: list[int] = []
+
+    def _fake_build_payload(row, _batch):
+        return dict(row)
+
+    def _fake_find_existing_lead(_db, _payload, anchored_evento_id=None):
+        return None
+
+    def _fake_find_existing_from_lookup(_payload, _lookup_context, canonical_evento_id=None):
+        return None
+
+    def _fake_load_lookup_context(_db, batch_tuples, canonical_evento_id=None):
+        lookup_chunk_sizes.append(len(batch_tuples))
+        return lead_pipeline_service.LeadLookupContext([], set(), set())
+
+    monkeypatch.setenv("LEAD_GOLD_INSERT_COMMIT_BATCH_SIZE", "1000")
+    monkeypatch.setenv("NPBB_LEAD_GOLD_INSERT_LOOKUP_CHUNK_SIZE", "50")
+    monkeypatch.setattr(lead_pipeline_service, "_configure_lead_gold_statement_timeout", lambda _db: None)
+    monkeypatch.setattr(lead_pipeline_service, "_build_lead_payload", _fake_build_payload)
+    monkeypatch.setattr(lead_pipeline_service, "_find_existing_lead", _fake_find_existing_lead)
+    monkeypatch.setattr(lead_pipeline_service, "find_existing_lead_from_lookup", _fake_find_existing_from_lookup)
+    monkeypatch.setattr(lead_pipeline_service, "_load_lead_lookup_context", _fake_load_lookup_context)
+    monkeypatch.setattr(lead_pipeline_service, "Lead", _FakeLead)
+
+    created = lead_pipeline_service._inserir_leads_gold(fake_batch, csv_path, fake_db)
+
+    assert created == 120
+    assert fake_db.flushes == 120
+    assert lookup_chunk_sizes == [50, 50, 20]
+    assert max(lookup_chunk_sizes) == 50
+
+
+def test_count_consolidated_csv_data_rows_excludes_header(tmp_path: Path) -> None:
+    p = tmp_path / "c.csv"
+    with p.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["a", "b"])
+        w.writerow([1, 2])
+        w.writerow([3, 4])
+    assert lead_pipeline_service._count_consolidated_csv_data_rows(p) == 2

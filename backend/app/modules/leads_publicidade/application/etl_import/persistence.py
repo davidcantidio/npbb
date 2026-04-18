@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import func as sql_func
 from sqlmodel import Session, select
 
 from app.models.models import Lead, LeadEvento, LeadEventoSourceKind
@@ -17,6 +19,63 @@ from app.utils.log_sanitize import sanitize_exception
 from .validators import format_validation_reasons, validate_normalized_lead_payload
 
 logger = logging.getLogger(__name__)
+
+TICKETING_DEDUPE_INDEX_NAMES = (
+    "uq_lead_ticketing_dedupe_norm",
+    "uq_lead_ticketing_dedupe",
+)
+TICKETING_DEDUPE_SQLITE_SIGNATURES = (
+    "unique constraint failed: lead.email, lead.cpf, lead.evento_nome, lead.sessao",
+)
+
+
+def _ticketing_field_norm(value: object) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        value = str(value)
+    return value.strip()
+
+
+def is_ticketing_dedupe_integrity_error(exc: BaseException) -> bool:
+    """True when exc is a unique-violation on the ticketing dedupe index/constraint."""
+
+    if not isinstance(exc, IntegrityError):
+        return False
+    orig = getattr(exc, "orig", None)
+    if orig is not None and getattr(orig, "pgcode", None) == "23505":
+        diag = getattr(orig, "diag", None)
+        cname = getattr(diag, "constraint_name", None) if diag is not None else None
+        if cname and any(n in cname for n in TICKETING_DEDUPE_INDEX_NAMES):
+            return True
+    raw = str(orig) if orig is not None else str(exc)
+    lowered = raw.lower()
+    if "unique" not in lowered and "duplicate" not in lowered:
+        return False
+    for name in TICKETING_DEDUPE_INDEX_NAMES:
+        if name.lower() in lowered:
+            return True
+    return any(signature in lowered for signature in TICKETING_DEDUPE_SQLITE_SIGNATURES)
+
+
+def find_lead_by_ticketing_dedupe_key(session: Session, payload: dict[str, object]) -> Lead | None:
+    """Lookup using the same normalization as uq_lead_ticketing_dedupe_norm."""
+
+    cpf_val = _ticketing_field_norm(payload.get("cpf"))
+    if not cpf_val:
+        return None
+    email_n = _ticketing_field_norm(payload.get("email"))
+    evento_n = _ticketing_field_norm(payload.get("evento_nome"))
+    sessao_n = _ticketing_field_norm(payload.get("sessao"))
+
+    stmt = (
+        select(Lead)
+        .where(Lead.cpf == cpf_val)
+        .where(sql_func.coalesce(sql_func.trim(Lead.email), "") == email_n)
+        .where(sql_func.coalesce(sql_func.trim(Lead.evento_nome), "") == evento_n)
+        .where(sql_func.coalesce(sql_func.trim(Lead.sessao), "") == sessao_n)
+    )
+    return session.exec(stmt).first()
 
 
 @dataclass(frozen=True)
@@ -56,6 +115,25 @@ class LeadLookupContext:
     candidates: list[Lead]
     lead_ids_with_any_event_link: set[int]
     lead_ids_with_target_event_link: set[int]
+
+
+def merge_lead_lookup_context(accumulator: LeadLookupContext, incoming: LeadLookupContext) -> None:
+    """Acrescenta candidatos e conjuntos de evento sem duplicar `Lead.id` já presentes."""
+    seen_ids: set[int] = {
+        int(lead.id)
+        for lead in accumulator.candidates
+        if getattr(lead, "id", None) is not None
+    }
+    for lead in incoming.candidates:
+        lid = getattr(lead, "id", None)
+        if lid is not None:
+            ilid = int(lid)
+            if ilid in seen_ids:
+                continue
+            seen_ids.add(ilid)
+        accumulator.candidates.append(lead)
+    accumulator.lead_ids_with_any_event_link.update(incoming.lead_ids_with_any_event_link)
+    accumulator.lead_ids_with_target_event_link.update(incoming.lead_ids_with_target_event_link)
 
 
 def build_dedupe_key(
@@ -597,9 +675,31 @@ def _persist_single_lead_row(
         )
         return "updated"
 
-    lead = Lead(**payload)
-    session.add(lead)
-    session.flush()
+    try:
+        with session.begin_nested():
+            lead = Lead(**payload)
+            session.add(lead)
+            session.flush()
+    except IntegrityError as exc:
+        if not is_ticketing_dedupe_integrity_error(exc):
+            raise
+        winner = find_lead_by_ticketing_dedupe_key(session, payload)
+        if winner is None:
+            logger.warning(
+                "Ticketing dedupe conflict without resolvable row cpf=%s",
+                str(payload.get("cpf")),
+            )
+            raise
+        merge_lead(winner, payload)
+        session.add(winner)
+        session.flush()
+        _ensure_canonical_event_link(
+            session,
+            lead=winner,
+            payload=payload,
+            canonical_evento_id=canonical_evento_id,
+        )
+        return "updated"
     _ensure_canonical_event_link(
         session,
         lead=lead,

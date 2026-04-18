@@ -126,6 +126,18 @@ def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
     )
 
 
+def _persistence_failures_from_payload(payload: dict[str, object]) -> tuple[tuple[int, str], ...]:
+    raw = payload.get("persistence_failures") or []
+    if not isinstance(raw, list):
+        return ()
+    out: list[tuple[int, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        out.append((int(item["row_number"]), str(item["reason"])))
+    return tuple(out)
+
+
 def mark_committed(session: Session, result: EtlCommitResult) -> EtlCommitResult:
     entity = session.get(LeadImportEtlPreviewSession, result.session_token)
     if entity is None:
@@ -144,6 +156,10 @@ def mark_committed(session: Session, result: EtlCommitResult) -> EtlCommitResult
             "errors": result.errors,
             "strict": result.strict,
             "status": result.status,
+            "persistence_failures": [
+                {"row_number": row_number, "reason": reason}
+                for row_number, reason in result.persistence_failures
+            ],
         },
         ensure_ascii=False,
     )
@@ -153,10 +169,13 @@ def mark_committed(session: Session, result: EtlCommitResult) -> EtlCommitResult
 
 
 def get_commit_result(session: Session, session_token: str) -> EtlCommitResult | None:
+    """Idempotency cache for a fully successful commit only (`status == committed`)."""
     entity = session.get(LeadImportEtlPreviewSession, session_token)
     if entity is None or not entity.commit_result_json:
         return None
     payload = json.loads(entity.commit_result_json)
+    if payload.get("status") != "committed":
+        return None
     return EtlCommitResult(
         session_token=payload["session_token"],
         total_rows=int(payload["total_rows"]),
@@ -169,4 +188,5 @@ def get_commit_result(session: Session, session_token: str) -> EtlCommitResult |
         strict=bool(payload["strict"]),
         status=payload["status"],
         dq_report=_deserialize_dq(entity.dq_report_json),
+        persistence_failures=_persistence_failures_from_payload(payload),
     )

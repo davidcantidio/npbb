@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import math
+import numbers
 from datetime import date, datetime
 from enum import Enum
 import re
 import unicodedata
+from typing import Any
 
 import pandas as pd
 
@@ -36,11 +39,29 @@ def normalize_header(header: str) -> str:
     return HEADER_SYNONYMS.get(canonical, canonical)
 
 
-def digits_only(value: str) -> str:
-    return re.sub(r"\D+", "", str(value or ""))
+def _value_to_str_before_digits(value: Any) -> str:
+    """Align with core.leads_etl coercions: Excel/pandas numeric cells must not become '... .0'."""
+
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value).strip()
+    if isinstance(value, numbers.Integral):
+        return str(int(value))
+    if isinstance(value, numbers.Real):
+        fv = float(value)
+        if not math.isfinite(fv):
+            return ""
+        if fv.is_integer():
+            return str(int(fv))
+    return str(value).strip()
 
 
-def normalize_cpf(value: str) -> str:
+def digits_only(value: Any) -> str:
+    return re.sub(r"\D+", "", _value_to_str_before_digits(value))
+
+
+def normalize_cpf(value: Any) -> str:
     return digits_only(value)
 
 
@@ -54,7 +75,7 @@ def _calc_cpf_check_digit(numbers: list[int], *, start_weight: int) -> int:
     return 0 if remainder < 2 else 11 - remainder
 
 
-def is_valid_cpf(value: str) -> bool:
+def is_valid_cpf(value: Any) -> bool:
     # Keep parity with backend/app/utils/cpf.py without importing the app package.
     digits = normalize_cpf(value)
     if len(digits) != 11:
@@ -73,7 +94,7 @@ def is_valid_cpf(value: str) -> bool:
     return second == numbers[10]
 
 
-def normalize_phone(value: str) -> str:
+def normalize_phone(value: Any) -> str:
     return digits_only(value)
 
 

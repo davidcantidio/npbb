@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import numbers
 from datetime import date, datetime
 from typing import Any
 
@@ -15,6 +17,30 @@ def _normalize_text(value: Any) -> str | None:
 
 def _clean_digits(value: str) -> str:
     return "".join(ch for ch in value if ch.isdigit())
+
+
+def _value_to_str_for_digit_fields(value: Any) -> str | None:
+    """Excel/pandas often yield int/float for CPF/telefone/CEP cells.
+
+    ``str(52998224725.0)`` would add an extra digit when stripping non-digits;
+    whole-valued floats/ints are stringified without a decimal part.
+    """
+
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        text = str(value).strip()
+        return text or None
+    if isinstance(value, numbers.Integral):
+        return str(int(value))
+    if isinstance(value, numbers.Real):
+        fv = float(value)
+        if not math.isfinite(fv):
+            return None
+        if fv.is_integer():
+            return str(int(fv))
+    text = str(value).strip()
+    return text or None
 
 
 def _parse_date(value: Any) -> date | None:
@@ -115,7 +141,7 @@ def coerce_lead_field(field: str, value: Any) -> Any | None:
         return raw.lower() if raw else None
 
     if name in {"cpf", "telefone", "cep"}:
-        raw = _normalize_text(value)
+        raw = _value_to_str_for_digit_fields(value)
         if raw is None:
             return None
         digits = _clean_digits(raw)

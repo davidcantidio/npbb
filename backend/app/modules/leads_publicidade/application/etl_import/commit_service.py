@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from datetime import datetime
 
 from sqlmodel import Session
 
+from app.observability.import_events import log_import_event, session_token_prefix
 from core.leads_etl.models import backend_payload_to_lead_row
 
 from .contracts import EtlCommitResult, PreviewStatus
 from .exceptions import EtlImportValidationError, EtlPreviewSessionConflictError
 from .persistence import build_dedupe_key, persist_lead_batch
 from .preview_session_repository import get_commit_result, get_snapshot, mark_committed
+
+logger = logging.getLogger(__name__)
 
 
 def commit_preview_session(
@@ -21,8 +26,17 @@ def commit_preview_session(
     force_warnings: bool,
     db: Session,
 ) -> EtlCommitResult:
+    started_at = time.perf_counter()
     committed = get_commit_result(db, session_token)
     if committed is not None:
+        log_import_event(
+            logger,
+            "etl.commit.idempotent_read",
+            outcome="cached",
+            session_token_prefix=session_token_prefix(session_token),
+            evento_id=evento_id,
+            status=committed.status,
+        )
         return committed
 
     snapshot = get_snapshot(db, session_token)
@@ -35,6 +49,14 @@ def commit_preview_session(
         raise EtlImportValidationError("strict=true bloqueia commit quando ha erros de validacao no preview.")
     if snapshot.has_warnings and not force_warnings:
         raise EtlImportValidationError("Commit ETL exige confirmacao explicita para warnings.")
+
+    log_import_event(
+        logger,
+        "etl.commit.start",
+        evento_id=evento_id,
+        session_token_prefix=session_token_prefix(session_token),
+        valid_rows=snapshot.valid_rows,
+    )
 
     batch: list[tuple[dict[str, object], int] | None] = []
     key_to_index: dict[str, int] = {}
@@ -72,5 +94,17 @@ def commit_preview_session(
         status=outcome_status,
         dq_report=snapshot.dq_report,
         persistence_failures=persistence_failures,
+    )
+    log_import_event(
+        logger,
+        "etl.commit.completed",
+        outcome=result.status,
+        evento_id=evento_id,
+        session_token_prefix=session_token_prefix(session_token),
+        created=result.created,
+        updated=result.updated,
+        skipped=result.skipped,
+        errors=result.errors,
+        duration_ms=round((time.perf_counter() - started_at) * 1000),
     )
     return mark_committed(db, result)

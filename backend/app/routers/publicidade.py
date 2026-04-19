@@ -27,6 +27,7 @@ from app.services.imports.domain_publicidade import (
     PUBLICIDADE_DOMAIN_SPEC,
     canonical_publicidade_field_name,
 )
+from app.observability.prometheus_leads_import import record_import_upload_rejection
 from app.services.imports.file_reader import (
     DEFAULT_IMPORT_MAX_BYTES,
     ImportFileError,
@@ -126,6 +127,7 @@ def validar_upload_publicidade(
     try:
         filename, _, size = inspect_upload(file, max_bytes=MAX_IMPORT_FILE_BYTES)
     except ImportFileError as err:
+        record_import_upload_rejection(err, filename_hint=file.filename)
         _raise_import_file_error(err)
     return {"filename": filename, "size_bytes": size}
 
@@ -142,6 +144,7 @@ def preview_import_publicidade(
     try:
         preview, _ = read_file_sample(file, sample_rows=sample_rows, max_bytes=MAX_IMPORT_FILE_BYTES)
     except ImportFileError as err:
+        record_import_upload_rejection(err, filename_hint=file.filename)
         _raise_import_file_error(err)
 
     suggestions, samples_by_column = suggest_columns(PUBLICIDADE_DOMAIN_SPEC, preview.headers, preview.rows)
@@ -220,6 +223,7 @@ def importar_publicidade(
             max_bytes=MAX_IMPORT_FILE_BYTES,
         )
     except ImportFileError as err:
+        record_import_upload_rejection(err, filename_hint=file.filename)
         _raise_import_file_error(err)
     except ValueError as err:
         raise_http_error(

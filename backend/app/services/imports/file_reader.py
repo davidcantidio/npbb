@@ -5,9 +5,10 @@ from __future__ import annotations
 import codecs
 import csv
 import io
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import BinaryIO, Iterator
 
 from fastapi import UploadFile
 from openpyxl import load_workbook
@@ -20,6 +21,7 @@ BYTES_PER_MEGABYTE = 1024 * 1024
 HEADER_SCAN_LIMIT = 50
 CSV_STREAM_SNIFF_BYTES = 8192
 CSV_STREAM_UTF8_VALIDATION_CHUNK_BYTES = 64 * 1024
+XLSX_REQUIRED_ARCHIVE_MEMBERS = frozenset({"[Content_Types].xml", "_rels/.rels", "xl/workbook.xml"})
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,31 @@ def _validate_import_content_probe(ext: str, probe: bytes) -> None:
                 message="O conteudo parece planilha compactada (ZIP/XLSX), mas a extensao e .csv.",
                 field="file",
             )
+
+
+def _validate_xlsx_archive_structure(file_obj: BinaryIO) -> None:
+    """Ensure the ZIP structure matches the minimum OOXML workbook layout."""
+    start_pos = file_obj.tell()
+    try:
+        file_obj.seek(0)
+        try:
+            with zipfile.ZipFile(file_obj) as archive:
+                names = set(archive.namelist())
+        except zipfile.BadZipFile as exc:
+            raise ImportFileError(
+                code="INVALID_FILE_CONTENT",
+                message="O conteudo do arquivo nao corresponde a uma planilha XLSX valida.",
+                field="file",
+            ) from exc
+
+        if not XLSX_REQUIRED_ARCHIVE_MEMBERS.issubset(names):
+            raise ImportFileError(
+                code="INVALID_FILE_CONTENT",
+                message="O conteudo do arquivo nao corresponde a uma planilha XLSX valida.",
+                field="file",
+            )
+    finally:
+        file_obj.seek(start_pos)
 
 
 def _detect_csv_delimiter(sample_text: str) -> str:
@@ -305,6 +332,8 @@ def inspect_upload(
     file.file.seek(0)
     probe = file.file.read(probe_len)
     _validate_import_content_probe(ext, probe)
+    if ext == ".xlsx":
+        _validate_xlsx_archive_structure(file.file)
     file.file.seek(0)
     return filename, ext, size
 

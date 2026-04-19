@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import io
+import zipfile
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +15,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.db.database import get_session
 from app.main import app
+from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
 from app.models.models import (
     Agencia,
     Ativacao,
@@ -68,11 +71,20 @@ def _seed_user(session: Session, email="batch@npbb.com.br", password="senha123")
     return user
 
 
-def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
-    _seed_user(session)
-    resp = client.post("/auth/login", json={"email": "batch@npbb.com.br", "password": "senha123"})
+def _auth_header_for_user(
+    client: TestClient,
+    *,
+    email: str,
+    password: str,
+) -> dict[str, str]:
+    resp = client.post("/auth/login", json={"email": email, "password": password})
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
+    _seed_user(session)
+    return _auth_header_for_user(client, email="batch@npbb.com.br", password="senha123")
 
 
 def _seed_agencia(session: Session) -> Agencia:
@@ -114,6 +126,15 @@ CSV_CONTENT_WITH_PREAMBLE = (
 INVALID_XLSX_CONTENT = b"nao-e-um-xlsx-valido"
 
 
+def _make_non_xlsx_zip_bytes() -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", b'<?xml version="1.0" encoding="UTF-8"?>')
+        zf.writestr("_rels/.rels", b'<?xml version="1.0" encoding="UTF-8"?>')
+        zf.writestr("word/document.xml", b"<w:document />")
+    return buf.getvalue()
+
+
 def _make_xlsx_bytes() -> io.BytesIO:
     wb = Workbook()
     ws = wb.active
@@ -137,6 +158,41 @@ def _make_xlsx_bytes_with_preamble() -> io.BytesIO:
     wb.save(buf)
     buf.seek(0)
     return buf
+
+
+def _seed_lead_batch(
+    session: Session,
+    *,
+    user_id: int,
+    arquivo_sha256: str | None,
+    plataforma_origem: str = "email",
+    data_envio: datetime | None = None,
+    created_at: datetime | None = None,
+    nome_arquivo_original: str = "leads.csv",
+    evento_id: int | None = None,
+    origem_lote: str = "proponente",
+    tipo_lead_proponente: str | None = "entrada_evento",
+    ativacao_id: int | None = None,
+) -> LeadBatch:
+    batch = LeadBatch(
+        enviado_por=user_id,
+        plataforma_origem=plataforma_origem,
+        data_envio=data_envio or datetime(2026, 3, 1, 10, 0, 0),
+        nome_arquivo_original=nome_arquivo_original,
+        arquivo_sha256=arquivo_sha256,
+        arquivo_bronze=CSV_CONTENT,
+        stage=BatchStage.BRONZE,
+        evento_id=evento_id,
+        origem_lote=origem_lote,
+        tipo_lead_proponente=tipo_lead_proponente,
+        ativacao_id=ativacao_id,
+        pipeline_status=PipelineStatus.PENDING,
+        created_at=created_at or datetime.now(timezone.utc),
+    )
+    session.add(batch)
+    session.commit()
+    session.refresh(batch)
+    return batch
 
 
 class TestPostLeadsBatches:
@@ -433,6 +489,121 @@ class TestPostLeadsBatches:
         assert resp.status_code == 401
 
 
+class TestGetLeadBatchImportHint:
+    def test_returns_latest_match_for_same_user(self, client, engine):
+        arquivo_sha256 = hashlib.sha256(CSV_CONTENT).hexdigest()
+        older_created_at = datetime(2026, 3, 1, 8, 0, 0, tzinfo=timezone.utc)
+        newer_created_at = datetime(2026, 3, 2, 9, 30, 0, tzinfo=timezone.utc)
+
+        with Session(engine) as s:
+            user = _seed_user(s)
+            headers = _auth_header_for_user(client, email=user.email, password="senha123")
+            ag = _seed_agencia(s)
+            evento = _seed_evento(s, agencia_id=ag.id)
+            evento_id = evento.id
+            ativacao = Ativacao(nome="Stand hint", evento_id=evento.id)
+            s.add(ativacao)
+            s.commit()
+            s.refresh(ativacao)
+            ativacao_id = ativacao.id
+
+            _seed_lead_batch(
+                s,
+                user_id=user.id,
+                arquivo_sha256=arquivo_sha256,
+                plataforma_origem="email",
+                data_envio=datetime(2026, 3, 1, 10, 0, 0),
+                created_at=older_created_at,
+                evento_id=evento_id,
+                origem_lote="proponente",
+                tipo_lead_proponente="entrada_evento",
+            )
+            latest_batch = _seed_lead_batch(
+                s,
+                user_id=user.id,
+                arquivo_sha256=arquivo_sha256,
+                plataforma_origem="facebook",
+                data_envio=datetime(2026, 3, 2, 15, 45, 0),
+                created_at=newer_created_at,
+                evento_id=evento_id,
+                origem_lote="ativacao",
+                tipo_lead_proponente=None,
+                ativacao_id=ativacao_id,
+            )
+
+        resp = client.get(
+            f"/leads/batches/import-hint?arquivo_sha256={arquivo_sha256.upper()}",
+            headers=headers,
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["arquivo_sha256"] == arquivo_sha256
+        assert body["source_batch_id"] == latest_batch.id
+        assert body["plataforma_origem"] == "facebook"
+        assert body["origem_lote"] == "ativacao"
+        assert body["tipo_lead_proponente"] is None
+        assert body["evento_id"] == evento_id
+        assert body["ativacao_id"] == ativacao_id
+        assert body["confidence"] == "exact_hash_match"
+        assert body["data_envio"].startswith("2026-03-02T15:45:00")
+        assert body["source_created_at"].startswith("2026-03-02T09:30:00")
+
+    def test_returns_204_when_no_match_exists(self, client, engine):
+        arquivo_sha256 = hashlib.sha256(CSV_CONTENT).hexdigest()
+
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+            user = s.exec(select(Usuario).where(Usuario.email == "batch@npbb.com.br")).one()
+            _seed_lead_batch(
+                s,
+                user_id=user.id,
+                arquivo_sha256=None,
+                plataforma_origem="manual",
+            )
+
+        resp = client.get(
+            f"/leads/batches/import-hint?arquivo_sha256={arquivo_sha256}",
+            headers=headers,
+        )
+
+        assert resp.status_code == 204
+        assert resp.content == b""
+
+    def test_does_not_leak_match_from_other_user(self, client, engine):
+        arquivo_sha256 = hashlib.sha256(CSV_CONTENT).hexdigest()
+
+        with Session(engine) as s:
+            user_a = _seed_user(s, email="user-a@npbb.com.br", password="senha-a")
+            _seed_user(s, email="user-b@npbb.com.br", password="senha-b")
+            headers = _auth_header_for_user(client, email="user-b@npbb.com.br", password="senha-b")
+            _seed_lead_batch(
+                s,
+                user_id=user_a.id,
+                arquivo_sha256=arquivo_sha256,
+                plataforma_origem="email",
+            )
+
+        resp = client.get(
+            f"/leads/batches/import-hint?arquivo_sha256={arquivo_sha256}",
+            headers=headers,
+        )
+
+        assert resp.status_code == 204
+        assert resp.content == b""
+
+    def test_rejects_invalid_hash_with_400(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.get("/leads/batches/import-hint?arquivo_sha256=abc", headers=headers)
+
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert detail["code"] == "INVALID_ARQUIVO_SHA256"
+        assert detail["field"] == "arquivo_sha256"
+
+
 class TestGetBatchArquivo:
     def test_download_returns_file(self, client, engine):
         with Session(engine) as s:
@@ -607,6 +778,26 @@ class TestGetBatchPreview:
                 "file": (
                     "corrompido.xlsx",
                     io.BytesIO(INVALID_XLSX_CONTENT),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            data={"plataforma_origem": "manual", "data_envio": "2026-03-01T10:00:00"},
+        )
+        assert upload_resp.status_code == 400
+        detail = upload_resp.json()["detail"]
+        assert detail.get("code") == "INVALID_FILE_CONTENT"
+
+    def test_non_xlsx_zip_rejected_at_upload(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        upload_resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={
+                "file": (
+                    "fake.xlsx",
+                    io.BytesIO(_make_non_xlsx_zip_bytes()),
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             },

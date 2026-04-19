@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
+import time
 from typing import Any
 
 from sqlmodel import Session
 
 from app.models.models import Evento
+from app.observability.import_events import log_import_event, session_token_prefix
 
 from .contracts import EtlCpfColumnRequired, EtlFieldAliasSelection, EtlHeaderRequired, EtlPreviewSnapshot
 from .dq_report_mapper import map_check_report
@@ -23,6 +26,8 @@ from .extract import (
 )
 from .preview_session_repository import create_snapshot
 from .transform_validate import run_preview_validation
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_field_aliases_json(raw: str | None) -> dict[str, EtlFieldAliasSelection]:
@@ -73,9 +78,17 @@ def create_preview_snapshot(
     sheet_name: str | None = None,
     max_scan_rows: int | None = None,
 ) -> EtlPreviewSnapshot | EtlHeaderRequired | EtlCpfColumnRequired:
+    started_at = time.perf_counter()
     evento = db.get(Evento, evento_id)
     if evento is None:
         raise EtlImportContractError(f"Evento inexistente: {evento_id}")
+
+    log_import_event(
+        logger,
+        "etl.preview.start",
+        evento_id=evento_id,
+        filename_hint=(getattr(file, "filename", None) or "")[:240] or None,
+    )
 
     filename, ext, payload = read_upload_bytes(file, max_bytes=max_bytes)
     field_aliases = _parse_field_aliases_json(field_aliases_json)
@@ -100,6 +113,14 @@ def create_preview_snapshot(
     else:
         raise EtlImportContractError("Fluxo ETL suporta apenas arquivos .csv ou .xlsx.")
     if isinstance(extracted, (EtlHeaderRequired, EtlCpfColumnRequired)):
+        log_import_event(
+            logger,
+            "etl.preview.blocked",
+            evento_id=evento_id,
+            outcome="blocked",
+            blocked_status=extracted.status,
+            duration_ms=round((time.perf_counter() - started_at) * 1000),
+        )
         return extracted
 
     extracted_rows, metadata = extracted
@@ -147,4 +168,16 @@ def create_preview_snapshot(
         sheet_name=sheet_snap,
         available_sheets=avail_snap,
     )
-    return create_snapshot(db, snapshot)
+    out = create_snapshot(db, snapshot)
+    log_import_event(
+        logger,
+        "etl.preview.completed",
+        evento_id=evento_id,
+        outcome="previewed",
+        session_token_prefix=session_token_prefix(out.session_token),
+        total_rows=out.total_rows,
+        valid_rows=out.valid_rows,
+        invalid_rows=out.invalid_rows,
+        duration_ms=round((time.perf_counter() - started_at) * 1000),
+    )
+    return out

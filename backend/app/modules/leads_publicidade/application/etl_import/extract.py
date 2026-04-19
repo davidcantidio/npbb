@@ -16,7 +16,8 @@ from sqlmodel import Session, select
 
 from app.models.models import ImportAlias
 from app.services.imports.alias_service import upsert_alias
-from app.services.imports.file_reader import inspect_upload
+from app.observability.prometheus_leads_import import record_import_upload_rejection
+from app.services.imports.file_reader import ImportFileError, inspect_upload
 from core.leads_etl.transform.column_normalize import normalize_column_name
 from etl.extract.xlsx_utils import HeaderNotFound, build_columns_with_metadata, find_header_row
 
@@ -53,7 +54,11 @@ def clamp_etl_max_scan_rows(value: int | None) -> int:
 
 
 def read_upload_bytes(file: UploadFile, *, max_bytes: int) -> tuple[str, str, bytes]:
-    filename, ext, _size = inspect_upload(file, max_bytes=max_bytes)
+    try:
+        filename, ext, _size = inspect_upload(file, max_bytes=max_bytes)
+    except ImportFileError as exc:
+        record_import_upload_rejection(exc, filename_hint=getattr(file, "filename", None))
+        raise
     file.file.seek(0)
     payload = file.file.read()
     file.file.seek(0)

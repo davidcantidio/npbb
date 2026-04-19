@@ -1,49 +1,75 @@
-# Handoff — Task 9 (validação de upload: conteúdo além da extensão)
+# Handoff - Task 9 (validacao de upload: conteudo alem da extensao)
 
-## Resumo executivo
+## Missao original
 
-- **Objetivo:** rejeitar cedo ficheiros com extensão aceite (`.csv` / `.xlsx`) mas conteúdo incoerente, alinhado ao achado P3 do [auditoria/deep-research-report.md](deep-research-report.md) (*superfície de upload*).
-- **Onde centralizado:** [`backend/app/services/imports/file_reader.py`](backend/app/services/imports/file_reader.py) — `inspect_upload` passa a ler um *probe* dos primeiros bytes (até 8192, igual a `CSV_STREAM_SNIFF_BYTES`) após validar extensão, tamanho e ficheiro vazio.
-- **Regras:**
-  - **`.xlsx`:** exige cabeçalho local ZIP `PK` + `\x03\x04`, `\x05\x06` ou `\x07\x08`; ficheiros com menos de 4 bytes ou sem assinatura ZIP são `INVALID_FILE_CONTENT`.
-  - **`.csv`:** rejeita `\x00` no *probe* (binário); rejeita se o *probe* começar como ZIP (ex.: `.xlsx` renomeado para `.csv`).
-- **Limites:** inalterados — `max_bytes` em `inspect_upload` (default `DEFAULT_IMPORT_MAX_BYTES`, 50 MB) e os limites por rota (`MAX_IMPORT_FILE_BYTES` em leads, `PUBLICIDADE_IMPORT_MAX_BYTES` em publicidade).
-- **HTTP:** novo código de erro `INVALID_FILE_CONTENT` com mensagem em português, sem stack trace (via `raise_http_error` / `HTTPException` com `detail` estruturado, como os demais `ImportFileError`).
+- Rejeitar cedo uploads `.csv` e `.xlsx` com conteudo incoerente, antes de parser pesado.
+- Manter os limites de tamanho ja existentes.
+- Devolver erro HTTP consistente (`INVALID_FILE_CONTENT`) sem stack trace exposto.
+- Cobrir o comportamento com teste automatizado.
 
-## Ficheiros alterados
+## Estado atual da implementacao
 
-| Caminho | Alteração |
-|---------|-----------|
-| [backend/app/services/imports/file_reader.py](backend/app/services/imports/file_reader.py) | `_probe_starts_with_zip_local_header`, `_validate_import_content_probe`, extensão de `inspect_upload` com leitura do *probe* e `seek(0)` final. |
-| [backend/app/routers/leads.py](backend/app/routers/leads.py) | `validar_upload_import` e `criar_batch` passam a usar `inspect_upload` + mapeamento de `ImportFileError` para 400; removida duplicação de checagens de tamanho/vazio em `validar_upload_import`. |
-| [backend/tests/test_import_file_reader.py](backend/tests/test_import_file_reader.py) | Testes: XLSX falso, CSV com NUL, CSV com bytes ZIP, regressão CSV UTF-8 e ZIP mínimo com assinatura válida. |
-| [backend/tests/test_lead_batch_endpoints.py](backend/tests/test_lead_batch_endpoints.py) | Cenário `INVALID_XLSX_CONTENT`: upload Bronze rejeitado no `POST` com `INVALID_FILE_CONTENT` (antes aceitava e falhava no preview). |
+### Resolvido
 
-**Sem alteração** em [`extract.py`](backend/app/modules/leads_publicidade/application/etl_import/extract.py): `read_upload_bytes` já depende de `inspect_upload`.
+- A validacao ficou centralizada em [`backend/app/services/imports/file_reader.py`](backend/app/services/imports/file_reader.py), via `inspect_upload`.
+- `inspect_upload` e usado por:
+  - [`backend/app/routers/leads.py`](backend/app/routers/leads.py) em `POST /leads/import/upload` e `POST /leads/batches`;
+  - [`backend/app/routers/publicidade.py`](backend/app/routers/publicidade.py) em `POST /publicidade/import/upload`;
+  - `read_file_sample`, o que cobre o preview de publicidade;
+  - [`backend/app/modules/leads_publicidade/application/etl_import/extract.py`](backend/app/modules/leads_publicidade/application/etl_import/extract.py) via `read_upload_bytes`, sem diff direto nesse modulo.
+- Regras atuais:
+  - **`.xlsx`**: o probe inicial precisa comecar como ZIP valido (`PK...`) e o arquivo ZIP precisa conter a estrutura minima de workbook OOXML: `[Content_Types].xml`, `_rels/.rels` e `xl/workbook.xml`.
+  - **`.csv`**: o probe rejeita byte NUL e rejeita assinatura ZIP no inicio.
+- O stream volta para `seek(0)` ao final da validacao.
+- Os erros continuam sendo devolvidos como 400 estruturado via `ImportFileError` -> `raise_http_error`.
 
-## Diffs / revisão
+### Parcialmente resolvido / limites conhecidos
 
-```bash
-git diff -- backend/app/services/imports/file_reader.py backend/app/routers/leads.py
-git diff -- backend/tests/test_import_file_reader.py backend/tests/test_lead_batch_endpoints.py
+- A validacao de `.csv` continua leve: ela barra binario obvio e ZIP/XLSX renomeado, mas nao tenta provar semanticamente que o arquivo e um CSV valido.
+- `read_raw_file_preview` e `read_raw_file_rows` continuam assumindo que o blob recebido ja passou pela validacao de upload. Isso e suficiente para novos uploads, mas batches Bronze antigos gravados antes desta task ainda podem falhar tardiamente se o blob armazenado ja estiver corrompido.
+
+## Ficheiros relevantes
+
+| Caminho | Papel na solucao |
+|---------|------------------|
+| [backend/app/services/imports/file_reader.py](backend/app/services/imports/file_reader.py) | Validacao central: extensao, tamanho, vazio, probe inicial e estrutura minima de `.xlsx`. |
+| [backend/app/routers/leads.py](backend/app/routers/leads.py) | Upload e criacao de batch usam `inspect_upload` e convertem `ImportFileError` em HTTP 400 estruturado. |
+| [backend/tests/test_import_file_reader.py](backend/tests/test_import_file_reader.py) | Cobertura unitario para `.xlsx` invalido textual, ZIP arbitrario renomeado para `.xlsx`, CSV com NUL, CSV com assinatura ZIP, CSV valido e workbook `.xlsx` real. |
+| [backend/tests/test_lead_batch_endpoints.py](backend/tests/test_lead_batch_endpoints.py) | Cobertura de integracao para rejeicao no `POST /leads/batches` tanto de bytes invalidos quanto de ZIP arbitrario renomeado para `.xlsx`. |
+
+## O que foi corrigido nesta revisao
+
+- O handoff anterior descrevia `.xlsx` como "qualquer ZIP com assinatura valida". Isso estava otimista demais.
+- Antes deste ajuste, um ZIP arbitrario renomeado para `.xlsx` passava em `inspect_upload` e so quebrava depois no parser.
+- Agora o upload so passa se o ZIP tiver estrutura minima de workbook OOXML.
+
+## Compatibilidade
+
+- **Continua aceito**:
+  - CSV UTF-8/UTF-8 BOM/Latin-1 legivel como texto, sem NUL e sem assinatura ZIP.
+  - XLSX real gerado por workbook OOXML.
+- **Passa a ser rejeitado cedo**:
+  - conteudo textual com nome `.xlsx`;
+  - ZIP arbitrario ou `.docx` renomeado para `.xlsx`;
+  - `.xlsx` truncado ou corrompido sem estrutura minima de workbook;
+  - `.xlsx` / ZIP renomeado para `.csv`;
+  - CSV com byte NUL no probe.
+
+## Validacao executada
+
+No Windows, a verificacao rodada nesta revisao foi:
+
+```powershell
+$env:PYTHONPATH='C:\Users\NPBB\npbb;C:\Users\NPBB\npbb\backend'
+$env:SECRET_KEY='ci-secret-key'
+$env:TESTING='true'
+.\.venv\Scripts\python.exe -m pytest -q tests/test_import_file_reader.py tests/test_lead_batch_endpoints.py
 ```
 
-Estatística aproximada da sessão: ~120 linhas tocadas nos quatro ficheiros acima (inserções + remoções).
+Resultado: `39 passed`.
 
-## Compatibilidade com clientes (ficheiros limítrofes)
+## Proximo passo recomendado
 
-- **CSV UTF-8 (com ou sem BOM)** e **Latin-1** legíveis como texto, sem NUL e sem começar como ZIP: **continuam aceites**.
-- **XLSX reais** (Office Open XML = ZIP com `PK\x03\x04`): **aceites** desde que a extensão seja `.xlsx`.
-- **Rejeitados mais cedo do que antes:** conteúdo textual com nome `.xlsx` (sem ZIP); ZIP/Excel renomeado para `.csv`; CSV com bytes nulos no início.
-- **`POST /leads/import/upload` e `POST /leads/batches`:** mensagens de `FILE_TOO_LARGE` / `EMPTY_FILE` / `INVALID_FILE_TYPE` passam a ser as de `inspect_upload` (textos ligeiramente diferentes dos antigos hardcoded em leads para tamanho/vazio — mesmo `code` e semântica).
-
-## Verificação
-
-- Com `PYTHONPATH` incluindo a raiz do repositório (módulo `lead_pipeline`):  
-  `pytest tests/test_import_file_reader.py tests/test_lead_batch_endpoints.py` — verde.
-- Teste spot ETL: `test_preview_etl_reports_invalid_email_and_cpf_validation_errors` — verde.
-
-## Referências
-
-- Pedido: [auditoria/task9.md](task9.md)
-- Contexto de merge (task 8, fora de escopo aqui): [auditoria/handoff-task8.md](handoff-task8.md)
+- Se a proxima task continuar na linha de endurecimento da superficie de upload, priorizar:
+  - decidir se batches Bronze antigos precisam de revalidacao defensiva no preview;
+  - decidir se o sniff de `.csv` deve subir um nivel (ex.: heuristica de texto/tabular mais forte), sem transformar a validacao inicial em parser completo.

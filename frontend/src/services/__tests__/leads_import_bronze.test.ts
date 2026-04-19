@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createLeadBatch, getLeadBatchPreview } from "../leads_import";
+import {
+  createLeadBatch,
+  getLeadBatchPreview,
+  getLeadImportMetadataHint,
+  normalizeLeadImportHintDateInput,
+} from "../leads_import";
 
 type FetchResponse = {
   ok: boolean;
@@ -149,5 +154,33 @@ describe("leads_import Bronze service", () => {
       rows: [["Maria", "maria@npbb.com.br"]],
       total_rows: 1,
     });
+  });
+
+  it("getLeadImportMetadataHint returns null on 204", async () => {
+    const fetchMock = mockFetchSequence([
+      {
+        ok: true,
+        status: 204,
+        statusText: "No Content",
+        text: () => Promise.resolve(""),
+      },
+    ]);
+
+    const result = await getLeadImportMetadataHint("token-123", "a".repeat(64));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/leads\/batches\/import-hint\?arquivo_sha256=/),
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
+      }),
+    );
+    expect(result).toBeNull();
+  });
+
+  it("normalizeLeadImportHintDateInput keeps yyyy-mm-dd for date inputs", () => {
+    expect(normalizeLeadImportHintDateInput("2026-03-05T12:30:00")).toBe("2026-03-05");
+    expect(normalizeLeadImportHintDateInput("2026-03-05")).toBe("2026-03-05");
+    expect(normalizeLeadImportHintDateInput("")).toBe("");
   });
 });

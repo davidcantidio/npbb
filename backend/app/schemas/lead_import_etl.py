@@ -25,6 +25,10 @@ class ImportEtlPreviewResponse(BaseModel):
     valid_rows: int
     invalid_rows: int
     dq_report: list[DQCheckResult]
+    rejection_reason_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Contagem de linhas rejeitadas por bucket de motivo (preview ETL).",
+    )
     sheet_name: str | None = None
     available_sheets: list[str] = Field(default_factory=list)
 

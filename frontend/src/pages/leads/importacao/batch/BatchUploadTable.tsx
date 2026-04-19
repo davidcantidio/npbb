@@ -119,7 +119,8 @@ export default function BatchUploadTable({
       </Stack>
 
       <Alert severity="info">
-        Cada linha gera um <code>LeadBatch</code> independente e segue o fluxo atual por <code>batch_id</code>.
+        Cada linha gera um <code>LeadBatch</code> independente. O mapeamento e aplicado uma unica vez para todos os
+        lotes pendentes do workspace, e o pipeline continua por <code>batch_id</code>.
       </Alert>
 
       <BatchWorkspaceSummaryCard rows={rows} onOpenRowFlow={onOpenRowFlow} />

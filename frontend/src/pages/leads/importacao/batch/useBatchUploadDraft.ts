@@ -3,11 +3,15 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { Agencia, listAgencias } from "../../../../services/agencias";
 import { toApiErrorMessage } from "../../../../services/http";
 import {
+  computeFileSha256Hex,
   DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON,
   LeadBatch,
+  LeadImportMetadataHint,
   ReferenciaEvento,
   createLeadBatch,
   getActivationImportBlockReason,
+  getLeadImportMetadataHint,
+  normalizeLeadImportHintDateInput,
   supportsActivationImport,
   type OrigemLoteLeadBatch,
 } from "../../../../services/leads_import";
@@ -23,6 +27,14 @@ export type BatchUploadAtivacaoOption = {
   id: number;
   nome: string;
 };
+
+export type BatchUploadHintEditableField =
+  | "plataforma_origem"
+  | "data_envio"
+  | "evento_id"
+  | "origem_lote"
+  | "tipo_lead_proponente"
+  | "ativacao_id";
 
 export type BatchUploadRowDraft = {
   local_id: string;
@@ -41,6 +53,10 @@ export type BatchUploadRowDraft = {
   downstream_stage: LeadBatch["stage"] | null;
   downstream_pipeline_status: LeadBatch["pipeline_status"] | null;
   last_synced_at: string | null;
+  dirty_fields: Partial<Record<BatchUploadHintEditableField, boolean>>;
+  metadata_hint_message: string | null;
+  metadata_hint_source_batch_id: number | null;
+  pending_hint_ativacao_id: string | null;
 };
 
 type UseBatchUploadDraftParams = {
@@ -115,6 +131,10 @@ function nowIsoString() {
   return new Date().toISOString();
 }
 
+function buildBatchMetadataHintMessage(sourceBatchId: number) {
+  return `Metadados recuperados de uma importacao anterior (lote #${sourceBatchId}).`;
+}
+
 function createDraftRow(params: {
   localId: string;
   file: File;
@@ -138,7 +158,35 @@ function createDraftRow(params: {
     downstream_stage: null,
     downstream_pipeline_status: null,
     last_synced_at: null,
+    dirty_fields: {},
+    metadata_hint_message: null,
+    metadata_hint_source_batch_id: null,
+    pending_hint_ativacao_id: null,
   };
+}
+
+const BATCH_HINT_EDITABLE_FIELDS: BatchUploadHintEditableField[] = [
+  "plataforma_origem",
+  "data_envio",
+  "evento_id",
+  "origem_lote",
+  "tipo_lead_proponente",
+  "ativacao_id",
+];
+
+function markDirtyFields(
+  row: BatchUploadRowDraft,
+  patch: Partial<BatchUploadRowDraft>,
+) {
+  const nextDirtyFields = { ...row.dirty_fields };
+
+  BATCH_HINT_EDITABLE_FIELDS.forEach((field) => {
+    if (!Object.prototype.hasOwnProperty.call(patch, field)) return;
+    if (patch[field] === row[field]) return;
+    nextDirtyFields[field] = true;
+  });
+
+  return nextDirtyFields;
 }
 
 async function runWithConcurrency<T>(
@@ -317,6 +365,164 @@ export function useBatchUploadDraft({
     });
   }, [ativacoesByEventoId, eventos, loadingAtivacoesByEventoId, rows, token]);
 
+  useEffect(() => {
+    setRows((prev) => {
+      let changed = false;
+
+      const nextRows = prev.map((row) => {
+        if (!row.pending_hint_ativacao_id || row.origem_lote !== "ativacao") {
+          return row;
+        }
+
+        const eventId = parseOptionalId(row.evento_id);
+        if (eventId == null || row.dirty_fields.ativacao_id) {
+          changed = true;
+          return {
+            ...row,
+            pending_hint_ativacao_id: null,
+          };
+        }
+
+        if (loadingAtivacoesByEventoId[eventId]) {
+          return row;
+        }
+
+        const ativacoes = ativacoesByEventoId[eventId] ?? [];
+        if (ativacoes.some((ativacao) => String(ativacao.id) === row.pending_hint_ativacao_id)) {
+          changed = true;
+          return {
+            ...row,
+            ativacao_id: row.pending_hint_ativacao_id,
+            pending_hint_ativacao_id: null,
+          };
+        }
+
+        if (
+          ativacoesLoadErrorByEventoId[eventId] ||
+          Object.prototype.hasOwnProperty.call(ativacoesByEventoId, eventId)
+        ) {
+          changed = true;
+          return {
+            ...row,
+            pending_hint_ativacao_id: null,
+          };
+        }
+
+        return row;
+      });
+
+      return changed ? nextRows : prev;
+    });
+  }, [ativacoesByEventoId, ativacoesLoadErrorByEventoId, loadingAtivacoesByEventoId]);
+
+  function updateRowInternal(
+    localId: string,
+    patch: Partial<BatchUploadRowDraft>,
+    options?: { markDirty?: boolean },
+  ) {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.local_id !== localId || row.status_ui === "created" || row.status_ui === "submitting") {
+          return row;
+        }
+
+        const nextRow: BatchUploadRowDraft = {
+          ...row,
+          ...patch,
+          status_ui: nextEditableStatus(row.status_ui),
+          error_message: null,
+          dirty_fields: options?.markDirty ? markDirtyFields(row, patch) : row.dirty_fields,
+        };
+
+        if (patch.evento_id !== undefined && patch.evento_id !== row.evento_id) {
+          nextRow.ativacao_id = "";
+          if (patch.pending_hint_ativacao_id === undefined) {
+            nextRow.pending_hint_ativacao_id = null;
+          }
+        }
+        if (patch.origem_lote === "proponente") {
+          nextRow.ativacao_id = "";
+          if (patch.pending_hint_ativacao_id === undefined) {
+            nextRow.pending_hint_ativacao_id = null;
+          }
+        }
+        if (options?.markDirty && patch.ativacao_id !== undefined && patch.ativacao_id !== row.ativacao_id) {
+          nextRow.pending_hint_ativacao_id = null;
+        }
+
+        return nextRow;
+      }),
+    );
+  }
+
+  function updateRow(localId: string, patch: Partial<BatchUploadRowDraft>) {
+    updateRowInternal(localId, patch, { markDirty: true });
+  }
+
+  function applyMetadataHint(localId: string, hint: LeadImportMetadataHint) {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.local_id !== localId || row.status_ui === "created" || row.status_ui === "submitting") {
+          return row;
+        }
+
+        const nextRow: BatchUploadRowDraft = {
+          ...row,
+          status_ui: nextEditableStatus(row.status_ui),
+          error_message: null,
+          metadata_hint_message: buildBatchMetadataHintMessage(hint.source_batch_id),
+          metadata_hint_source_batch_id: hint.source_batch_id,
+        };
+
+        if (!row.dirty_fields.plataforma_origem) {
+          nextRow.plataforma_origem = hint.plataforma_origem;
+        }
+
+        if (!row.dirty_fields.data_envio) {
+          const normalizedDate = normalizeLeadImportHintDateInput(hint.data_envio);
+          if (normalizedDate) {
+            nextRow.data_envio = normalizedDate;
+          }
+        }
+
+        const nextEventoId = hint.evento_id != null ? String(hint.evento_id) : "";
+        const shouldApplyEvento = !row.dirty_fields.evento_id;
+        if (shouldApplyEvento) {
+          if (nextEventoId !== row.evento_id) {
+            nextRow.evento_id = nextEventoId;
+            nextRow.ativacao_id = "";
+          }
+        }
+
+        const canApplyLinkedMetadata = !row.dirty_fields.evento_id || row.evento_id === nextEventoId;
+        const shouldApplyOrigem = canApplyLinkedMetadata && !row.dirty_fields.origem_lote;
+        if (shouldApplyOrigem) {
+          nextRow.origem_lote = hint.origem_lote;
+          if (hint.origem_lote === "proponente") {
+            nextRow.ativacao_id = "";
+          }
+        }
+
+        const effectiveOrigem = shouldApplyOrigem ? hint.origem_lote : nextRow.origem_lote;
+        if (canApplyLinkedMetadata && effectiveOrigem === "proponente") {
+          if (!row.dirty_fields.tipo_lead_proponente && hint.tipo_lead_proponente) {
+            nextRow.tipo_lead_proponente = hint.tipo_lead_proponente;
+          }
+          if (!row.dirty_fields.ativacao_id) {
+            nextRow.ativacao_id = "";
+            nextRow.pending_hint_ativacao_id = null;
+          }
+        } else if (canApplyLinkedMetadata && !row.dirty_fields.ativacao_id) {
+          nextRow.ativacao_id = "";
+          nextRow.pending_hint_ativacao_id =
+            hint.ativacao_id != null ? String(hint.ativacao_id) : null;
+        }
+
+        return nextRow;
+      }),
+    );
+  }
+
   function reset() {
     setRows([]);
     setAtivacoesByEventoId({});
@@ -328,48 +534,34 @@ export function useBatchUploadDraft({
     const fileList = Array.from(nextFiles);
     if (fileList.length === 0) return;
 
-    setRows((prev) => [
-      ...prev,
-      ...fileList.map((file) => {
-        nextRowIdRef.current += 1;
-        return createDraftRow({
-          localId: `batch-upload-row-${nextRowIdRef.current}`,
-          file,
-          defaultQuemEnviou,
-          defaultDataEnvio,
-        });
-      }),
-    ]);
+    const nextRows = fileList.map((file) => {
+      nextRowIdRef.current += 1;
+      return createDraftRow({
+        localId: `batch-upload-row-${nextRowIdRef.current}`,
+        file,
+        defaultQuemEnviou,
+        defaultDataEnvio,
+      });
+    });
+
+    setRows((prev) => [...prev, ...nextRows]);
+
+    if (!token) return;
+
+    void runWithConcurrency(nextRows, 3, async (row) => {
+      try {
+        const arquivoSha256 = await computeFileSha256Hex(row.file);
+        const hint = await getLeadImportMetadataHint(token, arquivoSha256);
+        if (!hint) return;
+        applyMetadataHint(row.local_id, hint);
+      } catch {
+        // Hint e hash sao best-effort: falhas nao devem bloquear o envio manual.
+      }
+    });
   }
 
   function removeRow(localId: string) {
     setRows((prev) => prev.filter((row) => row.local_id !== localId));
-  }
-
-  function updateRow(localId: string, patch: Partial<BatchUploadRowDraft>) {
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.local_id !== localId || row.status_ui === "created" || row.status_ui === "submitting") {
-          return row;
-        }
-
-        const nextRow = {
-          ...row,
-          ...patch,
-          status_ui: nextEditableStatus(row.status_ui),
-          error_message: null,
-        };
-
-        if (patch.evento_id !== undefined && patch.evento_id !== row.evento_id) {
-          nextRow.ativacao_id = "";
-        }
-        if (patch.origem_lote === "proponente") {
-          nextRow.ativacao_id = "";
-        }
-
-        return nextRow;
-      }),
-    );
   }
 
   function setRowError(localId: string, message: string) {
@@ -388,17 +580,20 @@ export function useBatchUploadDraft({
   }
 
   function attachCreatedEvento(localId: string, evento: EventoRead) {
-    updateRow(localId, {
+    updateRowInternal(localId, {
       evento_id: String(evento.id),
       ativacao_id: "",
-    });
+      pending_hint_ativacao_id: null,
+    }, { markDirty: true });
   }
 
-  function markRowMapped(batchId: number) {
+  function markRowsMapped(batchIds: number[]) {
+    const targetBatchIds = new Set(batchIds);
+    if (targetBatchIds.size === 0) return;
     const syncedAt = nowIsoString();
     setRows((prev) =>
       prev.map((row) =>
-        row.created_batch_id === batchId
+        row.created_batch_id != null && targetBatchIds.has(row.created_batch_id)
           ? {
               ...row,
               downstream_stage: "silver",
@@ -410,7 +605,14 @@ export function useBatchUploadDraft({
     );
   }
 
-  function syncCreatedBatch(batch: LeadBatch) {
+  function markRowMapped(batchId: number) {
+    markRowsMapped([batchId]);
+  }
+
+  function syncCreatedBatch(batch: LeadBatch | null | undefined) {
+    if (!batch || !Number.isFinite(batch.id)) {
+      return;
+    }
     const syncedAt = nowIsoString();
     setRows((prev) =>
       prev.map((row) =>
@@ -446,7 +648,14 @@ export function useBatchUploadDraft({
         [eventId]: upsertAtivacaoOption(prev[eventId], createdOption),
       }));
       setAtivacoesLoadErrorByEventoId((prev) => ({ ...prev, [eventId]: null }));
-      updateRow(localId, { ativacao_id: String(created.id) });
+      updateRowInternal(
+        localId,
+        {
+          ativacao_id: String(created.id),
+          pending_hint_ativacao_id: null,
+        },
+        { markDirty: true },
+      );
 
       void listEventoAtivacoes(token, eventId)
         .then((items) => {
@@ -483,7 +692,7 @@ export function useBatchUploadDraft({
       const referenciaAtualizada = buildReferenciaEventoFromEvento(updated);
 
       setEventos((prev) => upsertReferenciaEvento(prev, referenciaAtualizada));
-      updateRow(localId, { evento_id: String(updated.id) });
+      updateRowInternal(localId, { evento_id: String(updated.id) }, { markDirty: true });
     } catch (error) {
       setRowError(localId, toApiErrorMessage(error, "Falha ao salvar a agencia do evento."));
       throw error;
@@ -624,6 +833,7 @@ export function useBatchUploadDraft({
     updateRow,
     attachCreatedEvento,
     markRowMapped,
+    markRowsMapped,
     syncCreatedBatch,
     createAdHocAtivacao,
     saveEventoAgency,

@@ -6,6 +6,7 @@ from io import BytesIO
 
 import pytest
 from fastapi import UploadFile
+from openpyxl import Workbook
 
 from app.services.imports.file_reader import (
     ALLOWED_IMPORT_EXTENSIONS,
@@ -22,6 +23,16 @@ from app.services.imports.file_reader import (
 
 def _upload_file(filename: str, content: bytes) -> UploadFile:
     return UploadFile(filename=filename, file=BytesIO(content))
+
+
+def _make_valid_xlsx_bytes() -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["nome", "email", "cpf"])
+    ws.append(["Alice", "alice@example.com", "12345678901"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 def test_inspect_upload_invalid_extension_message_includes_received_and_allowed_extensions() -> None:
@@ -84,6 +95,20 @@ def test_inspect_upload_rejects_csv_with_zip_signature() -> None:
     assert exc_info.value.code == "INVALID_FILE_CONTENT"
 
 
+def test_inspect_upload_rejects_xlsx_with_non_workbook_zip_structure() -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", b'<?xml version="1.0" encoding="UTF-8"?>')
+        zf.writestr("_rels/.rels", b'<?xml version="1.0" encoding="UTF-8"?>')
+        zf.writestr("word/document.xml", b"<w:document />")
+    file = _upload_file("fake.xlsx", buf.getvalue())
+
+    with pytest.raises(ImportFileError) as exc_info:
+        inspect_upload(file)
+
+    assert exc_info.value.code == "INVALID_FILE_CONTENT"
+
+
 def test_inspect_upload_accepts_valid_csv_utf8() -> None:
     content = b"nome,email,cpf\nAlice,alice@ex.com,12345678901\n"
     file = _upload_file("leads.csv", content)
@@ -94,11 +119,8 @@ def test_inspect_upload_accepts_valid_csv_utf8() -> None:
     assert file.file.tell() == 0
 
 
-def test_inspect_upload_accepts_minimal_zip_xlsx_signature() -> None:
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as zf:
-        zf.writestr("[Content_Types].xml", b'<?xml version="1.0" encoding="UTF-8"?>')
-    payload = buf.getvalue()
+def test_inspect_upload_accepts_valid_xlsx_workbook() -> None:
+    payload = _make_valid_xlsx_bytes()
     assert payload.startswith(b"PK\x03\x04")
     file = _upload_file("minimal.xlsx", payload)
     filename, ext, size = inspect_upload(file)

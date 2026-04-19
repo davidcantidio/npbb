@@ -129,6 +129,15 @@ def _upload_batch(client: TestClient, auth: dict, csv_content: bytes, plataforma
     return resp.json()["id"]
 
 
+def _set_batch_evento(engine, batch_id: int, evento_id: int | None) -> None:
+    with Session(engine) as s:
+        batch = s.get(LeadBatch, batch_id)
+        assert batch is not None
+        batch.evento_id = evento_id
+        s.add(batch)
+        s.commit()
+
+
 def _make_xlsx_with_preamble() -> io.BytesIO:
     wb = Workbook()
     ws = wb.active
@@ -571,6 +580,214 @@ class TestPostMapear:
             assert silver_row.dados_brutos["sobrenome"] == "Silva"
             assert silver_row.dados_brutos["genero"] == "Feminino"
             assert silver_row.dados_brutos["rg"] == "1234567"
+
+
+class TestBatchMappingEndpoints:
+    def test_batch_colunas_groups_repeated_headers_with_coverage(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_a = _upload_batch(client, auth, b"CPF,Email\n12345678901,alice@ex.com\n", plataforma="email")
+        batch_b = _upload_batch(client, auth, b"cpf,Telefone\n98765432100,11999990000\n", plataforma="email")
+        _set_batch_evento(engine, batch_a, evento.id)
+        _set_batch_evento(engine, batch_b, evento.id)
+
+        resp = client.post("/leads/batches/colunas", headers=auth, json={"batch_ids": [batch_a, batch_b]})
+        assert resp.status_code == 200, resp.text
+
+        body = resp.json()
+        assert body["batch_ids"] == [batch_a, batch_b]
+        assert body["primary_batch_id"] == batch_a
+        assert body["warnings"] == []
+        assert body["blockers"] == []
+        assert body["blocked_batch_ids"] == []
+
+        cpf_group = next(group for group in body["colunas"] if group["chave_agregada"] == "cpf")
+        assert cpf_group["aparece_em_arquivos"] == 2
+        assert cpf_group["campo_sugerido"] == "cpf"
+        assert cpf_group["confianca"] == "exact_match"
+        assert [item["batch_id"] for item in cpf_group["ocorrencias"]] == [batch_a, batch_b]
+
+    def test_batch_colunas_warns_when_group_suggestions_diverge(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento_a = _seed_evento(s)
+            evento_b = Evento(
+                nome="Evento Batch Divergente",
+                cidade="Rio de Janeiro",
+                estado="RJ",
+                status_id=evento_a.status_id,
+            )
+            s.add(evento_b)
+            s.commit()
+            s.refresh(evento_b)
+            evento_a_id = evento_a.id
+            evento_b_id = evento_b.id
+            user = s.exec(select(Usuario)).first()
+            assert user is not None
+            s.add(
+                LeadColumnAlias(
+                    nome_coluna_original="Data",
+                    campo_canonico="data_nascimento",
+                    plataforma_origem="email",
+                    criado_por=user.id,
+                )
+            )
+            s.add(
+                LeadColumnAlias(
+                    nome_coluna_original="Data",
+                    campo_canonico="data_compra",
+                    plataforma_origem="manual",
+                    criado_por=user.id,
+                )
+            )
+            s.commit()
+
+        batch_a = _upload_batch(client, auth, b"Data\n01/02/1990\n", plataforma="email")
+        batch_b = _upload_batch(client, auth, b"Data\n2026-03-01\n", plataforma="manual")
+        _set_batch_evento(engine, batch_a, evento_a_id)
+        _set_batch_evento(engine, batch_b, evento_b_id)
+
+        resp = client.post("/leads/batches/colunas", headers=auth, json={"batch_ids": [batch_a, batch_b]})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+
+        data_group = next(group for group in body["colunas"] if group["chave_agregada"] == "data")
+        assert data_group["campo_sugerido"] is None
+        assert "Sugestoes automaticas divergentes entre os arquivos." in data_group["warnings"]
+        assert "A coluna aparece em arquivos de plataformas diferentes." in data_group["warnings"]
+        assert "A coluna aparece em arquivos de eventos diferentes." in data_group["warnings"]
+        assert len(body["warnings"]) == 2
+
+    def test_batch_colunas_reports_blockers_for_missing_event_and_collision(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_ok = _upload_batch(client, auth, b"nome,cpf\nAlice,12345678901\n")
+        batch_collision = _upload_batch(client, auth, b"Data,data\n01/02/1990,2026-03-01\n")
+        _set_batch_evento(engine, batch_ok, evento.id)
+        _set_batch_evento(engine, batch_collision, evento.id)
+
+        resp = client.post("/leads/batches/colunas", headers=auth, json={"batch_ids": [batch_ok, batch_collision]})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        blockers = body["blockers"]
+        assert any("nao possui evento de referencia salvo" in blocker for blocker in blockers) is False
+        assert any("colidem na regra de agregacao batch" in blocker for blocker in blockers)
+        assert body["blocked_batch_ids"] == [batch_collision]
+
+        _set_batch_evento(engine, batch_ok, None)
+        resp_missing = client.post("/leads/batches/colunas", headers=auth, json={"batch_ids": [batch_ok]})
+        assert resp_missing.status_code == 200, resp_missing.text
+        assert resp_missing.json()["blocked_batch_ids"] == [batch_ok]
+        assert any(
+            "nao possui evento de referencia salvo" in blocker for blocker in resp_missing.json()["blockers"]
+        )
+
+    def test_batch_mapping_blocks_non_bronze_batches(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth, b"cpf\n12345678901\n")
+        single_resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {"cpf": "cpf"},
+            },
+        )
+        assert single_resp.status_code == 200, single_resp.text
+
+        preview_resp = client.post("/leads/batches/colunas", headers=auth, json={"batch_ids": [batch_id]})
+        assert preview_resp.status_code == 200, preview_resp.text
+        preview_body = preview_resp.json()
+        assert preview_body["blocked_batch_ids"] == [batch_id]
+        assert any("nao e elegivel para o mapeamento batch" in blocker for blocker in preview_body["blockers"])
+
+        blocked_resp = client.post(
+            "/leads/batches/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "batch_ids": [batch_id],
+                "mapeamento": {"cpf": "cpf"},
+            },
+        )
+        assert blocked_resp.status_code == 400, blocked_resp.text
+        assert blocked_resp.json()["detail"]["code"] == "BATCH_MAPPING_BLOCKED"
+
+        with Session(engine) as s:
+            batch_db = s.get(LeadBatch, batch_id)
+            assert batch_db is not None and batch_db.stage == BatchStage.SILVER
+            silver_rows = s.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all()
+            assert len(silver_rows) == 1
+
+    def test_mapear_batches_applies_mapping_in_single_transaction(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_a = _upload_batch(client, auth, b"CPF,Nome\n12345678901,Alice\n")
+        batch_b = _upload_batch(client, auth, b"cpf,nome\n98765432100,Bob\n")
+        _set_batch_evento(engine, batch_a, evento.id)
+        _set_batch_evento(engine, batch_b, evento.id)
+
+        resp = client.post(
+            "/leads/batches/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "batch_ids": [batch_a, batch_b],
+                "mapeamento": {"cpf": "cpf", "nome": "nome"},
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["primary_batch_id"] == batch_a
+        assert body["total_silver_count"] == 2
+        assert [item["batch_id"] for item in body["results"]] == [batch_a, batch_b]
+
+        with Session(engine) as s:
+            batch_a_db = s.get(LeadBatch, batch_a)
+            batch_b_db = s.get(LeadBatch, batch_b)
+            assert batch_a_db is not None and batch_a_db.stage == BatchStage.SILVER
+            assert batch_b_db is not None and batch_b_db.stage == BatchStage.SILVER
+
+            silver_rows = s.exec(select(LeadSilver).order_by(LeadSilver.batch_id, LeadSilver.row_index)).all()
+            assert len(silver_rows) == 2
+            assert silver_rows[0].dados_brutos["cpf"] == "12345678901"
+            assert silver_rows[1].dados_brutos["cpf"] == "98765432100"
+
+    def test_mapear_batches_rolls_back_when_request_is_blocked(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_ok = _upload_batch(client, auth, b"cpf\n12345678901\n")
+        batch_missing_event = _upload_batch(client, auth, b"cpf\n98765432100\n")
+        _set_batch_evento(engine, batch_ok, evento.id)
+
+        resp = client.post(
+            "/leads/batches/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "batch_ids": [batch_ok, batch_missing_event],
+                "mapeamento": {"cpf": "cpf"},
+            },
+        )
+        assert resp.status_code == 400, resp.text
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BATCH_MAPPING_BLOCKED"
+        assert detail["blockers"]
+
+        with Session(engine) as s:
+            batch_ok_db = s.get(LeadBatch, batch_ok)
+            batch_missing_db = s.get(LeadBatch, batch_missing_event)
+            assert batch_ok_db is not None and batch_ok_db.stage == BatchStage.BRONZE
+            assert batch_missing_db is not None and batch_missing_db.stage == BatchStage.BRONZE
+            assert s.exec(select(LeadSilver)).all() == []
 
 
 # ---------------------------------------------------------------------------

@@ -48,13 +48,14 @@ export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props
               Workspace do batch Bronze
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Continue o fluxo dos lotes criados sem sair da grade.
+              Continue o fluxo dos lotes criados sem sair da grade. O mapeamento agora e unificado para todos os
+              lotes pendentes do batch.
             </Typography>
           </Stack>
           {primaryRow ? (
             <Button variant="contained" onClick={() => onOpenRowFlow(primaryRow)}>
               {primaryRow.downstream_stage === "bronze"
-                ? "Abrir proximo mapping pendente"
+                ? "Abrir mapeamento unificado"
                 : "Abrir proximo pipeline pendente"}
             </Button>
           ) : null}
@@ -62,7 +63,7 @@ export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props
 
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <Chip label={`${createdRows.length} lote(s) criados`} color="success" size="small" />
-          <Chip label={`${mappingPendingRows.length} aguardando mapping`} size="small" />
+          <Chip label={`${mappingPendingRows.length} aguardando mapeamento batch`} size="small" />
           <Chip label={`${pipelinePendingRows.length} pronto(s) para pipeline/retomada`} color="info" size="small" />
           <Chip label={`${terminalRows.length} terminal(is)`} color="default" size="small" />
         </Stack>

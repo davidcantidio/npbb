@@ -33,10 +33,12 @@ from app.routers.ingestao_inteligente import router as ingestao_inteligente_rout
 from app.routers.internal_catalog import router as internal_catalog_router
 from app.routers.internal_etl import router as internal_etl_router
 from app.routers.internal_health import router as internal_health_router
+from app.routers.internal_metrics import router as internal_metrics_router
 from app.routers.internal_scraping import router as internal_scraping_router
 from app.routers.data_quality import router as data_quality_router
 from app.routers.sponsorship import router as sponsorship_router
 from app.api.v1.endpoints.framework import router as framework_router
+from app.observability.request_id_middleware import RequestIDMiddleware
 
 
 def _normalize_root_path(value: str | None) -> str:
@@ -247,6 +249,7 @@ app.include_router(ingestao_inteligente_router)
 app.include_router(internal_catalog_router)
 app.include_router(internal_etl_router)
 app.include_router(internal_health_router)
+app.include_router(internal_metrics_router)
 app.include_router(internal_scraping_router)
 app.include_router(data_quality_router)
 app.include_router(sponsorship_router)

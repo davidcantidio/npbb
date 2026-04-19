@@ -782,6 +782,7 @@ def test_preview_etl_reports_invalid_email_and_cpf_validation_errors(client: Tes
     payload = ImportEtlPreviewResponse.model_validate(preview.json())
     assert payload.valid_rows == 0
     assert payload.invalid_rows == 1
+    assert sum(payload.rejection_reason_counts.values()) == payload.invalid_rows
 
     rejected_rows = [
         item for item in payload.dq_report if item.check_id == "dq.preview.rejected_rows"

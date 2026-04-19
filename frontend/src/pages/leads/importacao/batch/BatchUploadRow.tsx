@@ -72,7 +72,7 @@ function downstreamStatusLabel(row: BatchUploadRowDraft) {
   if (row.downstream_pipeline_status === "fail") return "Fluxo: Pipeline reprovado";
   if (row.downstream_stage === "gold") return "Fluxo: Gold gerado";
   if (row.downstream_stage === "silver") return "Fluxo: Pronto para pipeline";
-  return "Fluxo: Aguardando mapping";
+  return "Fluxo: Aguardando mapeamento do batch";
 }
 
 function downstreamStatusColor(row: BatchUploadRowDraft) {
@@ -86,7 +86,9 @@ function downstreamStatusColor(row: BatchUploadRowDraft) {
 
 function rowFlowActionLabel(row: BatchUploadRowDraft) {
   if (row.created_batch_id == null) return null;
-  return row.downstream_stage === "bronze" || row.downstream_stage == null ? "Abrir mapping" : "Abrir pipeline";
+  return row.downstream_stage === "bronze" || row.downstream_stage == null
+    ? "Abrir mapeamento do batch"
+    : "Abrir pipeline";
 }
 
 export default function BatchUploadRow({
@@ -354,10 +356,23 @@ export default function BatchUploadRow({
                 ))}
               </Stack>
             ) : (
-              <Typography variant="caption" color="success.main">
-                Linha pronta para envio.
-              </Typography>
+              <Stack spacing={0.5}>
+                {row.metadata_hint_message ? (
+                  <Typography variant="caption" color="info.main">
+                    {row.metadata_hint_message}
+                  </Typography>
+                ) : null}
+                <Typography variant="caption" color="success.main">
+                  Linha pronta para envio.
+                </Typography>
+              </Stack>
             )}
+
+            {visiblePendingMessages.length > 0 && row.metadata_hint_message ? (
+              <Typography variant="caption" color="info.main">
+                {row.metadata_hint_message}
+              </Typography>
+            ) : null}
           </Stack>
         </TableCell>
 

@@ -75,11 +75,11 @@ function createBatch(overrides: Partial<LeadBatch> = {}): LeadBatch {
   };
 }
 
-function renderPipelineStatusPage() {
+function renderPipelineStatusPage(element = <PipelineStatusPage />) {
   return render(
     <MemoryRouter initialEntries={["/leads/pipeline?batch_id=10"]}>
       <Routes>
-        <Route path="/leads/pipeline" element={<PipelineStatusPage />} />
+        <Route path="/leads/pipeline" element={element} />
       </Routes>
     </MemoryRouter>,
   );
@@ -141,6 +141,17 @@ describe("PipelineStatusPage", () => {
     expect(screen.getByText("GOLD")).toBeInTheDocument();
     expect(screen.getByText("Aprovado")).toBeInTheDocument();
     expect(screen.getByText("3 leads promovidos para Gold")).toBeInTheDocument();
+  });
+
+  it("calls onBatchLoaded with the fetched batch when the status request succeeds", async () => {
+    const onBatchLoaded = vi.fn();
+    const fetchedBatch = createBatch();
+    mockedGetLeadBatch.mockResolvedValue(fetchedBatch);
+
+    renderPipelineStatusPage(<PipelineStatusPage onBatchLoaded={onBatchLoaded} />);
+
+    expect(await screen.findByText(/Pipeline Gold/)).toBeInTheDocument();
+    expect(onBatchLoaded).toHaveBeenCalledWith(fetchedBatch);
   });
 
   it("does not poll for a silver batch that is still pending without pipeline_progress", async () => {

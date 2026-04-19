@@ -15,18 +15,22 @@ import { useSearchParams } from "react-router-dom";
 
 import QuickCreateEventoModal from "../../components/QuickCreateEventoModal";
 import {
+  computeFileSha256Hex,
   commitLeadImportEtl,
   createLeadBatch,
   DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON,
   getActivationImportBlockReason,
   getLeadBatch,
   getLeadBatchPreview,
+  getLeadImportMetadataHint,
   LeadBatch,
   LeadBatchPreview,
   LeadImportEtlPreview,
   LeadImportEtlResult,
+  LeadImportMetadataHint,
   listReferenciaEventos,
   LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP,
+  normalizeLeadImportHintDateInput,
   previewLeadImportEtl,
   ReferenciaEvento,
   supportsActivationImport,
@@ -40,9 +44,11 @@ import BatchSummaryCard from "./importacao/BatchSummaryCard";
 import ImportacaoUploadStep from "./importacao/ImportacaoUploadStep";
 import { LEADS_IMPORT_ALLOWED_EXTENSIONS } from "./importacao/constants";
 import {
+  BatchUploadRowDraft,
   BronzeMode,
   useBatchUploadDraft,
 } from "./importacao/batch/useBatchUploadDraft";
+import BatchMapeamentoPage from "./BatchMapeamentoPage";
 import MapeamentoPage from "./MapeamentoPage";
 import PipelineStatusPage from "./PipelineStatusPage";
 
@@ -52,11 +58,19 @@ const ETL_WORKFLOW_STEPS = ["Arquivo e evento", "Preview ETL", "Commit ETL"];
 type ImportFlow = "bronze" | "etl";
 type ShellStep = "upload" | "mapping" | "pipeline" | "etl";
 type ShellContext = "batch" | null;
+type BatchMappingMode = "single" | null;
 type QuickCreateTarget =
   | { kind: "bronze-single" }
   | { kind: "etl" }
   | { kind: "batch-row"; rowId: string }
   | null;
+type BronzeHintEditableField =
+  | "plataforma_origem"
+  | "data_envio"
+  | "evento_id"
+  | "origem_lote"
+  | "tipo_lead_proponente"
+  | "ativacao_id";
 
 function hasAllowedExtension(file: File) {
   const name = file.name.toLowerCase();
@@ -77,6 +91,26 @@ function sanitizeShellContext(rawContext: string | null): ShellContext {
   return rawContext === "batch" ? "batch" : null;
 }
 
+function sanitizeBatchMappingMode(rawMode: string | null): BatchMappingMode {
+  return rawMode === "single" ? "single" : null;
+}
+
+function isTerminalBatchWorkspaceRow(row: BatchUploadRowDraft) {
+  return (
+    row.downstream_stage === "gold" ||
+    row.downstream_pipeline_status === "pass" ||
+    row.downstream_pipeline_status === "pass_with_warnings" ||
+    row.downstream_pipeline_status === "fail"
+  );
+}
+
+function needsPipelineWorkspaceAction(row: BatchUploadRowDraft) {
+  return (
+    row.downstream_stage === "silver" &&
+    (row.downstream_pipeline_status === "pending" || row.downstream_pipeline_status === "stalled")
+  );
+}
+
 function mapAtivacaoOptions(items: Array<{ id: number; nome: string }>) {
   return items.map((item) => ({ id: item.id, nome: item.nome }));
 }
@@ -95,8 +129,12 @@ export default function ImportacaoPage() {
   const routeBatchId = Number(searchParams.get("batch_id") ?? "0");
   const shellStep = sanitizeShellStep(searchParams.get("step"), routeBatchId);
   const shellContext = sanitizeShellContext(searchParams.get("context"));
+  const batchMappingMode = sanitizeBatchMappingMode(searchParams.get("mapping_mode"));
   const today = useMemo(() => getLocalDateInputValue(), []);
   const bronzeAtivacoesRequestIdRef = useRef(0);
+  const bronzeHintRequestIdRef = useRef(0);
+  const bronzeDirtyFieldsRef = useRef<Set<BronzeHintEditableField>>(new Set());
+  const bronzeEventoIdRef = useRef("");
 
   const [activeStep, setActiveStep] = useState(0);
   const [quemEnviou, setQuemEnviou] = useState(user?.email ?? "");
@@ -113,6 +151,8 @@ export default function ImportacaoPage() {
     "entrada_evento",
   );
   const [bronzeAtivacaoId, setBronzeAtivacaoId] = useState("");
+  const [bronzeImportHint, setBronzeImportHint] = useState<LeadImportMetadataHint | null>(null);
+  const [bronzePendingHintAtivacaoId, setBronzePendingHintAtivacaoId] = useState<string | null>(null);
   const [ativacoes, setAtivacoes] = useState<{ id: number; nome: string }[]>([]);
   const [ativacoesLoadError, setAtivacoesLoadError] = useState<string | null>(null);
   const [loadingAtivacoes, setLoadingAtivacoes] = useState(false);
@@ -147,6 +187,49 @@ export default function ImportacaoPage() {
     return batchUpload.rows.find((row) => row.created_batch_id === routeBatchId) ?? null;
   }, [batchUpload.rows, routeBatchId, shellContext]);
   const hasBatchWorkspaceContext = shellContext === "batch" && batchContextRow != null;
+  const batchMappingEligibleRows = useMemo(() => {
+    if (!hasBatchWorkspaceContext) return [];
+
+    const eligibleRows = batchUpload.rows.filter(
+      (row) => row.created_batch_id != null && (row.downstream_stage === "bronze" || row.downstream_stage == null),
+    );
+    const primaryRow = eligibleRows.find((row) => row.created_batch_id === routeBatchId) ?? null;
+    if (!primaryRow) {
+      return eligibleRows;
+    }
+    return [primaryRow, ...eligibleRows.filter((row) => row.local_id !== primaryRow.local_id)];
+  }, [batchUpload.rows, hasBatchWorkspaceContext, routeBatchId]);
+  const batchMappingBatchIds = useMemo(
+    () =>
+      batchMappingEligibleRows
+        .map((row) => row.created_batch_id)
+        .filter((batchId): batchId is number => batchId != null),
+    [batchMappingEligibleRows],
+  );
+  const shouldUseBatchMappingShell =
+    hasBatchWorkspaceContext && batchMappingBatchIds.length > 0 && batchMappingMode !== "single";
+  const currentBatchIsTerminal = useMemo(() => {
+    if (!hasBatchWorkspaceContext || !batchContextRow) return false;
+    return isTerminalBatchWorkspaceRow(batchContextRow);
+  }, [batchContextRow, hasBatchWorkspaceContext]);
+  const nextBatchWorkspaceRow = useMemo(() => {
+    if (!hasBatchWorkspaceContext) return null;
+
+    const candidateRows = batchUpload.rows.filter((row) => row.created_batch_id != null && row.created_batch_id !== routeBatchId);
+    const nextMappingRow =
+      candidateRows.find((row) => row.downstream_stage === "bronze" || row.downstream_stage == null) ?? null;
+    if (nextMappingRow) {
+      return nextMappingRow;
+    }
+
+    return candidateRows.find(needsPipelineWorkspaceAction) ?? null;
+  }, [batchUpload.rows, hasBatchWorkspaceContext, routeBatchId]);
+  const nextBatchWorkspaceLabel =
+    nextBatchWorkspaceRow == null
+      ? null
+      : nextBatchWorkspaceRow.downstream_stage === "bronze" || nextBatchWorkspaceRow.downstream_stage == null
+        ? "Abrir mapeamento unificado"
+        : "Abrir proximo pipeline pendente";
 
   const selectedBronzeEvento = useMemo(() => {
     if (!bronzeEventoId || !Number.isFinite(Number(bronzeEventoId))) return null;
@@ -158,6 +241,72 @@ export default function ImportacaoPage() {
     (selectedBronzeEvento && !bronzeEventoSupportsActivationImport
       ? DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON
       : null);
+
+  useEffect(() => {
+    bronzeEventoIdRef.current = bronzeEventoId;
+  }, [bronzeEventoId]);
+
+  const markBronzeFieldDirty = (field: BronzeHintEditableField) => {
+    bronzeDirtyFieldsRef.current.add(field);
+  };
+
+  const resetBronzeImportHintState = () => {
+    bronzeHintRequestIdRef.current += 1;
+    bronzeDirtyFieldsRef.current = new Set();
+    setBronzeImportHint(null);
+    setBronzePendingHintAtivacaoId(null);
+  };
+
+  const applyBronzeImportHint = (hint: LeadImportMetadataHint) => {
+    const dirtyFields = bronzeDirtyFieldsRef.current;
+    const nextEventoId = hint.evento_id != null ? String(hint.evento_id) : "";
+    const canApplyLinkedMetadata =
+      !dirtyFields.has("evento_id") || bronzeEventoIdRef.current === nextEventoId;
+
+    setBronzeImportHint(hint);
+
+    if (!dirtyFields.has("plataforma_origem")) {
+      setPlataformaOrigem(hint.plataforma_origem);
+    }
+
+    if (!dirtyFields.has("data_envio")) {
+      const normalizedDate = normalizeLeadImportHintDateInput(hint.data_envio);
+      if (normalizedDate) {
+        setDataEnvio(normalizedDate);
+      }
+    }
+
+    if (!dirtyFields.has("evento_id")) {
+      bronzeEventoIdRef.current = nextEventoId;
+      setBronzeEventoId(nextEventoId);
+    }
+
+    if (!canApplyLinkedMetadata) {
+      return;
+    }
+
+    if (!dirtyFields.has("origem_lote")) {
+      setBronzeOrigemLote(hint.origem_lote);
+    }
+
+    if (hint.origem_lote === "proponente") {
+      if (!dirtyFields.has("tipo_lead_proponente") && hint.tipo_lead_proponente) {
+        setBronzeTipoLeadProponente(hint.tipo_lead_proponente);
+      }
+      if (!dirtyFields.has("ativacao_id")) {
+        setBronzeAtivacaoId("");
+        setBronzePendingHintAtivacaoId(null);
+      }
+      return;
+    }
+
+    if (!dirtyFields.has("ativacao_id")) {
+      setBronzeAtivacaoId("");
+      setBronzePendingHintAtivacaoId(
+        hint.ativacao_id != null ? String(hint.ativacao_id) : null,
+      );
+    }
+  };
 
   useEffect(() => {
     if (shellStep === "etl") {
@@ -186,6 +335,7 @@ export default function ImportacaoPage() {
       setAtivacoesLoadError(null);
       setLoadingAtivacoes(false);
       setBronzeAtivacaoId("");
+      setBronzePendingHintAtivacaoId(null);
       return;
     }
 
@@ -212,6 +362,38 @@ export default function ImportacaoPage() {
         setLoadingAtivacoes(false);
       });
   }, [bronzeEventoId, bronzeEventoSupportsActivationImport, importFlow, token]);
+
+  useEffect(() => {
+    if (
+      importFlow !== "bronze" ||
+      bronzeOrigemLote !== "ativacao" ||
+      !bronzePendingHintAtivacaoId ||
+      !bronzeEventoId
+    ) {
+      return;
+    }
+    if (bronzeDirtyFieldsRef.current.has("ativacao_id") || loadingAtivacoes) {
+      return;
+    }
+
+    if (ativacoes.some((ativacao) => String(ativacao.id) === bronzePendingHintAtivacaoId)) {
+      setBronzeAtivacaoId(bronzePendingHintAtivacaoId);
+      setBronzePendingHintAtivacaoId(null);
+      return;
+    }
+
+    if (ativacoesLoadError || ativacoes.length === 0) {
+      setBronzePendingHintAtivacaoId(null);
+    }
+  }, [
+    ativacoes,
+    ativacoesLoadError,
+    bronzeEventoId,
+    bronzeOrigemLote,
+    bronzePendingHintAtivacaoId,
+    importFlow,
+    loadingAtivacoes,
+  ]);
 
   useEffect(() => {
     if (
@@ -292,6 +474,8 @@ export default function ImportacaoPage() {
     setBatch(null);
     setMappingBatch(null);
     setPreview(null);
+    setBronzeImportHint(null);
+    setBronzePendingHintAtivacaoId(null);
   };
 
   const resetEtlFlow = () => {
@@ -326,6 +510,7 @@ export default function ImportacaoPage() {
     setBronzeMode("single");
     setPlataformaOrigem("");
     setFile(null);
+    bronzeEventoIdRef.current = "";
     setBronzeEventoId("");
     setBronzeOrigemLote("proponente");
     setBronzeTipoLeadProponente("entrada_evento");
@@ -333,6 +518,7 @@ export default function ImportacaoPage() {
     setAtivacoes([]);
     setAtivacoesLoadError(null);
     setQuickCreateTarget(null);
+    resetBronzeImportHintState();
     batchUpload.reset();
     resetBronzeFlow();
     resetEtlFlow();
@@ -393,6 +579,54 @@ export default function ImportacaoPage() {
     setQuickCreateTarget({ kind: "bronze-single" });
   };
 
+  const handleBronzePlataformaOrigemChange = (value: string) => {
+    markBronzeFieldDirty("plataforma_origem");
+    setPlataformaOrigem(value);
+  };
+
+  const handleBronzeDataEnvioChange = (value: string) => {
+    markBronzeFieldDirty("data_envio");
+    setDataEnvio(value);
+  };
+
+  const handleBronzeEventoIdChange = (value: string) => {
+    markBronzeFieldDirty("evento_id");
+    setBronzePendingHintAtivacaoId(null);
+    bronzeEventoIdRef.current = value;
+    setBronzeEventoId(value);
+  };
+
+  const handleBronzeOrigemLoteChange = (value: "proponente" | "ativacao") => {
+    markBronzeFieldDirty("origem_lote");
+    if (
+      value === "ativacao" &&
+      bronzeEventoId &&
+      !bronzeEventoSupportsActivationImport
+    ) {
+      setBronzeOrigemLote("proponente");
+      setBronzeAtivacaoId("");
+      setBronzePendingHintAtivacaoId(null);
+      return;
+    }
+
+    setBronzeOrigemLote(value);
+    if (value === "proponente") {
+      setBronzeAtivacaoId("");
+      setBronzePendingHintAtivacaoId(null);
+    }
+  };
+
+  const handleBronzeTipoLeadProponenteChange = (value: "bilheteria" | "entrada_evento") => {
+    markBronzeFieldDirty("tipo_lead_proponente");
+    setBronzeTipoLeadProponente(value);
+  };
+
+  const handleBronzeAtivacaoIdChange = (value: string) => {
+    markBronzeFieldDirty("ativacao_id");
+    setBronzePendingHintAtivacaoId(null);
+    setBronzeAtivacaoId(value);
+  };
+
   const handleCreateAtivacaoAdHoc = async (nome: string) => {
     if (!token || !bronzeEventoId) {
       setError("Sessao expirada ou evento nao selecionado.");
@@ -410,7 +644,7 @@ export default function ImportacaoPage() {
 
       setAtivacoes((prev) => upsertAtivacaoOption(prev, createdOption));
       setAtivacoesLoadError(null);
-      setBronzeAtivacaoId(String(created.id));
+      handleBronzeAtivacaoIdChange(String(created.id));
 
       void listEventoAtivacoes(token, eventId)
         .then((rows) => {
@@ -446,7 +680,7 @@ export default function ImportacaoPage() {
     } else if (quickCreateTarget?.kind === "batch-row") {
       batchUpload.attachCreatedEvento(quickCreateTarget.rowId, created);
     } else {
-      setBronzeEventoId(String(created.id));
+      handleBronzeEventoIdChange(String(created.id));
       setBronzeAtivacaoId("");
       setAtivacoes([]);
     }
@@ -456,12 +690,36 @@ export default function ImportacaoPage() {
 
   const handleSelectFile = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0] ?? null;
+    event.target.value = "";
     setError(null);
     setFile(nextFile);
+    resetBronzeImportHintState();
     resetBronzeFlow();
     resetEtlPreviewOnly();
     setEtlSheetName("");
     setEtlMaxScanRows("");
+
+    if (!nextFile || !token || importFlow !== "bronze") {
+      return;
+    }
+
+    const requestId = bronzeHintRequestIdRef.current + 1;
+    bronzeHintRequestIdRef.current = requestId;
+
+    void (async () => {
+      try {
+        const arquivoSha256 = await computeFileSha256Hex(nextFile);
+        if (bronzeHintRequestIdRef.current !== requestId) return;
+
+        const hint = await getLeadImportMetadataHint(token, arquivoSha256);
+        if (bronzeHintRequestIdRef.current !== requestId || !hint) return;
+
+        applyBronzeImportHint(hint);
+      } catch {
+        if (bronzeHintRequestIdRef.current !== requestId) return;
+        // Hint e hash sao best-effort: o utilizador pode seguir manualmente.
+      }
+    })();
   };
 
   const requestEtlPreview = async (
@@ -657,7 +915,20 @@ export default function ImportacaoPage() {
         {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
 
         {shellStep === "mapping" ? (
-          loadingMappingBatch ? (
+          shouldUseBatchMappingShell ? (
+            <BatchMapeamentoPage
+              batchIds={batchMappingBatchIds}
+              primaryBatchId={routeBatchId}
+              cancelLabel="Voltar ao batch"
+              onCancel={() => {
+                setCanonicalStep("upload");
+              }}
+              onMapped={(result) => {
+                batchUpload.markRowsMapped(result.batch_ids);
+                setCanonicalStep("pipeline", result.primary_batch_id, "batch");
+              }}
+            />
+          ) : loadingMappingBatch ? (
             <Box sx={{ py: 2, display: "flex", justifyContent: "center" }}>
               <CircularProgress size={24} />
             </Box>
@@ -695,14 +966,20 @@ export default function ImportacaoPage() {
         ) : shellStep === "pipeline" ? (
           <Stack spacing={2}>
             {hasBatchWorkspaceContext ? (
-              <Box>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                 <Button variant="outlined" onClick={() => void handleReturnToBatchWorkspace()}>
                   Voltar ao batch
                 </Button>
+                {currentBatchIsTerminal && nextBatchWorkspaceRow && nextBatchWorkspaceLabel ? (
+                  <Button variant="contained" onClick={() => handleOpenBatchRowFlow(nextBatchWorkspaceRow)}>
+                    {nextBatchWorkspaceLabel}
+                  </Button>
+                ) : null}
               </Box>
             ) : null}
             <PipelineStatusPage
               batchId={routeBatchId}
+              onBatchLoaded={hasBatchWorkspaceContext ? (loadedBatch) => batchUpload.syncCreatedBatch(loadedBatch) : undefined}
               onNewImport={
                 hasBatchWorkspaceContext
                   ? undefined
@@ -729,6 +1006,12 @@ export default function ImportacaoPage() {
             bronzeActivationImportBlockReason={bronzeActivationImportBlockReason}
             bronzeEventoId={bronzeEventoId}
             bronzeEventoSupportsActivationImport={bronzeEventoSupportsActivationImport}
+            bronzeMetadataHintMessage={
+              bronzeImportHint
+                ? "Metadados recuperados de uma importacao anterior (mesmo ficheiro)."
+                : null
+            }
+            bronzeMetadataHintSourceBatchId={bronzeImportHint?.source_batch_id ?? null}
             bronzeMode={bronzeMode}
             bronzeOrigemLote={bronzeOrigemLote}
             bronzeTipoLeadProponente={bronzeTipoLeadProponente}
@@ -765,34 +1048,21 @@ export default function ImportacaoPage() {
             onBatchRetryRow={batchUpload.retryRow}
             onBatchSaveAgency={batchUpload.saveEventoAgency}
             onBatchSubmit={() => batchUpload.submitRows()}
-            onBronzeAtivacaoIdChange={setBronzeAtivacaoId}
-            onBronzeEventoIdChange={setBronzeEventoId}
+            onBronzeAtivacaoIdChange={handleBronzeAtivacaoIdChange}
+            onBronzeEventoIdChange={handleBronzeEventoIdChange}
             onBronzeModeChange={(nextMode) => {
               setBronzeMode(nextMode);
+              resetBronzeImportHintState();
               resetBronzeFlow();
               setError(null);
             }}
-            onBronzeOrigemLoteChange={(value) => {
-              if (
-                value === "ativacao" &&
-                bronzeEventoId &&
-                !bronzeEventoSupportsActivationImport
-              ) {
-                setBronzeOrigemLote("proponente");
-                setBronzeAtivacaoId("");
-                return;
-              }
-              setBronzeOrigemLote(value);
-              if (value === "proponente") {
-                setBronzeAtivacaoId("");
-              }
-            }}
-            onBronzeTipoLeadProponenteChange={setBronzeTipoLeadProponente}
+            onBronzeOrigemLoteChange={handleBronzeOrigemLoteChange}
+            onBronzeTipoLeadProponenteChange={handleBronzeTipoLeadProponenteChange}
             onCommitEtl={handleCommitEtl}
             onCpfColumnChange={setEtlCpfColumnIndex}
             onCpfColumnSubmit={handleSubmitCpfColumn}
             onCreateAtivacaoAdHoc={handleCreateAtivacaoAdHoc}
-            onDataEnvioChange={setDataEnvio}
+            onDataEnvioChange={handleBronzeDataEnvioChange}
             onEventoIdChange={setEventoId}
             onFileChange={handleSelectFile}
             onGoToMapping={() => {
@@ -806,7 +1076,7 @@ export default function ImportacaoPage() {
             onHeaderRowSubmit={handleSubmitHeaderRow}
             onImportFlowChange={resetForNewImport}
             onOpenQuickCreateEvento={handleOpenQuickCreateEvento}
-            onPlataformaOrigemChange={setPlataformaOrigem}
+            onPlataformaOrigemChange={handleBronzePlataformaOrigemChange}
             onQuemEnviouChange={setQuemEnviou}
             onResetEtl={() => {
               resetForNewImport("etl");

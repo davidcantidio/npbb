@@ -12,6 +12,7 @@ from app.models.models import LeadImportEtlPreviewSession
 from .contracts import EtlCommitResult, EtlPreviewDQItem, EtlPreviewRow, EtlPreviewSnapshot
 from .dq_report_policy import compute_has_warnings
 from .exceptions import EtlPreviewSessionNotFoundError
+from .rejection_reasons import record_etl_preview_rejection_metrics
 
 
 def _serialize_preview_context(snapshot: EtlPreviewSnapshot) -> str | None:
@@ -106,6 +107,7 @@ def create_snapshot(session: Session, snapshot: EtlPreviewSnapshot) -> EtlPrevie
     if existing is not None:
         return get_snapshot(session, existing.session_token)
 
+    record_etl_preview_rejection_metrics(snapshot.rejected_rows)
     session.add(
         LeadImportEtlPreviewSession(
             session_token=snapshot.session_token,

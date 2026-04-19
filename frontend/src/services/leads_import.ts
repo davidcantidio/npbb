@@ -180,6 +180,19 @@ export type LeadImportEtlResult = {
 
 export type OrigemLoteLeadBatch = "proponente" | "ativacao";
 
+export type LeadImportMetadataHint = {
+  arquivo_sha256: string;
+  source_batch_id: number;
+  plataforma_origem: string;
+  data_envio: string;
+  origem_lote: OrigemLoteLeadBatch;
+  tipo_lead_proponente: "bilheteria" | "entrada_evento" | null;
+  evento_id: number | null;
+  ativacao_id: number | null;
+  confidence: "exact_hash_match";
+  source_created_at: string;
+};
+
 export type CreateLeadBatchPayload = {
   plataforma_origem: string;
   data_envio: string;
@@ -439,6 +452,47 @@ export async function createLeadBatch(
   return handleApiResponse<LeadBatch>(res);
 }
 
+export async function getLeadImportMetadataHint(
+  token: string,
+  arquivoSha256: string,
+): Promise<LeadImportMetadataHint | null> {
+  const normalizedHash = arquivoSha256.trim().toLowerCase();
+  const res = await fetchWithAuth(
+    `/leads/batches/import-hint?arquivo_sha256=${encodeURIComponent(normalizedHash)}`,
+    {
+      token,
+      retries: 0,
+      timeoutMs: LEAD_BATCH_STATUS_TIMEOUT_MS,
+    },
+  );
+  if (res.status === 204) {
+    return null;
+  }
+  return handleApiResponse<LeadImportMetadataHint>(res);
+}
+
+export async function computeFileSha256Hex(file: Blob): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Web Crypto indisponivel para SHA-256.");
+  }
+  const buffer = await file.arrayBuffer();
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export function normalizeLeadImportHintDateInput(value: string | null | undefined): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (raw.length >= 10 && raw[4] === "-" && raw[7] === "-") {
+    return raw.slice(0, 10);
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
+}
+
 export async function getLeadBatchPreview(token: string, batchId: number): Promise<LeadBatchPreview> {
   const res = await fetchWithAuth(`/leads/batches/${batchId}/preview`, {
     token,
@@ -559,6 +613,38 @@ export type ColunasResponse = {
   colunas: ColumnSuggestion[];
 };
 
+export type BatchColumnOccurrence = {
+  batch_id: number;
+  file_name: string;
+  coluna_original: string;
+  amostras: string[];
+  campo_sugerido: string | null;
+  confianca: ColumnConfidence;
+  evento_id: number | null;
+  plataforma_origem: string;
+};
+
+export type BatchColumnGroup = {
+  chave_agregada: string;
+  nome_exibicao: string;
+  variantes: string[];
+  aparece_em_arquivos: number;
+  ocorrencias: BatchColumnOccurrence[];
+  campo_sugerido: string | null;
+  confianca: ColumnConfidence;
+  warnings: string[];
+};
+
+export type ColunasBatchResponse = {
+  batch_ids: number[];
+  primary_batch_id: number | null;
+  aggregation_rule: string;
+  colunas: BatchColumnGroup[];
+  warnings: string[];
+  blockers: string[];
+  blocked_batch_ids: number[];
+};
+
 export type MapearBatchPayload = {
   evento_id: number;
   mapeamento: Record<string, string>;
@@ -570,12 +656,46 @@ export type MapearBatchResult = {
   stage: string;
 };
 
+export type MapearLotesBatchPayload = {
+  batch_ids: number[];
+  mapeamento: Record<string, string>;
+};
+
+export type MapearLotesBatchItem = {
+  batch_id: number;
+  silver_count: number;
+  stage: string;
+};
+
+export type MapearLotesBatchResult = {
+  batch_ids: number[];
+  primary_batch_id: number;
+  total_silver_count: number;
+  results: MapearLotesBatchItem[];
+  stage: string;
+};
+
 export async function getLeadBatchColunas(token: string, batchId: number): Promise<ColunasResponse> {
   const res = await fetchWithAuth(`/leads/batches/${batchId}/colunas`, {
     token,
     timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
   });
   return handleApiResponse<ColunasResponse>(res);
+}
+
+export async function getLeadBatchColunasBatch(
+  token: string,
+  batchIds: number[],
+): Promise<ColunasBatchResponse> {
+  const res = await fetchWithAuth("/leads/batches/colunas", {
+    method: "POST",
+    token,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ batch_ids: batchIds }),
+    retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+  });
+  return handleApiResponse<ColunasBatchResponse>(res);
 }
 
 export async function mapearLeadBatch(
@@ -592,6 +712,21 @@ export async function mapearLeadBatch(
     timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
   });
   return handleApiResponse<MapearBatchResult>(res);
+}
+
+export async function mapearLeadBatches(
+  token: string,
+  payload: MapearLotesBatchPayload,
+): Promise<MapearLotesBatchResult> {
+  const res = await fetchWithAuth("/leads/batches/mapear", {
+    method: "POST",
+    token,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+  });
+  return handleApiResponse<MapearLotesBatchResult>(res);
 }
 
 export async function getLeadBatch(token: string, batchId: number): Promise<LeadBatch> {

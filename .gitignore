@@ -49,6 +49,9 @@ artifacts_migracao/
 **/.DS_Store
 Thumbs.db
 
+# Binários / downloads locais (não versionar)
+prometheus-*.zip
+
 # Arquivos de sistema / misc
 *.log
 *.tmp

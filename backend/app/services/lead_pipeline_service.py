@@ -58,6 +58,8 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead_lookup_context,
 )
 from app.services.lead_event_service import ensure_lead_event
+from app.observability.import_events import log_import_event
+from app.observability.prometheus_leads_import import observe_gold_stage_duration_seconds
 from app.services.imports.file_reader import read_raw_file_rows
 
 logger = logging.getLogger(__name__)
@@ -116,11 +118,15 @@ LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE = (
 
 
 def _log_pipeline_event(level: int, event_name: str, **context: Any) -> None:
-    details = " ".join(f"{key}={value!r}" for key, value in context.items() if value is not None)
-    message = f"lead_gold_pipeline.{event_name}"
-    if details:
-        message = f"{message} {details}"
-    logger.log(level, message)
+    log_import_event(logger, f"gold.{event_name}", level=level, **context)
+    elapsed_ms = context.get("elapsed_ms")
+    total_elapsed_ms = context.get("total_elapsed_ms")
+    if event_name == "run_pipeline.completed" and isinstance(elapsed_ms, (int, float)):
+        observe_gold_stage_duration_seconds("run_pipeline", float(elapsed_ms) / 1000.0)
+    elif event_name == "insert.completed" and isinstance(elapsed_ms, (int, float)):
+        observe_gold_stage_duration_seconds("insert_leads", float(elapsed_ms) / 1000.0)
+    elif event_name == "execution.metrics" and isinstance(total_elapsed_ms, (int, float)):
+        observe_gold_stage_duration_seconds("execution_total", float(total_elapsed_ms) / 1000.0)
 
 
 def _lead_batch_file_sha256(batch: LeadBatch | None) -> str | None:

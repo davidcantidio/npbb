@@ -58,14 +58,22 @@ from app.modules.leads_publicidade.application.etl_import.exceptions import (
     EtlPreviewSessionNotFoundError,
 )
 from app.modules.leads_publicidade.application.etl_import.extract import ETL_MAX_SCAN_ROWS_CAP
+from app.modules.leads_publicidade.application.etl_import.rejection_reasons import aggregate_rejection_reason_counts
 from app.modules.leads_publicidade.application.etl_import.persistence import (
     build_dedupe_key,
     find_existing_lead,
     merge_lead,
     persist_lead_batch,
 )
+from app.observability.prometheus_leads_import import inc_gold_reclaimed_stale, record_import_upload_rejection
 from app.services.imports.file_reader import ImportFileError, inspect_upload, read_raw_file_preview
-from app.services.lead_mapping import mapear_batch, suggest_column_mapping
+from app.services.lead_mapping import (
+    BatchMappingBlockedError,
+    mapear_batch,
+    mapear_batches,
+    suggest_batch_column_mapping,
+    suggest_column_mapping,
+)
 from app.services.lead_pipeline_service import (
     executar_pipeline_gold_em_thread,
     is_gold_pipeline_progress_stale,
@@ -80,14 +88,22 @@ from app.services.evento_activation_import import (
     get_activation_import_block_reason_from_agencia_id,
 )
 from app.schemas.lead_batch import (
+    BatchColumnGroupRead,
+    BatchColumnOccurrenceRead,
+    ColunasBatchRequest,
+    ColunasBatchResponse,
     ColunasResponse,
     ColumnSuggestionRead,
     ExecutarPipelineResponse,
+    LeadBatchImportHintRead,
     LeadBatchPreviewResponse,
     LeadBatchRead,
     LeadReferenceEventoRead,
     MapearBatchRequest,
     MapearBatchResponse,
+    MapearLotesBatchItemResponse,
+    MapearLotesBatchRequest,
+    MapearLotesBatchResponse,
 )
 from app.schemas.lead_conversao import LeadConversaoCreate, LeadConversaoRead
 from app.schemas.lead_import import LeadImportMapping
@@ -121,6 +137,7 @@ DEFAULT_LOG_MEMORY = "0"
 
 CEP_CACHE: dict[str, dict[str, str]] = {}
 CEP_CACHE_MAX = 500
+ARQUIVO_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _fetch_cep_data(cep: str) -> dict[str, str] | None:
@@ -833,6 +850,7 @@ def validar_upload_import(
     try:
         filename, _ext, size = inspect_upload(file, max_bytes=MAX_IMPORT_FILE_BYTES)
     except ImportFileError as err:
+        record_import_upload_rejection(err, filename_hint=file.filename)
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
             code=err.code,
@@ -1026,6 +1044,7 @@ def _serialize_etl_preview_response(
             "valid_rows": result.valid_rows,
             "invalid_rows": result.invalid_rows,
             "dq_report": [item.__dict__ for item in result.dq_report],
+            "rejection_reason_counts": aggregate_rejection_reason_counts(result.rejected_rows),
             "sheet_name": getattr(result, "sheet_name", None),
             "available_sheets": list(getattr(result, "available_sheets", ()) or ()),
         }
@@ -1752,6 +1771,7 @@ def criar_batch(
     try:
         filename, _ext, _size = inspect_upload(file, max_bytes=MAX_IMPORT_FILE_BYTES)
     except ImportFileError as err:
+        record_import_upload_rejection(err, filename_hint=file.filename)
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
             code=err.code,
@@ -1901,6 +1921,60 @@ def criar_batch(
     return LeadBatchRead.model_validate(batch, from_attributes=True)
 
 
+@router.get("/batches/import-hint", response_model=LeadBatchImportHintRead)
+@router.get("/batches/import-hint/", response_model=LeadBatchImportHintRead)
+def obter_hint_importacao_batch(
+    arquivo_sha256: str | None = Query(default=None),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_USER",
+            message="Usuario autenticado invalido para consulta de hint",
+        )
+
+    normalized_hash = (arquivo_sha256 or "").strip().lower()
+    if not ARQUIVO_SHA256_PATTERN.fullmatch(normalized_hash):
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_ARQUIVO_SHA256",
+            message="arquivo_sha256 deve ser hexadecimal com 64 caracteres",
+            field="arquivo_sha256",
+        )
+
+    stmt = (
+        select(LeadBatch)
+        .where(LeadBatch.enviado_por == int(current_user.id))
+        .where(LeadBatch.arquivo_sha256 == normalized_hash)
+        .order_by(LeadBatch.created_at.desc(), LeadBatch.id.desc())
+        .limit(1)
+    )
+    source_batch = session.exec(stmt).first()
+    if source_batch is None:
+        return FastAPIResponse(status_code=status.HTTP_204_NO_CONTENT)
+
+    logger.info(
+        "lead_batch.import_hint.matched user_id=%r source_batch_id=%r arquivo_sha256=%r",
+        current_user.id,
+        source_batch.id,
+        normalized_hash,
+    )
+    return LeadBatchImportHintRead(
+        arquivo_sha256=normalized_hash,
+        source_batch_id=int(source_batch.id),
+        plataforma_origem=source_batch.plataforma_origem,
+        data_envio=source_batch.data_envio,
+        origem_lote=source_batch.origem_lote,
+        tipo_lead_proponente=source_batch.tipo_lead_proponente,
+        evento_id=source_batch.evento_id,
+        ativacao_id=source_batch.ativacao_id,
+        confidence="exact_hash_match",
+        source_created_at=source_batch.created_at,
+    )
+
+
 @router.get("/batches/{batch_id}/arquivo")
 @router.get("/batches/{batch_id}/arquivo/")
 def download_arquivo_batch(
@@ -1973,6 +2047,127 @@ def preview_batch(
 # ---------------------------------------------------------------------------
 # F2 — Silver mapping endpoints
 # ---------------------------------------------------------------------------
+
+
+@router.post("/batches/colunas", response_model=ColunasBatchResponse)
+@router.post("/batches/colunas/", response_model=ColunasBatchResponse)
+def sugerir_mapeamento_colunas_batch(
+    payload: ColunasBatchRequest,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+
+    try:
+        preview = suggest_batch_column_mapping(payload.batch_ids, db=session)
+    except ValueError as exc:
+        message = str(exc)
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND if "nao encontrado" in message else status.HTTP_400_BAD_REQUEST,
+            code="BATCH_NOT_FOUND" if "nao encontrado" in message else "INVALID_BATCH_MAPPING_REQUEST",
+            message=message,
+        )
+
+    return ColunasBatchResponse(
+        batch_ids=preview.batch_ids,
+        primary_batch_id=preview.primary_batch_id,
+        aggregation_rule=preview.aggregation_rule,
+        colunas=[
+            BatchColumnGroupRead(
+                chave_agregada=group.chave_agregada,
+                nome_exibicao=group.nome_exibicao,
+                variantes=group.variantes,
+                aparece_em_arquivos=group.aparece_em_arquivos,
+                ocorrencias=[
+                    BatchColumnOccurrenceRead(
+                        batch_id=occurrence.batch_id,
+                        file_name=occurrence.file_name,
+                        coluna_original=occurrence.coluna_original,
+                        amostras=occurrence.amostras,
+                        campo_sugerido=occurrence.campo_sugerido,
+                        confianca=occurrence.confianca,
+                        evento_id=occurrence.evento_id,
+                        plataforma_origem=occurrence.plataforma_origem,
+                    )
+                    for occurrence in group.ocorrencias
+                ],
+                campo_sugerido=group.campo_sugerido,
+                confianca=group.confianca,
+                warnings=group.warnings,
+            )
+            for group in preview.colunas
+        ],
+        warnings=preview.warnings,
+        blockers=preview.blockers,
+        blocked_batch_ids=preview.blocked_batch_ids,
+    )
+
+
+@router.post("/batches/mapear", response_model=MapearLotesBatchResponse, status_code=status.HTTP_200_OK)
+@router.post("/batches/mapear/", response_model=MapearLotesBatchResponse, status_code=status.HTTP_200_OK)
+def confirmar_mapeamento_batch(
+    payload: MapearLotesBatchRequest,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not payload.mapeamento:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="EMPTY_MAPPING",
+            message="mapeamento nao pode ser vazio",
+            field="mapeamento",
+        )
+
+    if not current_user.id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_USER",
+            message="Usuario autenticado invalido",
+        )
+
+    try:
+        result = mapear_batches(
+            batch_ids=payload.batch_ids,
+            mapeamento=payload.mapeamento,
+            user_id=int(current_user.id),
+            db=session,
+        )
+    except BatchMappingBlockedError as exc:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="BATCH_MAPPING_BLOCKED",
+            message="O mapeamento unificado deste batch foi bloqueado.",
+            extra={"blockers": exc.blockers},
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if message == "mapeamento nao pode ser vazio":
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="EMPTY_MAPPING",
+                message=message,
+                field="mapeamento",
+            )
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND if "nao encontrado" in message else status.HTTP_400_BAD_REQUEST,
+            code="BATCH_NOT_FOUND" if "nao encontrado" in message else "INVALID_BATCH_MAPPING_REQUEST",
+            message=message,
+        )
+
+    return MapearLotesBatchResponse(
+        batch_ids=[item.batch_id for item in result.results],
+        primary_batch_id=result.primary_batch_id,
+        total_silver_count=result.total_silver_count,
+        results=[
+            MapearLotesBatchItemResponse(
+                batch_id=item.batch_id,
+                silver_count=item.silver_count,
+                stage=item.stage,
+            )
+            for item in result.results
+        ],
+        stage="silver",
+    )
 
 
 @router.get("/batches/{batch_id}/colunas", response_model=ColunasResponse)
@@ -2156,6 +2351,7 @@ async def disparar_pipeline(
                 batch.pipeline_status,
                 batch.evento_id,
             )
+            inc_gold_reclaimed_stale()
         else:
             logger.warning(
                 "lead_gold_pipeline.dispatch.rejected batch_id=%r user_id=%r reason=%r stage=%r pipeline_status=%r evento_id=%r",

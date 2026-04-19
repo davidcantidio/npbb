@@ -455,11 +455,13 @@ export type PipelineStatusPageProps = {
   onNewImport?: () => void;
   onBack?: () => void;
   backLabel?: string;
+  onBatchLoaded?: (batch: LeadBatch) => void;
 };
 
 export default function PipelineStatusPage({
   batchId: batchIdProp,
   onNewImport,
+  onBatchLoaded,
 }: PipelineStatusPageProps = {}) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -550,6 +552,7 @@ export default function PipelineStatusPage({
       pollingFailureCountRef.current = 0;
       batchRef.current = data;
       setBatch(data);
+      onBatchLoaded?.(data);
       setFatalError(null);
       setPollingNotice(null);
       if (

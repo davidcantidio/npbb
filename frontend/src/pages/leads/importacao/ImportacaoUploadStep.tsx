@@ -27,6 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import { ChangeEvent, FormEvent, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 
 import { Agencia } from "../../../services/agencias";
 import {
@@ -67,6 +68,8 @@ type Props = {
   bronzeActivationImportBlockReason: string | null;
   bronzeEventoId: string;
   bronzeEventoSupportsActivationImport: boolean;
+  bronzeMetadataHintMessage: string | null;
+  bronzeMetadataHintSourceBatchId: number | null;
   bronzeMode: BronzeMode;
   bronzeOrigemLote: "proponente" | "ativacao";
   bronzeTipoLeadProponente: "bilheteria" | "entrada_evento";
@@ -142,6 +145,8 @@ function UploadStep({
   bronzeActivationImportBlockReason,
   bronzeEventoId,
   bronzeEventoSupportsActivationImport,
+  bronzeMetadataHintMessage,
+  bronzeMetadataHintSourceBatchId,
   bronzeMode,
   bronzeOrigemLote,
   bronzeTipoLeadProponente,
@@ -199,6 +204,8 @@ function UploadStep({
   | "bronzeActivationImportBlockReason"
   | "bronzeEventoId"
   | "bronzeEventoSupportsActivationImport"
+  | "bronzeMetadataHintMessage"
+  | "bronzeMetadataHintSourceBatchId"
   | "bronzeMode"
   | "bronzeOrigemLote"
   | "bronzeTipoLeadProponente"
@@ -568,6 +575,26 @@ function UploadStep({
                   {file ? file.name : "Nenhum arquivo selecionado"}
                 </Typography>
               </Stack>
+
+              {importFlow === "bronze" && bronzeMetadataHintMessage ? (
+                <Alert
+                  severity="info"
+                  action={
+                    bronzeMetadataHintSourceBatchId ? (
+                      <Button
+                        color="inherit"
+                        size="small"
+                        component={RouterLink}
+                        to={`/leads/importar?step=pipeline&batch_id=${bronzeMetadataHintSourceBatchId}`}
+                      >
+                        Abrir lote #{bronzeMetadataHintSourceBatchId}
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  {bronzeMetadataHintMessage}
+                </Alert>
+              ) : null}
 
               {importFlow === "etl" ? (
                 <Stack spacing={1.5}>

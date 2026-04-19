@@ -1,14 +1,16 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../../services/http";
 import {
+  computeFileSha256Hex,
   commitLeadImportEtl,
   createLeadBatch,
   getLeadBatch,
   getLeadBatchPreview,
+  getLeadImportMetadataHint,
   listReferenciaEventos,
   previewLeadImportEtl,
 } from "../../services/leads_import";
@@ -55,17 +57,83 @@ vi.mock("../leads/MapeamentoPage", () => ({
   ),
 }));
 
+vi.mock("../leads/BatchMapeamentoPage", () => ({
+  default: ({
+    batchIds,
+    primaryBatchId,
+    onCancel,
+    onMapped,
+    cancelLabel,
+  }: {
+    batchIds?: number[];
+    primaryBatchId?: number | null;
+    onCancel?: () => void;
+    onMapped?: (result: {
+      batch_ids: number[];
+      primary_batch_id: number;
+      total_silver_count: number;
+      results: Array<{ batch_id: number; silver_count: number; stage: string }>;
+      stage: string;
+    }) => void;
+    cancelLabel?: string;
+  }) => {
+    const navigate = useNavigate();
+    const resolvedBatchIds = batchIds ?? [];
+    const resolvedPrimaryBatchId = primaryBatchId ?? resolvedBatchIds[0] ?? 0;
+
+    return (
+      <div>
+        <div>{`Mapeamento batch shell ${resolvedBatchIds.join(",")}`}</div>
+        <div>{`Batch primario shell ${resolvedPrimaryBatchId}`}</div>
+        <button type="button" onClick={() => onCancel?.()}>
+          {cancelLabel ?? "Cancelar shell batch mapeamento"}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            navigate(
+              `/leads/importar?step=mapping&batch_id=${resolvedPrimaryBatchId}&context=batch&mapping_mode=single`,
+            )
+          }
+        >
+          Fallback shell batch mapeamento
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onMapped?.({
+              batch_ids: resolvedBatchIds,
+              primary_batch_id: resolvedPrimaryBatchId,
+              total_silver_count: resolvedBatchIds.length * 3,
+              results: resolvedBatchIds.map((batchId) => ({
+                batch_id: batchId,
+                silver_count: 3,
+                stage: "silver",
+              })),
+              stage: "silver",
+            })
+          }
+        >
+          Concluir shell batch mapeamento
+        </button>
+      </div>
+    );
+  },
+}));
+
 vi.mock("../leads/PipelineStatusPage", () => ({
   default: ({
     batchId,
     onNewImport,
     onBack,
     backLabel,
+    onBatchLoaded,
   }: {
     batchId?: number;
     onNewImport?: () => void;
     onBack?: () => void;
     backLabel?: string;
+    onBatchLoaded?: (batch: { id: number; stage: string; pipeline_status: string }) => void;
   }) => (
     <div>
       <div>{`Pipeline shell ${batchId ?? 0}`}</div>
@@ -79,6 +147,20 @@ vi.mock("../leads/PipelineStatusPage", () => ({
           Nova importacao shell
         </button>
       ) : null}
+      {onBatchLoaded ? (
+        <button
+          type="button"
+          onClick={() =>
+            onBatchLoaded({
+              id: batchId ?? 0,
+              stage: "gold",
+              pipeline_status: "pass",
+            })
+          }
+        >
+          Sincronizar lote shell
+        </button>
+      ) : null}
     </div>
   ),
 }));
@@ -89,13 +171,16 @@ vi.mock("../../services/leads_import", () => ({
   DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON:
     "Vincule uma agencia ao evento antes de importar leads de ativacao.",
   LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP: 500,
+  computeFileSha256Hex: vi.fn(),
   commitLeadImportEtl: vi.fn(),
   createLeadBatch: vi.fn(),
   getActivationImportBlockReason: (evento?: { activation_import_block_reason?: string | null }) =>
     evento?.activation_import_block_reason ?? null,
   getLeadBatch: vi.fn(),
   getLeadBatchPreview: vi.fn(),
+  getLeadImportMetadataHint: vi.fn(),
   listReferenciaEventos: vi.fn(),
+  normalizeLeadImportHintDateInput: (value?: string | null) => (value ? String(value).slice(0, 10) : ""),
   previewLeadImportEtl: vi.fn(),
   supportsActivationImport: (evento?: { supports_activation_import?: boolean }) =>
     evento?.supports_activation_import ?? true,
@@ -111,10 +196,12 @@ vi.mock("../../services/eventos/core", () => ({
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedListAgencias = vi.mocked(listAgencias);
+const mockedComputeFileSha256Hex = vi.mocked(computeFileSha256Hex);
 const mockedCommitLeadImportEtl = vi.mocked(commitLeadImportEtl);
 const mockedCreateLeadBatch = vi.mocked(createLeadBatch);
 const mockedGetLeadBatch = vi.mocked(getLeadBatch);
 const mockedGetLeadBatchPreview = vi.mocked(getLeadBatchPreview);
+const mockedGetLeadImportMetadataHint = vi.mocked(getLeadImportMetadataHint);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 const mockedPreviewLeadImportEtl = vi.mocked(previewLeadImportEtl);
 const mockedListEventoAtivacoes = vi.mocked(listEventoAtivacoes);
@@ -248,6 +335,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     mockedListAgencias.mockResolvedValue([
       { id: 10, nome: "Agencia Alpha", dominio: "alpha.com.br" },
     ]);
+    mockedComputeFileSha256Hex.mockResolvedValue("a".repeat(64));
     mockedListReferenciaEventos.mockResolvedValue([
       {
         id: 42,
@@ -258,6 +346,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
         activation_import_block_reason: null,
       },
     ]);
+    mockedGetLeadImportMetadataHint.mockResolvedValue(null);
     mockedListEventoAtivacoes.mockResolvedValue([]);
     mockedUpdateEvento.mockResolvedValue(createEventoReadBase({ id: 42 }));
   });
@@ -351,6 +440,171 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     expect(screen.getByText("alice@npbb.com.br")).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
+    });
+  });
+
+  it("rehydrates Bronze metadata from the import hint before submit", async () => {
+    mockedComputeFileSha256Hex.mockResolvedValueOnce("b".repeat(64));
+    mockedGetLeadImportMetadataHint.mockResolvedValueOnce({
+      arquivo_sha256: "b".repeat(64),
+      source_batch_id: 91,
+      plataforma_origem: "manual",
+      data_envio: "2026-03-15T14:00:00",
+      origem_lote: "ativacao",
+      tipo_lead_proponente: null,
+      evento_id: 42,
+      ativacao_id: 5,
+      confidence: "exact_hash_match",
+      source_created_at: "2026-03-10T09:00:00",
+    });
+    mockedListEventoAtivacoes.mockResolvedValue([
+      {
+        id: 5,
+        evento_id: 42,
+        nome: "Stand reidratado",
+        descricao: null,
+        mensagem_qrcode: null,
+        gamificacao_id: null,
+        landing_url: null,
+        qr_code_url: null,
+        url_promotor: null,
+        redireciona_pesquisa: false,
+        checkin_unico: false,
+        termo_uso: false,
+        gera_cupom: false,
+        created_at: "2026-03-10T09:00:00",
+        updated_at: "2026-03-10T09:00:00",
+      },
+    ]);
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 14,
+      enviado_por: 1,
+      plataforma_origem: "manual",
+      data_envio: "2026-03-15T00:00:00",
+      data_upload: "2026-03-15T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: 42,
+      origem_lote: "ativacao",
+      tipo_lead_proponente: null,
+      ativacao_id: 5,
+      pipeline_status: "pending",
+      pipeline_progress: null,
+      pipeline_report: null,
+      created_at: "2026-03-15T12:00:00",
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Alice", "alice@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    expect(
+      await screen.findByText("Metadados recuperados de uma importacao anterior (mesmo ficheiro)."),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockedListEventoAtivacoes).toHaveBeenCalledWith("token-123", 42);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Enviar para Bronze" })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
+
+    await waitFor(() => {
+      expect(mockedCreateLeadBatch).toHaveBeenCalledWith("token-123", {
+        quem_enviou: "demo@npbb.com.br",
+        plataforma_origem: "manual",
+        data_envio: "2026-03-15",
+        evento_id: 42,
+        file: csvFile,
+        origem_lote: "ativacao",
+        ativacao_id: 5,
+      });
+    });
+  });
+
+  it("preserves manual Bronze edits when the hint resolves later", async () => {
+    const hintDeferred = createDeferred<{
+      arquivo_sha256: string;
+      source_batch_id: number;
+      plataforma_origem: string;
+      data_envio: string;
+      origem_lote: "proponente";
+      tipo_lead_proponente: "entrada_evento";
+      evento_id: number;
+      ativacao_id: null;
+      confidence: "exact_hash_match";
+      source_created_at: string;
+    } | null>();
+    mockedComputeFileSha256Hex.mockResolvedValueOnce("c".repeat(64));
+    mockedGetLeadImportMetadataHint.mockReturnValueOnce(hintDeferred.promise);
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 15,
+      enviado_por: 1,
+      plataforma_origem: "manual",
+      data_envio: "2026-03-20T00:00:00",
+      data_upload: "2026-03-20T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-20T12:00:00",
+      ...bronzeBatchBase(),
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Alice", "alice@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "manual" }));
+
+    hintDeferred.resolve({
+      arquivo_sha256: "c".repeat(64),
+      source_batch_id: 92,
+      plataforma_origem: "email",
+      data_envio: "2026-03-20T14:00:00",
+      origem_lote: "proponente",
+      tipo_lead_proponente: "entrada_evento",
+      evento_id: 42,
+      ativacao_id: null,
+      confidence: "exact_hash_match",
+      source_created_at: "2026-03-11T09:00:00",
+    });
+
+    expect(
+      await screen.findByText("Metadados recuperados de uma importacao anterior (mesmo ficheiro)."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
+
+    await waitFor(() => {
+      expect(mockedCreateLeadBatch).toHaveBeenCalledWith(
+        "token-123",
+        expect.objectContaining({
+          file: csvFile,
+          plataforma_origem: "manual",
+          evento_id: 42,
+          origem_lote: "proponente",
+        }),
+      );
     });
   });
 
@@ -849,6 +1103,79 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     expect(screen.getByText("2 arquivo(s)")).toBeInTheDocument();
   });
 
+  it("rehydrates only the matching batch row and keeps the others manual", async () => {
+    mockedComputeFileSha256Hex
+      .mockResolvedValueOnce("d".repeat(64))
+      .mockResolvedValueOnce("e".repeat(64));
+    mockedGetLeadImportMetadataHint
+      .mockResolvedValueOnce({
+        arquivo_sha256: "d".repeat(64),
+        source_batch_id: 101,
+        plataforma_origem: "manual",
+        data_envio: "2026-03-25T10:00:00",
+        origem_lote: "proponente",
+        tipo_lead_proponente: "bilheteria",
+        evento_id: 42,
+        ativacao_id: null,
+        confidence: "exact_hash_match",
+        source_created_at: "2026-03-12T08:00:00",
+      })
+      .mockResolvedValueOnce(null);
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 63,
+      enviado_por: 1,
+      plataforma_origem: "manual",
+      data_envio: "2026-03-25T00:00:00",
+      data_upload: "2026-03-25T12:00:00",
+      nome_arquivo_original: "batch-com-hint.csv",
+      stage: "bronze",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-25T12:00:00",
+      origem_lote: "proponente",
+      tipo_lead_proponente: "bilheteria",
+      ativacao_id: null,
+      pipeline_progress: null,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await switchToBatchMode(user);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileWithHint = new File(["hint"], "batch-com-hint.csv", { type: "text/csv" });
+    const fileWithoutHint = new File(["semhint"], "batch-sem-hint.csv", { type: "text/csv" });
+    fireEvent.change(fileInput, {
+      target: { files: [fileWithHint, fileWithoutHint] },
+    });
+
+    const hintedRow = findBatchRow("batch-com-hint.csv");
+    const plainRow = findBatchRow("batch-sem-hint.csv");
+
+    expect(
+      await within(hintedRow).findByText("Metadados recuperados de uma importacao anterior (lote #101)."),
+    ).toBeInTheDocument();
+    expect(within(plainRow).queryByText(/Metadados recuperados/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
+
+    await waitFor(() => expect(mockedCreateLeadBatch).toHaveBeenCalledTimes(1));
+    expect(mockedCreateLeadBatch).toHaveBeenCalledWith(
+      "token-123",
+      expect.objectContaining({
+        file: fileWithHint,
+        plataforma_origem: "manual",
+        data_envio: "2026-03-25",
+        evento_id: 42,
+        origem_lote: "proponente",
+        tipo_lead_proponente: "bilheteria",
+      }),
+    );
+    expect(within(plainRow).getByText(/Selecione a plataforma de origem\./i)).toBeInTheDocument();
+  });
+
   it("shows the inline agency editor in batch mode and unlocks activation import after updateEvento", async () => {
     mockedListReferenciaEventos.mockResolvedValue([
       {
@@ -1037,7 +1364,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
         }),
       );
     });
-    expect(await within(row).findByRole("button", { name: /abrir mapping/i })).toBeInTheDocument();
+    expect(await within(row).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
   });
 
   it("preserves the created activation in batch mode when the refresh fails after create", async () => {
@@ -1282,14 +1609,14 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
 
     await waitFor(() => expect(mockedCreateLeadBatch).toHaveBeenCalledTimes(2));
-    expect(await within(rowOk).findByRole("button", { name: /abrir mapping/i })).toBeInTheDocument();
+    expect(await within(rowOk).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
     expect(await within(rowErro).findByRole("button", { name: /reenviar linha/i })).toBeInTheDocument();
     expect(within(rowErro).getByText(/Falha ao enviar a linha\./)).toBeInTheDocument();
 
     await user.click(within(rowErro).getByRole("button", { name: /reenviar linha/i }));
 
     await waitFor(() => expect(mockedCreateLeadBatch).toHaveBeenCalledTimes(3));
-    expect(await within(rowErro).findByRole("button", { name: /abrir mapping/i })).toBeInTheDocument();
+    expect(await within(rowErro).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
     expect(mockedCreateLeadBatch).toHaveBeenLastCalledWith(
       "token-123",
       expect.objectContaining({
@@ -1347,20 +1674,20 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
     expect(screen.getByText("1 lote(s) criados")).toBeInTheDocument();
-    expect(screen.getByText("1 aguardando mapping")).toBeInTheDocument();
-    expect(screen.getByText("0 pronto(s) para pipeline")).toBeInTheDocument();
+    expect(screen.getByText("1 aguardando mapeamento batch")).toBeInTheDocument();
+    expect(screen.getByText("0 pronto(s) para pipeline/retomada")).toBeInTheDocument();
     expect(screen.getByText("0 terminal(is)")).toBeInTheDocument();
-    expect(await within(row).findByRole("button", { name: /abrir mapping/i })).toBeInTheDocument();
+    expect(await within(row).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /abrir proximo mapping pendente/i }));
+    await user.click(screen.getByRole("button", { name: /abrir mapeamento unificado/i }));
 
-    expect(await screen.findByText("Mapeamento shell 70")).toBeInTheDocument();
+    expect(await screen.findByText("Mapeamento batch shell 70")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=mapping&batch_id=70&context=batch");
 
     await user.click(screen.getByRole("button", { name: "Voltar ao batch" }));
 
     expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
-    expect(screen.getByText("1 aguardando mapping")).toBeInTheDocument();
+    expect(screen.getByText("1 aguardando mapeamento batch")).toBeInTheDocument();
     expect(findBatchRow("batch-workspace.csv")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
   });
@@ -1410,19 +1737,178 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await selectBatchRowEvent(row, user, /Evento ETL/i);
 
     await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
-    await within(row).findByRole("button", { name: /abrir mapping/i });
+    await within(row).findByRole("button", { name: /abrir mapeamento do batch/i });
 
-    await user.click(within(row).getByRole("button", { name: /abrir mapping/i }));
-    expect(await screen.findByText("Mapeamento shell 71")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: /abrir mapeamento do batch/i }));
+    expect(await screen.findByText("Mapeamento batch shell 71")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Concluir shell mapeamento" }));
+    await user.click(screen.getByRole("button", { name: "Concluir shell batch mapeamento" }));
+
+    expect(await screen.findByText("Pipeline shell 71")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=pipeline&batch_id=71&context=batch");
+
+    await user.click(screen.getByRole("button", { name: "Voltar ao batch" }));
 
     expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
-    expect(screen.getByText("0 aguardando mapping")).toBeInTheDocument();
-    expect(screen.getByText("1 pronto(s) para pipeline")).toBeInTheDocument();
+    expect(screen.getByText("0 aguardando mapeamento batch")).toBeInTheDocument();
+    expect(screen.getByText("1 pronto(s) para pipeline/retomada")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /abrir proximo pipeline pendente/i })).toBeInTheDocument();
     expect(await within(findBatchRow("batch-mapped.csv")).findByRole("button", { name: /abrir pipeline/i })).toBeInTheDocument();
     expect(within(findBatchRow("batch-mapped.csv")).getByText("Fluxo: Pronto para pipeline")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
+  });
+
+  it("offers the next pending batch action in the pipeline screen after the current batch becomes terminal", async () => {
+    mockedCreateLeadBatch
+      .mockResolvedValueOnce({
+        id: 80,
+        enviado_por: 1,
+        plataforma_origem: "email",
+        data_envio: "2026-03-09T00:00:00",
+        data_upload: "2026-03-09T12:00:00",
+        nome_arquivo_original: "batch-pipeline-a.csv",
+        stage: "bronze",
+        evento_id: 42,
+        pipeline_status: "pending",
+        pipeline_report: null,
+        created_at: "2026-03-09T12:00:00",
+        ...bronzeBatchBase(),
+      })
+      .mockResolvedValueOnce({
+        id: 81,
+        enviado_por: 1,
+        plataforma_origem: "email",
+        data_envio: "2026-03-09T00:00:00",
+        data_upload: "2026-03-09T12:00:00",
+        nome_arquivo_original: "batch-pipeline-b.csv",
+        stage: "bronze",
+        evento_id: 42,
+        pipeline_status: "pending",
+        pipeline_report: null,
+        created_at: "2026-03-09T12:00:00",
+        ...bronzeBatchBase(),
+      });
+    mockedGetLeadBatch.mockResolvedValue({
+      id: 80,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "batch-pipeline-a.csv",
+      stage: "bronze",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await switchToBatchMode(user);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [
+          new File(["pipeline-a"], "batch-pipeline-a.csv", { type: "text/csv" }),
+          new File(["pipeline-b"], "batch-pipeline-b.csv", { type: "text/csv" }),
+        ],
+      },
+    });
+
+    const rowA = findBatchRow("batch-pipeline-a.csv");
+    const rowB = findBatchRow("batch-pipeline-b.csv");
+    await selectBatchRowPlatform(rowA, user);
+    await selectBatchRowEvent(rowA, user, /Evento ETL/i);
+    await selectBatchRowPlatform(rowB, user);
+    await selectBatchRowEvent(rowB, user, /Evento ETL/i);
+
+    await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
+    await within(rowA).findByRole("button", { name: /abrir mapeamento do batch/i });
+    await within(rowB).findByRole("button", { name: /abrir mapeamento do batch/i });
+
+    await user.click(screen.getByRole("button", { name: /abrir mapeamento unificado/i }));
+    expect(await screen.findByText("Mapeamento batch shell 80,81")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Concluir shell batch mapeamento" }));
+
+    expect(await screen.findByText("Pipeline shell 80")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=pipeline&batch_id=80&context=batch");
+    expect(screen.queryByRole("button", { name: /abrir proximo pipeline pendente/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Sincronizar lote shell" }));
+
+    expect(await screen.findByRole("button", { name: /abrir proximo pipeline pendente/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /abrir proximo pipeline pendente/i }));
+
+    expect(await screen.findByText("Pipeline shell 81")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=pipeline&batch_id=81&context=batch");
+  });
+
+  it("keeps the batch workspace context when the operator falls back to single-file mapping", async () => {
+    mockedCreateLeadBatch.mockResolvedValueOnce({
+      id: 73,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "batch-fallback.csv",
+      stage: "bronze",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
+    });
+    mockedGetLeadBatch.mockResolvedValueOnce({
+      id: 73,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "batch-fallback.csv",
+      stage: "bronze",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await switchToBatchMode(user);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: { files: [new File(["fallback"], "batch-fallback.csv", { type: "text/csv" })] },
+    });
+
+    const row = findBatchRow("batch-fallback.csv");
+    await selectBatchRowPlatform(row, user);
+    await selectBatchRowEvent(row, user, /Evento ETL/i);
+
+    await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
+    await within(row).findByRole("button", { name: /abrir mapeamento do batch/i });
+
+    await user.click(within(row).getByRole("button", { name: /abrir mapeamento do batch/i }));
+    expect(await screen.findByText("Mapeamento batch shell 73")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Fallback shell batch mapeamento" }));
+
+    expect(await screen.findByText("Mapeamento shell 73")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Voltar ao batch" })).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/leads/importar?step=mapping&batch_id=73&context=batch&mapping_mode=single",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Voltar ao batch" }));
+
+    expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
   });
 
@@ -1486,14 +1972,10 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await selectBatchRowEvent(row, user, /Evento ETL/i);
 
     await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
-    await within(row).findByRole("button", { name: /abrir mapping/i });
+    await within(row).findByRole("button", { name: /abrir mapeamento do batch/i });
 
-    await user.click(within(row).getByRole("button", { name: /abrir mapping/i }));
-    await user.click(await screen.findByRole("button", { name: "Concluir shell mapeamento" }));
-
-    expect(await within(findBatchRow("batch-pipeline.csv")).findByRole("button", { name: /abrir pipeline/i })).toBeInTheDocument();
-
-    await user.click(within(findBatchRow("batch-pipeline.csv")).getByRole("button", { name: /abrir pipeline/i }));
+    await user.click(within(row).getByRole("button", { name: /abrir mapeamento do batch/i }));
+    await user.click(await screen.findByRole("button", { name: "Concluir shell batch mapeamento" }));
 
     expect(await screen.findByText("Pipeline shell 72")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Voltar ao batch" })).toBeInTheDocument();
@@ -1544,7 +2026,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
 
-    expect(await within(createdRow).findByRole("button", { name: /abrir mapping/i })).toBeInTheDocument();
+    expect(await within(createdRow).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
     expect(within(pendingRow).getByText(/Selecione a plataforma de origem\./i)).toBeInTheDocument();
 
     mockedUseAuth.mockReturnValue({
@@ -1569,7 +2051,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await within(findBatchRow("batch-pendente-token.csv")).findByText("Sessao expirada. Faca login novamente.")).toBeInTheDocument();
     expect(within(findBatchRow("batch-ok-token.csv")).queryByText("Sessao expirada. Faca login novamente.")).not.toBeInTheDocument();
-    expect(within(findBatchRow("batch-ok-token.csv")).getByRole("button", { name: /abrir mapping/i })).toBeInTheDocument();
+    expect(within(findBatchRow("batch-ok-token.csv")).getByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
   });
 
   it("degrades context=batch to the standalone mapping flow when no batch workspace is active", async () => {

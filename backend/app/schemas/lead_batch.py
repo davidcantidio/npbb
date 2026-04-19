@@ -63,6 +63,19 @@ class LeadBatchPreviewResponse(BaseModel):
     total_rows: int
 
 
+class LeadBatchImportHintRead(BaseModel):
+    arquivo_sha256: str
+    source_batch_id: int
+    plataforma_origem: str
+    data_envio: datetime
+    origem_lote: str = "proponente"
+    tipo_lead_proponente: str | None = None
+    evento_id: int | None = None
+    ativacao_id: int | None = None
+    confidence: Literal["exact_hash_match"] = "exact_hash_match"
+    source_created_at: datetime
+
+
 class LeadReferenceEventoRead(BaseModel):
     id: int
     nome: str
@@ -74,7 +87,7 @@ class LeadReferenceEventoRead(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# F2 — Silver mapping schemas
+# F2 â€” Silver mapping schemas
 # ---------------------------------------------------------------------------
 
 Confidence = Literal["exact_match", "synonym_match", "alias_match", "none"]
@@ -102,9 +115,65 @@ class MapearBatchResponse(BaseModel):
     stage: str
 
 
+class BatchColumnOccurrenceRead(BaseModel):
+    batch_id: int
+    file_name: str
+    coluna_original: str
+    amostras: list[str]
+    campo_sugerido: Optional[str] = None
+    confianca: Confidence
+    evento_id: int | None = None
+    plataforma_origem: str
+
+
+class BatchColumnGroupRead(BaseModel):
+    chave_agregada: str
+    nome_exibicao: str
+    variantes: list[str]
+    aparece_em_arquivos: int
+    ocorrencias: list[BatchColumnOccurrenceRead]
+    campo_sugerido: Optional[str] = None
+    confianca: Confidence
+    warnings: list[str] = []
+
+
+class ColunasBatchRequest(BaseModel):
+    batch_ids: list[int]
+
+
+class ColunasBatchResponse(BaseModel):
+    batch_ids: list[int]
+    primary_batch_id: int | None = None
+    aggregation_rule: str
+    colunas: list[BatchColumnGroupRead]
+    warnings: list[str] = []
+    blockers: list[str] = []
+    blocked_batch_ids: list[int] = []
+
+
+class MapearLotesBatchRequest(BaseModel):
+    batch_ids: list[int]
+    mapeamento: dict[str, str]
+
+
+class MapearLotesBatchItemResponse(BaseModel):
+    batch_id: int
+    silver_count: int
+    stage: str
+
+
+class MapearLotesBatchResponse(BaseModel):
+    batch_ids: list[int]
+    primary_batch_id: int
+    total_silver_count: int
+    results: list[MapearLotesBatchItemResponse]
+    stage: str = "silver"
+
+
 # ---------------------------------------------------------------------------
-# F3 — Gold pipeline schemas
+# F3 â€” Gold pipeline schemas
 # ---------------------------------------------------------------------------
+
 
 class ExecutarPipelineResponse(BaseModel):
     batch_id: int

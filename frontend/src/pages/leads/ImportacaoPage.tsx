@@ -27,6 +27,7 @@ import {
   LeadImportMetadataHint,
   listReferenciaEventos,
   LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP,
+  normalizeLeadImportHintDateInput,
   ReferenciaEvento,
   reprocessLeadImportEtlJobPreview,
   startLeadImportEtlJob,
@@ -34,7 +35,7 @@ import {
 } from "../../services/leads_import";
 import type { EventoRead } from "../../services/eventos/core";
 import { createEventoAtivacao, listEventoAtivacoes } from "../../services/eventos/workflow";
-import { toApiErrorMessage } from "../../services/http";
+import { ApiError, toApiErrorMessage } from "../../services/http";
 import { useAuth } from "../../store/auth";
 import { getLocalDateInputValue } from "../../utils/date";
 import BatchSummaryCard from "./importacao/BatchSummaryCard";
@@ -62,6 +63,13 @@ type QuickCreateTarget =
   | { kind: "etl" }
   | { kind: "batch-row"; rowId: string }
   | null;
+type BronzeHintEditableField =
+  | "plataforma_origem"
+  | "data_envio"
+  | "evento_id"
+  | "origem_lote"
+  | "tipo_lead_proponente"
+  | "ativacao_id";
 
 function hasAllowedExtension(file: File) {
   const name = file.name.toLowerCase();
@@ -124,6 +132,7 @@ export default function ImportacaoPage() {
   const today = useMemo(() => getLocalDateInputValue(), []);
   const bronzeAtivacoesRequestIdRef = useRef(0);
   const bronzeEventoIdRef = useRef("");
+  const bronzeDirtyFieldsRef = useRef<Set<BronzeHintEditableField>>(new Set());
 
   const [activeStep, setActiveStep] = useState(0);
   const [quemEnviou, setQuemEnviou] = useState(user?.email ?? "");
@@ -141,6 +150,7 @@ export default function ImportacaoPage() {
   );
   const [bronzeAtivacaoId, setBronzeAtivacaoId] = useState("");
   const [bronzeImportHint, setBronzeImportHint] = useState<LeadImportMetadataHint | null>(null);
+  const [bronzePendingHintAtivacaoId, setBronzePendingHintAtivacaoId] = useState<string | null>(null);
   const [ativacoes, setAtivacoes] = useState<{ id: number; nome: string }[]>([]);
   const [ativacoesLoadError, setAtivacoesLoadError] = useState<string | null>(null);
   const [loadingAtivacoes, setLoadingAtivacoes] = useState(false);
@@ -240,7 +250,6 @@ export default function ImportacaoPage() {
   };
 
   const resetBronzeImportHintState = () => {
-    bronzeHintRequestIdRef.current += 1;
     bronzeDirtyFieldsRef.current = new Set();
     setBronzeImportHint(null);
     setBronzePendingHintAtivacaoId(null);
@@ -409,6 +418,48 @@ export default function ImportacaoPage() {
       .finally(() => setLoadingMappingBatch(false));
   }, [routeBatchId, shellStep, token]);
 
+  useEffect(() => {
+    const job = etlJobPolling.job;
+    if (!job) return;
+
+    const previewPolling = job.status === "queued" || job.status === "running";
+    const commitPolling = job.status === "commit_queued" || job.status === "committing";
+    setLoadingEtlPreview(previewPolling);
+    setCommittingEtl(commitPolling);
+
+    if (job.preview_result) {
+      setEtlPreview(job.preview_result);
+      setActiveStep(1);
+      if (job.preview_result.status === "cpf_column_required") {
+        setEtlCpfColumnIndex("");
+      }
+    }
+
+    if (job.commit_result) {
+      const previewHasWarnings =
+        etlPreview?.status === "previewed" &&
+        etlPreview.dq_report.some((item) => item.severity === "warning");
+      setEtlCommitResult(job.commit_result);
+      setEtlWarningsPending(job.commit_result.status === "partial_failure" && previewHasWarnings);
+    }
+
+    if (!etlJobPolling.isPolling && job.error_message) {
+      if (job.error_code === "ETL_COMMIT_BLOCKED") {
+        setEtlWarningsPending(true);
+        setError(null);
+        return;
+      }
+      setError(job.error_message);
+    }
+  }, [etlJobPolling.isPolling, etlJobPolling.job, etlPreview]);
+
+  useEffect(() => {
+    if (!etlJobPolling.pollError) return;
+    setLoadingEtlPreview(false);
+    setCommittingEtl(false);
+    setError(etlJobPolling.pollError);
+  }, [etlJobPolling.pollError]);
+
   const isEtlFile = Boolean(file && hasAllowedExtension(file));
 
   const canSubmit = useMemo(() => {
@@ -468,6 +519,7 @@ export default function ImportacaoPage() {
   };
 
   const resetEtlFlow = () => {
+    etlJobPolling.clearJob();
     setEtlPreview(null);
     setEtlCommitResult(null);
     setEtlWarningsPending(false);
@@ -479,6 +531,7 @@ export default function ImportacaoPage() {
   };
 
   const resetEtlPreviewOnly = () => {
+    etlJobPolling.clearJob();
     setEtlPreview(null);
     setEtlCommitResult(null);
     setEtlWarningsPending(false);
@@ -687,28 +740,6 @@ export default function ImportacaoPage() {
     resetEtlPreviewOnly();
     setEtlSheetName("");
     setEtlMaxScanRows("");
-
-    if (!nextFile || !token || importFlow !== "bronze") {
-      return;
-    }
-
-    const requestId = bronzeHintRequestIdRef.current + 1;
-    bronzeHintRequestIdRef.current = requestId;
-
-    void (async () => {
-      try {
-        const arquivoSha256 = await computeFileSha256Hex(nextFile);
-        if (bronzeHintRequestIdRef.current !== requestId) return;
-
-        const hint = await getLeadImportMetadataHint(token, arquivoSha256);
-        if (bronzeHintRequestIdRef.current !== requestId || !hint) return;
-
-        applyBronzeImportHint(hint);
-      } catch {
-        if (bronzeHintRequestIdRef.current !== requestId) return;
-        // Hint e hash sao best-effort: o utilizador pode seguir manualmente.
-      }
-    })();
   };
 
   const requestEtlPreview = async (
@@ -729,15 +760,14 @@ export default function ImportacaoPage() {
         ...(maxParsed != null && Number.isFinite(maxParsed) ? { maxScanRows: maxParsed } : {}),
         ...options,
       };
-      const result = await previewLeadImportEtl(token, file, Number(eventoId), false, merged);
-      setEtlPreview(result);
+      const queued = etlJobPolling.jobId
+        ? await reprocessLeadImportEtlJobPreview(token, etlJobPolling.jobId, merged)
+        : await startLeadImportEtlJob(token, file, Number(eventoId), false, merged);
+      etlJobPolling.beginPolling(queued.job_id);
+      setEtlPreview(null);
       setActiveStep(1);
-      if (result.status === "cpf_column_required") {
-        setEtlCpfColumnIndex("");
-      }
     } catch (err) {
       setError(toApiErrorMessage(err, "Falha ao gerar preview ETL."));
-    } finally {
       setLoadingEtlPreview(false);
     }
   };
@@ -793,23 +823,30 @@ export default function ImportacaoPage() {
     setError(null);
     setPreview(null);
     try {
-      const createdBatch = await createLeadBatch(token, {
-        quem_enviou: quemEnviou.trim(),
-        plataforma_origem: plataformaOrigem,
-        data_envio: dataEnvio,
-        evento_id: Number(bronzeEventoId),
-        file,
-        origem_lote: bronzeOrigemLote,
-        tipo_lead_proponente:
-          bronzeOrigemLote === "proponente" ? bronzeTipoLeadProponente : undefined,
-        ativacao_id:
-          bronzeOrigemLote === "ativacao" ? Number(bronzeAtivacaoId) : undefined,
+      const result = await createLeadBatchIntake(token, {
+        items: [
+          {
+            client_row_id: "single-upload",
+            plataforma_origem: plataformaOrigem,
+            data_envio: dataEnvio,
+            evento_id: Number(bronzeEventoId),
+            file,
+            origem_lote: bronzeOrigemLote,
+            tipo_lead_proponente:
+              bronzeOrigemLote === "proponente" ? bronzeTipoLeadProponente : undefined,
+            ativacao_id:
+              bronzeOrigemLote === "ativacao" ? Number(bronzeAtivacaoId) : undefined,
+          },
+        ],
       });
-      setBatch(createdBatch);
-
-      setLoadingPreview(true);
-      const batchPreview = await getLeadBatchPreview(token, createdBatch.id);
-      setPreview(batchPreview);
+      const created = result.items[0];
+      setBatch(created.batch);
+      setPreview(created.preview);
+      if (created.hint_applied) {
+        applyBronzeImportHint(created.hint_applied);
+      } else {
+        setBronzeImportHint(null);
+      }
       setActiveStep(1);
       setCanonicalStep("upload");
     } catch (err) {
@@ -858,14 +895,12 @@ export default function ImportacaoPage() {
   };
 
   const handleCommitEtl = async (forceWarnings = false) => {
-    if (!token || !eventoId || !etlPreview || etlPreview.status !== "previewed") return;
+    if (!token || !etlJobPolling.jobId || !etlPreview || etlPreview.status !== "previewed") return;
     setCommittingEtl(true);
     setError(null);
     try {
-      const previewHasWarnings = etlPreview.dq_report.some((item) => item.severity === "warning");
-      const result = await commitLeadImportEtl(token, etlPreview.session_token, Number(eventoId), forceWarnings);
-      setEtlCommitResult(result);
-      setEtlWarningsPending(result.status === "partial_failure" && previewHasWarnings);
+      const queued = await commitLeadImportEtlJob(token, etlJobPolling.jobId, forceWarnings);
+      etlJobPolling.beginPolling(queued.job_id);
     } catch (err: unknown) {
       if (!forceWarnings && err instanceof ApiError && err.code === "ETL_COMMIT_BLOCKED") {
         setEtlWarningsPending(true);
@@ -874,7 +909,6 @@ export default function ImportacaoPage() {
         setEtlWarningsPending(false);
         setError(toApiErrorMessage(err, "Falha ao importar leads do preview ETL."));
       }
-    } finally {
       setCommittingEtl(false);
     }
   };

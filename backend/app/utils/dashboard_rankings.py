@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from app.models.models import Evento, LeadEvento
+from app.models.models import Evento
 from app.schemas.dashboard_leads import (
     DashboardLeadsRankCidade,
     DashboardLeadsRankEstado,
@@ -21,17 +21,17 @@ def get_dashboard_rankings(
     limit: int,
 ) -> DashboardLeadsRankings:
     """Retorna rankings agregados no banco (GROUP BY)."""
-    count_distinct_leads = func.count(func.distinct(LeadEvento.id))
+    count_leads = func.count()
 
     estados_rows = session.exec(
         select(
             func.upper(Evento.estado).label("estado"),
-            count_distinct_leads.label("total"),
+            count_leads.label("total"),
         )
         .select_from(from_clause)
         .where(*filters)
         .group_by(func.upper(Evento.estado))
-        .order_by(count_distinct_leads.desc(), func.upper(Evento.estado))
+        .order_by(count_leads.desc(), func.upper(Evento.estado))
         .limit(limit)
     ).all()
     estados = [
@@ -43,12 +43,12 @@ def get_dashboard_rankings(
     cidades_rows = session.exec(
         select(
             func.min(Evento.cidade).label("cidade"),
-            count_distinct_leads.label("total"),
+            count_leads.label("total"),
         )
         .select_from(from_clause)
         .where(*filters)
         .group_by(func.lower(Evento.cidade))
-        .order_by(count_distinct_leads.desc(), func.min(Evento.cidade))
+        .order_by(count_leads.desc(), func.min(Evento.cidade))
         .limit(limit)
     ).all()
     cidades = [
@@ -61,12 +61,12 @@ def get_dashboard_rankings(
         select(
             Evento.id.label("evento_id"),
             Evento.nome.label("evento_nome"),
-            count_distinct_leads.label("total"),
+            count_leads.label("total"),
         )
         .select_from(from_clause)
         .where(*filters)
         .group_by(Evento.id, Evento.nome)
-        .order_by(count_distinct_leads.desc(), Evento.id)
+        .order_by(count_leads.desc(), Evento.id)
         .limit(limit)
     ).all()
     eventos = [

@@ -32,6 +32,7 @@ from lead_pipeline.normalization import canonicalize_header, strip_accents
 
 from app.models.lead_batch import BatchStage, LeadBatch, LeadColumnAlias, LeadSilver, PipelineStatus
 from app.services.imports.file_reader import read_raw_file_headers, read_raw_file_rows
+from app.services.imports.payload_storage import read_batch_payload
 from app.services.imports.suggestion_engine import build_samples_by_column
 
 
@@ -257,9 +258,12 @@ def _load_batch_mapping_context_from_batch(
     db: Session,
     aliases_lookup_by_platform: dict[str, dict[str, str]] | None = None,
 ) -> _LoadedBatchMappingContext:
+    payload = read_batch_payload(batch)
+    if not payload:
+        raise ValueError(f"Lote {batch.id} nao possui arquivo Bronze disponivel")
 
     extracted = read_raw_file_rows(
-        batch.arquivo_bronze,
+        payload,
         filename=batch.nome_arquivo_original,
     )
     headers = extracted.headers
@@ -454,9 +458,12 @@ def suggest_column_mapping(
     batch = db.get(LeadBatch, batch_id)
     if not batch:
         raise ValueError(f"Lote {batch_id} nao encontrado")
+    payload = read_batch_payload(batch)
+    if not payload:
+        raise ValueError(f"Lote {batch_id} nao possui arquivo Bronze disponivel")
 
     extracted = read_raw_file_headers(
-        batch.arquivo_bronze,
+        payload,
         filename=batch.nome_arquivo_original,
     )
     aliases_by_coluna = _load_aliases_by_platform(db, batch.plataforma_origem)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -60,11 +60,22 @@ def _apply_visibility(filters: list, current_user: Usuario) -> None:
         filters.append(Evento.agencia_id == current_user.agencia_id)
 
 
-def _apply_date_filters(filters: list, data_inicio: date | None, data_fim: date | None) -> None:
+def _day_window_bounds(value: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(value, time.min, tzinfo=timezone.utc)
+    return start, start + timedelta(days=1)
+
+
+def _apply_date_filters(filters: list, data_inicio: date | None, data_fim: date | None) -> bool:
+    applied = False
     if data_inicio:
-        filters.append(func.date(Lead.data_criacao) >= data_inicio)
+        start_at, _ = _day_window_bounds(data_inicio)
+        filters.append(Lead.data_criacao >= start_at)
+        applied = True
     if data_fim:
-        filters.append(func.date(Lead.data_criacao) <= data_fim)
+        _, end_exclusive = _day_window_bounds(data_fim)
+        filters.append(Lead.data_criacao < end_exclusive)
+        applied = True
+    return applied
 
 
 def _resolve_granularity(params: DashboardLeadsQuery) -> str:
@@ -76,18 +87,27 @@ def _resolve_granularity(params: DashboardLeadsQuery) -> str:
     return "month"
 
 
-def _from_clause():
-    return (
-        LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
-        .join(Evento, Evento.id == LeadEvento.evento_id)
-    )
+def _from_clause(*, include_lead: bool):
+    base = LeadEvento.__table__.join(Evento, Evento.id == LeadEvento.evento_id)
+    if include_lead:
+        return base.join(Lead, Lead.id == LeadEvento.lead_id)
+    return base
 
 
-def _from_clause_ativacoes():
+def _from_clause_ativacoes(*, include_lead: bool):
+    if include_lead:
+        return (
+            LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
+            .join(Evento, Evento.id == LeadEvento.evento_id)
+            .outerjoin(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
+            .outerjoin(
+                Ativacao,
+                (Ativacao.id == AtivacaoLead.ativacao_id) & (Ativacao.evento_id == Evento.id),
+            )
+        )
     return (
-        LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
-        .join(Evento, Evento.id == LeadEvento.evento_id)
-        .outerjoin(AtivacaoLead, AtivacaoLead.lead_id == Lead.id)
+        LeadEvento.__table__.join(Evento, Evento.id == LeadEvento.evento_id)
+        .outerjoin(AtivacaoLead, AtivacaoLead.lead_id == LeadEvento.lead_id)
         .outerjoin(
             Ativacao,
             (Ativacao.id == AtivacaoLead.ativacao_id) & (Ativacao.evento_id == Evento.id),
@@ -107,7 +127,7 @@ def dashboard_leads(
 
     filters: list = []
     _apply_visibility(filters, current_user)
-    _apply_date_filters(filters, params.data_inicio, params.data_fim)
+    needs_lead_join = _apply_date_filters(filters, params.data_inicio, params.data_fim)
 
     if params.evento_id is not None:
         filters.append(Evento.id == params.evento_id)
@@ -118,16 +138,18 @@ def dashboard_leads(
     if cidade_norm:
         filters.append(func.lower(Evento.cidade) == cidade_norm)
 
-    from_clause = _from_clause()
+    from_clause = _from_clause(include_lead=needs_lead_join)
 
     leads_total = session.exec(
-        select(func.count(func.distinct(LeadEvento.id))).select_from(from_clause).where(*filters)
+        select(func.count()).select_from(from_clause).where(*filters)
     ).one()
     eventos_total = session.exec(
         select(func.count(func.distinct(Evento.id))).select_from(from_clause).where(*filters)
     ).one()
     ativacoes_total = session.exec(
-        select(func.count(func.distinct(Ativacao.id))).select_from(_from_clause_ativacoes()).where(*filters)
+        select(func.count(func.distinct(Ativacao.id)))
+        .select_from(_from_clause_ativacoes(include_lead=needs_lead_join))
+        .where(*filters)
     ).one()
 
     granularity = _resolve_granularity(params)
@@ -147,9 +169,9 @@ def dashboard_leads(
     series_rows = session.exec(
         select(
             period_expr.label("periodo"),
-            func.count(func.distinct(LeadEvento.id)).label("total"),
+            func.count().label("total"),
         )
-        .select_from(from_clause)
+        .select_from(_from_clause(include_lead=True))
         .where(*filters)
         .group_by(period_expr)
         .order_by(period_order)

@@ -16,11 +16,12 @@ from collections.abc import Iterator
 
 import httpx
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from fastapi import Response as FastAPIResponse
 from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import load_only
 from sqlalchemy import and_, func
 from sqlalchemy import or_
 from sqlalchemy.sql import text
@@ -66,8 +67,8 @@ from app.modules.leads_publicidade.application.etl_import.job_service import (
     execute_preview_job,
     queue_commit_job,
     queue_preview_reprocess,
-    read_job_errors,
     read_job,
+    read_job_errors,
 )
 from app.modules.leads_publicidade.application.etl_import.extract import ETL_MAX_SCAN_ROWS_CAP
 from app.modules.leads_publicidade.application.etl_import.rejection_reasons import aggregate_rejection_reason_counts
@@ -79,6 +80,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
 )
 from app.observability.prometheus_leads_import import inc_gold_reclaimed_stale, record_import_upload_rejection
 from app.services.imports.file_reader import ImportFileError, inspect_upload, read_raw_file_preview
+from app.services.imports.payload_storage import PayloadNotFoundError, read_batch_payload
 from app.services.lead_batch_intake_service import (
     execute_lead_batch_intake,
     parse_lead_batch_intake_manifest,
@@ -91,7 +93,7 @@ from app.services.lead_mapping import (
     suggest_column_mapping,
 )
 from app.services.lead_pipeline_service import (
-    executar_pipeline_gold_em_thread,
+    executar_pipeline_gold_em_thread,  # noqa: F401 - compatibilidade com harness legado de testes
     is_gold_pipeline_progress_stale,
     load_batch_without_bronze,
     load_batch_without_bronze_for_update,
@@ -160,6 +162,11 @@ DEFAULT_LOG_MEMORY = "0"
 CEP_CACHE: dict[str, dict[str, str]] = {}
 CEP_CACHE_MAX = 500
 ARQUIVO_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _should_execute_import_jobs_inline() -> bool:
+    raw = os.getenv("LEAD_IMPORT_JOB_INLINE_EXECUTION", "").strip().lower()
+    return os.getenv("TESTING", "").strip().lower() == "true" or raw in {"1", "true", "yes", "on"}
 
 
 def _fetch_cep_data(cep: str) -> dict[str, str] | None:
@@ -1697,7 +1704,6 @@ def preview_import(
 @router.post("/import/etl/jobs", response_model=ImportEtlJobQueuedResponse, status_code=status.HTTP_202_ACCEPTED)
 @router.post("/import/etl/jobs/", response_model=ImportEtlJobQueuedResponse, status_code=status.HTTP_202_ACCEPTED)
 def criar_job_import_etl(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     evento_id: int = Form(...),
     strict: bool = Form(False),
@@ -1731,9 +1737,10 @@ def criar_job_import_etl(
             sheet_name=sheet_name,
             max_scan_rows=max_scan_rows,
         )
+        if _should_execute_import_jobs_inline():
+            execute_preview_job(job.job_id)
     except Exception as exc:
         _map_etl_import_error(exc)
-    background_tasks.add_task(execute_preview_job, job.job_id)
     return ImportEtlJobQueuedResponse(job_id=job.job_id, status="queued")
 
 
@@ -1788,7 +1795,6 @@ def obter_erros_job_import_etl(
 def reprocessar_job_preview_import_etl(
     job_id: str,
     payload: ImportEtlJobReprocessRequest,
-    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -1812,9 +1818,10 @@ def reprocessar_job_preview_import_etl(
             sheet_name=payload.sheet_name,
             max_scan_rows=payload.max_scan_rows,
         )
+        if _should_execute_import_jobs_inline():
+            execute_preview_job(job.job_id)
     except Exception as exc:
         _map_etl_import_error(exc)
-    background_tasks.add_task(execute_preview_job, job.job_id)
     return ImportEtlJobQueuedResponse(job_id=job.job_id, status="queued")
 
 
@@ -1831,7 +1838,6 @@ def reprocessar_job_preview_import_etl(
 def confirmar_job_import_etl(
     job_id: str,
     payload: ImportEtlJobCommitRequest,
-    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -1843,9 +1849,10 @@ def confirmar_job_import_etl(
             requested_by=int(current_user.id),
             force_warnings=payload.force_warnings,
         )
+        if _should_execute_import_jobs_inline():
+            execute_commit_job(job.job_id)
     except Exception as exc:
         _map_etl_import_error(exc)
-    background_tasks.add_task(execute_commit_job, job.job_id)
     return ImportEtlJobQueuedResponse(job_id=job.job_id, status="commit_queued")
 
 
@@ -2047,6 +2054,19 @@ def obter_hint_importacao_batch(
 
     stmt = (
         select(LeadBatch)
+        .options(
+            load_only(
+                LeadBatch.id,
+                LeadBatch.arquivo_sha256,
+                LeadBatch.plataforma_origem,
+                LeadBatch.data_envio,
+                LeadBatch.origem_lote,
+                LeadBatch.tipo_lead_proponente,
+                LeadBatch.evento_id,
+                LeadBatch.ativacao_id,
+                LeadBatch.created_at,
+            )
+        )
         .where(LeadBatch.enviado_por == int(current_user.id))
         .where(LeadBatch.arquivo_sha256 == normalized_hash)
         .order_by(LeadBatch.created_at.desc(), LeadBatch.id.desc())
@@ -2091,7 +2111,11 @@ def download_arquivo_batch(
             code="BATCH_NOT_FOUND",
             message="Lote nao encontrado",
         )
-    if not batch.arquivo_bronze:
+    try:
+        payload = read_batch_payload(batch)
+    except PayloadNotFoundError:
+        payload = None
+    if not payload:
         raise_http_error(
             status.HTTP_404_NOT_FOUND,
             code="FILE_NOT_FOUND",
@@ -2101,7 +2125,7 @@ def download_arquivo_batch(
     ext = Path(filename).suffix.lower()
     media_type = "text/csv" if ext == ".csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return StreamingResponse(
-        io.BytesIO(batch.arquivo_bronze),
+        io.BytesIO(payload),
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
@@ -2122,7 +2146,11 @@ def preview_batch(
             code="BATCH_NOT_FOUND",
             message="Lote nao encontrado",
         )
-    if not batch.arquivo_bronze:
+    try:
+        payload = read_batch_payload(batch)
+    except PayloadNotFoundError:
+        payload = None
+    if not payload:
         raise_http_error(
             status.HTTP_404_NOT_FOUND,
             code="FILE_NOT_FOUND",
@@ -2130,7 +2158,7 @@ def preview_batch(
         )
     filename = batch.nome_arquivo_original or ""
     try:
-        preview = read_raw_file_preview(batch.arquivo_bronze, filename=filename, sample_rows=3)
+        preview = read_raw_file_preview(payload, filename=filename, sample_rows=3)
         result = {
             "headers": preview.headers,
             "rows": preview.rows,
@@ -2404,7 +2432,6 @@ def get_batch(
 )
 async def disparar_pipeline(
     batch_id: int,
-    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -2482,7 +2509,6 @@ async def disparar_pipeline(
         batch.evento_id,
         reclaimed_stale_lock,
     )
-    background_tasks.add_task(executar_pipeline_gold_em_thread, batch_id)
     return ExecutarPipelineResponse(
         batch_id=batch_id,
         status="queued",

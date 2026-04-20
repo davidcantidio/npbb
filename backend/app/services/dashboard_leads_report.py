@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 
-from sqlalchemy import Integer, case, cast, func
+from sqlalchemy import Integer, and_, case, cast, func, or_
 from sqlmodel import Session, select
 
 from app.models.models import Evento, Lead, LeadEvento, Usuario, UsuarioTipo, now_utc
@@ -64,6 +64,44 @@ def _reference_date(evento: Evento | None) -> date:
     return date.today()
 
 
+def _day_window_bounds(value: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(value, time.min, tzinfo=timezone.utc)
+    return start, start + timedelta(days=1)
+
+
+def _apply_reference_date_filters(
+    filtros: list,
+    *,
+    data_inicio: date | None,
+    data_fim: date | None,
+) -> None:
+    if data_inicio:
+        start_at, _ = _day_window_bounds(data_inicio)
+        filtros.append(
+            or_(
+                Lead.data_compra >= start_at,
+                and_(Lead.data_compra.is_(None), Lead.data_criacao >= start_at),
+            )
+        )
+    if data_fim:
+        _, end_exclusive = _day_window_bounds(data_fim)
+        filtros.append(
+            or_(
+                Lead.data_compra < end_exclusive,
+                and_(Lead.data_compra.is_(None), Lead.data_criacao < end_exclusive),
+            )
+        )
+
+
+def _event_start_timestamp(evento: Evento | None) -> datetime | None:
+    if evento is None:
+        return None
+    event_date = evento.data_inicio_realizada or evento.data_inicio_prevista
+    if event_date is None:
+        return None
+    return datetime.combine(event_date, time.min, tzinfo=timezone.utc)
+
+
 def _from_clause():
     return (
         LeadEvento.__table__.join(Lead, Lead.id == LeadEvento.lead_id)
@@ -120,17 +158,17 @@ def build_dashboard_leads_report(
     elif evento_nome_norm:
         filtros.append(Evento.id == -1)
 
-    data_ref_expr = func.date(func.coalesce(Lead.data_compra, Lead.data_criacao))
-    if params.data_inicio:
-        filtros.append(data_ref_expr >= params.data_inicio)
-    if params.data_fim:
-        filtros.append(data_ref_expr <= params.data_fim)
+    _apply_reference_date_filters(
+        filtros,
+        data_inicio=params.data_inicio,
+        data_fim=params.data_fim,
+    )
 
     total_leads = session.exec(
-        select(func.count(func.distinct(LeadEvento.id))).select_from(from_clause).where(*filtros)
+        select(func.count()).select_from(from_clause).where(*filtros)
     ).one()
     compras_count = session.exec(
-        select(func.count(func.distinct(LeadEvento.id)))
+        select(func.count())
         .select_from(from_clause)
         .where(*filtros, Lead.data_compra.is_not(None))
     ).one()
@@ -173,16 +211,16 @@ def build_dashboard_leads_report(
     age_bucket = _age_bucket_expr(age_expr)
 
     total_with_age = session.exec(
-        select(func.count(func.distinct(LeadEvento.id)))
+        select(func.count())
         .select_from(from_clause)
         .where(*filtros, Lead.data_nascimento.is_not(None))
     ).one()
     idade_rows = session.exec(
-        select(age_bucket.label("faixa"), func.count(func.distinct(LeadEvento.id)).label("total"))
+        select(age_bucket.label("faixa"), func.count().label("total"))
         .select_from(from_clause)
         .where(*filtros, Lead.data_nascimento.is_not(None))
         .group_by(age_bucket)
-        .order_by(func.count(func.distinct(LeadEvento.id)).desc(), age_bucket)
+        .order_by(func.count().desc(), age_bucket)
     ).all()
 
     distribuicao_idade = [
@@ -201,11 +239,11 @@ def build_dashboard_leads_report(
 
     gender_bucket = _gender_bucket_expr()
     genero_rows = session.exec(
-        select(gender_bucket.label("faixa"), func.count(func.distinct(LeadEvento.id)).label("total"))
+        select(gender_bucket.label("faixa"), func.count().label("total"))
         .select_from(from_clause)
         .where(*filtros)
         .group_by(gender_bucket)
-        .order_by(func.count(func.distinct(LeadEvento.id)).desc(), gender_bucket)
+        .order_by(func.count().desc(), gender_bucket)
     ).all()
 
     total_sem_genero = 0
@@ -228,12 +266,14 @@ def build_dashboard_leads_report(
     volume_pre_venda = 0
     volume_venda_geral = int(compras_count or 0)
     observacao_pre_venda = None
-    if evento and (evento.data_inicio_realizada or evento.data_inicio_prevista):
-        evento_inicio = evento.data_inicio_realizada or evento.data_inicio_prevista
-        janela_pre_venda = f"ate {evento_inicio.isoformat()}"
+    event_start_at = _event_start_timestamp(evento)
+    if event_start_at is not None:
+        janela_pre_venda = f"ate {event_start_at.date().isoformat()}"
         volume_pre_venda = session.exec(
-            select(func.count(func.distinct(LeadEvento.id))).select_from(from_clause).where(
-                *filtros, Lead.data_compra.is_not(None), func.date(Lead.data_compra) < evento_inicio
+            select(func.count()).select_from(from_clause).where(
+                *filtros,
+                Lead.data_compra.is_not(None),
+                Lead.data_compra < event_start_at,
             )
         ).one()
         observacao_pre_venda = "Pre-venda definida ate a data de inicio do evento."

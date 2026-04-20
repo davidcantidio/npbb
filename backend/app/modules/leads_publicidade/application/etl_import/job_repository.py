@@ -6,7 +6,9 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy.orm import load_only
 from sqlmodel import Session
+from sqlmodel import select
 
 from app.models.lead_public_models import LeadImportEtlJob
 
@@ -54,6 +56,23 @@ def create_job(session: Session, job: LeadImportEtlJob) -> LeadImportEtlJob:
 
 def get_job(session: Session, job_id: str) -> LeadImportEtlJob | None:
     return session.get(LeadImportEtlJob, job_id)
+
+
+def _claim_next_job(session: Session, *, queued_status: str) -> LeadImportEtlJob | None:
+    return session.exec(
+        select(LeadImportEtlJob)
+        .options(
+            load_only(
+                LeadImportEtlJob.job_id,
+                LeadImportEtlJob.status,
+                LeadImportEtlJob.created_at,
+            )
+        )
+        .where(LeadImportEtlJob.status == queued_status)
+        .order_by(LeadImportEtlJob.created_at.asc(), LeadImportEtlJob.job_id.asc())
+        .with_for_update(skip_locked=True)
+        .limit(1)
+    ).first()
 
 
 def is_terminal_job_status(status: str) -> bool:
@@ -152,3 +171,23 @@ def set_failed_job(
     job.file_blob = job.file_blob if keep_file_blob else None
     job.completed_at = now_job_timestamp()
     job.progress_json = build_job_progress(phase=phase, label=message, pct=None)
+
+
+def claim_next_preview_job(session: Session) -> str | None:
+    job = _claim_next_job(session, queued_status="queued")
+    if job is None:
+        return None
+    set_preview_running(job)
+    session.add(job)
+    session.commit()
+    return str(job.job_id)
+
+
+def claim_next_commit_job(session: Session) -> str | None:
+    job = _claim_next_job(session, queued_status="commit_queued")
+    if job is None:
+        return None
+    set_commit_running(job)
+    session.add(job)
+    session.commit()
+    return str(job.job_id)

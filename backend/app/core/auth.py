@@ -1,17 +1,20 @@
 """Dependência de autenticação para obter o usuário atual."""
 
+import logging
+
 import jwt
 from fastapi import Cookie, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
-from app.db.database import _agent_debug_ndjson, get_session
+from app.db.database import get_session, set_db_request_context
 from app.models.models import Usuario
 from app.utils.jwt import decode_token
 
 SESSION_COOKIE_NAME = "npbb_access_token"
 http_bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 def _database_unavailable_exception(exc: OperationalError) -> HTTPException:
@@ -80,29 +83,28 @@ def get_current_user(
             headers=auth_headers,
         )
 
-    # #region agent log
     try:
         usuario = session.get(Usuario, user_id)
     except OperationalError as e:
         msg = str(e.orig) if getattr(e, "orig", None) else str(e)
-        _agent_debug_ndjson(
-            "auth.py:get_current_user",
-            "OperationalError_on_usuario_get",
-            {
-                "msg_prefix": msg[:240],
-                "has_timeout": "timeout" in msg.lower() or "timed out" in msg.lower() or "10060" in msg,
-                "has_server_closed": "server closed the connection" in msg.lower(),
-            },
-            "H2",
+        logger.warning(
+            "auth.get_current_user: falha ao carregar usuario user_id=%s msg_prefix=%r",
+            user_id,
+            msg[:240],
         )
         raise _database_unavailable_exception(e) from e
-    # #endregion
     if not usuario or not usuario.ativo:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário inativo ou inexistente",
             headers=auth_headers,
         )
+    set_db_request_context(
+        session,
+        user_id=user_id,
+        user_type=str(getattr(getattr(usuario, "tipo_usuario", None), "value", getattr(usuario, "tipo_usuario", ""))),
+        agencia_id=getattr(usuario, "agencia_id", None),
+    )
     return usuario
 
 
@@ -136,4 +138,10 @@ def get_current_user_optional(
         raise _database_unavailable_exception(e) from e
     if not usuario or not usuario.ativo:
         return None
+    set_db_request_context(
+        session,
+        user_id=user_id,
+        user_type=str(getattr(getattr(usuario, "tipo_usuario", None), "value", getattr(usuario, "tipo_usuario", ""))),
+        agencia_id=getattr(usuario, "agencia_id", None),
+    )
     return usuario

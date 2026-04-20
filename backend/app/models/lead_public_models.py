@@ -357,6 +357,14 @@ class LeadImportEtlJob(SQLModel, table=True):
         default=None,
         sa_column=Column(LargeBinary, nullable=True),
     )
+    file_storage_bucket: Optional[str] = Field(default=None, max_length=120)
+    file_storage_key: Optional[str] = Field(default=None, max_length=500)
+    file_content_type: Optional[str] = Field(default=None, max_length=160)
+    file_size_bytes: Optional[int] = Field(default=None)
+    file_uploaded_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
     preview_session_token: Optional[str] = Field(default=None, max_length=120, index=True)
     created_at: datetime = Field(default_factory=now_utc, index=True)
     updated_at: datetime = Field(

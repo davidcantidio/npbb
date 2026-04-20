@@ -9,6 +9,7 @@ from datetime import date as date_type
 from datetime import datetime, timezone
 
 from fastapi import UploadFile, status
+from sqlalchemy.orm import load_only
 from sqlmodel import Session, select
 
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
@@ -26,6 +27,7 @@ from app.services.evento_activation_import import (
     get_activation_import_block_reason,
 )
 from app.services.imports.file_reader import ImportFileError, inspect_upload, read_raw_file_preview
+from app.services.imports.payload_storage import persist_batch_payload
 from app.utils.http_errors import raise_http_error
 
 
@@ -100,6 +102,19 @@ def _build_import_hint_read(batch: LeadBatch) -> LeadBatchImportHintRead:
 def _find_import_hint(session: Session, *, user_id: int, arquivo_sha256: str) -> LeadBatchImportHintRead | None:
     source_batch = session.exec(
         select(LeadBatch)
+        .options(
+            load_only(
+                LeadBatch.id,
+                LeadBatch.arquivo_sha256,
+                LeadBatch.plataforma_origem,
+                LeadBatch.data_envio,
+                LeadBatch.origem_lote,
+                LeadBatch.tipo_lead_proponente,
+                LeadBatch.evento_id,
+                LeadBatch.ativacao_id,
+                LeadBatch.created_at,
+            )
+        )
         .where(LeadBatch.enviado_por == user_id)
         .where(LeadBatch.arquivo_sha256 == arquivo_sha256)
         .order_by(LeadBatch.created_at.desc(), LeadBatch.id.desc())
@@ -330,7 +345,6 @@ def execute_lead_batch_intake(
             data_envio=parsed_data_envio,
             nome_arquivo_original=filename,
             arquivo_sha256=arquivo_sha256,
-            arquivo_bronze=raw,
             stage=BatchStage.BRONZE,
             evento_id=resolved_evento_id,
             origem_lote=origem_clean,
@@ -338,6 +352,7 @@ def execute_lead_batch_intake(
             ativacao_id=resolved_ativacao_id,
             pipeline_status=PipelineStatus.PENDING,
         )
+        persist_batch_payload(batch, raw, content_type=getattr(upload, "content_type", None))
         batches_to_persist.append(batch)
         prepared_items.append(
             PreparedLeadBatchIntakeItem(

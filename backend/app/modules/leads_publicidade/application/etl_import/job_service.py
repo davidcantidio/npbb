@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import secrets
 from typing import Any
 
 from fastapi import UploadFile
 from pydantic import TypeAdapter
-from sqlmodel import Session
+from sqlalchemy.orm import load_only
+from sqlmodel import Session, select
 
-from app.db.database import engine
+from app.db.database import build_worker_engine, engine as engine, set_internal_service_db_context
 from app.models.lead_public_models import LeadImportEtlJob
 from app.schemas.lead_import_etl import (
     ImportEtlCpfColumnRequiredResponse,
@@ -23,6 +25,7 @@ from app.schemas.lead_import_etl import (
     ImportEtlResult,
 )
 from app.services.imports.file_reader import DEFAULT_IMPORT_MAX_BYTES, ImportFileError, inspect_upload
+from app.services.imports.payload_storage import persist_etl_job_payload, read_etl_job_payload
 
 from .commit_service import commit_preview_session
 from .exceptions import (
@@ -37,6 +40,8 @@ from .job_repository import (
     COMMIT_RESULT_JOB_STATUSES,
     PREVIEW_RESULT_JOB_STATUSES,
     build_job_progress,
+    claim_next_commit_job,
+    claim_next_preview_job,
     create_job,
     get_job,
     maybe_mark_job_stale,
@@ -55,6 +60,12 @@ from .staging_repository import list_import_errors
 
 
 PREVIEW_RESULT_ADAPTER = TypeAdapter(ImportEtlPreviewResponseUnion)
+
+
+def _resolve_worker_engine():
+    if os.getenv("TESTING", "").strip().lower() == "true":
+        return engine
+    return build_worker_engine()
 
 
 def _build_upload_file(filename: str, payload: bytes) -> UploadFile:
@@ -207,8 +218,8 @@ def create_preview_job(
                 "force_warnings": False,
             },
         },
-        file_blob=payload,
     )
+    persist_etl_job_payload(job, payload, content_type=getattr(file, "content_type", None))
     return create_job(session, job)
 
 
@@ -224,7 +235,7 @@ def queue_preview_reprocess(
 ) -> LeadImportEtlJob:
     job = _load_job_or_raise(session, job_id)
     _ensure_job_owner(job, requested_by)
-    if not job.file_blob:
+    if not read_etl_job_payload(job):
         raise EtlImportJobConflictError("Job ETL nao pode ser reprocessado porque o arquivo original nao esta mais disponivel.")
     preview_options = {
         "header_row": header_row,
@@ -266,7 +277,33 @@ def queue_commit_job(
 
 
 def read_job(session: Session, job_id: str, *, requested_by: int | None = None) -> ImportEtlJobRead:
-    job = _load_job_or_raise(session, job_id)
+    job = maybe_mark_job_stale(
+        session,
+        session.exec(
+            select(LeadImportEtlJob)
+            .options(
+                load_only(
+                    LeadImportEtlJob.job_id,
+                    LeadImportEtlJob.requested_by,
+                    LeadImportEtlJob.evento_id,
+                    LeadImportEtlJob.filename,
+                    LeadImportEtlJob.strict,
+                    LeadImportEtlJob.status,
+                    LeadImportEtlJob.progress_json,
+                    LeadImportEtlJob.options_json,
+                    LeadImportEtlJob.result_json,
+                    LeadImportEtlJob.error_json,
+                    LeadImportEtlJob.preview_session_token,
+                    LeadImportEtlJob.created_at,
+                    LeadImportEtlJob.updated_at,
+                    LeadImportEtlJob.completed_at,
+                )
+            )
+            .where(LeadImportEtlJob.job_id == job_id)
+        ).first(),
+    )
+    if job is None:
+        raise EtlImportJobNotFoundError(f"Job ETL nao encontrado: {job_id}")
     _ensure_job_owner(job, requested_by)
     progress = None
     if isinstance(job.progress_json, dict) and job.progress_json:
@@ -335,22 +372,27 @@ def read_job_errors(
     )
 
 
-def execute_preview_job(job_id: str) -> None:
-    with Session(engine) as session:
-        job = get_job(session, job_id)
-        if job is None:
-            return
-        set_preview_running(job)
-        _update_job(session, job)
+def execute_preview_job(job_id: str, *, already_claimed: bool = False) -> None:
+    worker_engine = _resolve_worker_engine()
+    if not already_claimed:
+        with Session(worker_engine) as session:
+            set_internal_service_db_context(session)
+            job = get_job(session, job_id)
+            if job is None:
+                return
+            set_preview_running(job)
+            _update_job(session, job)
 
     try:
-        with Session(engine) as session:
+        with Session(worker_engine) as session:
+            set_internal_service_db_context(session)
             job = _load_job_or_raise(session, job_id)
-            if not job.file_blob:
+            payload = read_etl_job_payload(job)
+            if not payload:
                 raise EtlImportJobConflictError("Arquivo original do job ETL nao esta mais disponivel para preview.")
             preview_options = _preview_options_from_job(job)
             result = create_preview_snapshot(
-                file=_build_upload_file(job.filename, job.file_blob),
+                file=_build_upload_file(job.filename, payload),
                 evento_id=job.evento_id,
                 strict=job.strict,
                 db=session,
@@ -375,7 +417,8 @@ def execute_preview_job(job_id: str) -> None:
             _update_job(session, job)
     except Exception as exc:
         code, message = _map_job_error(exc)
-        with Session(engine) as session:
+        with Session(worker_engine) as session:
+            set_internal_service_db_context(session)
             job = get_job(session, job_id)
             if job is None:
                 return
@@ -390,16 +433,20 @@ def execute_preview_job(job_id: str) -> None:
             _update_job(session, job)
 
 
-def execute_commit_job(job_id: str) -> None:
-    with Session(engine) as session:
-        job = get_job(session, job_id)
-        if job is None:
-            return
-        set_commit_running(job)
-        _update_job(session, job)
+def execute_commit_job(job_id: str, *, already_claimed: bool = False) -> None:
+    worker_engine = _resolve_worker_engine()
+    if not already_claimed:
+        with Session(worker_engine) as session:
+            set_internal_service_db_context(session)
+            job = get_job(session, job_id)
+            if job is None:
+                return
+            set_commit_running(job)
+            _update_job(session, job)
 
     try:
-        with Session(engine) as session:
+        with Session(worker_engine) as session:
+            set_internal_service_db_context(session)
             job = _load_job_or_raise(session, job_id)
             if not job.preview_session_token:
                 raise EtlImportJobConflictError("Job ETL nao possui preview persistido para commit.")
@@ -415,7 +462,8 @@ def execute_commit_job(job_id: str) -> None:
             _update_job(session, job)
     except Exception as exc:
         code, message = _map_job_error(exc)
-        with Session(engine) as session:
+        with Session(worker_engine) as session:
+            set_internal_service_db_context(session)
             job = get_job(session, job_id)
             if job is None:
                 return
@@ -427,3 +475,23 @@ def execute_commit_job(job_id: str) -> None:
                 keep_file_blob=False,
             )
             _update_job(session, job)
+
+
+def run_next_preview_job() -> bool:
+    with Session(_resolve_worker_engine()) as session:
+        set_internal_service_db_context(session)
+        job_id = claim_next_preview_job(session)
+    if not job_id:
+        return False
+    execute_preview_job(job_id, already_claimed=True)
+    return True
+
+
+def run_next_commit_job() -> bool:
+    with Session(_resolve_worker_engine()) as session:
+        set_internal_service_db_context(session)
+        job_id = claim_next_commit_job(session)
+    if not job_id:
+        return False
+    execute_commit_job(job_id, already_claimed=True)
+    return True

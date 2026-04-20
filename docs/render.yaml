@@ -13,6 +13,20 @@ services:
         sync: false
       - key: DIRECT_URL
         sync: false
+      - key: WORKER_DATABASE_URL
+        sync: false
+      - key: OBJECT_STORAGE_BACKEND
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        value: lead-imports
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_URL
+        sync: false
+      - key: SUPABASE_STORAGE_SERVICE_ROLE_KEY
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHONPATH
@@ -37,3 +51,39 @@ services:
         sync: false
       - key: PUBLIC_API_DOC_URL
         sync: false
+
+  - type: worker
+    name: npbb-leads-worker
+    runtime: python
+    plan: free
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/run_leads_worker.py
+    envVars:
+      - key: WORKER_DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: PYTHONPATH
+        value: /opt/render/project/src:/opt/render/project/src/backend
+      - key: DB_REQUIRE_SUPABASE_POOLER
+        value: "false"
+      - key: OBJECT_STORAGE_BACKEND
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        value: lead-imports
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_URL
+        sync: false
+      - key: SUPABASE_STORAGE_SERVICE_ROLE_KEY
+        sync: false
+      - key: LEADS_WORKER_IDLE_SLEEP_SECONDS
+        value: "2"
+      - key: LEADS_WORKER_LOG_LEVEL
+        value: INFO

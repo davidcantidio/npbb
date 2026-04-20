@@ -1,12 +1,14 @@
-"""Configuracao de conexao e utilitarios de sessao do SQLModel."""
+"""Configuracao de conexao, contexto RLS e utilitarios de sessao do SQLModel."""
 
 import json
 import os
 import sys
 import time
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse
 
+from sqlalchemy import text
 from sqlmodel import create_engine, Session
 
 from app.db.metadata import SQLModel
@@ -33,6 +35,9 @@ def _agent_debug_ndjson(
     hypothesis_id: str,
 ) -> None:
     # #region agent log
+    raw = os.getenv("NPBB_DEBUG_AGENT_LOG", "").strip().lower()
+    if raw not in {"1", "true", "yes", "on"}:
+        return
     try:
         # Raiz do backend (npbb/backend/debug-649b68.log), visível junto ao .env / .venv
         log_path = Path(__file__).resolve().parents[2] / "debug-649b68.log"
@@ -70,6 +75,30 @@ def _safe_db_endpoint(url: str) -> dict:
         }
     except Exception:
         return {"driver": "postgresql", "parse": "failed"}
+
+
+def _should_enforce_supabase_runtime_guard() -> bool:
+    raw = os.getenv("DB_REQUIRE_SUPABASE_POOLER", "true").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
+def _validate_supabase_runtime_url(url: str) -> None:
+    if not _should_enforce_supabase_runtime_guard() or url.startswith("sqlite"):
+        return
+    raw = url.replace("postgresql+psycopg2://", "postgresql://", 1)
+    parsed = urlparse(raw)
+    host = (parsed.hostname or "").lower()
+    if "supabase" not in host:
+        return
+    if parsed.port != 6543:
+        raise RuntimeError(
+            "DATABASE_URL de runtime da API deve usar o transaction pooler do Supabase (:6543), nao a conexao direta :5432."
+        )
+    username = (parsed.username or "").lower()
+    if username.startswith("postgres"):
+        raise RuntimeError(
+            "DATABASE_URL de runtime da API nao pode usar a role postgres/BYPASSRLS. Configure uma role dedicada de runtime."
+        )
 
 
 def get_database_endpoint_info() -> dict:
@@ -147,6 +176,14 @@ def _get_database_url() -> str:
     )
 
 
+def get_worker_database_url() -> str:
+    _load_env()
+    worker_url = (os.getenv("WORKER_DATABASE_URL") or os.getenv("DIRECT_URL") or "").strip()
+    if worker_url:
+        return worker_url
+    return _get_database_url()
+
+
 def _pool_kwargs_for_url(url: str) -> dict:
     """Opções de pool para Postgres remoto (ex.: Supabase + PgBouncer)."""
     if url.startswith("sqlite"):
@@ -183,9 +220,7 @@ def _postgres_connect_args() -> dict:
     return connect_args
 
 
-def _build_engine():
-    _load_env()
-    url = _get_database_url()
+def _build_engine_from_url(url: str):
     if url.startswith("sqlite"):
         connect_args: dict = {"check_same_thread": False}
     else:
@@ -210,7 +245,64 @@ def _build_engine():
     return eng
 
 
+def _dialect_name_for_session(session: Session) -> str:
+    bind = session.get_bind()
+    return str(getattr(getattr(bind, "dialect", None), "name", "") or "").lower()
+
+
+def _is_postgres_session(session: Session) -> bool:
+    return _dialect_name_for_session(session) == "postgresql"
+
+
+def _build_engine():
+    _load_env()
+    url = _get_database_url()
+    _validate_supabase_runtime_url(url)
+    return _build_engine_from_url(url)
+
+
 engine = _build_engine()
+
+
+def set_db_request_context(
+    session: Session,
+    *,
+    user_id: int | None,
+    user_type: str | None = None,
+    agencia_id: int | None = None,
+) -> None:
+    if not _is_postgres_session(session):
+        return
+    session.execute(
+        text(
+            """
+            select
+                set_config('app.user_id', :user_id, true),
+                set_config('app.user_type', :user_type, true),
+                set_config('app.agencia_id', :agencia_id, true)
+            """
+        ),
+        {
+            "user_id": str(user_id or ""),
+            "user_type": str(user_type or ""),
+            "agencia_id": str(agencia_id or ""),
+        },
+    )
+
+
+def set_internal_service_db_context(session: Session) -> None:
+    set_db_request_context(session, user_id=None, user_type="npbb", agencia_id=None)
+
+
+@lru_cache(maxsize=1)
+def _build_cached_worker_engine():
+    return _build_engine_from_url(get_worker_database_url())
+
+
+def build_worker_engine():
+    if os.getenv("TESTING", "").strip().lower() == "true":
+        return engine
+    return _build_cached_worker_engine()
 
 
 def get_session():

@@ -26,6 +26,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import load_only
 from sqlmodel import Session, select
 
+import app.db.database as database_module
+from app.db.database import build_worker_engine, set_internal_service_db_context
 from lead_pipeline.constants import ALL_COLUMNS, TIPO_EVENTO_PADRAO
 from lead_pipeline.geo_normalize import normalize_brazilian_locality
 from lead_pipeline.normalization import strip_accents
@@ -58,6 +60,7 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
     merge_lead_lookup_context,
 )
 from app.services.lead_event_service import ensure_lead_event
+from app.services.imports.payload_storage import read_batch_payload
 from app.observability.import_events import log_import_event
 from app.observability.prometheus_leads_import import observe_gold_stage_duration_seconds
 from app.services.imports.file_reader import read_raw_file_rows
@@ -101,6 +104,12 @@ LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE = (
     LeadBatch.data_envio,
     LeadBatch.data_upload,
     LeadBatch.nome_arquivo_original,
+    LeadBatch.arquivo_sha256,
+    LeadBatch.bronze_storage_bucket,
+    LeadBatch.bronze_storage_key,
+    LeadBatch.bronze_content_type,
+    LeadBatch.bronze_size_bytes,
+    LeadBatch.bronze_uploaded_at,
     LeadBatch.stage,
     LeadBatch.evento_id,
     LeadBatch.origem_lote,
@@ -115,6 +124,12 @@ LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE = (
     LeadBatch.created_at,
     LeadBatch.updated_at,
 )
+
+
+def _resolve_worker_engine():
+    if os.getenv("TESTING", "").strip().lower() == "true":
+        return database_module.engine
+    return build_worker_engine()
 
 
 def _log_pipeline_event(level: int, event_name: str, **context: Any) -> None:
@@ -629,9 +644,12 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
         for row in silver_rows
     )
     needs_source_metadata_fallback = needs_source_sheet_fallback or needs_source_row_fallback
-    if batch is not None and needs_source_metadata_fallback and batch.arquivo_bronze and fallback_source_file:
+    if batch is not None and needs_source_metadata_fallback and fallback_source_file:
         try:
-            extracted = read_raw_file_rows(batch.arquivo_bronze, filename=fallback_source_file)
+            payload = read_batch_payload(batch)
+            if not payload:
+                raise ValueError("arquivo Bronze indisponivel")
+            extracted = read_raw_file_rows(payload, filename=fallback_source_file)
         except Exception:  # noqa: BLE001
             logger.warning(
                 "Nao foi possivel reconstruir metadados de origem do batch %s para a pipeline Gold.",
@@ -1055,8 +1073,28 @@ def queue_pipeline_batch(batch: LeadBatch) -> None:
     set_pipeline_progress(batch, step="queued", resume_context=resume_context)
 
 
+def claim_next_gold_pipeline_batch(db: Session) -> int | None:
+    batch = db.exec(
+        select(LeadBatch)
+        .options(load_only(*LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE))
+        .where(LeadBatch.stage == BatchStage.SILVER)
+        .where(LeadBatch.pipeline_status == PipelineStatus.PENDING)
+        .where(LeadBatch.pipeline_progress["step"].as_string() == "queued")
+        .order_by(LeadBatch.created_at.asc(), LeadBatch.id.asc())
+        .with_for_update(skip_locked=True)
+        .limit(1)
+    ).first()
+    if batch is None:
+        return None
+    set_pipeline_progress(batch, step="silver_csv", resume_context=_resume_context_from_batch(batch))
+    db.add(batch)
+    db.commit()
+    return int(batch.id)
+
+
 def _persist_pipeline_progress(engine: Any, batch_id: int, event: PipelineProgressEvent) -> None:
     with Session(engine, expire_on_commit=False) as db:
+        set_internal_service_db_context(db)
         batch = load_batch_without_bronze(db, batch_id)
         if not batch:
             logger.warning("Batch %s nao encontrado para atualizar progresso da pipeline.", batch_id)
@@ -1868,8 +1906,7 @@ def _inserir_leads_gold(
 
 async def executar_pipeline_gold(batch_id: int) -> None:
     """Background task: materializa Silver CSV -> run_pipeline -> promove Gold."""
-    from app.db.database import engine  # import local para evitar ciclo na inicializacao
-
+    worker_engine = _resolve_worker_engine()
     tmp_dir = TMP_ROOT / str(batch_id)
     report_data: dict[str, Any] | None = None
     failure_step = "queued"
@@ -1878,7 +1915,7 @@ async def executar_pipeline_gold(batch_id: int) -> None:
 
     def on_progress(event: PipelineProgressEvent) -> None:
         last_pipeline_event["ev"] = event
-        _persist_pipeline_progress(engine, batch_id, event)
+        _persist_pipeline_progress(worker_engine, batch_id, event)
 
     async def _run_pipeline_with_heartbeat(cfg: PipelineConfig) -> PipelineResult:
         stop = asyncio.Event()
@@ -1893,11 +1930,11 @@ async def executar_pipeline_gold(batch_id: int) -> None:
                     ev = last_pipeline_event["ev"]
                     try:
                         if ev is not None:
-                            await asyncio.to_thread(_persist_pipeline_progress, engine, batch_id, ev)
+                            await asyncio.to_thread(_persist_pipeline_progress, worker_engine, batch_id, ev)
                         else:
                             await asyncio.to_thread(
                                 _persist_pipeline_progress,
-                                engine,
+                                worker_engine,
                                 batch_id,
                                 PipelineProgressEvent(
                                     step="normalize_rows",
@@ -1926,8 +1963,9 @@ async def executar_pipeline_gold(batch_id: int) -> None:
     try:
         _log_pipeline_event(logging.INFO, "execution.start", batch_id=batch_id)
         execution_started_at = time_module.perf_counter()
-        with _SqlObservabilityCollector(engine) as sql_observability:
-            with Session(engine, expire_on_commit=False) as db:
+        with _SqlObservabilityCollector(worker_engine) as sql_observability:
+            with Session(worker_engine, expire_on_commit=False) as db:
+                set_internal_service_db_context(db)
                 batch = load_batch_without_bronze(db, batch_id)
                 if not batch:
                     logger.error("Batch %s nao encontrado para execucao do pipeline.", batch_id)
@@ -1943,22 +1981,29 @@ async def executar_pipeline_gold(batch_id: int) -> None:
                     origem_lote=batch.origem_lote,
                 )
 
-                queue_pipeline_batch(batch)
-                resume_context = _resume_context_from_batch(batch)
-                db.add(batch)
-                db.commit()
-                _log_pipeline_event(
-                    logging.INFO,
-                    "queued",
-                    batch_id=batch_id,
-                    stage=batch.stage,
-                    pipeline_status=batch.pipeline_status,
-                )
-
-                failure_step = "silver_csv"
-                set_pipeline_progress(batch, step="silver_csv")
-                db.add(batch)
-                db.commit()
+                current_step = None
+                if isinstance(batch.pipeline_progress, dict):
+                    current_step = str(batch.pipeline_progress.get("step") or "").strip() or None
+                if current_step == "queued":
+                    queue_pipeline_batch(batch)
+                    resume_context = _resume_context_from_batch(batch)
+                    db.add(batch)
+                    db.commit()
+                    _log_pipeline_event(
+                        logging.INFO,
+                        "queued",
+                        batch_id=batch_id,
+                        stage=batch.stage,
+                        pipeline_status=batch.pipeline_status,
+                    )
+                else:
+                    resume_context = _resume_context_from_batch(batch)
+                    failure_step = current_step or "silver_csv"
+                if current_step in {None, "queued"}:
+                    failure_step = "silver_csv"
+                    set_pipeline_progress(batch, step="silver_csv", resume_context=resume_context)
+                    db.add(batch)
+                    db.commit()
 
                 if batch.evento_id is not None:
                     evento = db.get(Evento, batch.evento_id)
@@ -2032,7 +2077,8 @@ async def executar_pipeline_gold(batch_id: int) -> None:
 
             pipeline_status = _pipeline_status_from_str(result.status)
 
-            with Session(engine, expire_on_commit=False) as db:
+            with Session(worker_engine, expire_on_commit=False) as db:
+                set_internal_service_db_context(db)
                 batch = load_batch_without_bronze(db, batch_id)
                 if not batch:
                     logger.error("Batch %s nao encontrado para finalizar pipeline.", batch_id)
@@ -2107,7 +2153,8 @@ async def executar_pipeline_gold(batch_id: int) -> None:
         )
         logger.exception("Falha na execucao do pipeline para batch %s.", batch_id)
         try:
-            with Session(engine, expire_on_commit=False) as db:
+            with Session(worker_engine, expire_on_commit=False) as db:
+                set_internal_service_db_context(db)
                 batch = load_batch_without_bronze(db, batch_id)
                 if batch is None:
                     return

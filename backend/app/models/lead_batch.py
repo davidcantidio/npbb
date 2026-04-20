@@ -49,8 +49,17 @@ class LeadBatch(SQLModel, table=True):
     nome_arquivo_original: str = Field(max_length=255)
     arquivo_sha256: Optional[str] = Field(default=None, max_length=64, index=True)
 
-    arquivo_bronze: bytes = Field(
-        sa_column=Column(LargeBinary, nullable=False)
+    arquivo_bronze: bytes | None = Field(
+        default=None,
+        sa_column=Column(LargeBinary, nullable=True)
+    )
+    bronze_storage_bucket: str | None = Field(default=None, max_length=120)
+    bronze_storage_key: str | None = Field(default=None, max_length=500)
+    bronze_content_type: str | None = Field(default=None, max_length=160)
+    bronze_size_bytes: int | None = Field(default=None)
+    bronze_uploaded_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
     )
 
     stage: BatchStage = Field(default=BatchStage.BRONZE)

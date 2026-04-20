@@ -1,50 +1,40 @@
-# Task 4 — Pipeline Gold: durabilidade, retomada e lotes presos
+# Task 4 — Preview ETL: drilldown operacional (grade, export, duplicados)
 
 **Prioridade:** P1
 
 ## Problema
 
-O Gold executa como **background task** no mesmo processo da API, com estado em `lead_batches.pipeline_status` / `pipeline_progress`. Não há fila durável, DLQ nem retomada automática após queda de processo, deploy ou recycle. O frontend faz **polling** frequente (~1,5 s). Lotes podem ficar `pending` ou com progresso obsoleto sem reentrega automática da tarefa.
+O `EtlPreviewStep` resume o resultado sobretudo em **alerts** (`dq_report`), sem uma camada intermédia para o operador corrigir o ficheiro com eficiência: falta grade tabular de rejeições, filtros por regra, export CSV de erros e clareza em duplicidades (qual linha “vence” e porquê).
 
 ## Escopo
 
-- `backend/app/services/lead_pipeline_service.py` — `executar_pipeline_gold`, enfileiramento e finalização de estado
-- `frontend/src/pages/leads/PipelineStatusPage.tsx` e `frontend/src/services/leads_import.ts` — UX de estado e polling (após decisão de backend)
-- Opções: fila externa (RQ/Celery/SQS/RabbitMQ) **ou** fase intermédia: lease/heartbeat, timeout de job, endpoint administrativo de **retry seguro**, recuperação de lote travado
+- [frontend/src/pages/leads/importacao/ImportacaoUploadStep.tsx](frontend/src/pages/leads/importacao/ImportacaoUploadStep.tsx) — componente `EtlPreviewStep` e dados expostos ao cliente
+- Backend: garantir que o payload de preview expõe amostras/campos suficientes para a grade (`_RejectedRowsCheck`, `_DuplicateRowsCheck` e estruturas já existentes)
+- Download CSV “rejeitadas + motivo” (endpoint ou geração client-side a partir do JSON já devolvido)
 
 ## Critérios de aceite
 
-1. Comportamento definido para: processo morto a meio do pipeline, worker reiniciado, falha após parte do progresso persistido.
-2. Não depender apenas de “esperar o mesmo processo” para concluir o lote; há **reentrega** ou **ação operacional clara** (retry idempotente documentado).
-3. Estados terminais e de erro distinguíveis na API/UI (incl. distinção de “em execução com heartbeat” vs “preso”).
-4. Teste que simula interrupção (ou documentação de teste manual mínima) + critério de aceite para não regressão.
+1. Tabela ou grade com **filtro por tipo de erro / regra**, linha física e coluna quando aplicável.
+2. Acção de **export** (CSV ou Excel leve) com linhas rejeitadas e motivo.
+3. Para warnings de duplicidade, texto ou UI que indique **qual ocorrência prevalece** e o critério.
 
 ## Plano de verificação
 
-- Cenário manual: Silver pronto → `executar-pipeline` → matar processo durante `normalize_rows` → verificar estado e capacidade de retomada/retry.
-- Se fila durável: teste de redelivery após `nack` simulado.
+- Testes de componente do preview ETL (Vitest) com `dq_report` fixture.
+- Teste manual com ficheiro de várias rejeições e duplicados.
 
 ## Skills recomendadas (acionar na execução)
 
-Antes de implementar, **ler** cada skill indicada (`SKILL.md` na pasta listada) e seguir as práticas descritas.
-
-- [.claude/skills/architecture-designer/SKILL.md](.claude/skills/architecture-designer/SKILL.md) — escolha entre fila durável, lease/heartbeat ou híbrido; trade-offs operacionais.
-- [.claude/skills/fullstack-guardian/SKILL.md](.claude/skills/fullstack-guardian/SKILL.md) — backend assíncrono + UI de estado e polling seguros.
-- [.claude/skills/fastapi-expert/SKILL.md](.claude/skills/fastapi-expert/SKILL.md) — tarefas em background, endpoints de retry/admin e contratos de estado.
-- [.claude/skills/react-expert/SKILL.md](.claude/skills/react-expert/SKILL.md) — `PipelineStatusPage`, hooks de polling e UX de erro/retomada.
-- [.claude/skills/devops-engineer/SKILL.md](.claude/skills/devops-engineer/SKILL.md) — se integrar fila/worker externo (CI, env vars, healthchecks).
-- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md) — testes de interrupção/retry e regressão de estados do lote.
+- [.claude/skills/react-expert/SKILL.md](.claude/skills/react-expert/SKILL.md)
+- [.claude/skills/typescript-pro/SKILL.md](.claude/skills/typescript-pro/SKILL.md)
+- [.claude/skills/fastapi-expert/SKILL.md](.claude/skills/fastapi-expert/SKILL.md)
+- [.claude/skills/api-designer/SKILL.md](.claude/skills/api-designer/SKILL.md) — contrato de dados do preview se for estendido.
+- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md)
 
 ## Subtarefa obrigatória: handoff ao concluir
 
-Ao **terminar** esta tarefa (código, testes e revisão), criar o ficheiro **`auditoria/handoff-task4.md`** com:
-
-1. **Resumo** do desenho escolhido (fila vs mitigação local), estados novos e comportamento em falha de processo.
-2. **Lista de ficheiros** tocados no backend e frontend, variáveis de ambiente novas e alterações de infra (se houver).
-3. **Diffs / revisão**: `git diff` por área (`lead_pipeline_service`, routers, `PipelineStatusPage`), notas para deploy (ordem: migração → worker → API) e riscos de lotes já `pending` em produção.
-
-O handoff deve permitir continuidade sem reler toda a conversa.
+Ao **terminar** esta tarefa, criar **`auditoria/handoff-task4.md`**.
 
 ## Referência
 
-Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — secção **Achados detalhados** → **O Gold roda como background task em processo, sem fila durável, sem DLQ e sem retomada automática**; **Próximos passos** → correções de alto impacto (job durável / heartbeat).
+Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — **Principais problemas encontrados** → **Preview ETL é informativo, mas pouco operacional**; **Priorização final** (item 4).

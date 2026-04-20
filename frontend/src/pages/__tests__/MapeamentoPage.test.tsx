@@ -6,9 +6,12 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import MapeamentoPage from "../leads/MapeamentoPage";
 import { listAgencias } from "../../services/agencias";
 import { createEvento } from "../../services/eventos/core";
+import { ApiError } from "../../services/http";
+import { reconcileLeadMappingTimeout } from "../../services/leads_mapping_recovery";
 import { useAuth } from "../../store/auth";
 import {
   getLeadBatchColunas,
+  type LeadBatch,
   listReferenciaEventos,
   mapearLeadBatch,
 } from "../../services/leads_import";
@@ -20,6 +23,9 @@ vi.mock("../../services/leads_import", () => ({
   listReferenciaEventos: vi.fn(),
   mapearLeadBatch: vi.fn(),
 }));
+vi.mock("../../services/leads_mapping_recovery", () => ({
+  reconcileLeadMappingTimeout: vi.fn(),
+}));
 vi.mock("../../services/eventos/core", () => ({
   createEvento: vi.fn(),
 }));
@@ -30,7 +36,30 @@ const mockedGetLeadBatchColunas = vi.mocked(getLeadBatchColunas);
 const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
 const mockedMapearLeadBatch = vi.mocked(mapearLeadBatch);
 const mockedCreateEvento = vi.mocked(createEvento);
+const mockedReconcileLeadMappingTimeout = vi.mocked(reconcileLeadMappingTimeout);
 const EVENTOS_LOAD_ERROR = "Nao foi possivel carregar os eventos. Tente recarregar a pagina.";
+
+function createBatchStatus(batchId: number, stage: LeadBatch["stage"]): LeadBatch {
+  return {
+    id: batchId,
+    enviado_por: 1,
+    plataforma_origem: "email",
+    data_envio: "2026-04-19T10:00:00Z",
+    data_upload: "2026-04-19T10:00:00Z",
+    nome_arquivo_original: `batch-${batchId}.csv`,
+    stage,
+    evento_id: 42,
+    origem_lote: "proponente",
+    tipo_lead_proponente: "entrada_evento",
+    ativacao_id: null,
+    pipeline_status: "pending",
+    pipeline_progress: null,
+    pipeline_report: null,
+    created_at: "2026-04-19T10:00:00Z",
+    gold_pipeline_stale_after_seconds: null,
+    gold_pipeline_progress_is_stale: null,
+  };
+}
 
 function PipelineProbe() {
   const location = useLocation();
@@ -85,6 +114,7 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     mockedListReferenciaEventos.mockResolvedValue([
       { id: 42, nome: "Evento Teste", data_inicio_prevista: "2099-01-01" },
     ]);
+    mockedReconcileLeadMappingTimeout.mockReset();
   });
 
   it("renders with minimal route and auth context", async () => {
@@ -276,6 +306,31 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
         mapeamento: { Nome: "nome" },
       });
     });
+  });
+
+  it("recovers automatically after timeout when the backend already promoted the batch to silver", async () => {
+    mockedMapearLeadBatch.mockRejectedValue(
+      new ApiError({
+        message: "Tempo limite da requisicao excedido.",
+        status: 0,
+        detail: "TIMEOUT",
+        code: "TIMEOUT",
+        method: "POST",
+        url: "/leads/batches/10/mapear",
+      }),
+    );
+    mockedReconcileLeadMappingTimeout.mockResolvedValue({
+      status: "mapped",
+      batches: [createBatchStatus(10, "silver")],
+    });
+
+    renderMapeamentoPage();
+    await selectEventoAndConfirm();
+
+    await waitFor(() => {
+      expect(mockedReconcileLeadMappingTimeout).toHaveBeenCalledWith("token-123", [10]);
+    });
+    expect(await screen.findByText("Pipeline route ?batch_id=10")).toBeInTheDocument();
   });
 
   it("hides event-owned fields and sanitizes derived suggestions when batch has fixed event", async () => {

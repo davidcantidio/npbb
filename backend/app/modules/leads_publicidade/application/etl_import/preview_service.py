@@ -6,12 +6,14 @@ import json
 import logging
 import secrets
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlmodel import Session
 
 from app.models.models import Evento
 from app.observability.import_events import log_import_event, session_token_prefix
+from app.modules.leads_publicidade.application.etl_import.persistence import build_dedupe_key
 
 from .contracts import EtlCpfColumnRequired, EtlFieldAliasSelection, EtlHeaderRequired, EtlPreviewSnapshot
 from .dq_report_mapper import map_check_report
@@ -24,7 +26,8 @@ from .extract import (
     extract_xlsx_rows,
     read_upload_bytes,
 )
-from .preview_session_repository import create_snapshot
+from .preview_session_repository import create_snapshot, update_import_session_after_staging
+from .staging_repository import persist_staging_rows, staging_rows_exist
 from .transform_validate import run_preview_validation
 
 logger = logging.getLogger(__name__)
@@ -73,6 +76,8 @@ def create_preview_snapshot(
     strict: bool,
     db: Session,
     max_bytes: int,
+    requested_by: int | None = None,
+    job_id: str | None = None,
     header_row: int | None = None,
     field_aliases_json: str | None = None,
     sheet_name: str | None = None,
@@ -169,6 +174,32 @@ def create_preview_snapshot(
         available_sheets=avail_snap,
     )
     out = create_snapshot(db, snapshot)
+    if out.session_token == snapshot.session_token or not staging_rows_exist(db, out.session_token):
+        duplicate_rows = _count_duplicate_rows(state.approved_rows, evento_id=evento_id)
+        strategy = persist_staging_rows(
+            db,
+            rows=_build_staging_rows(
+                session_token=out.session_token,
+                job_id=job_id,
+                requested_by=requested_by,
+                evento_id=evento_id,
+                filename=filename,
+                sheet_name=sheet_snap,
+                extracted_rows=extracted_rows,
+                approved_rows=state.approved_rows,
+                rejected_rows=state.rejected_rows,
+            ),
+            source_file_size_bytes=len(payload),
+        )
+        update_import_session_after_staging(
+            db,
+            session_token=out.session_token,
+            requested_by=requested_by,
+            source_file_size_bytes=len(payload),
+            ingestion_strategy=strategy,
+            staged_rows=len(extracted_rows),
+            duplicate_rows=duplicate_rows,
+        )
     log_import_event(
         logger,
         "etl.preview.completed",
@@ -181,3 +212,96 @@ def create_preview_snapshot(
         duration_ms=round((time.perf_counter() - started_at) * 1000),
     )
     return out
+
+
+def _count_duplicate_rows(approved_rows, *, evento_id: int) -> int:
+    seen: set[str] = set()
+    duplicates = 0
+    for row in approved_rows:
+        key = build_dedupe_key(dict(row.payload), canonical_evento_id=evento_id)
+        if not key:
+            continue
+        if key in seen:
+            duplicates += 1
+        else:
+            seen.add(key)
+    return duplicates
+
+
+def _build_staging_rows(
+    *,
+    session_token: str,
+    job_id: str | None,
+    requested_by: int | None,
+    evento_id: int,
+    filename: str,
+    sheet_name: str | None,
+    extracted_rows: list[dict[str, Any]],
+    approved_rows,
+    rejected_rows,
+) -> list[dict[str, Any]]:
+    approved_by_row = {int(row.row_number): row for row in approved_rows}
+    rejected_by_row = {int(row.row_number): row for row in rejected_rows}
+    created_at = datetime.now(timezone.utc)
+    rows: list[dict[str, Any]] = []
+    for raw_row in extracted_rows:
+        row_number = int(raw_row.get("__row_number") or 0)
+        raw_payload = _json_safe(
+            {
+                str(key): value
+                for key, value in raw_row.items()
+                if not str(key).startswith("__")
+            }
+        )
+        approved = approved_by_row.get(row_number)
+        rejected = rejected_by_row.get(row_number)
+        normalized_payload = _json_safe(
+            dict(approved.payload) if approved is not None else (
+                dict(rejected.payload) if rejected is not None else None
+            )
+        )
+        validation_status = "approved" if approved is not None else "rejected"
+        validation_errors = list(rejected.errors) if rejected is not None else []
+        dedupe_key = (
+            build_dedupe_key(dict(approved.payload), canonical_evento_id=evento_id)
+            if approved is not None
+            else (
+                build_dedupe_key(dict(rejected.payload), canonical_evento_id=evento_id)
+                if rejected is not None
+                else None
+            )
+        )
+        row_hash = compute_file_fingerprint(
+            f"{filename}:{row_number}",
+            json.dumps(raw_payload, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8"),
+        )
+        rows.append(
+            {
+                "session_token": session_token,
+                "job_id": job_id,
+                "requested_by": requested_by,
+                "evento_id": evento_id,
+                "source_file": filename,
+                "source_sheet": sheet_name,
+                "source_row_number": row_number,
+                "row_hash": row_hash,
+                "dedupe_key": dedupe_key,
+                "raw_payload_json": raw_payload,
+                "normalized_payload_json": normalized_payload,
+                "validation_status": validation_status,
+                "validation_errors_json": validation_errors or None,
+                "merge_status": "pending" if approved is not None else "rejected",
+                "merge_error": None,
+                "merged_lead_id": None,
+                "merged_at": None,
+                "created_at": created_at,
+                "updated_at": created_at,
+            }
+        )
+    return rows
+
+
+def _json_safe(value: Any) -> Any:
+    if value is None:
+        return None
+    return json.loads(json.dumps(value, ensure_ascii=False, default=str))

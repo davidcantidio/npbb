@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 
 from sqlmodel import Session, select
@@ -13,6 +14,19 @@ from .contracts import EtlCommitResult, EtlPreviewDQItem, EtlPreviewRow, EtlPrev
 from .dq_report_policy import compute_has_warnings
 from .exceptions import EtlPreviewSessionNotFoundError
 from .rejection_reasons import record_etl_preview_rejection_metrics
+
+
+DEFAULT_INLINE_PREVIEW_ROW_LIMIT = 1000
+
+
+def inline_preview_row_limit() -> int:
+    raw = os.getenv("LEAD_IMPORT_ETL_INLINE_PREVIEW_ROW_LIMIT", "").strip()
+    if not raw:
+        return DEFAULT_INLINE_PREVIEW_ROW_LIMIT
+    try:
+        return max(int(raw), 0)
+    except ValueError:
+        return DEFAULT_INLINE_PREVIEW_ROW_LIMIT
 
 
 def _serialize_preview_context(snapshot: EtlPreviewSnapshot) -> str | None:
@@ -108,27 +122,50 @@ def create_snapshot(session: Session, snapshot: EtlPreviewSnapshot) -> EtlPrevie
         return get_snapshot(session, existing.session_token)
 
     record_etl_preview_rejection_metrics(snapshot.rejected_rows)
-    session.add(
-        LeadImportEtlPreviewSession(
-            session_token=snapshot.session_token,
-            idempotency_key=snapshot.idempotency_key,
-            evento_id=snapshot.evento_id,
-            evento_nome=snapshot.evento_nome,
-            filename=snapshot.filename,
-            strict=snapshot.strict,
-            status=snapshot.status,
-            total_rows=snapshot.total_rows,
-            valid_rows=snapshot.valid_rows,
-            invalid_rows=snapshot.invalid_rows,
-            has_validation_errors=snapshot.has_validation_errors,
-            approved_rows_json=_serialize_rows(snapshot.approved_rows),
-            rejected_rows_json=_serialize_rows(snapshot.rejected_rows),
-            dq_report_json=_serialize_dq(snapshot.dq_report),
-            preview_context_json=_serialize_preview_context(snapshot),
-        )
+    keep_inline_rows = snapshot.total_rows <= inline_preview_row_limit()
+    entity = LeadImportEtlPreviewSession(
+        session_token=snapshot.session_token,
+        idempotency_key=snapshot.idempotency_key,
+        evento_id=snapshot.evento_id,
+        evento_nome=snapshot.evento_nome,
+        filename=snapshot.filename,
+        strict=snapshot.strict,
+        status=snapshot.status,
+        total_rows=snapshot.total_rows,
+        valid_rows=snapshot.valid_rows,
+        invalid_rows=snapshot.invalid_rows,
+        has_validation_errors=snapshot.has_validation_errors,
+        approved_rows_json=_serialize_rows(snapshot.approved_rows if keep_inline_rows else ()),
+        rejected_rows_json=_serialize_rows(snapshot.rejected_rows if keep_inline_rows else ()),
+        dq_report_json=_serialize_dq(snapshot.dq_report),
+        preview_context_json=_serialize_preview_context(snapshot),
     )
+    session.add(entity)
     session.commit()
-    return get_snapshot(session, snapshot.session_token)
+    return snapshot
+
+
+def update_import_session_after_staging(
+    session: Session,
+    *,
+    session_token: str,
+    requested_by: int | None,
+    source_file_size_bytes: int,
+    ingestion_strategy: str,
+    staged_rows: int,
+    duplicate_rows: int,
+) -> None:
+    entity = session.get(LeadImportEtlPreviewSession, session_token)
+    if entity is None:
+        raise EtlPreviewSessionNotFoundError(f"Preview session not found: {session_token}")
+    if requested_by is not None:
+        entity.requested_by = requested_by
+    entity.source_file_size_bytes = int(source_file_size_bytes)
+    entity.ingestion_strategy = ingestion_strategy
+    entity.staged_rows = int(staged_rows)
+    entity.duplicate_rows = int(duplicate_rows)
+    session.add(entity)
+    session.commit()
 
 
 def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
@@ -158,6 +195,28 @@ def get_snapshot(session: Session, session_token: str) -> EtlPreviewSnapshot:
     )
 
 
+def read_import_session_summary(session: Session, session_token: str) -> dict[str, object]:
+    entity = session.get(LeadImportEtlPreviewSession, session_token)
+    if entity is None:
+        raise EtlPreviewSessionNotFoundError(f"Preview session not found: {session_token}")
+    return {
+        "session_token": entity.session_token,
+        "total_rows": int(entity.total_rows),
+        "staged_rows": int(entity.staged_rows),
+        "valid_rows": int(entity.valid_rows),
+        "invalid_rows": int(entity.invalid_rows),
+        "duplicate_rows": int(entity.duplicate_rows),
+        "created_rows": int(entity.created_rows),
+        "updated_rows": int(entity.updated_rows),
+        "skipped_rows": int(entity.skipped_rows),
+        "error_rows": int(entity.error_rows),
+        "ingestion_strategy": entity.ingestion_strategy,
+        "merge_strategy": "backend_staging_merge",
+        "source_file_size_bytes": entity.source_file_size_bytes,
+        "committed_at": entity.committed_at,
+    }
+
+
 def _persistence_failures_from_payload(payload: dict[str, object]) -> tuple[tuple[int, str], ...]:
     raw = payload.get("persistence_failures") or []
     if not isinstance(raw, list):
@@ -170,12 +229,21 @@ def _persistence_failures_from_payload(payload: dict[str, object]) -> tuple[tupl
     return tuple(out)
 
 
-def mark_committed(session: Session, result: EtlCommitResult) -> EtlCommitResult:
+def mark_committed(
+    session: Session,
+    result: EtlCommitResult,
+    *,
+    auto_commit: bool = True,
+) -> EtlCommitResult:
     entity = session.get(LeadImportEtlPreviewSession, result.session_token)
     if entity is None:
         raise EtlPreviewSessionNotFoundError(f"Preview session not found: {result.session_token}")
     entity.status = result.status
     entity.committed_at = datetime.now(timezone.utc)
+    entity.created_rows = int(result.created)
+    entity.updated_rows = int(result.updated)
+    entity.skipped_rows = int(result.skipped)
+    entity.error_rows = int(result.errors)
     entity.commit_result_json = json.dumps(
         {
             "session_token": result.session_token,
@@ -188,6 +256,10 @@ def mark_committed(session: Session, result: EtlCommitResult) -> EtlCommitResult
             "errors": result.errors,
             "strict": result.strict,
             "status": result.status,
+            "duplicate_rows": result.duplicate_rows,
+            "staged_rows": result.staged_rows,
+            "ingestion_strategy": result.ingestion_strategy,
+            "merge_strategy": result.merge_strategy,
             "persistence_failures": [
                 {"row_number": row_number, "reason": reason}
                 for row_number, reason in result.persistence_failures
@@ -196,7 +268,8 @@ def mark_committed(session: Session, result: EtlCommitResult) -> EtlCommitResult
         ensure_ascii=False,
     )
     session.add(entity)
-    session.commit()
+    if auto_commit:
+        session.commit()
     return result
 
 
@@ -219,6 +292,10 @@ def get_commit_result(session: Session, session_token: str) -> EtlCommitResult |
         errors=int(payload["errors"]),
         strict=bool(payload["strict"]),
         status=payload["status"],
+        duplicate_rows=int(payload.get("duplicate_rows") or 0),
+        staged_rows=int(payload.get("staged_rows") or 0),
+        ingestion_strategy=str(payload.get("ingestion_strategy") or "") or None,
+        merge_strategy=str(payload.get("merge_strategy") or "") or None,
         dq_report=_deserialize_dq(entity.dq_report_json),
         persistence_failures=_persistence_failures_from_payload(payload),
     )

@@ -22,3 +22,11 @@ class EtlImportValidationError(EtlImportError):
 class EtlImportContractError(EtlImportError):
     """Raised when preview payload cannot be materialized as canonical row."""
 
+
+class EtlImportJobNotFoundError(EtlImportError):
+    """Raised when ETL job id does not exist."""
+
+
+class EtlImportJobConflictError(EtlImportError):
+    """Raised when ETL job transition is invalid for the current state."""
+

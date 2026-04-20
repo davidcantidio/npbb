@@ -373,6 +373,8 @@ from app.models.lead_public_models import (
     LeadAlias,
     LeadConversao,
     LeadEvento,
+    LeadImportEtlJob,
+    LeadImportEtlStagingRow,
     LeadEventoSourceKind,
     LeadImportEtlPreviewSession,
     PublicityImportStaging,

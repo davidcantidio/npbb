@@ -4,7 +4,17 @@ from datetime import date, datetime, time
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import CheckConstraint, Column, DateTime, Enum as SQLEnum, Index, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    Column,
+    DateTime,
+    Enum as SQLEnum,
+    Index,
+    LargeBinary,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.sql import func as sa_func
 from sqlmodel import Field, Relationship
@@ -117,6 +127,7 @@ class LeadEvento(SQLModel, table=True):
     __tablename__ = "lead_evento"
     __table_args__ = (
         UniqueConstraint("lead_id", "evento_id", name="uq_lead_evento_lead_id_evento_id"),
+        Index("idx_lead_evento_evento_id_lead_id", "evento_id", "lead_id"),
         CheckConstraint(
             "tipo_lead IS NULL OR tipo_lead != 'ativacao' OR "
             "(responsavel_tipo IS NOT NULL AND responsavel_tipo = 'agencia')",
@@ -146,7 +157,7 @@ class LeadEvento(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     lead_id: int = Field(foreign_key="lead.id", index=True)
-    evento_id: int = Field(foreign_key="evento.id", index=True)
+    evento_id: int = Field(foreign_key="evento.id")
     source_kind: LeadEventoSourceKind = Field(
         sa_column=Column(
             SQLEnum(LeadEventoSourceKind, name="leadeventosourcekind", values_callable=_enum_values),
@@ -288,13 +299,22 @@ class LeadImportEtlPreviewSession(SQLModel, table=True):
     session_token: str = Field(primary_key=True, max_length=120)
     idempotency_key: str = Field(index=True, max_length=160, unique=True)
     evento_id: int = Field(foreign_key="evento.id", index=True)
+    requested_by: Optional[int] = Field(default=None, foreign_key="usuario.id", index=True)
     evento_nome: str = Field(max_length=150)
     filename: str = Field(max_length=255)
     strict: bool = Field(default=False)
     status: str = Field(default="previewed", max_length=32, index=True)
+    source_file_size_bytes: Optional[int] = Field(default=None)
+    ingestion_strategy: Optional[str] = Field(default=None, max_length=32)
     total_rows: int = Field(default=0)
+    staged_rows: int = Field(default=0)
     valid_rows: int = Field(default=0)
     invalid_rows: int = Field(default=0)
+    duplicate_rows: int = Field(default=0)
+    created_rows: int = Field(default=0)
+    updated_rows: int = Field(default=0)
+    skipped_rows: int = Field(default=0)
+    error_rows: int = Field(default=0)
     has_validation_errors: bool = Field(default=False)
     approved_rows_json: str = Field(sa_column=Column(Text, nullable=False))
     rejected_rows_json: str = Field(sa_column=Column(Text, nullable=False))
@@ -305,6 +325,82 @@ class LeadImportEtlPreviewSession(SQLModel, table=True):
     committed_at: Optional[datetime] = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+
+
+class LeadImportEtlJob(SQLModel, table=True):
+    __tablename__ = "lead_import_etl_job"
+
+    job_id: str = Field(primary_key=True, max_length=120)
+    requested_by: int = Field(foreign_key="usuario.id", index=True)
+    evento_id: int = Field(foreign_key="evento.id", index=True)
+    filename: str = Field(max_length=255)
+    strict: bool = Field(default=False)
+    status: str = Field(default="queued", max_length=40, index=True)
+    progress_json: Optional[dict[str, object]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    options_json: Optional[dict[str, object]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    result_json: Optional[dict[str, object]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    error_json: Optional[dict[str, object]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
+    file_blob: Optional[bytes] = Field(
+        default=None,
+        sa_column=Column(LargeBinary, nullable=True),
+    )
+    preview_session_token: Optional[str] = Field(default=None, max_length=120, index=True)
+    created_at: datetime = Field(default_factory=now_utc, index=True)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+
+
+class LeadImportEtlStagingRow(SQLModel, table=True):
+    __tablename__ = "lead_import_etl_staging"
+    __table_args__ = (
+        UniqueConstraint("session_token", "source_row_number", name="uq_lead_import_etl_staging_session_row"),
+        Index("ix_lead_import_etl_staging_session_validation_status", "session_token", "validation_status"),
+        Index("ix_lead_import_etl_staging_session_merge_status", "session_token", "merge_status"),
+        Index("ix_lead_import_etl_staging_session_dedupe_key", "session_token", "dedupe_key"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_token: str = Field(foreign_key="lead_import_etl_preview_session.session_token", index=True, max_length=120)
+    job_id: Optional[str] = Field(default=None, foreign_key="lead_import_etl_job.job_id", index=True, max_length=120)
+    requested_by: Optional[int] = Field(default=None, foreign_key="usuario.id", index=True)
+    evento_id: int = Field(foreign_key="evento.id", index=True)
+    source_file: str = Field(max_length=255)
+    source_sheet: Optional[str] = Field(default=None, max_length=120)
+    source_row_number: int = Field(index=True)
+    row_hash: str = Field(max_length=64, index=True)
+    dedupe_key: Optional[str] = Field(default=None, max_length=255)
+    raw_payload_json: dict = Field(sa_column=Column(JSON, nullable=False))
+    normalized_payload_json: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    validation_status: str = Field(default="pending", max_length=32, index=True)
+    validation_errors_json: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    merge_status: str = Field(default="pending", max_length=32, index=True)
+    merge_error: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    merged_lead_id: Optional[int] = Field(default=None, foreign_key="lead.id", index=True)
+    merged_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+    created_at: datetime = Field(default_factory=now_utc, index=True)
+    updated_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
     )
 
 

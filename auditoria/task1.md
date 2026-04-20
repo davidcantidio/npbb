@@ -1,51 +1,43 @@
-# Task 1 — Validador: exigir CPF válido como requisito obrigatório
+# Task 1 — Bronze: pré-revisão antes de persistir o `LeadBatch`
 
 **Prioridade:** P0
 
 ## Problema
 
-A regra vigente de produto é que **CPF é o único identificador obrigatório** para leads importáveis. Versões anteriores desta auditoria ficaram desalinhadas com essa decisão. Esta tarefa deve garantir que validação, mapeamento e documentação tratem **CPF válido como requisito obrigatório**, com email apenas como dado complementar.
+No fluxo Bronze, o utilizador confirma metadados e o sistema chama `createLeadBatch` antes de uma validação operacional rica do ficheiro. O preview só vem depois, por `batch_id`, o que cria assimetria face ao ETL (`preview → commit`) e aumenta risco de lotes errados já gravados e difíceis de “desfazer” na percepção do operador.
 
 ## Escopo
 
-- `backend/app/modules/leads_publicidade/application/etl_import/validators.py` — função `validate_normalized_lead_payload`
-- `backend/app/routers/leads.py` e validação de mapeamento legado — exigir a coluna canónica `cpf`
-- `docs/leads_importacao.md` e documentação correlata — alinhar texto à regra de CPF obrigatório
-- Fluxos que chamam esta validação: preview ETL, persistência em `backend/app/modules/leads_publicidade/application/etl_import/persistence.py`
+- [frontend/src/pages/leads/ImportacaoPage.tsx](frontend/src/pages/leads/ImportacaoPage.tsx) — `handleSubmitStep1`, fluxo Bronze antes de `createLeadBatch`
+- Serviços [frontend/src/services/leads_import.ts](frontend/src/services/leads_import.ts) — `createLeadBatch`, `getLeadBatchPreview` (ou equivalentes)
+- Backend: endpoints de lote Bronze / preview se for necessário expor pré-análise sem persistir o binário
+- Copy de UI: botão “Enviar para Bronze” vs mensagem explícita de que o lote será criado (mitigação mínima se o preview sem persistência for faseada)
 
 ## Critérios de aceite
 
-1. Payload com CPF ausente ou vazio gera erro claro de obrigatoriedade (`CPF ausente` ou equivalente definido).
-2. Payload com CPF presente mas inválido continua rejeitado de forma clara.
-3. Payload com CPF válido continua aceito, com email opcional.
-4. A validação de mapeamento rejeita importações que não mapeiem a coluna canónica `cpf`.
-5. Testes automatizados cobrem ausência vs. invalidez de CPF e a rejeição de mapeamento sem `cpf`.
+1. O operador vê **cabeçalho detectado, amostra de linhas e validações básicas** antes da criação definitiva do `LeadBatch`, **ou** a UI deixa inequívoco que o lote é criado imediatamente e porquê (mitigação documentada + testes).
+2. O caminho Bronze aproxima-se semanticamente de `preview → confirmação → persistência` (mesmo que a persistência continue a ser `LeadBatch` numa segunda chamada).
+3. Testes de front (e/ou integração) cobrem o novo passo e regressão do fluxo ETL não é quebrada.
 
 ## Plano de verificação
 
-- Teste unitário em `validate_normalized_lead_payload` com `{"email": "ok@example.com", "cpf": None}` (esperado: erro explícito de CPF ausente).
-- Teste de integração ou de serviço ETL: planilha de uma linha com email válido e CPF vazio deve aparecer em `rejected_rows`.
-- Repro manual: `POST /leads/import/validate` sem mapear `cpf` deve falhar; `POST /leads/import/etl/preview` com CSV mínimo e CPF vazio deve rejeitar a linha.
+- Testes existentes em [frontend/src/pages/__tests__/ImportacaoPage.test.tsx](frontend/src/pages/__tests__/ImportacaoPage.test.tsx) actualizados ou novos casos para o passo intermédio.
+- Repro manual: `/leads/importar` modo Bronze — confirmar ordem percebida preview vs criação de lote.
 
 ## Skills recomendadas (acionar na execução)
 
 Antes de implementar, **ler** cada skill indicada (`SKILL.md` na pasta listada) e seguir as práticas descritas.
 
-- [.claude/skills/fastapi-expert/SKILL.md](.claude/skills/fastapi-expert/SKILL.md) — validação Pydantic, contratos de API e camadas de serviço FastAPI.
-- [.claude/skills/python-pro/SKILL.md](.claude/skills/python-pro/SKILL.md) — Python 3.11+, tipagem, estilo e testes com pytest.
-- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md) — casos de teste unitário e de integração, mocks e fixtures.
-- [.claude/skills/code-documenter/SKILL.md](.claude/skills/code-documenter/SKILL.md) — alinhar `docs/leads_importacao.md` ao comportamento final, se necessário.
+- [.claude/skills/react-expert/SKILL.md](.claude/skills/react-expert/SKILL.md) — estado do wizard, steps e formulários complexos.
+- [.claude/skills/typescript-pro/SKILL.md](.claude/skills/typescript-pro/SKILL.md) — tipos dos serviços e props.
+- [.claude/skills/fullstack-guardian/SKILL.md](.claude/skills/fullstack-guardian/SKILL.md) — contrato API + UX coerente com o backend.
+- [.claude/skills/fastapi-expert/SKILL.md](.claude/skills/fastapi-expert/SKILL.md) — se for necessário novo endpoint de pré-preview.
+- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md) — Vitest/React Testing Library.
 
 ## Subtarefa obrigatória: handoff ao concluir
 
-Ao **terminar** esta tarefa (código, testes e revisão), criar o ficheiro **`auditoria/handoff-task1.md`** com:
-
-1. **Resumo** do que foi implementado e decisões tomadas.
-2. **Lista de ficheiros** tocados (criados, alterados ou removidos), com caminhos relativos à raiz do repositório.
-3. **Diffs / revisão**: quando pertinente, indicar comandos úteis (ex.: `git diff main...HEAD -- backend/`), intervalo de commits, ou destaque a migrações/contratos de API alterados.
-
-O handoff deve permitir continuidade sem reler toda a conversa.
+Ao **terminar** esta tarefa, criar **`auditoria/handoff-task1.md`** com resumo, lista de ficheiros tocados e indicações de `git diff` / riscos de deploy.
 
 ## Referência
 
-Decisão vigente e continuidade: [auditoria/handoff-task1.md](handoff-task1.md). O relatório em [auditoria/deep-research-report.md](deep-research-report.md) foi reconciliado para refletir a mesma decisão consolidada de produto.
+Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — **Principais problemas encontrados** → **Bronze persiste antes de validar de verdade**; **Priorização final** (item 1).

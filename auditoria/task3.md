@@ -1,50 +1,41 @@
-# Task 3 — Dedupe e idempotência no Postgres (NULL e concorrência)
+# Task 3 — Sessões ETL: ownership, expiração e auditoria
 
 **Prioridade:** P1
 
 ## Problema
 
-A unicidade no modelo `Lead` usa `uq_lead_ticketing_dedupe(email, cpf, evento_nome, sessao)` com campos opcionais. Em PostgreSQL, **NULL não entra na unicidade** da mesma forma que valores concretos: duas linhas com a mesma combinação “efetiva” de negócio podem coexistir se partes da chave forem NULL. A aplicação tenta deduplicar com `find_existing_lead` / `build_dedupe_key` antes do insert, mas **sem lock transacional nem `ON CONFLICT`**, duas transações concorrentes podem ambas “não encontrar” e inserir duplicados.
+`lead_import_etl_preview_session` guarda `session_token`, `idempotency_key`, dados do preview e estado, mas **sem dono explícito** (`created_by` / `committed_by`) nem política visível de expiração/TTL. O reaproveitamento de snapshot por `idempotency_key` é global ao escopo actual da query, o que fragiliza governança e auditoria em cenários multi-utilizador.
 
 ## Escopo
 
-- `backend/app/models/lead_public_models.py` — modelo `Lead`, constraints
-- `backend/app/modules/leads_publicidade/application/etl_import/persistence.py` — `find_existing_lead`, `build_dedupe_key`, fluxo de insert
-- `backend/app/services/lead_pipeline_service.py` — `_find_existing_lead` no caminho Gold
-- Migrações Alembic para índices únicos funcionais ou estratégia de chave canónica alinhada à regra atual de **CPF obrigatório** (com tratamento consistente para email opcional)
+- Modelo e migração: [backend/app/models/lead_public_models.py](backend/app/models/lead_public_models.py) (ou [backend/app/models/models.py](backend/app/models/models.py) conforme re-export) — `LeadImportEtlPreviewSession`
+- [backend/app/modules/leads_publicidade/application/etl_import/preview_session_repository.py](backend/app/modules/leads_publicidade/application/etl_import/preview_session_repository.py) — lookup por idempotência com **âmbito** (utilizador / tenant / `evento_id` + política definida)
+- Commit ETL: vínculo `committed_by` ao utilizador autenticado
+- Job ou comando de **cleanup** de sessões expiradas + documentação operacional
 
 ## Critérios de aceite
 
-1. Semântica de unicidade **documentada** e coerente com a regra de negócio (incluindo tratamento de NULL e sessão vazia).
-2. Estratégia no banco (unique index funcional, partial indexes, ou upsert atómico) que **impede** duplicados nos cenários críticos identificados no relatório.
-3. Teste de **concorrência em PostgreSQL real** (não apenas SQLite): dois imports paralelos com mesmo payload e `sessao` nula não criam dois `lead` equivalentes.
-4. Query de verificação pós-teste documentada (ex.: agrupamento por chave de negócio) sem violações.
+1. Colunas (ou modelo equivalente) para `created_by`, `committed_by`, `expires_at` / `last_accessed_at` (nomes finais acordados com o produto).
+2. Lookup de snapshot existente **restrito** ao escopo definido (não reutilizar preview de outro operador por engano).
+3. Testes de API cobrindo criação, reutilização legítima e bloqueio de reutilização cruzada.
 
 ## Plano de verificação
 
-- Teste de integração com Postgres (CI ou marcador `postgres`) disparando duas coroutines/threads com o mesmo import.
-- Revisar impacto em `lead_evento` e vínculos canónicos.
+- Migração Alembic + testes em [backend/tests/test_leads_import_etl_endpoint.py](backend/tests/test_leads_import_etl_endpoint.py) (ou ficheiro equivalente).
+- Verificar `SELECT` de sessões antigas após TTL simulado (teste com relógio mock).
 
 ## Skills recomendadas (acionar na execução)
 
-Antes de implementar, **ler** cada skill indicada (`SKILL.md` na pasta listada) e seguir as práticas descritas.
-
-- [.claude/skills/postgres-pro/SKILL.md](.claude/skills/postgres-pro/SKILL.md) — constraints, índices únicos, NULL em unicidade, `ON CONFLICT`.
-- [.claude/skills/sql-pro/SKILL.md](.claude/skills/sql-pro/SKILL.md) — desenho de queries de verificação e migrações SQL.
-- [.claude/skills/database-optimizer/SKILL.md](.claude/skills/database-optimizer/SKILL.md) — impacto de índices e padrões de escrita concorrente.
-- [.claude/skills/python-pro/SKILL.md](.claude/skills/python-pro/SKILL.md) — SQLAlchemy, Alembic e camada de persistência.
-- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md) — testes de corrida com Postgres real (marcadores CI).
+- [.claude/skills/postgres-pro/SKILL.md](.claude/skills/postgres-pro/SKILL.md)
+- [.claude/skills/fastapi-expert/SKILL.md](.claude/skills/fastapi-expert/SKILL.md)
+- [.claude/skills/secure-code-guardian/SKILL.md](.claude/skills/secure-code-guardian/SKILL.md)
+- [.claude/skills/python-pro/SKILL.md](.claude/skills/python-pro/SKILL.md)
+- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md)
 
 ## Subtarefa obrigatória: handoff ao concluir
 
-Ao **terminar** esta tarefa (código, testes e revisão), criar o ficheiro **`auditoria/handoff-task3.md`** com:
-
-1. **Resumo** do que foi implementado, semântica de dedupe e decisões de schema.
-2. **Lista de ficheiros** tocados (criados, alterados ou removidos), com caminhos relativos à raiz do repositório; **destacar** ficheiros em `backend/alembic/versions/`.
-3. **Diffs / revisão**: comandos sugeridos (ex.: `git diff main...HEAD -- backend/alembic/ backend/app/models/`), notas sobre backward compatibility e plano de deploy (locks, tempo de criação de índice).
-
-O handoff deve permitir continuidade sem reler toda a conversa.
+Ao **terminar** esta tarefa, criar **`auditoria/handoff-task3.md`** (incluir notas de migração e backfill de `created_by` se aplicável).
 
 ## Referência
 
-Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — secção **Achados detalhados** → **A deduplicação real depende demais do código e não fica robustamente protegida no banco**; também **Lacunas de teste e observabilidade** (corrida em Postgres).
+Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — **Principais problemas encontrados** → **Sessão ETL sem dono explícito e sem política visível de expiração**; **Priorização final** (item 3).

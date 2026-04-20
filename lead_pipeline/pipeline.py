@@ -184,6 +184,15 @@ def _truncate_for_report(value: str, *, limit: int = 120) -> str:
     return f"{text[: limit - 3].rstrip()}..."
 
 
+def _stringify_row_for_report(row: dict[str, Any]) -> dict[str, str]:
+    """Keep report payloads JSON-safe without mutating types used for normalization."""
+
+    return {
+        column: "" if row.get(column) is None else str(row.get(column, ""))
+        for column in ALL_COLUMNS
+    }
+
+
 def _register_locality_issue(
     metrics: QualityMetrics,
     locality_result: LocalityNormalizationResult,
@@ -577,7 +586,8 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             last_normalize_pct = pct_bucket
 
     for row_index, row in enumerate(raw_df.to_dict(orient="records"), start=1):
-        row_data = {column: str(row.get(column, "")) for column in ALL_COLUMNS}
+        raw_row_data = {column: row.get(column, "") for column in ALL_COLUMNS}
+        row_data = _stringify_row_for_report(row)
         reject_reason = str(row.get(REJECT_REASON_COL, "")).strip()
         if reject_reason:
             explicit_row_warnings.append(reject_reason)
@@ -595,7 +605,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
 
         city_out_of_mapping = bool(row.get(CITY_OUT_COL, False))
         normalized_row, reasons, birth_date_issue, locality_result = _normalize_row(
-            row_data,
+            raw_row_data,
             city_out_of_mapping=city_out_of_mapping,
             ref_date_utc=ref_date_utc,
             event_locality_owned=config.anchored_on_evento_id,

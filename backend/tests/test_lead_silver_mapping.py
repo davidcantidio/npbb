@@ -101,6 +101,11 @@ def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
 
 
 CSV_CANONICAL = b"nome,cpf,email,telefone\nAlice,12345678901,alice@ex.com,11999990000\n"
+CSV_CANONICAL_MULTIROW = (
+    b"nome,cpf,email,telefone\n"
+    b"Alice,12345678901,alice@ex.com,11999990000\n"
+    b"Bob,98765432100,bob@ex.com,11888880000\n"
+)
 CSV_SYNONYMS = b"full_name,documento,phone\nBob,98765432100,11888880000\n"
 CSV_EXTENDED_SYNONYMS = b"last_name,sexo,rg\nSilva,Feminino,1234567\n"
 CSV_WITH_PREAMBLE = (
@@ -447,6 +452,41 @@ class TestPostMapear:
         with Session(engine) as s:
             count = len(s.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all())
             assert count == 1
+
+    def test_remapping_replaces_existing_silver_rows_without_duplicates_for_multiple_rows(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth, CSV_CANONICAL_MULTIROW)
+        payload = {
+            "evento_id": evento.id,
+            "mapeamento": {"nome": "nome", "email": "email"},
+        }
+        first_resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json=payload,
+        )
+        second_resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json=payload,
+        )
+
+        assert first_resp.status_code == 200, first_resp.text
+        assert second_resp.status_code == 200, second_resp.text
+
+        with Session(engine) as s:
+            silver_rows = s.exec(
+                select(LeadSilver)
+                .where(LeadSilver.batch_id == batch_id)
+                .order_by(LeadSilver.row_index)
+            ).all()
+            assert len(silver_rows) == 2
+            assert [row.row_index for row in silver_rows] == [0, 1]
+            assert silver_rows[0].dados_brutos["nome"] == "Alice"
+            assert silver_rows[1].dados_brutos["nome"] == "Bob"
 
     def test_returns_404_for_unknown_batch(self, client, engine):
         with Session(engine) as s:

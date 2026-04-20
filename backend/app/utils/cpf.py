@@ -10,15 +10,34 @@ Regras (MVP):
 
 from __future__ import annotations
 
+import math
+import numbers
 import re
+from typing import Any
 
 _NON_DIGITS_RE = re.compile(r"\D+")
 _KNOWN_INVALID = {"12345678909"}
 
 
-def normalize_cpf(value: str | None) -> str:
+def _value_to_str_before_digits(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value).strip()
+    if isinstance(value, numbers.Integral):
+        return str(int(value))
+    if isinstance(value, numbers.Real):
+        numeric_value = float(value)
+        if not math.isfinite(numeric_value):
+            return ""
+        if numeric_value.is_integer():
+            return str(int(numeric_value))
+    return str(value).strip()
+
+
+def normalize_cpf(value: Any) -> str:
     """Remove pontuacao e retorna somente numeros (pode retornar string vazia)."""
-    text = "" if value is None else str(value)
+    text = _value_to_str_before_digits(value)
     return _NON_DIGITS_RE.sub("", text).strip()
 
 
@@ -32,7 +51,7 @@ def _calc_check_digit(numbers: list[int], *, start_weight: int) -> int:
     return 0 if remainder < 2 else 11 - remainder
 
 
-def is_valid_cpf(value: str | None, *, allow_known_invalid: bool = False) -> bool:
+def is_valid_cpf(value: Any, *, allow_known_invalid: bool = False) -> bool:
     """Retorna True se o CPF for valido (com base nos digitos verificadores)."""
     digits = normalize_cpf(value)
     if len(digits) != 11:
@@ -58,7 +77,7 @@ def is_valid_cpf(value: str | None, *, allow_known_invalid: bool = False) -> boo
     return True
 
 
-def validate_and_normalize_cpf(value: str | None) -> str:
+def validate_and_normalize_cpf(value: Any) -> str:
     """Valida e retorna CPF normalizado (11 digitos).
 
     Levanta ValueError em caso invalido (para uso em schemas Pydantic).

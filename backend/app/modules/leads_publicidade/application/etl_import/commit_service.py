@@ -4,17 +4,24 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime
 
 from sqlmodel import Session
 
+from app.models.models import LeadImportEtlPreviewSession
 from app.observability.import_events import log_import_event, session_token_prefix
-from core.leads_etl.models import backend_payload_to_lead_row
 
 from .contracts import EtlCommitResult, PreviewStatus
 from .exceptions import EtlImportValidationError, EtlPreviewSessionConflictError
-from .persistence import build_dedupe_key, persist_lead_batch
+from .persistence import persist_lead_batch
 from .preview_session_repository import get_commit_result, get_snapshot, mark_committed
+from .staging_repository import (
+    count_rows_by_merge_status,
+    list_merge_failures,
+    load_rows_for_merge,
+    mark_merge_failures,
+    mark_merge_success,
+    mark_superseded_duplicates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,44 +64,67 @@ def commit_preview_session(
         session_token_prefix=session_token_prefix(session_token),
         valid_rows=snapshot.valid_rows,
     )
+    try:
+        mark_superseded_duplicates(db, session_token, auto_commit=False)
+        batch = load_rows_for_merge(db, session_token)
+        batch_result = persist_lead_batch(
+            db,
+            batch,
+            canonical_evento_id=snapshot.evento_id,
+            auto_commit=False,
+        )
+        if batch_result.applied_rows:
+            mark_merge_success(
+                db,
+                session_token,
+                applied_rows=[
+                    (row.row_index, row.action, row.lead_id)
+                    for row in batch_result.applied_rows
+                ],
+                auto_commit=False,
+            )
+        if batch_result.failed_rows:
+            mark_merge_failures(
+                db,
+                session_token,
+                failed_rows=[
+                    (row.row_index, row.reason)
+                    for row in batch_result.failed_rows
+                ],
+                auto_commit=False,
+            )
 
-    batch: list[tuple[dict[str, object], int] | None] = []
-    key_to_index: dict[str, int] = {}
-    for row in snapshot.approved_rows:
-        payload = backend_payload_to_lead_row(dict(row.payload)).model_dump(mode="python")
-        if isinstance(payload.get("data_compra"), datetime):
-            payload["data_compra_data"] = payload["data_compra"].date()
-            payload["data_compra_hora"] = payload["data_compra"].time()
-        key = build_dedupe_key(payload, canonical_evento_id=snapshot.evento_id)
-        if key:
-            previous_index = key_to_index.get(key)
-            if previous_index is not None:
-                batch[previous_index] = None
-            key_to_index[key] = len(batch)
-        batch.append((payload, row.row_number))
-
-    batch_result = persist_lead_batch(
-        db,
-        batch,
-        canonical_evento_id=snapshot.evento_id,
-    )
-    has_errors = batch_result.has_errors
-    persistence_failures = tuple((row.row_index, row.reason) for row in batch_result.failed_rows)
-    outcome_status: PreviewStatus = "partial_failure" if has_errors else "committed"
-    result = EtlCommitResult(
-        session_token=session_token,
-        total_rows=snapshot.total_rows,
-        valid_rows=snapshot.valid_rows,
-        invalid_rows=snapshot.invalid_rows,
-        created=batch_result.created,
-        updated=batch_result.updated,
-        skipped=batch_result.skipped,
-        errors=batch_result.skipped if has_errors else 0,
-        strict=bool(snapshot.strict),
-        status=outcome_status,
-        dq_report=snapshot.dq_report,
-        persistence_failures=persistence_failures,
-    )
+        preview_entity = db.get(LeadImportEtlPreviewSession, session_token)
+        created_rows = count_rows_by_merge_status(db, session_token, "created")
+        updated_rows = count_rows_by_merge_status(db, session_token, "updated")
+        duplicate_rows = count_rows_by_merge_status(db, session_token, "skipped")
+        persistence_failures = list_merge_failures(db, session_token)
+        error_rows = len(persistence_failures)
+        has_errors = error_rows > 0
+        outcome_status: PreviewStatus = "partial_failure" if has_errors else "committed"
+        result = EtlCommitResult(
+            session_token=session_token,
+            total_rows=snapshot.total_rows,
+            valid_rows=snapshot.valid_rows,
+            invalid_rows=snapshot.invalid_rows,
+            created=created_rows,
+            updated=updated_rows,
+            skipped=duplicate_rows,
+            errors=error_rows,
+            strict=bool(snapshot.strict),
+            status=outcome_status,
+            duplicate_rows=duplicate_rows,
+            staged_rows=int(preview_entity.staged_rows if preview_entity is not None else 0),
+            ingestion_strategy=preview_entity.ingestion_strategy if preview_entity is not None else None,
+            merge_strategy="backend_staging_merge",
+            dq_report=snapshot.dq_report,
+            persistence_failures=persistence_failures,
+        )
+        mark_committed(db, result, auto_commit=False)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     log_import_event(
         logger,
         "etl.commit.completed",
@@ -107,4 +137,4 @@ def commit_preview_session(
         errors=result.errors,
         duration_ms=round((time.perf_counter() - started_at) * 1000),
     )
-    return mark_committed(db, result)
+    return result

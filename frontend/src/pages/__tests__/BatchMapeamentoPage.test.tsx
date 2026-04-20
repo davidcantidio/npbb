@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import BatchMapeamentoPage from "../leads/BatchMapeamentoPage";
+import { ApiError } from "../../services/http";
+import type { LeadBatch } from "../../services/leads_import";
+import { reconcileLeadMappingTimeout } from "../../services/leads_mapping_recovery";
 import { useAuth } from "../../store/auth";
 import { getLeadBatchColunasBatch, mapearLeadBatches } from "../../services/leads_import";
 
@@ -12,10 +15,36 @@ vi.mock("../../services/leads_import", () => ({
   getLeadBatchColunasBatch: vi.fn(),
   mapearLeadBatches: vi.fn(),
 }));
+vi.mock("../../services/leads_mapping_recovery", () => ({
+  reconcileLeadMappingTimeout: vi.fn(),
+}));
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedGetLeadBatchColunasBatch = vi.mocked(getLeadBatchColunasBatch);
 const mockedMapearLeadBatches = vi.mocked(mapearLeadBatches);
+const mockedReconcileLeadMappingTimeout = vi.mocked(reconcileLeadMappingTimeout);
+
+function createBatchStatus(batchId: number, stage: LeadBatch["stage"]): LeadBatch {
+  return {
+    id: batchId,
+    enviado_por: 1,
+    plataforma_origem: "email",
+    data_envio: "2026-04-19T10:00:00Z",
+    data_upload: "2026-04-19T10:00:00Z",
+    nome_arquivo_original: `batch-${batchId}.csv`,
+    stage,
+    evento_id: 42,
+    origem_lote: "proponente",
+    tipo_lead_proponente: "entrada_evento",
+    ativacao_id: null,
+    pipeline_status: "pending",
+    pipeline_progress: null,
+    pipeline_report: null,
+    created_at: "2026-04-19T10:00:00Z",
+    gold_pipeline_stale_after_seconds: null,
+    gold_pipeline_progress_is_stale: null,
+  };
+}
 
 function PipelineProbe() {
   const location = useLocation();
@@ -122,6 +151,7 @@ describe("BatchMapeamentoPage", () => {
         },
       ],
     });
+    mockedReconcileLeadMappingTimeout.mockReset();
   });
 
   it("renders aggregated coverage, variants and warnings", async () => {
@@ -197,5 +227,75 @@ describe("BatchMapeamentoPage", () => {
       await screen.findByText("Location route /leads/importar?step=mapping&batch_id=70&context=batch&mapping_mode=single"),
     ).toBeInTheDocument();
     expect(mockedMapearLeadBatches).not.toHaveBeenCalled();
+  });
+
+  it("recovers automatically after timeout when all batches reach silver or gold", async () => {
+    mockedMapearLeadBatches.mockRejectedValue(
+      new ApiError({
+        message: "Tempo limite da requisicao excedido.",
+        status: 0,
+        detail: "TIMEOUT",
+        code: "TIMEOUT",
+        method: "POST",
+        url: "/leads/batches/mapear",
+      }),
+    );
+    mockedReconcileLeadMappingTimeout.mockResolvedValue({
+      status: "mapped",
+      batches: [createBatchStatus(70, "silver"), createBatchStatus(71, "gold")],
+    });
+
+    const onMapped = vi.fn();
+    renderBatchMapeamentoPage(
+      <BatchMapeamentoPage batchIds={[70, 71]} primaryBatchId={70} onMapped={onMapped} />,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByText("CPF");
+
+    await user.click(screen.getByRole("button", { name: "Concluir mapeamento do batch" }));
+
+    await waitFor(() => {
+      expect(mockedReconcileLeadMappingTimeout).toHaveBeenCalledWith("token-123", [70, 71]);
+    });
+    await waitFor(() => {
+      expect(onMapped).toHaveBeenCalledWith(
+        expect.objectContaining({
+          primary_batch_id: 70,
+          batch_ids: [70, 71],
+        }),
+      );
+    });
+  });
+
+  it("keeps the page on mapping when timeout recovery expires and batches stay bronze", async () => {
+    mockedMapearLeadBatches.mockRejectedValue(
+      new ApiError({
+        message: "Tempo limite da requisicao excedido.",
+        status: 0,
+        detail: "TIMEOUT",
+        code: "TIMEOUT",
+        method: "POST",
+        url: "/leads/batches/mapear",
+      }),
+    );
+    mockedReconcileLeadMappingTimeout.mockResolvedValue({
+      status: "pending",
+      batches: [createBatchStatus(70, "bronze"), createBatchStatus(71, "bronze")],
+    });
+
+    const onMapped = vi.fn();
+    renderBatchMapeamentoPage(
+      <BatchMapeamentoPage batchIds={[70, 71]} primaryBatchId={70} onMapped={onMapped} />,
+    );
+
+    const user = userEvent.setup();
+    await screen.findByText("CPF");
+    await user.click(screen.getByRole("button", { name: "Concluir mapeamento do batch" }));
+
+    expect(await screen.findByText(/backend ainda nao confirmou todos os lotes como mapeados/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reverificar status do batch/i })).toBeInTheDocument();
+    expect(onMapped).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Pipeline route/i)).not.toBeInTheDocument();
   });
 });

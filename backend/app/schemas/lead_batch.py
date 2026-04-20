@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.lead_batch import BatchStage, PipelineStatus
 
@@ -74,6 +74,32 @@ class LeadBatchImportHintRead(BaseModel):
     ativacao_id: int | None = None
     confidence: Literal["exact_hash_match"] = "exact_hash_match"
     source_created_at: datetime
+
+
+class LeadBatchIntakeItemWrite(BaseModel):
+    client_row_id: str
+    plataforma_origem: str
+    data_envio: str
+    evento_id: int | None = None
+    origem_lote: Literal["proponente", "ativacao"] = "proponente"
+    tipo_lead_proponente: Literal["bilheteria", "entrada_evento"] | None = None
+    ativacao_id: int | None = None
+    file_name: str | None = None
+
+
+class LeadBatchIntakeRequest(BaseModel):
+    items: list[LeadBatchIntakeItemWrite] = Field(default_factory=list)
+
+
+class LeadBatchIntakeItemRead(BaseModel):
+    client_row_id: str
+    batch: LeadBatchRead
+    preview: LeadBatchPreviewResponse
+    hint_applied: LeadBatchImportHintRead | None = None
+
+
+class LeadBatchIntakeResponse(BaseModel):
+    items: list[LeadBatchIntakeItemRead] = Field(default_factory=list)
 
 
 class LeadReferenceEventoRead(BaseModel):

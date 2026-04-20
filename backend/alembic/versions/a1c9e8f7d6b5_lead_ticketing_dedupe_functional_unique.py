@@ -29,8 +29,10 @@ _OLD_UQ = "uq_lead_ticketing_dedupe"
 
 def upgrade() -> None:
     bind = op.get_bind()
-    op.drop_constraint(_OLD_UQ, "lead", type_="unique", if_exists=True)
     if bind.dialect.name == "postgresql":
+        # Compatibilidade com versões de Alembic sem suporte a if_exists.
+        op.execute(sa.text(f"ALTER TABLE lead DROP CONSTRAINT IF EXISTS {_OLD_UQ}"))
+        op.execute(sa.text(f"DROP INDEX IF EXISTS {_OLD_UQ}"))
         op.execute(
             sa.text(
                 f"""
@@ -47,6 +49,7 @@ def upgrade() -> None:
         )
     else:
         # SQLite (tests / local alembic): expression index + partial predicate
+        op.execute(sa.text(f"DROP INDEX IF EXISTS {_OLD_UQ}"))
         op.execute(
             sa.text(
                 f"""

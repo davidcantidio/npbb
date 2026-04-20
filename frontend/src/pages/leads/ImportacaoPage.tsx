@@ -15,14 +15,11 @@ import { useSearchParams } from "react-router-dom";
 
 import QuickCreateEventoModal from "../../components/QuickCreateEventoModal";
 import {
-  computeFileSha256Hex,
-  commitLeadImportEtl,
-  createLeadBatch,
+  commitLeadImportEtlJob,
+  createLeadBatchIntake,
   DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON,
   getActivationImportBlockReason,
   getLeadBatch,
-  getLeadBatchPreview,
-  getLeadImportMetadataHint,
   LeadBatch,
   LeadBatchPreview,
   LeadImportEtlPreview,
@@ -30,19 +27,20 @@ import {
   LeadImportMetadataHint,
   listReferenciaEventos,
   LEAD_IMPORT_ETL_MAX_SCAN_ROWS_CAP,
-  normalizeLeadImportHintDateInput,
-  previewLeadImportEtl,
   ReferenciaEvento,
+  reprocessLeadImportEtlJobPreview,
+  startLeadImportEtlJob,
   supportsActivationImport,
 } from "../../services/leads_import";
 import type { EventoRead } from "../../services/eventos/core";
 import { createEventoAtivacao, listEventoAtivacoes } from "../../services/eventos/workflow";
-import { ApiError, toApiErrorMessage } from "../../services/http";
+import { toApiErrorMessage } from "../../services/http";
 import { useAuth } from "../../store/auth";
 import { getLocalDateInputValue } from "../../utils/date";
 import BatchSummaryCard from "./importacao/BatchSummaryCard";
 import ImportacaoUploadStep from "./importacao/ImportacaoUploadStep";
 import { LEADS_IMPORT_ALLOWED_EXTENSIONS } from "./importacao/constants";
+import { useLeadImportEtlJobPolling } from "./importacao/useLeadImportEtlJobPolling";
 import {
   BatchUploadRowDraft,
   BronzeMode,
@@ -64,13 +62,6 @@ type QuickCreateTarget =
   | { kind: "etl" }
   | { kind: "batch-row"; rowId: string }
   | null;
-type BronzeHintEditableField =
-  | "plataforma_origem"
-  | "data_envio"
-  | "evento_id"
-  | "origem_lote"
-  | "tipo_lead_proponente"
-  | "ativacao_id";
 
 function hasAllowedExtension(file: File) {
   const name = file.name.toLowerCase();
@@ -132,8 +123,6 @@ export default function ImportacaoPage() {
   const batchMappingMode = sanitizeBatchMappingMode(searchParams.get("mapping_mode"));
   const today = useMemo(() => getLocalDateInputValue(), []);
   const bronzeAtivacoesRequestIdRef = useRef(0);
-  const bronzeHintRequestIdRef = useRef(0);
-  const bronzeDirtyFieldsRef = useRef<Set<BronzeHintEditableField>>(new Set());
   const bronzeEventoIdRef = useRef("");
 
   const [activeStep, setActiveStep] = useState(0);
@@ -152,7 +141,6 @@ export default function ImportacaoPage() {
   );
   const [bronzeAtivacaoId, setBronzeAtivacaoId] = useState("");
   const [bronzeImportHint, setBronzeImportHint] = useState<LeadImportMetadataHint | null>(null);
-  const [bronzePendingHintAtivacaoId, setBronzePendingHintAtivacaoId] = useState<string | null>(null);
   const [ativacoes, setAtivacoes] = useState<{ id: number; nome: string }[]>([]);
   const [ativacoesLoadError, setAtivacoesLoadError] = useState<string | null>(null);
   const [loadingAtivacoes, setLoadingAtivacoes] = useState(false);
@@ -174,6 +162,7 @@ export default function ImportacaoPage() {
   const [etlMaxScanRows, setEtlMaxScanRows] = useState("");
   const [quickCreateTarget, setQuickCreateTarget] = useState<QuickCreateTarget>(null);
   const [error, setError] = useState<string | null>(null);
+  const etlJobPolling = useLeadImportEtlJobPolling({ token });
 
   const batchUpload = useBatchUploadDraft({
     token,

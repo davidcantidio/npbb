@@ -42,7 +42,8 @@ from app.utils.security import hash_password
 from lead_pipeline.constants import ALL_COLUMNS, FINAL_FILENAME, TIPO_EVENTO_PADRAO
 from lead_pipeline.contracts import validate_databricks_contract
 from lead_pipeline.normalization import BirthDateIssue, normalize_data_nascimento
-from lead_pipeline.pipeline import PipelineProgressEvent, PipelineResult, _normalize_row
+from lead_pipeline.pipeline import PipelineConfig, PipelineProgressEvent, PipelineResult, _normalize_row, run_pipeline
+from lead_pipeline.source_adapter import AdaptedInput, CITY_OUT_COL, REJECT_REASON_COL, ROW_COL_SOURCE, SHEET_COL_SOURCE
 
 
 def _make_engine():
@@ -1475,6 +1476,70 @@ class TestNormalizeRowCPFValidation:
         )
 
         assert "CPF_INVALIDO" not in reasons
+
+    def test_run_pipeline_keeps_numeric_cpf_and_phone_before_report_stringification(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        raw_row = {column: "" for column in ALL_COLUMNS}
+        raw_row.update(
+            {
+                "nome": "Alice",
+                "cpf": 52998224725.0,
+                "email": "alice@ex.com",
+                "telefone": 11999990000.0,
+                "evento": "Park Challenge 2025",
+                "tipo_evento": "ESPORTE",
+                "local": "Sao Paulo-SP",
+                "data_evento": "2026-06-08",
+                "data_nascimento": "1990-01-15",
+                CITY_OUT_COL: False,
+                SHEET_COL_SOURCE: "Planilha 1",
+                ROW_COL_SOURCE: 2,
+                REJECT_REASON_COL: "",
+            }
+        )
+        adapted = AdaptedInput(
+            dataframe=pd.DataFrame([raw_row]),
+            source_profiles=["numeric-test"],
+            fail_reasons=[],
+            warnings=[],
+        )
+
+        def fake_adapt_source_file(_input_file: Path) -> AdaptedInput:
+            return adapted
+
+        monkeypatch.setattr("lead_pipeline.pipeline.adapt_source_file", fake_adapt_source_file)
+
+        input_file = tmp_path / "numeric.xlsx"
+        input_file.write_bytes(b"not-used")
+        result = run_pipeline(
+            PipelineConfig(
+                lote_id="numeric-cpf",
+                input_files=[input_file],
+                output_root=tmp_path / "output",
+            )
+        )
+
+        consolidated = pd.read_csv(result.consolidated_path, dtype=str, keep_default_na=False)
+        report = json.loads(result.report_path.read_text(encoding="utf-8"))
+
+        assert result.decision == "promote"
+        assert len(consolidated.index) == 1
+        row = consolidated.to_dict(orient="records")[0]
+        assert row["nome"] == "Alice"
+        assert row["cpf"] == "52998224725"
+        assert row["telefone"] == "11999990000"
+        assert row["email"] == "alice@ex.com"
+        assert row["data_nascimento"] == "1990-01-15"
+        assert row["evento"] == "Park Challenge 2025"
+        assert row["local"] == "São Paulo-SP"
+        assert row["cidade"] == "São Paulo"
+        assert row["estado"] == "SP"
+        assert report["quality_metrics"]["cpf_invalid_discarded"] == 0
+        assert report["totals"]["valid_rows"] == 1
+        assert report["invalid_records"] == []
 
 
 class TestNormalizeRowLocalidade:

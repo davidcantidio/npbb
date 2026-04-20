@@ -23,16 +23,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import QuickCreateEventoModal from "../../components/QuickCreateEventoModal";
-import { toApiErrorMessage } from "../../services/http";
+import { toApiErrorCode, toApiErrorMessage } from "../../services/http";
 import {
   ColumnConfidence,
   ColumnSuggestion,
+  LeadBatch,
   MapearBatchResult,
   ReferenciaEvento,
   getLeadBatchColunas,
   listReferenciaEventos,
   mapearLeadBatch,
 } from "../../services/leads_import";
+import { reconcileLeadMappingTimeout } from "../../services/leads_mapping_recovery";
 import { formatReferenciaEventoOptionLabel } from "../../utils/formatters";
 import { useAuth } from "../../store/auth";
 
@@ -123,6 +125,14 @@ export type MapeamentoPageProps = {
   cancelLabel?: string;
 };
 
+function buildRecoveredSingleMappingResult(batch: LeadBatch): MapearBatchResult {
+  return {
+    batch_id: batch.id,
+    silver_count: 0,
+    stage: batch.stage,
+  };
+}
+
 export default function MapeamentoPage({
   batchId: batchIdProp,
   initialEventoId = null,
@@ -152,6 +162,8 @@ export default function MapeamentoPage({
   const [eventosError, setEventosError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ silver_count: number } | null>(null);
+  const [recoveryState, setRecoveryState] = useState<"idle" | "recovering" | "failed">("idle");
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const eventoPrefillAppliedForBatchRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -237,16 +249,57 @@ export default function MapeamentoPage({
     () => sanitizeMappingRecord(mapeamento, usesFixedEvento),
     [mapeamento, usesFixedEvento],
   );
+  const isRecovering = recoveryState === "recovering";
 
   const canConfirm = useMemo(() => {
-    if (!resolvedEventoId || submitting) return false;
+    if (!resolvedEventoId || submitting || isRecovering) return false;
     return Object.values(sanitizedMapeamento).some((value) => value !== "");
-  }, [resolvedEventoId, sanitizedMapeamento, submitting]);
+  }, [isRecovering, resolvedEventoId, sanitizedMapeamento, submitting]);
+
+  const completeRecoveredMapping = (batch: LeadBatch) => {
+    const recoveredResult = buildRecoveredSingleMappingResult(batch);
+    if (onMapped) {
+      onMapped(recoveredResult);
+      return;
+    }
+    navigate(`/leads/pipeline?batch_id=${recoveredResult.batch_id}`);
+  };
+
+  const runTimeoutRecovery = async () => {
+    if (!token) {
+      return false;
+    }
+
+    setError(null);
+    setRecoveryState("recovering");
+    setRecoveryMessage(null);
+
+    try {
+      const recovery = await reconcileLeadMappingTimeout(token, [batchId]);
+      if (recovery.status === "mapped" && recovery.batches[0]) {
+        setRecoveryState("idle");
+        completeRecoveredMapping(recovery.batches[0]);
+        return true;
+      }
+
+      setRecoveryState("failed");
+      setRecoveryMessage(
+        "A confirmacao excedeu o tempo limite da requisicao, mas o backend ainda nao confirmou o lote como mapeado. Reverifique o status antes de reenviar.",
+      );
+      return false;
+    } catch (err) {
+      setRecoveryState("idle");
+      setError(toApiErrorMessage(err, "Falha ao reverificar o status do lote."));
+      return false;
+    }
+  };
 
   const handleConfirm = async () => {
     if (!token || !resolvedEventoId) return;
     setSubmitting(true);
     setError(null);
+    setRecoveryState("idle");
+    setRecoveryMessage(null);
     try {
       const res = await mapearLeadBatch(token, batchId, {
         evento_id: resolvedEventoId,
@@ -262,6 +315,10 @@ export default function MapeamentoPage({
         navigate(`/leads/pipeline?batch_id=${res.batch_id}`);
       }
     } catch (err) {
+      if (toApiErrorCode(err) === "TIMEOUT") {
+        await runTimeoutRecovery();
+        return;
+      }
       setError(toApiErrorMessage(err, "Falha ao confirmar mapeamento."));
     } finally {
       setSubmitting(false);
@@ -286,6 +343,25 @@ export default function MapeamentoPage({
       </Stack>
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+      {isRecovering ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          A confirmacao excedeu o tempo limite da requisicao. Verificando automaticamente se o backend concluiu o
+          mapeamento deste lote.
+        </Alert>
+      ) : null}
+      {recoveryState === "failed" && recoveryMessage ? (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void runTimeoutRecovery()}>
+              Reverificar status do lote
+            </Button>
+          }
+        >
+          {recoveryMessage}
+        </Alert>
+      ) : null}
 
       {result ? (
         <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
@@ -460,12 +536,16 @@ export default function MapeamentoPage({
                     navigate("/leads/importar");
                   }
                 }}
-                disabled={submitting}
+                disabled={submitting || isRecovering}
               >
                 {cancelLabel ?? "Cancelar"}
               </Button>
               <Button variant="contained" disabled={!canConfirm} onClick={handleConfirm}>
-                {submitting ? <CircularProgress size={18} color="inherit" /> : "Confirmar Mapeamento"}
+                {submitting || isRecovering ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  "Confirmar Mapeamento"
+                )}
               </Button>
             </Stack>
           </Stack>

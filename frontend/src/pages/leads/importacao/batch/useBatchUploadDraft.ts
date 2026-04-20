@@ -3,15 +3,11 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { Agencia, listAgencias } from "../../../../services/agencias";
 import { toApiErrorMessage } from "../../../../services/http";
 import {
-  computeFileSha256Hex,
+  createLeadBatchIntake,
   DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON,
   LeadBatch,
-  LeadImportMetadataHint,
   ReferenciaEvento,
-  createLeadBatch,
   getActivationImportBlockReason,
-  getLeadImportMetadataHint,
-  normalizeLeadImportHintDateInput,
   supportsActivationImport,
   type OrigemLoteLeadBatch,
 } from "../../../../services/leads_import";
@@ -187,25 +183,6 @@ function markDirtyFields(
   });
 
   return nextDirtyFields;
-}
-
-async function runWithConcurrency<T>(
-  items: T[],
-  limit: number,
-  worker: (item: T) => Promise<void>,
-) {
-  const concurrency = Math.max(1, Math.min(limit, items.length));
-  let cursor = 0;
-
-  await Promise.all(
-    Array.from({ length: concurrency }, async () => {
-      while (cursor < items.length) {
-        const item = items[cursor];
-        cursor += 1;
-        await worker(item);
-      }
-    }),
-  );
 }
 
 export function getBatchRowSelectedEvento(
@@ -459,70 +436,6 @@ export function useBatchUploadDraft({
     updateRowInternal(localId, patch, { markDirty: true });
   }
 
-  function applyMetadataHint(localId: string, hint: LeadImportMetadataHint) {
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.local_id !== localId || row.status_ui === "created" || row.status_ui === "submitting") {
-          return row;
-        }
-
-        const nextRow: BatchUploadRowDraft = {
-          ...row,
-          status_ui: nextEditableStatus(row.status_ui),
-          error_message: null,
-          metadata_hint_message: buildBatchMetadataHintMessage(hint.source_batch_id),
-          metadata_hint_source_batch_id: hint.source_batch_id,
-        };
-
-        if (!row.dirty_fields.plataforma_origem) {
-          nextRow.plataforma_origem = hint.plataforma_origem;
-        }
-
-        if (!row.dirty_fields.data_envio) {
-          const normalizedDate = normalizeLeadImportHintDateInput(hint.data_envio);
-          if (normalizedDate) {
-            nextRow.data_envio = normalizedDate;
-          }
-        }
-
-        const nextEventoId = hint.evento_id != null ? String(hint.evento_id) : "";
-        const shouldApplyEvento = !row.dirty_fields.evento_id;
-        if (shouldApplyEvento) {
-          if (nextEventoId !== row.evento_id) {
-            nextRow.evento_id = nextEventoId;
-            nextRow.ativacao_id = "";
-          }
-        }
-
-        const canApplyLinkedMetadata = !row.dirty_fields.evento_id || row.evento_id === nextEventoId;
-        const shouldApplyOrigem = canApplyLinkedMetadata && !row.dirty_fields.origem_lote;
-        if (shouldApplyOrigem) {
-          nextRow.origem_lote = hint.origem_lote;
-          if (hint.origem_lote === "proponente") {
-            nextRow.ativacao_id = "";
-          }
-        }
-
-        const effectiveOrigem = shouldApplyOrigem ? hint.origem_lote : nextRow.origem_lote;
-        if (canApplyLinkedMetadata && effectiveOrigem === "proponente") {
-          if (!row.dirty_fields.tipo_lead_proponente && hint.tipo_lead_proponente) {
-            nextRow.tipo_lead_proponente = hint.tipo_lead_proponente;
-          }
-          if (!row.dirty_fields.ativacao_id) {
-            nextRow.ativacao_id = "";
-            nextRow.pending_hint_ativacao_id = null;
-          }
-        } else if (canApplyLinkedMetadata && !row.dirty_fields.ativacao_id) {
-          nextRow.ativacao_id = "";
-          nextRow.pending_hint_ativacao_id =
-            hint.ativacao_id != null ? String(hint.ativacao_id) : null;
-        }
-
-        return nextRow;
-      }),
-    );
-  }
-
   function reset() {
     setRows([]);
     setAtivacoesByEventoId({});
@@ -545,19 +458,6 @@ export function useBatchUploadDraft({
     });
 
     setRows((prev) => [...prev, ...nextRows]);
-
-    if (!token) return;
-
-    void runWithConcurrency(nextRows, 3, async (row) => {
-      try {
-        const arquivoSha256 = await computeFileSha256Hex(row.file);
-        const hint = await getLeadImportMetadataHint(token, arquivoSha256);
-        if (!hint) return;
-        applyMetadataHint(row.local_id, hint);
-      } catch {
-        // Hint e hash sao best-effort: falhas nao devem bloquear o envio manual.
-      }
-    });
   }
 
   function removeRow(localId: string) {
@@ -757,22 +657,23 @@ export function useBatchUploadDraft({
     const validRows = targetRows.filter((row) => (validationMap.get(row.local_id) ?? []).length === 0);
     if (validRows.length === 0) return;
 
-    await runWithConcurrency(validRows, 3, async (row) => {
-      setRows((prev) =>
-        prev.map((current) =>
-          current.local_id === row.local_id
-            ? {
-                ...current,
-                status_ui: "submitting",
-                error_message: null,
-              }
-            : current,
-        ),
-      );
+    const targetLocalIds = new Set(validRows.map((row) => row.local_id));
+    setRows((prev) =>
+      prev.map((row) =>
+        targetLocalIds.has(row.local_id)
+          ? {
+              ...row,
+              status_ui: "submitting",
+              error_message: null,
+            }
+          : row,
+      ),
+    );
 
-      try {
-        const createdBatch = await createLeadBatch(token, {
-          quem_enviou: row.quem_enviou.trim(),
+    try {
+      const result = await createLeadBatchIntake(token, {
+        items: validRows.map((row) => ({
+          client_row_id: row.local_id,
           plataforma_origem: row.plataforma_origem,
           data_envio: row.data_envio,
           evento_id: Number(row.evento_id),
@@ -782,37 +683,45 @@ export function useBatchUploadDraft({
             row.origem_lote === "proponente" ? row.tipo_lead_proponente : undefined,
           ativacao_id:
             row.origem_lote === "ativacao" ? Number(row.ativacao_id) : undefined,
-        });
+        })),
+      });
+      const itemsByRowId = new Map(result.items.map((item) => [item.client_row_id, item] as const));
+      const syncedAt = nowIsoString();
 
-        setRows((prev) =>
-          prev.map((current) =>
-            current.local_id === row.local_id
-              ? {
-                  ...current,
-                  status_ui: "created",
-                  created_batch_id: createdBatch.id,
-                  error_message: null,
-                  downstream_stage: createdBatch.stage,
-                  downstream_pipeline_status: createdBatch.pipeline_status,
-                  last_synced_at: nowIsoString(),
-                }
-              : current,
-          ),
-        );
-      } catch (error) {
-        setRows((prev) =>
-          prev.map((current) =>
-            current.local_id === row.local_id
-              ? {
-                  ...current,
-                  status_ui: "error",
-                  error_message: toApiErrorMessage(error, "Falha ao enviar a linha para o Bronze."),
-                }
-              : current,
-          ),
-        );
-      }
-    });
+      setRows((prev) =>
+        prev.map((row) => {
+          const created = itemsByRowId.get(row.local_id);
+          if (!created) return row;
+          return {
+            ...row,
+            status_ui: "created",
+            created_batch_id: created.batch.id,
+            error_message: null,
+            downstream_stage: created.batch.stage,
+            downstream_pipeline_status: created.batch.pipeline_status,
+            last_synced_at: syncedAt,
+            metadata_hint_message: created.hint_applied
+              ? buildBatchMetadataHintMessage(created.hint_applied.source_batch_id)
+              : row.metadata_hint_message,
+            metadata_hint_source_batch_id: created.hint_applied?.source_batch_id ?? row.metadata_hint_source_batch_id,
+            pending_hint_ativacao_id: null,
+          };
+        }),
+      );
+    } catch (error) {
+      const message = toApiErrorMessage(error, "Falha ao enviar o batch para o Bronze.");
+      setRows((prev) =>
+        prev.map((row) =>
+          targetLocalIds.has(row.local_id)
+            ? {
+                ...row,
+                status_ui: "error",
+                error_message: message,
+              }
+            : row,
+        ),
+      );
+    }
   }
 
   function retryRow(localId: string) {

@@ -5,6 +5,18 @@ def test_normalize_cpf_remove_pontuacao():
     assert normalize_cpf("529.982.247-25") == "52998224725"
 
 
+def test_normalize_cpf_excel_numeric_cell_drops_decimal_suffix():
+    assert normalize_cpf(52998224725.0) == "52998224725"
+    assert validate_and_normalize_cpf(52998224725.0) == "52998224725"
+
+
+def test_normalize_cpf_nan_and_inf_become_empty():
+    assert normalize_cpf(float("nan")) == ""
+    assert normalize_cpf(float("inf")) == ""
+    assert is_valid_cpf(float("nan")) is False
+    assert is_valid_cpf(float("inf")) is False
+
+
 def test_is_valid_cpf_true_for_valid_examples():
     assert is_valid_cpf("529.982.247-25") is True
     assert is_valid_cpf("11144477735") is True

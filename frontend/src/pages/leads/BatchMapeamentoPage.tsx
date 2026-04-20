@@ -20,14 +20,16 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { toApiErrorMessage } from "../../services/http";
+import { toApiErrorCode, toApiErrorMessage } from "../../services/http";
 import {
   BatchColumnGroup,
   ColumnConfidence,
+  LeadBatch,
   MapearLotesBatchResult,
   getLeadBatchColunasBatch,
   mapearLeadBatches,
 } from "../../services/leads_import";
+import { reconcileLeadMappingTimeout } from "../../services/leads_mapping_recovery";
 import { useAuth } from "../../store/auth";
 
 const DERIVED_EVENT_FIELDS = ["evento", "tipo_evento", "local", "data_evento"] as const;
@@ -118,6 +120,30 @@ export type BatchMapeamentoPageProps = {
   cancelLabel?: string;
 };
 
+function buildRecoveredBatchMappingResult(
+  resolvedBatchIds: number[],
+  recoveredBatches: LeadBatch[],
+  primaryBatchId: number | null,
+): MapearLotesBatchResult {
+  const batchesById = new Map(recoveredBatches.map((batch) => [batch.id, batch]));
+  const orderedBatches = resolvedBatchIds
+    .map((batchId) => batchesById.get(batchId))
+    .filter((batch): batch is LeadBatch => batch != null);
+  const resolvedPrimaryBatchId = primaryBatchId ?? orderedBatches[0]?.id ?? resolvedBatchIds[0] ?? 0;
+
+  return {
+    batch_ids: orderedBatches.map((batch) => batch.id),
+    primary_batch_id: resolvedPrimaryBatchId,
+    total_silver_count: 0,
+    results: orderedBatches.map((batch) => ({
+      batch_id: batch.id,
+      silver_count: 0,
+      stage: batch.stage,
+    })),
+    stage: orderedBatches.every((batch) => batch.stage === "gold") ? "gold" : "silver",
+  };
+}
+
 export default function BatchMapeamentoPage({
   batchIds,
   primaryBatchId = null,
@@ -152,6 +178,8 @@ export default function BatchMapeamentoPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MapearLotesBatchResult | null>(null);
+  const [recoveryState, setRecoveryState] = useState<"idle" | "recovering" | "failed">("idle");
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || resolvedBatchIds.length === 0) return;
@@ -183,15 +211,56 @@ export default function BatchMapeamentoPage({
   );
   const fallbackBatchId = blockedBatchIds[0] ?? primaryBatchId ?? resolvedBatchIds[0] ?? null;
   const sanitizedMapeamento = useMemo(() => sanitizeMappingRecord(mapeamento), [mapeamento]);
+  const isRecovering = recoveryState === "recovering";
   const canConfirm = useMemo(() => {
-    if (submitting || blockers.length > 0) return false;
+    if (submitting || isRecovering || blockers.length > 0) return false;
     return Object.values(sanitizedMapeamento).some((value) => value !== "");
-  }, [blockers.length, sanitizedMapeamento, submitting]);
+  }, [blockers.length, isRecovering, sanitizedMapeamento, submitting]);
+
+  const completeRecoveredMapping = (recoveredBatches: LeadBatch[]) => {
+    const response = buildRecoveredBatchMappingResult(resolvedBatchIds, recoveredBatches, primaryBatchId);
+    if (onMapped) {
+      onMapped(response);
+      return;
+    }
+    navigate(`/leads/pipeline?batch_id=${response.primary_batch_id}`);
+  };
+
+  const runTimeoutRecovery = async () => {
+    if (!token || resolvedBatchIds.length === 0) {
+      return false;
+    }
+
+    setError(null);
+    setRecoveryState("recovering");
+    setRecoveryMessage(null);
+
+    try {
+      const recovery = await reconcileLeadMappingTimeout(token, resolvedBatchIds);
+      if (recovery.status === "mapped") {
+        setRecoveryState("idle");
+        completeRecoveredMapping(recovery.batches);
+        return true;
+      }
+
+      setRecoveryState("failed");
+      setRecoveryMessage(
+        "A confirmacao excedeu o tempo limite da requisicao, mas o backend ainda nao confirmou todos os lotes como mapeados. Reverifique o status antes de reenviar.",
+      );
+      return false;
+    } catch (err) {
+      setRecoveryState("idle");
+      setError(toApiErrorMessage(err, "Falha ao reverificar o status do mapeamento batch."));
+      return false;
+    }
+  };
 
   const handleConfirm = async () => {
     if (!token || resolvedBatchIds.length === 0) return;
     setSubmitting(true);
     setError(null);
+    setRecoveryState("idle");
+    setRecoveryMessage(null);
     try {
       const response = await mapearLeadBatches(token, {
         batch_ids: resolvedBatchIds,
@@ -207,6 +276,10 @@ export default function BatchMapeamentoPage({
       setResult(response);
       navigate(`/leads/pipeline?batch_id=${response.primary_batch_id}`);
     } catch (err) {
+      if (toApiErrorCode(err) === "TIMEOUT") {
+        await runTimeoutRecovery();
+        return;
+      }
       setError(toApiErrorMessage(err, "Falha ao confirmar o mapeamento unificado do batch."));
     } finally {
       setSubmitting(false);
@@ -231,6 +304,25 @@ export default function BatchMapeamentoPage({
       </Stack>
 
       {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+      {isRecovering ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          A confirmacao excedeu o tempo limite da requisicao. Verificando automaticamente se o backend concluiu o
+          mapeamento do batch.
+        </Alert>
+      ) : null}
+      {recoveryState === "failed" && recoveryMessage ? (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void runTimeoutRecovery()}>
+              Reverificar status do batch
+            </Button>
+          }
+        >
+          {recoveryMessage}
+        </Alert>
+      ) : null}
 
       {result ? (
         <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
@@ -388,7 +480,7 @@ export default function BatchMapeamentoPage({
                     navigate("/leads/importar");
                   }
                 }}
-                disabled={submitting}
+                disabled={submitting || isRecovering}
               >
                 {cancelLabel}
               </Button>
@@ -400,13 +492,17 @@ export default function BatchMapeamentoPage({
                       `/leads/importar?step=mapping&batch_id=${fallbackBatchId}&context=batch&mapping_mode=single`,
                     )
                   }
-                  disabled={submitting}
+                  disabled={submitting || isRecovering}
                 >
                   {`Abrir lote #${fallbackBatchId} por arquivo`}
                 </Button>
               ) : null}
               <Button variant="contained" disabled={!canConfirm} onClick={handleConfirm}>
-                {submitting ? <CircularProgress size={18} color="inherit" /> : "Concluir mapeamento do batch"}
+                {submitting || isRecovering ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  "Concluir mapeamento do batch"
+                )}
               </Button>
             </Stack>
           </Stack>

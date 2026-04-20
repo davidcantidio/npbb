@@ -15,7 +15,16 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from app.db.database import get_session
 from app.main import app
 from app.models.lead_public_models import LeadEventoSourceKind
-from app.models.models import Evento, ImportAlias, Lead, LeadEvento, LeadImportEtlPreviewSession, StatusEvento, Usuario
+from app.models.models import (
+    Evento,
+    ImportAlias,
+    Lead,
+    LeadEvento,
+    LeadImportEtlPreviewSession,
+    LeadImportEtlStagingRow,
+    StatusEvento,
+    Usuario,
+)
 from app.routers.leads import _map_etl_import_error
 from app.schemas.lead_import_etl import ImportEtlPreviewResponse, ImportEtlResult
 from app.utils.security import hash_password
@@ -430,6 +439,224 @@ def test_commit_etl_serializes_public_schema(client: TestClient, engine) -> None
         assert len(session.exec(select(Lead)).all()) >= 1
 
 
+def test_preview_etl_persists_staging_rows_before_commit_without_touching_final_table(client: TestClient, engine) -> None:
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    fixture_path = Path(__file__).parent / "fixtures" / "lead_import_sample.xlsx"
+    with fixture_path.open("rb") as fh:
+        preview = client.post(
+            "/leads/import/etl/preview",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("lead_import_sample.xlsx", fh, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            data={"evento_id": str(evento.id), "strict": "false"},
+        )
+
+    assert preview.status_code == 200
+    body = ImportEtlPreviewResponse.model_validate(preview.json())
+
+    with Session(engine) as session:
+        staging_rows = session.exec(
+            select(LeadImportEtlStagingRow)
+            .where(LeadImportEtlStagingRow.session_token == body.session_token)
+            .order_by(LeadImportEtlStagingRow.source_row_number.asc())
+        ).all()
+        assert len(staging_rows) == body.total_rows
+        assert {row.validation_status for row in staging_rows} <= {"approved", "rejected"}
+        assert {row.merge_status for row in staging_rows} <= {"pending", "rejected"}
+        assert session.exec(select(Lead)).all() == []
+
+
+def test_commit_etl_uses_staging_when_inline_preview_rows_are_not_persisted(
+    client: TestClient,
+    engine,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("LEAD_IMPORT_ETL_INLINE_PREVIEW_ROW_LIMIT", "0")
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["staging-only@example.com", "52998224725", "Lead Staging", "Show 1"],
+        ]
+    )
+
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("staging-only.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert preview.status_code == 200
+    session_token = preview.json()["session_token"]
+
+    with Session(engine) as session:
+        persisted = session.get(LeadImportEtlPreviewSession, session_token)
+        assert persisted is not None
+        assert json.loads(persisted.approved_rows_json or "[]") == []
+        staged_rows = session.exec(
+            select(LeadImportEtlStagingRow).where(LeadImportEtlStagingRow.session_token == session_token)
+        ).all()
+        assert len(staged_rows) == 1
+
+    commit = client.post(
+        "/leads/import/etl/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"session_token": session_token, "evento_id": evento.id, "force_warnings": True},
+    )
+    assert commit.status_code == 200
+    payload = ImportEtlResult.model_validate(commit.json())
+    assert payload.status == "committed"
+    assert payload.created == 1
+
+
+def test_job_endpoints_expose_summary_and_validation_errors_from_staging(client: TestClient, engine, monkeypatch) -> None:
+    from app.modules.leads_publicidade.application.etl_import import job_service
+
+    monkeypatch.setattr(job_service, "engine", engine)
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    invalid_xlsx = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["summary-errors@example.com", "11111111111", "Lead Invalido", "Show 1"],
+        ]
+    )
+
+    queued = client.post(
+        "/leads/import/etl/jobs",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("summary-errors.xlsx", invalid_xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "true"},
+    )
+    assert queued.status_code == 202
+    job_id = queued.json()["job_id"]
+
+    job = client.get(
+        f"/leads/import/etl/jobs/{job_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert job.status_code == 200
+    job_payload = job.json()
+    assert job_payload["status"] == "previewed"
+    assert job_payload["summary"]["staged_rows"] == 1
+    assert job_payload["summary"]["invalid_rows"] == 1
+    assert job_payload["summary"]["ingestion_strategy"] == "insert"
+
+    errors = client.get(
+        f"/leads/import/etl/jobs/{job_id}/errors?phase=validation",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert errors.status_code == 200
+    errors_payload = errors.json()
+    assert errors_payload["job_id"] == job_id
+    assert errors_payload["total"] == 1
+    assert errors_payload["items"][0]["row_number"] == 2
+    assert errors_payload["items"][0]["phase"] == "validation"
+
+
+def test_job_endpoints_hide_jobs_from_other_users(client: TestClient, engine, monkeypatch) -> None:
+    from app.modules.leads_publicidade.application.etl_import import job_service
+
+    monkeypatch.setattr(job_service, "engine", engine)
+    seed_statuses(engine)
+    owner = seed_user(engine, email="owner-etl@example.com")
+    other = seed_user(engine, email="other-etl@example.com")
+    evento = seed_event(engine)
+    owner_token = login_and_get_token(client, owner.email, "Senha123!")
+    other_token = login_and_get_token(client, other.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["owner-job@example.com", "52998224725", "Lead Owner", "Show 1"],
+        ]
+    )
+
+    queued = client.post(
+        "/leads/import/etl/jobs",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        files={"file": ("owner-job.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert queued.status_code == 202
+    job_id = queued.json()["job_id"]
+
+    job = client.get(
+        f"/leads/import/etl/jobs/{job_id}",
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+    assert job.status_code == 404
+    assert job.json()["detail"]["code"] == "ETL_JOB_NOT_FOUND"
+
+    errors = client.get(
+        f"/leads/import/etl/jobs/{job_id}/errors",
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+    assert errors.status_code == 404
+    assert errors.json()["detail"]["code"] == "ETL_JOB_NOT_FOUND"
+
+
+def test_commit_etl_rolls_back_final_write_when_staging_marker_fails(client: TestClient, engine, monkeypatch) -> None:
+    from app.modules.leads_publicidade.application.etl_import import commit_service
+
+    seed_statuses(engine)
+    user = seed_user(engine)
+    evento = seed_event(engine)
+    token = login_and_get_token(client, user.email, "Senha123!")
+
+    xlsx_payload = make_xlsx_payload(
+        [
+            ["Email", "CPF", "Nome", "Sessao"],
+            ["rollback@example.com", "52998224725", "Lead Rollback", "Show 1"],
+        ]
+    )
+    preview = client.post(
+        "/leads/import/etl/preview",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("rollback.xlsx", xlsx_payload, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        data={"evento_id": str(evento.id), "strict": "false"},
+    )
+    assert preview.status_code == 200
+    session_token = preview.json()["session_token"]
+
+    def broken_mark_merge_success(*args, **kwargs):
+        raise RuntimeError("forced merge marker failure")
+
+    monkeypatch.setattr(commit_service, "mark_merge_success", broken_mark_merge_success)
+
+    with pytest.raises(RuntimeError, match="forced merge marker failure"):
+        with Session(engine) as session:
+            commit_service.commit_preview_session(
+                session_token=session_token,
+                evento_id=evento.id,
+                force_warnings=True,
+                db=session,
+            )
+
+    with Session(engine) as session:
+        assert session.exec(select(Lead).where(Lead.email == "rollback@example.com")).first() is None
+        persisted_session = session.get(LeadImportEtlPreviewSession, session_token)
+        assert persisted_session is not None
+        assert persisted_session.status == "previewed"
+        assert persisted_session.commit_result_json is None
+        staging_rows = session.exec(
+            select(LeadImportEtlStagingRow).where(LeadImportEtlStagingRow.session_token == session_token)
+        ).all()
+        assert len(staging_rows) == 1
+        assert staging_rows[0].merge_status == "pending"
+        assert staging_rows[0].merged_lead_id is None
+
+
 def test_commit_etl_reuses_committed_result_idempotently(client: TestClient, engine) -> None:
     seed_statuses(engine)
     user = seed_user(engine)
@@ -497,7 +724,7 @@ def test_commit_etl_partial_failure_allows_retry_then_idempotent_committed(
 
     attempt = {"n": 0}
 
-    def persist_stub(db, batch, canonical_evento_id=None):
+    def persist_stub(db, batch, canonical_evento_id=None, *, auto_commit=True):
         attempt["n"] += 1
         if attempt["n"] == 1:
             return LeadBatchPersistenceResult(
@@ -507,7 +734,12 @@ def test_commit_etl_partial_failure_allows_retry_then_idempotent_committed(
                     LeadPersistenceFailedRow(row_index=3, reason="injected persistence failure"),
                 ],
             )
-        return real_persist_lead_batch(db, batch, canonical_evento_id=canonical_evento_id)
+        return real_persist_lead_batch(
+            db,
+            batch,
+            canonical_evento_id=canonical_evento_id,
+            auto_commit=auto_commit,
+        )
 
     monkeypatch.setattr(commit_service, "persist_lead_batch", persist_stub)
 

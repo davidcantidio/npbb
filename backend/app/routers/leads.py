@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 import logging
 import os
 import re
@@ -53,9 +54,20 @@ from app.modules.leads_publicidade.application.leads_import_etl_usecases import 
 )
 from app.modules.leads_publicidade.application.etl_import.exceptions import (
     EtlImportContractError,
+    EtlImportJobConflictError,
+    EtlImportJobNotFoundError,
     EtlImportValidationError,
     EtlPreviewSessionConflictError,
     EtlPreviewSessionNotFoundError,
+)
+from app.modules.leads_publicidade.application.etl_import.job_service import (
+    create_preview_job,
+    execute_commit_job,
+    execute_preview_job,
+    queue_commit_job,
+    queue_preview_reprocess,
+    read_job_errors,
+    read_job,
 )
 from app.modules.leads_publicidade.application.etl_import.extract import ETL_MAX_SCAN_ROWS_CAP
 from app.modules.leads_publicidade.application.etl_import.rejection_reasons import aggregate_rejection_reason_counts
@@ -67,6 +79,10 @@ from app.modules.leads_publicidade.application.etl_import.persistence import (
 )
 from app.observability.prometheus_leads_import import inc_gold_reclaimed_stale, record_import_upload_rejection
 from app.services.imports.file_reader import ImportFileError, inspect_upload, read_raw_file_preview
+from app.services.lead_batch_intake_service import (
+    execute_lead_batch_intake,
+    parse_lead_batch_intake_manifest,
+)
 from app.services.lead_mapping import (
     BatchMappingBlockedError,
     mapear_batch,
@@ -96,6 +112,7 @@ from app.schemas.lead_batch import (
     ColumnSuggestionRead,
     ExecutarPipelineResponse,
     LeadBatchImportHintRead,
+    LeadBatchIntakeResponse,
     LeadBatchPreviewResponse,
     LeadBatchRead,
     LeadReferenceEventoRead,
@@ -111,6 +128,11 @@ from app.schemas.lead_import_etl import (
     ImportEtlCommitRequest,
     ImportEtlCpfColumnRequiredResponse,
     ImportEtlHeaderRequiredResponse,
+    ImportEtlJobCommitRequest,
+    ImportEtlJobErrorsResponse,
+    ImportEtlJobQueuedResponse,
+    ImportEtlJobRead,
+    ImportEtlJobReprocessRequest,
     ImportEtlPreviewResponse,
     ImportEtlPreviewResponseUnion,
     ImportEtlResult,
@@ -966,6 +988,20 @@ def _normalize_alias_value(value: str) -> str:
 
 
 def _map_etl_import_error(exc: Exception) -> None:
+    if isinstance(exc, EtlImportJobNotFoundError):
+        raise_http_error(
+            status.HTTP_404_NOT_FOUND,
+            code="ETL_JOB_NOT_FOUND",
+            message="job_id invalido ou expirado",
+            field="job_id",
+        )
+    if isinstance(exc, EtlImportJobConflictError):
+        raise_http_error(
+            status.HTTP_409_CONFLICT,
+            code="ETL_JOB_CONFLICT",
+            message=str(exc),
+            field="job_id",
+        )
     if isinstance(exc, EtlPreviewSessionNotFoundError):
         raise_http_error(
             status.HTTP_404_NOT_FOUND,
@@ -1064,6 +1100,10 @@ def _serialize_etl_commit_response(result) -> ImportEtlResult:
             "errors": result.errors,
             "strict": result.strict,
             "status": result.status,
+            "duplicate_rows": result.duplicate_rows,
+            "staged_rows": result.staged_rows,
+            "ingestion_strategy": result.ingestion_strategy,
+            "merge_strategy": result.merge_strategy,
             "dq_report": [item.__dict__ for item in result.dq_report],
             "persistence_failures": [
                 {"row_number": row_number, "reason": reason}
@@ -1654,6 +1694,161 @@ def preview_import(
     )
 
 
+@router.post("/import/etl/jobs", response_model=ImportEtlJobQueuedResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/import/etl/jobs/", response_model=ImportEtlJobQueuedResponse, status_code=status.HTTP_202_ACCEPTED)
+def criar_job_import_etl(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    evento_id: int = Form(...),
+    strict: bool = Form(False),
+    header_row: int | None = Form(None),
+    field_aliases_json: str | None = Form(None),
+    sheet_name: str | None = Form(None),
+    max_scan_rows: int | None = Form(None),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    if max_scan_rows is not None and (max_scan_rows < 1 or max_scan_rows > ETL_MAX_SCAN_ROWS_CAP):
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code="ETL_INVALID_INPUT",
+            message=f"max_scan_rows deve estar entre 1 e {ETL_MAX_SCAN_ROWS_CAP}.",
+            field="max_scan_rows",
+        )
+    try:
+        field_aliases = json.loads(field_aliases_json) if field_aliases_json and field_aliases_json.strip() else {}
+        if field_aliases and not isinstance(field_aliases, dict):
+            raise EtlImportContractError("field_aliases_json deve ser um objeto JSON.")
+        job = create_preview_job(
+            session=session,
+            requested_by=int(current_user.id),
+            file=file,
+            evento_id=evento_id,
+            strict=strict,
+            header_row=header_row,
+            field_aliases=field_aliases,
+            sheet_name=sheet_name,
+            max_scan_rows=max_scan_rows,
+        )
+    except Exception as exc:
+        _map_etl_import_error(exc)
+    background_tasks.add_task(execute_preview_job, job.job_id)
+    return ImportEtlJobQueuedResponse(job_id=job.job_id, status="queued")
+
+
+@router.get("/import/etl/jobs/{job_id}", response_model=ImportEtlJobRead)
+@router.get("/import/etl/jobs/{job_id}/", response_model=ImportEtlJobRead)
+def obter_job_import_etl(
+    job_id: str,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        return read_job(session, job_id, requested_by=int(current_user.id))
+    except Exception as exc:
+        _map_etl_import_error(exc)
+
+
+@router.get("/import/etl/jobs/{job_id}/errors", response_model=ImportEtlJobErrorsResponse)
+@router.get("/import/etl/jobs/{job_id}/errors/", response_model=ImportEtlJobErrorsResponse)
+def obter_erros_job_import_etl(
+    job_id: str,
+    phase: str = Query("all"),
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        return read_job_errors(
+            session,
+            job_id=job_id,
+            requested_by=int(current_user.id),
+            phase=phase,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as exc:
+        _map_etl_import_error(exc)
+
+
+@router.post(
+    "/import/etl/jobs/{job_id}/reprocess-preview",
+    response_model=ImportEtlJobQueuedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@router.post(
+    "/import/etl/jobs/{job_id}/reprocess-preview/",
+    response_model=ImportEtlJobQueuedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def reprocessar_job_preview_import_etl(
+    job_id: str,
+    payload: ImportEtlJobReprocessRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    if payload.max_scan_rows is not None and (
+        payload.max_scan_rows < 1 or payload.max_scan_rows > ETL_MAX_SCAN_ROWS_CAP
+    ):
+        raise_http_error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            code="ETL_INVALID_INPUT",
+            message=f"max_scan_rows deve estar entre 1 e {ETL_MAX_SCAN_ROWS_CAP}.",
+            field="max_scan_rows",
+        )
+    try:
+        job = queue_preview_reprocess(
+            session=session,
+            job_id=job_id,
+            requested_by=int(current_user.id),
+            header_row=payload.header_row,
+            field_aliases={key: value.model_dump(exclude_none=True) for key, value in payload.field_aliases.items()},
+            sheet_name=payload.sheet_name,
+            max_scan_rows=payload.max_scan_rows,
+        )
+    except Exception as exc:
+        _map_etl_import_error(exc)
+    background_tasks.add_task(execute_preview_job, job.job_id)
+    return ImportEtlJobQueuedResponse(job_id=job.job_id, status="queued")
+
+
+@router.post(
+    "/import/etl/jobs/{job_id}/commit",
+    response_model=ImportEtlJobQueuedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@router.post(
+    "/import/etl/jobs/{job_id}/commit/",
+    response_model=ImportEtlJobQueuedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def confirmar_job_import_etl(
+    job_id: str,
+    payload: ImportEtlJobCommitRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        job = queue_commit_job(
+            session=session,
+            job_id=job_id,
+            requested_by=int(current_user.id),
+            force_warnings=payload.force_warnings,
+        )
+    except Exception as exc:
+        _map_etl_import_error(exc)
+    background_tasks.add_task(execute_commit_job, job.job_id)
+    return ImportEtlJobQueuedResponse(job_id=job.job_id, status="commit_queued")
+
+
 @router.post("/import/etl/preview", response_model=ImportEtlPreviewResponseUnion)
 @router.post("/import/etl/preview/", response_model=ImportEtlPreviewResponseUnion)
 async def preview_import_etl(
@@ -1681,6 +1876,7 @@ async def preview_import_etl(
             evento_id=evento_id,
             db=session,
             strict=strict,
+            requested_by=int(current_user.id),
             header_row=header_row,
             field_aliases_json=field_aliases_json,
             sheet_name=sheet_name,
@@ -1748,6 +1944,31 @@ def exportar_leads_gold(
     )
 
 
+@router.post("/batches/intake", response_model=LeadBatchIntakeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/batches/intake/", response_model=LeadBatchIntakeResponse, status_code=status.HTTP_201_CREATED)
+def intake_batches(
+    manifest_json: str = Form(...),
+    files: list[UploadFile] = File(...),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.id:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="INVALID_USER",
+            message="Usuario autenticado invalido para upload",
+        )
+
+    manifest = parse_lead_batch_intake_manifest(manifest_json)
+    return execute_lead_batch_intake(
+        session=session,
+        user_id=int(current_user.id),
+        manifest=manifest,
+        files=files,
+        max_import_file_bytes=MAX_IMPORT_FILE_BYTES,
+    )
+
+
 @router.post("/batches", response_model=LeadBatchRead, status_code=status.HTTP_201_CREATED)
 @router.post("/batches/", response_model=LeadBatchRead, status_code=status.HTTP_201_CREATED)
 def criar_batch(
@@ -1767,158 +1988,38 @@ def criar_batch(
             code="INVALID_USER",
             message="Usuario autenticado invalido para upload",
         )
-
-    try:
-        filename, _ext, _size = inspect_upload(file, max_bytes=MAX_IMPORT_FILE_BYTES)
-    except ImportFileError as err:
-        record_import_upload_rejection(err, filename_hint=file.filename)
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code=err.code,
-            message=err.message,
-            field=err.field,
-            extra=err.extra,
+    manifest = parse_lead_batch_intake_manifest(
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "client_row_id": "single-upload",
+                        "plataforma_origem": plataforma_origem,
+                        "data_envio": data_envio,
+                        "evento_id": evento_id,
+                        "origem_lote": origem_lote,
+                        "tipo_lead_proponente": tipo_lead_proponente,
+                        "ativacao_id": ativacao_id,
+                        "file_name": file.filename,
+                    }
+                ]
+            },
+            ensure_ascii=False,
         )
-
-    raw = file.file.read()
-    arquivo_sha256 = hashlib.sha256(raw).hexdigest()
-
-    from datetime import date as _date
-    from datetime import datetime as _dt
-    from datetime import timezone as _timezone
-
-    def _parse_data_envio(value: str):
-        if not value or not isinstance(value, str):
-            raise ValueError("empty")
-        cleaned = value.strip()
-        if cleaned.endswith("Z"):
-            cleaned = f"{cleaned[:-1]}+00:00"
-
-        try:
-            dt = _dt.fromisoformat(cleaned)
-        except ValueError:
-            # Accept date-only ISO-8601 strings (YYYY-MM-DD) sent by the frontend.
-            d = _date.fromisoformat(cleaned)
-            dt = _dt.combine(d, _dt.min.time())
-
-        # Persist as naive datetime (DB column is naive in this project).
-        if dt.tzinfo is not None:
-            dt = dt.astimezone(_timezone.utc).replace(tzinfo=None)
-        return dt
-
-    try:
-        parsed_data_envio = _parse_data_envio(data_envio)
-    except (ValueError, TypeError):
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="INVALID_DATE",
-            message="data_envio deve ser ISO-8601 (YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS)",
-            field="data_envio",
-        )
-
-    resolved_evento: Evento | None = None
-    resolved_evento_id: int | None = None
-    if evento_id is not None:
-        evento = session.get(Evento, evento_id)
-        if evento is None:
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="EVENTO_NOT_FOUND",
-                message="Evento informado nao existe",
-                field="evento_id",
-            )
-        resolved_evento = evento
-        resolved_evento_id = evento_id
-
-    origem_clean = (origem_lote or "proponente").strip().lower()
-    if origem_clean not in ("proponente", "ativacao"):
-        raise_http_error(
-            status.HTTP_400_BAD_REQUEST,
-            code="INVALID_ORIGEM_LOTE",
-            message="origem_lote deve ser proponente ou ativacao",
-            field="origem_lote",
-        )
-
-    resolved_ativacao_id: int | None = None
-    resolved_tipo_lead_prop: str | None = None
-
-    if origem_clean == "ativacao":
-        if resolved_evento_id is None:
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="EVENTO_REQUIRED_FOR_ATIVACAO_BATCH",
-                message="evento_id e obrigatorio para importacao por ativacao",
-                field="evento_id",
-            )
-        if resolved_evento is not None:
-            block_reason = get_activation_import_block_reason(resolved_evento)
-            if block_reason is not None:
-                raise_http_error(
-                    status.HTTP_400_BAD_REQUEST,
-                    code=ACTIVATION_IMPORT_REQUIRES_AGENCY_CODE,
-                    message=block_reason,
-                    field="evento_id",
-                )
-        if ativacao_id is None:
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="ATIVACAO_REQUIRED",
-                message="ativacao_id e obrigatorio quando origem_lote=ativacao",
-                field="ativacao_id",
-            )
-        ativacao_row = session.get(Ativacao, ativacao_id)
-        if ativacao_row is None:
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="ATIVACAO_NOT_FOUND",
-                message="Ativacao nao encontrada",
-                field="ativacao_id",
-            )
-        if int(ativacao_row.evento_id) != int(resolved_evento_id):
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="ATIVACAO_EVENTO_MISMATCH",
-                message="ativacao_id deve pertencer ao evento_id informado",
-                field="ativacao_id",
-            )
-        resolved_ativacao_id = int(ativacao_id)
-    else:
-        if ativacao_id is not None:
-            raise_http_error(
-                status.HTTP_400_BAD_REQUEST,
-                code="ATIVACAO_NOT_ALLOWED",
-                message="ativacao_id so e permitido quando origem_lote=ativacao",
-                field="ativacao_id",
-            )
-        if tipo_lead_proponente is not None and str(tipo_lead_proponente).strip():
-            t = str(tipo_lead_proponente).strip().lower()
-            if t not in ("bilheteria", "entrada_evento"):
-                raise_http_error(
-                    status.HTTP_400_BAD_REQUEST,
-                    code="INVALID_TIPO_LEAD_PROPONENTE",
-                    message="tipo_lead_proponente deve ser bilheteria ou entrada_evento",
-                    field="tipo_lead_proponente",
-                )
-            resolved_tipo_lead_prop = t
-
-    batch = LeadBatch(
-        enviado_por=int(current_user.id),
-        plataforma_origem=plataforma_origem.strip(),
-        data_envio=parsed_data_envio,
-        nome_arquivo_original=filename,
-        arquivo_sha256=arquivo_sha256,
-        arquivo_bronze=raw,
-        stage=BatchStage.BRONZE,
-        evento_id=resolved_evento_id,
-        origem_lote=origem_clean,
-        tipo_lead_proponente=resolved_tipo_lead_prop,
-        ativacao_id=resolved_ativacao_id,
-        pipeline_status=PipelineStatus.PENDING,
     )
-    session.add(batch)
-    session.commit()
-    session.refresh(batch)
-    return LeadBatchRead.model_validate(batch, from_attributes=True)
+    try:
+        intake = execute_lead_batch_intake(
+            session=session,
+            user_id=int(current_user.id),
+            manifest=manifest,
+            files=[file],
+            max_import_file_bytes=MAX_IMPORT_FILE_BYTES,
+        )
+    except Exception as exc:
+        if isinstance(exc, ImportFileError):
+            record_import_upload_rejection(exc, filename_hint=file.filename)
+        raise
+    return intake.items[0].batch
 
 
 @router.get("/batches/import-hint", response_model=LeadBatchImportHintRead)

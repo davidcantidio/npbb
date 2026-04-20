@@ -1,49 +1,40 @@
-# Task 10 — Observabilidade: métricas, logs e lotes presos
+# Task 10 — Upload: defesa em profundidade (OWASP / contenção)
 
-**Prioridade:** P2 (escopo pode incluir itens P1 ligados a alertas de pipeline)
+**Prioridade:** P3
 
 ## Problema
 
-Existem identificadores úteis (`batch_id`, `session_token`) e estado de pipeline na base, mas falta **correlação operacional completa**: contagem de rejeições por motivo, duração por etapa, request-id/job-id distribuído, e alertas para lotes `pending` **sem heartbeat** recente. Isto dificulta diagnóstico em produção e prolonga incidentes.
+O repositório já valida extensão e conteúdo em vários casos (testes para `.txt`, XLSX inválido, ZIP disfarçado). Falta, contudo, uma estratégia explícita de **defesa em profundidade**: storage isolado, quarentena, observabilidade de rejeições e eventual varredura antimalware, alinhada a boas práticas OWASP para upload seguro.
 
 ## Escopo
 
-- Instrumentação em serviços de import, ETL preview/commit, `lead_pipeline_service` (Gold)
-- Métricas (Prometheus/OpenTelemetry ou o que o projecto já usar) e logs estruturados com `batch_id` / `session_token`
-- Regras de alerta ou dashboard mínimo para: lotes pending sem progresso, taxa de rejeição, latência por etapa
+- [backend/app/services/imports/file_reader.py](backend/app/services/imports/file_reader.py) e caminhos ETL de leitura de bytes
+- Storage de uploads (alinhar com task 6 se object storage já estiver em curso)
+- Logging/métricas por motivo de rejeição; pipeline de quarentena (bucket/prefix separado)
+- Documentação de ameaça e mitigação (não precisa de código antivírus se o risco for aceite formalmente)
 
 ## Critérios de aceite
 
-1. Pelo menos um **dashboard ou consulta** operacional documentada com as métricas-chave do relatório.
-2. Logs estruturados nas transições de estado do pipeline (início/fim/erro por etapa).
-3. Contadores de linhas rejeitadas **por motivo** no preview ETL (ou agregação exportável).
-4. Alerta ou runbook para lote `pending` acima de limiar temporal (definir limiar).
+1. Documento curto (ADR ou secção em doc interna) com modelo de ameaça para uploads e mitigações implementadas ou explicitamente fora de escopo.
+2. Rejeições de tipo/conteúdo produzem **métrica ou log estruturado** correlacionável (`request_id`, utilizador).
+3. Qualquer nova dependência externa (scanner, etc.) fica atrás de feature flag.
 
 ## Plano de verificação
 
-- Verificar em ambiente de staging que uma importação gera trilho de logs/métricas pesquisável.
-- Simular lote preso e confirmar que o alerta ou query de detecção dispara.
+- Testes existentes de rejeição mantidos; novos casos se novas verificações forem adicionadas.
+- Checklist de revisão de segurança no handoff.
 
 ## Skills recomendadas (acionar na execução)
 
-Antes de implementar, **ler** cada skill indicada (`SKILL.md` na pasta listada) e seguir as práticas descritas.
-
-- [.claude/skills/monitoring-expert/SKILL.md](.claude/skills/monitoring-expert/SKILL.md) — métricas, logs estruturados, dashboards e alertas.
-- [.claude/skills/sre-engineer/SKILL.md](.claude/skills/sre-engineer/SKILL.md) — SLIs/SLOs para jobs pendentes e runbooks operacionais.
-- [.claude/skills/python-pro/SKILL.md](.claude/skills/python-pro/SKILL.md) — instrumentação no pipeline e nos serviços ETL.
-- [.claude/skills/react-expert/SKILL.md](.claude/skills/react-expert/SKILL.md) — se expuser telemetria ou estados enriquecidos na UI.
-- [.claude/skills/test-master/SKILL.md](.claude/skills/test-master/SKILL.md) — testes de que logs/métricas não quebram em import mínimo.
+- [.claude/skills/secure-code-guardian/SKILL.md](.claude/skills/secure-code-guardian/SKILL.md)
+- [.claude/skills/security-reviewer/SKILL.md](.claude/skills/security-reviewer/SKILL.md)
+- [.claude/skills/python-pro/SKILL.md](.claude/skills/python-pro/SKILL.md)
+- [.claude/skills/monitoring-expert/SKILL.md](.claude/skills/monitoring-expert/SKILL.md)
 
 ## Subtarefa obrigatória: handoff ao concluir
 
-Ao **terminar** esta tarefa (código, testes e revisão), criar o ficheiro **`auditoria/handoff-task10.md`** com:
-
-1. **Resumo** das métricas/logs adicionados, nomes de séries/campos e alertas configurados.
-2. **Lista de ficheiros** tocados e dependências novas (ex.: biblioteca OTEL/Prometheus).
-3. **Diffs / revisão**: comandos `git diff` por serviço; links ou queries de dashboard; variáveis de ambiente para sampling/nível de log.
-
-O handoff deve permitir continuidade sem reler toda a conversa.
+Ao **terminar** esta tarefa, criar **`auditoria/handoff-task10.md`**.
 
 ## Referência
 
-Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — secções **Lacunas de teste e observabilidade**, **Observabilidade e operação** (checklist), **Próximos passos** (logs/metrics por batch_id e session_token).
+Relatório completo: [auditoria/deep-research-report.md](deep-research-report.md) — **Principais problemas encontrados** → **Segurança de arquivo tem base razoável, mas ainda não está em defesa em profundidade**; **Priorização final** (item 10).

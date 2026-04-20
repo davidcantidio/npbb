@@ -193,6 +193,21 @@ export type LeadImportMetadataHint = {
   source_created_at: string;
 };
 
+export type LeadBatchIntakeItemPayload = {
+  client_row_id: string;
+  plataforma_origem: string;
+  data_envio: string;
+  evento_id?: number;
+  origem_lote?: OrigemLoteLeadBatch;
+  tipo_lead_proponente?: "bilheteria" | "entrada_evento";
+  ativacao_id?: number;
+  file: File;
+};
+
+export type LeadBatchIntakePayload = {
+  items: LeadBatchIntakeItemPayload[];
+};
+
 export type CreateLeadBatchPayload = {
   plataforma_origem: string;
   data_envio: string;
@@ -338,6 +353,53 @@ export type LeadBatchPreview = {
   total_rows: number;
 };
 
+export type LeadBatchIntakeItemResult = {
+  client_row_id: string;
+  batch: LeadBatch;
+  preview: LeadBatchPreview;
+  hint_applied: LeadImportMetadataHint | null;
+};
+
+export type LeadBatchIntakeResult = {
+  items: LeadBatchIntakeItemResult[];
+};
+
+export type LeadImportEtlJobStatus =
+  | "queued"
+  | "running"
+  | "header_required"
+  | "cpf_column_required"
+  | "previewed"
+  | "commit_queued"
+  | "committing"
+  | "committed"
+  | "partial_failure"
+  | "failed";
+
+export type LeadImportEtlJobProgress = {
+  phase: "preview" | "commit";
+  label: string;
+  pct: number | null;
+  updated_at: string;
+};
+
+export type LeadImportEtlJob = {
+  job_id: string;
+  evento_id: number;
+  filename: string;
+  status: LeadImportEtlJobStatus;
+  strict: boolean;
+  preview_session_token?: string | null;
+  progress?: LeadImportEtlJobProgress | null;
+  preview_result?: LeadImportEtlPreview | null;
+  commit_result?: LeadImportEtlResult | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
+};
+
 /**
  * Lead representation used in frontend listing tables.
  */
@@ -452,6 +514,38 @@ export async function createLeadBatch(
   return handleApiResponse<LeadBatch>(res);
 }
 
+export async function createLeadBatchIntake(
+  token: string,
+  payload: LeadBatchIntakePayload,
+): Promise<LeadBatchIntakeResult> {
+  const form = new FormData();
+  const manifest = {
+    items: payload.items.map((item) => ({
+      client_row_id: item.client_row_id,
+      plataforma_origem: item.plataforma_origem,
+      data_envio: item.data_envio,
+      evento_id: item.evento_id,
+      origem_lote: item.origem_lote ?? "proponente",
+      tipo_lead_proponente: item.tipo_lead_proponente,
+      ativacao_id: item.ativacao_id,
+      file_name: item.file.name,
+    })),
+  };
+  form.append("manifest_json", JSON.stringify(manifest));
+  payload.items.forEach((item) => {
+    form.append("files", item.file, item.file.name);
+  });
+
+  const res = await fetchWithAuth("/leads/batches/intake", {
+    method: "POST",
+    token,
+    body: form,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+    retries: 0,
+  });
+  return handleApiResponse<LeadBatchIntakeResult>(res);
+}
+
 export async function getLeadImportMetadataHint(
   token: string,
   arquivoSha256: string,
@@ -556,6 +650,95 @@ export async function commitLeadImportEtl(
     retries: 0,
   });
   return handleApiResponse<LeadImportEtlResult>(res);
+}
+
+export async function startLeadImportEtlJob(
+  token: string,
+  file: File,
+  eventoId: number,
+  strict = false,
+  options?: LeadImportEtlPreviewOptions,
+): Promise<{ job_id: string; status: "queued" }> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("evento_id", String(eventoId));
+  form.append("strict", String(strict));
+  if (options?.headerRow) {
+    form.append("header_row", String(options.headerRow));
+  }
+  if (options?.fieldAliases && Object.keys(options.fieldAliases).length > 0) {
+    form.append("field_aliases_json", JSON.stringify(options.fieldAliases));
+  }
+  if (options?.sheetName?.trim()) {
+    form.append("sheet_name", options.sheetName.trim());
+  }
+  if (options?.maxScanRows != null && Number.isFinite(options.maxScanRows)) {
+    form.append("max_scan_rows", String(Math.floor(options.maxScanRows)));
+  }
+  const res = await fetchWithAuth("/leads/import/etl/jobs", {
+    method: "POST",
+    token,
+    body: form,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+    retries: 0,
+  });
+  return handleApiResponse<{ job_id: string; status: "queued" }>(res);
+}
+
+export async function getLeadImportEtlJob(token: string, jobId: string): Promise<LeadImportEtlJob> {
+  const res = await fetchWithAuth(`/leads/import/etl/jobs/${jobId}`, {
+    token,
+    retries: 0,
+    timeoutMs: LEAD_BATCH_STATUS_TIMEOUT_MS,
+  });
+  return handleApiResponse<LeadImportEtlJob>(res);
+}
+
+export async function reprocessLeadImportEtlJobPreview(
+  token: string,
+  jobId: string,
+  options?: LeadImportEtlPreviewOptions,
+): Promise<{ job_id: string; status: "queued" }> {
+  const body = {
+    header_row: options?.headerRow,
+    field_aliases: options?.fieldAliases ?? {},
+    sheet_name: options?.sheetName?.trim() || undefined,
+    max_scan_rows:
+      options?.maxScanRows != null && Number.isFinite(options.maxScanRows)
+        ? Math.floor(options.maxScanRows)
+        : undefined,
+  };
+  const res = await fetchWithAuth(`/leads/import/etl/jobs/${jobId}/reprocess-preview`, {
+    method: "POST",
+    token,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+  });
+  return handleApiResponse<{ job_id: string; status: "queued" }>(res);
+}
+
+export async function commitLeadImportEtlJob(
+  token: string,
+  jobId: string,
+  forceWarnings = false,
+): Promise<{ job_id: string; status: "commit_queued" }> {
+  const res = await fetchWithAuth(`/leads/import/etl/jobs/${jobId}/commit`, {
+    method: "POST",
+    token,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      force_warnings: forceWarnings,
+    }),
+    retries: 0,
+    timeoutMs: LEAD_BATCH_FILE_IO_TIMEOUT_MS,
+  });
+  return handleApiResponse<{ job_id: string; status: "commit_queued" }>(res);
 }
 
 /**

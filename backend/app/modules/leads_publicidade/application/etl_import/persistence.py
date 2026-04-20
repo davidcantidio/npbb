@@ -86,9 +86,17 @@ class LeadPersistenceFailedRow:
 
 
 @dataclass(frozen=True)
+class LeadPersistenceAppliedRow:
+    row_index: int
+    action: str
+    lead_id: int | None
+
+
+@dataclass(frozen=True)
 class LeadBatchPersistenceResult:
     created: int = 0
     updated: int = 0
+    applied_rows: list[LeadPersistenceAppliedRow] = field(default_factory=list)
     failed_rows: list[LeadPersistenceFailedRow] = field(default_factory=list)
     skipped_rows: list[Any] = field(default_factory=list)
 
@@ -429,6 +437,8 @@ def persist_lead_batch(
     session: Session,
     batch: list[tuple[dict[str, object], int] | None],
     canonical_evento_id: int | None = None,
+    *,
+    auto_commit: bool = True,
 ) -> LeadBatchPersistenceResult:
     effective_items: list[tuple[dict[str, object], int]] = [
         item for item in batch if item is not None
@@ -449,7 +459,7 @@ def persist_lead_batch(
 
     try:
         with session.begin_nested():
-            created, updated = _persist_lead_batch_bulk(
+            bulk_result = _persist_lead_batch_bulk(
                 session,
                 effective_items,
                 canonical_evento_id=canonical_evento_id,
@@ -467,12 +477,14 @@ def persist_lead_batch(
             lookup_context=lookup_context,
         )
         result = _ensure_attempted_rows_are_reported(result, effective_items)
-        result = _commit_or_failure(session, result, effective_items)
+        if auto_commit:
+            result = _commit_or_failure(session, result, effective_items)
         return _with_failed_rows(result, validation_failed_rows)
 
-    result = LeadBatchPersistenceResult(created=created, updated=updated)
+    result = bulk_result
     result = _ensure_attempted_rows_are_reported(result, effective_items)
-    result = _commit_or_failure(session, result, effective_items)
+    if auto_commit:
+        result = _commit_or_failure(session, result, effective_items)
     return _with_failed_rows(result, validation_failed_rows)
 
 
@@ -506,6 +518,7 @@ def _with_failed_rows(
     return LeadBatchPersistenceResult(
         created=result.created,
         updated=result.updated,
+        applied_rows=result.applied_rows,
         failed_rows=sorted(
             [*result.failed_rows, *failed_rows],
             key=lambda row: row.row_index,
@@ -533,15 +546,15 @@ def _persist_lead_batch_bulk(
     *,
     canonical_evento_id: int | None = None,
     lookup_context: LeadLookupContext | None = None,
-) -> tuple[int, int]:
+) -> LeadBatchPersistenceResult:
     created = 0
     updated = 0
-    new_objects: list[Lead] = []
-    new_payloads: list[dict[str, object]] = []
-    update_objects: list[tuple[Lead, dict[str, object]]] = []
+    applied_rows: list[LeadPersistenceAppliedRow] = []
+    new_objects: list[tuple[Lead, dict[str, object], int]] = []
+    update_objects: list[tuple[Lead, dict[str, object], int]] = []
     lead_cache: dict[str, Lead] = {}
 
-    for payload, _row_number in batch:
+    for payload, row_number in batch:
         key = build_dedupe_key(payload, canonical_evento_id=canonical_evento_id)
         existing = lead_cache.get(key) if key else None
         if existing is None:
@@ -561,34 +574,51 @@ def _persist_lead_batch_bulk(
                 lead_cache[key] = existing
         if existing:
             merge_lead(existing, payload)
-            update_objects.append((existing, payload))
+            update_objects.append((existing, payload, row_number))
             continue
-        new_objects.append(Lead(**payload))
-        new_payloads.append(payload)
+        new_objects.append((Lead(**payload), payload, row_number))
 
     if new_objects:
-        session.add_all(new_objects)
+        session.add_all([lead for lead, _payload, _row_number in new_objects])
         session.flush()
-        for lead, payload in zip(new_objects, new_payloads, strict=False):
+        for lead, payload, row_number in new_objects:
             _ensure_canonical_event_link(
                 session,
                 lead=lead,
                 payload=payload,
                 canonical_evento_id=canonical_evento_id,
+            )
+            applied_rows.append(
+                LeadPersistenceAppliedRow(
+                    row_index=row_number,
+                    action="created",
+                    lead_id=int(lead.id) if lead.id is not None else None,
+                )
             )
         created += len(new_objects)
     if update_objects:
-        session.add_all([lead for lead, _payload in update_objects])
+        session.add_all([lead for lead, _payload, _row_number in update_objects])
         session.flush()
-        for lead, payload in update_objects:
+        for lead, payload, row_number in update_objects:
             _ensure_canonical_event_link(
                 session,
                 lead=lead,
                 payload=payload,
                 canonical_evento_id=canonical_evento_id,
             )
+            applied_rows.append(
+                LeadPersistenceAppliedRow(
+                    row_index=row_number,
+                    action="updated",
+                    lead_id=int(lead.id) if lead.id is not None else None,
+                )
+            )
         updated += len(update_objects)
-    return created, updated
+    return LeadBatchPersistenceResult(
+        created=created,
+        updated=updated,
+        applied_rows=sorted(applied_rows, key=lambda row: row.row_index),
+    )
 
 
 def _persist_lead_batch_row_by_row(
@@ -600,12 +630,13 @@ def _persist_lead_batch_row_by_row(
 ) -> LeadBatchPersistenceResult:
     created = 0
     updated = 0
+    applied_rows: list[LeadPersistenceAppliedRow] = []
     failed_rows: list[LeadPersistenceFailedRow] = []
 
     for payload, row_number in batch:
         try:
             with session.begin_nested():
-                action = _persist_single_lead_row(
+                action, lead_id = _persist_single_lead_row(
                     session,
                     payload,
                     canonical_evento_id=canonical_evento_id,
@@ -624,10 +655,18 @@ def _persist_lead_batch_row_by_row(
             created += 1
         else:
             updated += 1
+        applied_rows.append(
+            LeadPersistenceAppliedRow(
+                row_index=row_number,
+                action=action,
+                lead_id=lead_id,
+            )
+        )
 
     return LeadBatchPersistenceResult(
         created=created,
         updated=updated,
+        applied_rows=applied_rows,
         failed_rows=failed_rows,
     )
 
@@ -638,7 +677,7 @@ def _persist_single_lead_row(
     *,
     canonical_evento_id: int | None = None,
     lookup_context: LeadLookupContext | None = None,
-) -> str:
+) -> tuple[str, int | None]:
     if lookup_context is not None:
         existing = find_existing_lead_from_lookup(
             payload,
@@ -661,7 +700,7 @@ def _persist_single_lead_row(
             payload=payload,
             canonical_evento_id=canonical_evento_id,
         )
-        return "updated"
+        return "updated", int(existing.id) if existing.id is not None else None
 
     try:
         with session.begin_nested():
@@ -687,14 +726,14 @@ def _persist_single_lead_row(
             payload=payload,
             canonical_evento_id=canonical_evento_id,
         )
-        return "updated"
+        return "updated", int(winner.id) if winner.id is not None else None
     _ensure_canonical_event_link(
         session,
         lead=lead,
         payload=payload,
         canonical_evento_id=canonical_evento_id,
     )
-    return "created"
+    return "created", int(lead.id) if lead.id is not None else None
 
 
 def _commit_or_failure(

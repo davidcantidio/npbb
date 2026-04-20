@@ -95,4 +95,8 @@ class EtlCommitResult:
     strict: bool
     status: PreviewStatus
     dq_report: tuple[EtlPreviewDQItem, ...]
+    duplicate_rows: int = 0
+    staged_rows: int = 0
+    ingestion_strategy: str | None = None
+    merge_strategy: str | None = None
     persistence_failures: tuple[tuple[int, str], ...] = field(default_factory=tuple)

@@ -18,10 +18,13 @@ No modo batch, a agregacao e intencionalmente conservadora:
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Any
 
+from sqlalchemy import delete, insert
 from sqlmodel import Session, select
 
 from lead_pipeline.constants import ALL_COLUMNS, HEADER_SYNONYMS
@@ -38,11 +41,13 @@ SOURCE_SHEET_FIELD = "source_sheet"
 SOURCE_ROW_FIELD = "source_row"
 SOURCE_ROW_ORIGINAL_FIELD = "source_row_original"
 MAX_BATCH_COLUMN_SAMPLES = 5
+LEAD_SILVER_INSERT_CHUNK_SIZE = 1000
 BATCH_SOURCE_HEADER_AGGREGATION_RULE = (
     "trim + lowercase + remover acentos + colapsar espacos internos; preserva pontuacao e separadores como _ e -"
 )
 
 Confidence = str  # "exact_match" | "synonym_match" | "alias_match" | "none"
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -140,6 +145,30 @@ def _load_aliases_by_platform(db: Session, plataforma_origem: str) -> dict[str, 
     return {alias.nome_coluna_original: alias.campo_canonico for alias in aliases}
 
 
+def _load_alias_rows_by_platform(
+    db: Session,
+    plataformas_origem: set[str],
+) -> dict[str, dict[str, LeadColumnAlias]]:
+    normalized_platforms = sorted({platform for platform in plataformas_origem if platform})
+    if not normalized_platforms:
+        return {}
+
+    aliases = db.exec(
+        select(LeadColumnAlias).where(LeadColumnAlias.plataforma_origem.in_(normalized_platforms))
+    ).all()
+    grouped: dict[str, dict[str, LeadColumnAlias]] = {platform: {} for platform in normalized_platforms}
+    for alias in aliases:
+        grouped.setdefault(alias.plataforma_origem, {})[alias.nome_coluna_original] = alias
+    return grouped
+
+
+def _alias_lookup_from_rows(alias_rows_by_name: dict[str, LeadColumnAlias]) -> dict[str, str]:
+    return {
+        alias_name: alias.campo_canonico
+        for alias_name, alias in alias_rows_by_name.items()
+    }
+
+
 def _suggest_for_header(
     header: str,
     aliases_by_coluna: dict[str, str],
@@ -216,10 +245,18 @@ def _detect_batch_header_collisions(batch: LeadBatch, headers: list[str]) -> lis
     return collisions
 
 
-def _load_batch_mapping_context(batch_id: int, db: Session) -> _LoadedBatchMappingContext:
+def _get_batch_or_raise(batch_id: int, db: Session) -> LeadBatch:
     batch = db.get(LeadBatch, batch_id)
     if not batch:
         raise ValueError(f"Lote {batch_id} nao encontrado")
+    return batch
+
+
+def _load_batch_mapping_context_from_batch(
+    batch: LeadBatch,
+    db: Session,
+    aliases_lookup_by_platform: dict[str, dict[str, str]] | None = None,
+) -> _LoadedBatchMappingContext:
 
     extracted = read_raw_file_rows(
         batch.arquivo_bronze,
@@ -227,7 +264,11 @@ def _load_batch_mapping_context(batch_id: int, db: Session) -> _LoadedBatchMappi
     )
     headers = extracted.headers
     data_rows = extracted.rows
-    aliases_by_coluna = _load_aliases_by_platform(db, batch.plataforma_origem)
+    aliases_by_coluna = (
+        aliases_lookup_by_platform.get(batch.plataforma_origem, {})
+        if aliases_lookup_by_platform is not None
+        else _load_aliases_by_platform(db, batch.plataforma_origem)
+    )
     suggestions = _build_column_suggestions(headers, aliases_by_coluna)
     samples_by_column = build_samples_by_column(headers, data_rows, max_samples=MAX_BATCH_COLUMN_SAMPLES)
 
@@ -255,6 +296,35 @@ def _load_batch_mapping_context(batch_id: int, db: Session) -> _LoadedBatchMappi
         samples_by_column=samples_by_column,
         blockers=blockers,
     )
+
+
+def _load_batch_mapping_context(batch_id: int, db: Session) -> _LoadedBatchMappingContext:
+    batch = _get_batch_or_raise(batch_id, db)
+    return _load_batch_mapping_context_from_batch(batch, db)
+
+
+def _load_batch_mapping_contexts(
+    batch_ids: list[int],
+    db: Session,
+) -> tuple[list[_LoadedBatchMappingContext], dict[str, dict[str, LeadColumnAlias]]]:
+    batches = [_get_batch_or_raise(batch_id, db) for batch_id in batch_ids]
+    alias_rows_by_platform = _load_alias_rows_by_platform(
+        db,
+        {batch.plataforma_origem for batch in batches},
+    )
+    aliases_lookup_by_platform = {
+        platform: _alias_lookup_from_rows(alias_rows)
+        for platform, alias_rows in alias_rows_by_platform.items()
+    }
+    contexts = [
+        _load_batch_mapping_context_from_batch(
+            batch,
+            db,
+            aliases_lookup_by_platform=aliases_lookup_by_platform,
+        )
+        for batch in batches
+    ]
+    return contexts, alias_rows_by_platform
 
 
 def _resolve_group_suggestion(occurrences: list[BatchColumnOccurrence]) -> tuple[str | None, Confidence, list[str]]:
@@ -401,14 +471,12 @@ def suggest_batch_column_mapping(
     if not unique_batch_ids:
         raise ValueError("Informe ao menos um lote valido para o mapeamento batch.")
 
-    contexts = [_load_batch_mapping_context(batch_id, db) for batch_id in unique_batch_ids]
+    contexts, _ = _load_batch_mapping_contexts(unique_batch_ids, db)
     return _build_batch_column_preview(unique_batch_ids, contexts)
 
 
 def _replace_existing_silver_rows(batch_id: int, db: Session) -> None:
-    existing_silver = db.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).all()
-    for row in existing_silver:
-        db.delete(row)
+    db.exec(delete(LeadSilver).where(LeadSilver.batch_id == batch_id))
     db.flush()
 
 
@@ -418,16 +486,20 @@ def _upsert_column_aliases(
     mapeamento: dict[str, str],
     user_id: int,
     db: Session,
+    alias_rows_by_name: dict[str, LeadColumnAlias] | None = None,
 ) -> None:
+    platform_alias_rows = alias_rows_by_name if alias_rows_by_name is not None else {}
     for coluna_original, campo_canonico in mapeamento.items():
         if not campo_canonico:
             continue
-        existing_alias = db.exec(
-            select(LeadColumnAlias).where(
-                LeadColumnAlias.nome_coluna_original == coluna_original,
-                LeadColumnAlias.plataforma_origem == batch.plataforma_origem,
-            )
-        ).first()
+        existing_alias = platform_alias_rows.get(coluna_original)
+        if existing_alias is None and alias_rows_by_name is None:
+            existing_alias = db.exec(
+                select(LeadColumnAlias).where(
+                    LeadColumnAlias.nome_coluna_original == coluna_original,
+                    LeadColumnAlias.plataforma_origem == batch.plataforma_origem,
+                )
+            ).first()
         if existing_alias:
             if existing_alias.campo_canonico != campo_canonico:
                 existing_alias.campo_canonico = campo_canonico
@@ -441,25 +513,27 @@ def _upsert_column_aliases(
             criado_por=user_id,
         )
         db.add(alias)
+        platform_alias_rows[coluna_original] = alias
 
 
-def _apply_mapping_context(
+def _build_silver_row_payloads(
     context: _LoadedBatchMappingContext,
     *,
     evento_id: int,
     mapeamento: dict[str, str],
-    user_id: int,
-    db: Session,
-) -> MapearResult:
-    _replace_existing_silver_rows(int(context.batch.id), db)
+) -> list[dict[str, Any]]:
+    mapped_columns = [
+        (col_idx, campo_canonico)
+        for col_idx, header in enumerate(context.headers)
+        if (campo_canonico := mapeamento.get(header))
+    ]
+    if not mapped_columns:
+        return []
 
-    silver_count = 0
+    silver_payloads: list[dict[str, Any]] = []
     for row_index, row in enumerate(context.data_rows):
         dados_brutos: dict[str, Any] = {}
-        for col_idx, header in enumerate(context.headers):
-            campo_canonico = mapeamento.get(header)
-            if not campo_canonico:
-                continue
+        for col_idx, campo_canonico in mapped_columns:
             value = row[col_idx] if col_idx < len(row) else ""
             dados_brutos[campo_canonico] = value
 
@@ -475,21 +549,54 @@ def _apply_mapping_context(
         dados_brutos[SOURCE_SHEET_FIELD] = context.source_sheet
         dados_brutos[SOURCE_ROW_ORIGINAL_FIELD] = physical_line
         dados_brutos[SOURCE_ROW_FIELD] = physical_line
-
-        silver = LeadSilver(
-            batch_id=int(context.batch.id),
-            row_index=row_index,
-            dados_brutos=dados_brutos,
-            evento_id=evento_id,
+        silver_payloads.append(
+            {
+                "batch_id": int(context.batch.id),
+                "row_index": row_index,
+                "dados_brutos": dados_brutos,
+                "evento_id": evento_id,
+            }
         )
-        db.add(silver)
-        silver_count += 1
+
+    return silver_payloads
+
+
+def _insert_silver_rows(
+    silver_payloads: list[dict[str, Any]],
+    db: Session,
+) -> None:
+    for start in range(0, len(silver_payloads), LEAD_SILVER_INSERT_CHUNK_SIZE):
+        chunk = silver_payloads[start : start + LEAD_SILVER_INSERT_CHUNK_SIZE]
+        if not chunk:
+            continue
+        db.execute(insert(LeadSilver), chunk)
+    db.flush()
+
+
+def _apply_mapping_context(
+    context: _LoadedBatchMappingContext,
+    *,
+    evento_id: int,
+    mapeamento: dict[str, str],
+    user_id: int,
+    db: Session,
+    alias_rows_by_name: dict[str, LeadColumnAlias] | None = None,
+) -> MapearResult:
+    _replace_existing_silver_rows(int(context.batch.id), db)
+    silver_payloads = _build_silver_row_payloads(
+        context,
+        evento_id=evento_id,
+        mapeamento=mapeamento,
+    )
+    _insert_silver_rows(silver_payloads, db)
+    silver_count = len(silver_payloads)
 
     _upsert_column_aliases(
         batch=context.batch,
         mapeamento=mapeamento,
         user_id=user_id,
         db=db,
+        alias_rows_by_name=alias_rows_by_name,
     )
 
     context.batch.stage = BatchStage.SILVER
@@ -517,8 +624,19 @@ def mapear_batch(
     db: Session,
 ) -> MapearResult:
     """Aplica mapeamento confirmado em um lote e persiste a camada silver."""
-
-    context = _load_batch_mapping_context(batch_id, db)
+    started_at = perf_counter()
+    batch = _get_batch_or_raise(batch_id, db)
+    alias_rows_by_platform = _load_alias_rows_by_platform(db, {batch.plataforma_origem})
+    aliases_lookup_by_platform = {
+        platform: _alias_lookup_from_rows(alias_rows)
+        for platform, alias_rows in alias_rows_by_platform.items()
+    }
+    context = _load_batch_mapping_context_from_batch(
+        batch,
+        db,
+        aliases_lookup_by_platform=aliases_lookup_by_platform,
+    )
+    total_rows = len(context.data_rows)
     try:
         result = _apply_mapping_context(
             context,
@@ -526,11 +644,27 @@ def mapear_batch(
             mapeamento=mapeamento,
             user_id=user_id,
             db=db,
+            alias_rows_by_name=alias_rows_by_platform.setdefault(batch.plataforma_origem, {}),
         )
         db.commit()
+        elapsed_s = perf_counter() - started_at
+        logger.info(
+            "lead_mapping.single completed batch_id=%s total_rows=%s silver_count=%s elapsed_s=%.3f",
+            batch_id,
+            total_rows,
+            result.silver_count,
+            elapsed_s,
+        )
         return result
     except Exception:
         db.rollback()
+        elapsed_s = perf_counter() - started_at
+        logger.exception(
+            "lead_mapping.single failed batch_id=%s total_rows=%s elapsed_s=%.3f",
+            batch_id,
+            total_rows,
+            elapsed_s,
+        )
         raise
 
 
@@ -541,7 +675,7 @@ def mapear_batches(
     db: Session,
 ) -> BatchMapearResult:
     """Aplica um mapeamento agregado a varios lotes em uma unica transacao."""
-
+    started_at = perf_counter()
     unique_batch_ids = _unique_positive_batch_ids(batch_ids)
     if not unique_batch_ids:
         raise ValueError("Informe ao menos um lote valido para o mapeamento batch.")
@@ -554,13 +688,14 @@ def mapear_batches(
     if not any(normalized_mapping.values()):
         raise ValueError("mapeamento nao pode ser vazio")
 
-    contexts = [_load_batch_mapping_context(batch_id, db) for batch_id in unique_batch_ids]
+    contexts, alias_rows_by_platform = _load_batch_mapping_contexts(unique_batch_ids, db)
     preview = _build_batch_column_preview(unique_batch_ids, contexts)
     if preview.blockers:
         raise BatchMappingBlockedError(preview.blockers)
 
     results: list[MapearResult] = []
     total_silver_count = 0
+    total_rows = sum(len(context.data_rows) for context in contexts)
     try:
         for context in contexts:
             if context.batch.evento_id is None:
@@ -582,6 +717,7 @@ def mapear_batches(
                 mapeamento=batch_mapping,
                 user_id=user_id,
                 db=db,
+                alias_rows_by_name=alias_rows_by_platform.setdefault(context.batch.plataforma_origem, {}),
             )
             results.append(result)
             total_silver_count += result.silver_count
@@ -589,8 +725,23 @@ def mapear_batches(
         db.commit()
     except Exception:
         db.rollback()
+        elapsed_s = perf_counter() - started_at
+        logger.exception(
+            "lead_mapping.batch failed batch_count=%s total_rows=%s elapsed_s=%.3f",
+            len(unique_batch_ids),
+            total_rows,
+            elapsed_s,
+        )
         raise
 
+    elapsed_s = perf_counter() - started_at
+    logger.info(
+        "lead_mapping.batch completed batch_count=%s total_rows=%s total_silver_count=%s elapsed_s=%.3f",
+        len(unique_batch_ids),
+        total_rows,
+        total_silver_count,
+        elapsed_s,
+    )
     return BatchMapearResult(
         primary_batch_id=unique_batch_ids[0],
         total_silver_count=total_silver_count,

@@ -16,6 +16,7 @@ from app.models.lead_public_models import (
     EventPublicity,
     LeadAlias,
     LeadConversao,
+    LeadImportEtlJob,
     LeadImportEtlPreviewSession,
 )
 from app.models.models import (
@@ -561,6 +562,7 @@ def excluir_evento_usecase(evento_id: int, session: Session, current_user: Usuar
     session.exec(sa_delete(EventoLandingCustomizationAudit).where(EventoLandingCustomizationAudit.event_id == evento_id))
 
     # 7. ETL/Leads
+    session.exec(sa_delete(LeadImportEtlJob).where(LeadImportEtlJob.evento_id == evento_id))
     session.exec(sa_delete(LeadImportEtlPreviewSession).where(LeadImportEtlPreviewSession.evento_id == evento_id))
     session.exec(sa_delete(LeadSilver).where(LeadSilver.evento_id == evento_id))
 

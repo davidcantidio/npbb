@@ -14,6 +14,8 @@ from app.models.models import (
     Lead,
     LeadConversao,
     LeadConversaoTipo,
+    LeadEvento,
+    LeadEventoSourceKind,
     StatusEvento,
     TipoEvento,
     Usuario,
@@ -222,6 +224,54 @@ def seed_leads(session: Session):
     session.commit()
 
 
+def seed_contaminated_origin_lead(session: Session) -> tuple[Evento, Lead]:
+    agencia = session.exec(select(Agencia).where(Agencia.nome == "Agencia 1")).first()
+    status = session.exec(select(StatusEvento).where(StatusEvento.nome == "Ativo")).first()
+    tipo_evento = session.exec(select(TipoEvento).where(TipoEvento.nome == "Esporte")).first()
+    assert agencia is not None
+    assert status is not None
+    assert tipo_evento is not None
+
+    evento = Evento(
+        nome="Evento Canonico Origem",
+        descricao="Evento canonico para lead contaminado",
+        concorrencia=False,
+        cidade="Belo Horizonte",
+        estado="MG",
+        data_inicio_prevista=date(2026, 6, 4),
+        agencia_id=agencia.id,
+        status_id=status.id,
+        tipo_id=tipo_evento.id,
+    )
+    session.add(evento)
+    session.commit()
+    session.refresh(evento)
+
+    lead = Lead(
+        nome="Elaine",
+        sobrenome="Costa",
+        email="elaine@example.com",
+        cpf="00000000005",
+        evento_nome="Ativação",
+        cidade="Belo Horizonte",
+        estado="MG",
+        data_criacao=datetime(2026, 1, 6, tzinfo=timezone.utc),
+    )
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
+
+    session.add(
+        LeadEvento(
+            lead_id=int(lead.id),
+            evento_id=int(evento.id),
+            source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+        )
+    )
+    session.commit()
+    return evento, lead
+
+
 def test_listar_leads_retorna_evento_convertido_mais_recente(client, engine):
     with Session(engine) as session:
         seed_leads(session)
@@ -357,6 +407,82 @@ def test_listar_leads_faz_fallback_do_tipo_evento_de_origem_quando_existir_no_ba
     assert lead_davi["data_evento"] == "2026-05-03 00:00:00"
 
 
+def test_listar_leads_resolve_evento_canonico_quando_evento_nome_esta_contaminado(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        evento, _lead = seed_contaminated_origin_lead(session)
+        evento_nome = str(evento.nome)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/leads?page=1&page_size=10", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    items_by_email = {item["email"]: item for item in data["items"]}
+
+    lead_elaine = items_by_email["elaine@example.com"]
+    assert lead_elaine["evento_nome"] == evento_nome
+    assert lead_elaine["evento_convertido_nome"] is None
+    assert lead_elaine["data_evento"] == "2026-06-04 00:00:00"
+    assert lead_elaine["local_evento"] == "Belo Horizonte-MG"
+    assert lead_elaine["tipo_evento"] == "Esporte"
+
+
+def test_listar_leads_filtra_por_evento_id_e_data_com_lead_evento_canonico(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        evento, _lead = seed_contaminated_origin_lead(session)
+        evento_id = int(evento.id)
+        headers = get_auth_header(client, session)
+
+    by_event = client.get(f"/leads?evento_id={evento_id}&page_size=10", headers=headers)
+    assert by_event.status_code == 200
+    data_by_event = by_event.json()
+    assert data_by_event["total"] == 1
+    assert data_by_event["items"][0]["email"] == "elaine@example.com"
+
+    by_date = client.get(
+        "/leads?data_inicio=2026-06-04&data_fim=2026-06-04&page_size=10",
+        headers=headers,
+    )
+    assert by_date.status_code == 200
+    data_by_date = by_date.json()
+    assert data_by_date["total"] == 1
+    assert data_by_date["items"][0]["email"] == "elaine@example.com"
+
+
+def test_listar_leads_faz_fallback_final_para_evento_nome_bruto_sem_origem_resolvida(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/leads?page=1&page_size=10", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    items_by_email = {item["email"]: item for item in data["items"]}
+
+    lead_bruno = items_by_email["bruno@example.com"]
+    assert lead_bruno["evento_convertido_nome"] is None
+    assert lead_bruno["evento_nome"] == "Outro Evento"
+    assert lead_bruno["data_evento"] is None
+    assert lead_bruno["local_evento"] is None
+
+
+def test_exportar_leads_csv_usa_evento_canonico_quando_evento_nome_esta_contaminado(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        evento, _lead = seed_contaminated_origin_lead(session)
+        evento_id = int(evento.id)
+        headers = get_auth_header(client, session)
+
+    response = client.get(f"/leads/export/csv?evento_id={evento_id}", headers=headers)
+    assert response.status_code == 200
+
+    content = response.content.decode("utf-8-sig")
+    assert "elaine@example.com" in content
+    assert "Evento Canonico Origem" in content
+    assert "Ativação" not in content
+
+
 def test_listar_leads_total_e_paginacao_com_filtro_de_data(client, engine):
     with Session(engine) as session:
         seed_leads(session)
@@ -447,7 +573,7 @@ def test_exportar_leads_csv_retorna_arquivo_e_aplica_filtros(client, engine):
     lines = [line for line in content.split("\r\n") if line]
     assert (
         lines[0]
-        == "nome,cpf,data_nascimento,email,telefone,origem,evento,tipo_evento,local,data_evento"
+        == "nome,cpf,data_nascimento,email,telefone,origem,evento,local,data_evento"
     )
     assert "ana@example.com" in lines[1]
     assert "bruno@example.com" not in content

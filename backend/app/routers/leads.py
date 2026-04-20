@@ -40,6 +40,7 @@ from app.models.models import (
     LeadAliasTipo,
     LeadConversao,
     LeadEvento,
+    LeadEventoSourceKind,
     TipoEvento,
     Usuario,
     now_utc,
@@ -429,37 +430,258 @@ def _format_local_evento_export(cidade: str | None, estado: str | None) -> str |
     return cidade_value or estado_value
 
 
-def _lead_list_effective_event_date_expr(evento_origem):
-    """Data do evento usada na listagem (conversao mais recente com evento ou evento de origem do lote)."""
+def _lead_evento_source_priority_expr(source_kind_col):
+    return case(
+        (source_kind_col == LeadEventoSourceKind.EVENT_NAME_BACKFILL, 1),
+        (source_kind_col == LeadEventoSourceKind.LEAD_BATCH, 2),
+        (source_kind_col == LeadEventoSourceKind.EVENT_DIRECT, 3),
+        (source_kind_col == LeadEventoSourceKind.ACTIVATION, 4),
+        (source_kind_col == LeadEventoSourceKind.MANUAL_RECONCILED, 5),
+        else_=0,
+    )
+
+
+def _preferred_lead_evento_subquery():
+    ranked = (
+        select(
+            LeadEvento.lead_id.label("lead_id"),
+            LeadEvento.evento_id.label("evento_id"),
+            func.row_number()
+            .over(
+                partition_by=LeadEvento.lead_id,
+                order_by=(
+                    _lead_evento_source_priority_expr(LeadEvento.source_kind).desc(),
+                    LeadEvento.updated_at.desc(),
+                    LeadEvento.created_at.desc(),
+                    LeadEvento.id.desc(),
+                ),
+            )
+            .label("row_num"),
+        )
+        .subquery()
+    )
+    return (
+        select(
+            ranked.c.lead_id,
+            ranked.c.evento_id,
+        )
+        .where(ranked.c.row_num == 1)
+        .subquery()
+    )
+
+
+def _lead_list_effective_event_id_expr(
+    canonical_evento_id_col,
+    origem_evento_id_col,
+):
+    return case(
+        (LeadConversao.evento_id.isnot(None), LeadConversao.evento_id),
+        (canonical_evento_id_col.isnot(None), canonical_evento_id_col),
+        else_=origem_evento_id_col,
+    )
+
+
+def _lead_list_effective_event_name_expr(
+    canonical_evento_nome_col,
+    origem_evento_nome_col,
+):
+    return func.coalesce(
+        Evento.nome,
+        canonical_evento_nome_col,
+        origem_evento_nome_col,
+        Lead.evento_nome,
+    )
+
+
+def _lead_list_effective_event_date_expr(
+    canonical_evento_id_col,
+    evento_canonico,
+    evento_origem,
+):
+    """Data do evento usada na listagem (conversao mais recente, LeadEvento, lote)."""
     data_conv = func.coalesce(LeadConversao.data_conversao_evento, LeadConversao.created_at)
     conversao_branch = func.coalesce(Evento.data_inicio_prevista, func.date(data_conv))
     return case(
         (LeadConversao.evento_id.isnot(None), conversao_branch),
+        (canonical_evento_id_col.isnot(None), evento_canonico.data_inicio_prevista),
         else_=evento_origem.data_inicio_prevista,
     )
 
 
-def _lead_list_filters(params: LeadListQuery, origem_evento_id_col=None, *, evento_origem=None) -> list:
+def _lead_list_full_name_expr():
+    return func.trim(func.coalesce(Lead.nome, "") + " " + func.coalesce(Lead.sobrenome, ""))
+
+
+def _lead_list_normalized_text_expr(column):
+    return func.lower(func.trim(func.coalesce(column, "")))
+
+
+def _lead_list_origin_bucket_expr(
+    fonte_origem_col,
+    origem_lote_col,
+    plataforma_origem_col,
+):
+    origem_lote_expr = _lead_list_normalized_text_expr(origem_lote_col)
+    fonte_expr = _lead_list_normalized_text_expr(fonte_origem_col)
+    plataforma_expr = _lead_list_normalized_text_expr(plataforma_origem_col)
+
+    def is_ativacao(expr):
+        return or_(expr == "ativacao", expr.like("ativ%"), expr.like("%ativ%"))
+
+    def is_proponente(expr):
+        return or_(expr == "proponente", expr.like("proponent%"), expr.like("%proponente%"))
+
+    return case(
+        (is_ativacao(origem_lote_expr), "ativacao"),
+        (is_proponente(origem_lote_expr), "proponente"),
+        (is_ativacao(fonte_expr), "ativacao"),
+        (is_proponente(fonte_expr), "proponente"),
+        (is_ativacao(plataforma_expr), "ativacao"),
+        (is_proponente(plataforma_expr), "proponente"),
+        else_=None,
+    )
+
+
+def _lead_list_escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _lead_list_search_filter(
+    search: str | None,
+    *,
+    evento_canonico,
+    evento_origem,
+    origem_bucket_expr,
+):
+    normalized = (search or "").strip().lower()
+    if not normalized:
+        return None
+
+    text_pattern = f"{_lead_list_escape_like(normalized)}%"
+    digits = re.sub(r"\D+", "", normalized)
+
+    predicates = [
+        _lead_list_normalized_text_expr(Lead.nome).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(Lead.sobrenome).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(_lead_list_full_name_expr()).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(Lead.email).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(
+            _lead_list_effective_event_name_expr(evento_canonico.nome, evento_origem.nome)
+        ).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(Lead.cidade).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(Lead.estado).like(text_pattern, escape="\\"),
+        _lead_list_normalized_text_expr(origem_bucket_expr).like(text_pattern, escape="\\"),
+    ]
+    if digits:
+        digits_pattern = f"{digits}%"
+        predicates.extend(
+            [
+                func.coalesce(Lead.cpf, "").like(digits_pattern, escape="\\"),
+                func.coalesce(Lead.telefone, "").like(digits_pattern, escape="\\"),
+            ]
+        )
+    return or_(*predicates)
+
+
+def _lead_list_filters(
+    params: LeadListQuery,
+    *,
+    canonical_evento_id_col=None,
+    origem_evento_id_col=None,
+    evento_canonico=None,
+    evento_origem=None,
+    origem_bucket_expr=None,
+) -> list:
     filters: list = []
     if params.data_inicio is not None or params.data_fim is not None:
-        if evento_origem is None:
-            raise ValueError("evento_origem is required when filtering by data_inicio/data_fim")
-        eff = _lead_list_effective_event_date_expr(evento_origem)
+        if (
+            evento_origem is None
+            or evento_canonico is None
+            or canonical_evento_id_col is None
+        ):
+            raise ValueError("evento_origem/evento_canonico are required when filtering by data_inicio/data_fim")
+        eff = _lead_list_effective_event_date_expr(
+            canonical_evento_id_col,
+            evento_canonico,
+            evento_origem,
+        )
         if params.data_inicio is not None:
             filters.append(eff >= params.data_inicio)
         if params.data_fim is not None:
             filters.append(eff <= params.data_fim)
     if params.evento_id is not None:
-        if origem_evento_id_col is None:
+        if origem_evento_id_col is None or canonical_evento_id_col is None:
             filters.append(LeadConversao.evento_id == params.evento_id)
         else:
             filters.append(
-                or_(
-                    LeadConversao.evento_id == params.evento_id,
-                    origem_evento_id_col == params.evento_id,
+                _lead_list_effective_event_id_expr(
+                    canonical_evento_id_col,
+                    origem_evento_id_col,
+                )
+                == params.evento_id
+            )
+    if params.origem is not None and origem_bucket_expr is not None:
+        filters.append(origem_bucket_expr == params.origem)
+    search_filter = _lead_list_search_filter(
+        params.search,
+        evento_canonico=evento_canonico,
+        evento_origem=evento_origem,
+        origem_bucket_expr=origem_bucket_expr,
+    )
+    if search_filter is not None:
+        filters.append(search_filter)
+    return filters
+
+
+def _build_latest_lead_conversao_subquery():
+    return (
+        select(
+            LeadConversao.lead_id.label("lead_id"),
+            func.max(LeadConversao.id).label("latest_conversao_id"),
+        )
+        .group_by(LeadConversao.lead_id)
+        .subquery()
+    )
+
+
+def _lead_list_order_by_clauses(
+    params: LeadListQuery,
+    *,
+    evento_canonico,
+    evento_origem,
+    origem_bucket_expr,
+):
+    descending = params.sort_dir == "desc"
+
+    def apply_direction(expression):
+        return expression.desc() if descending else expression.asc()
+
+    if params.sort_by == "nome":
+        primary_clauses = [apply_direction(_lead_list_normalized_text_expr(_lead_list_full_name_expr()))]
+    elif params.sort_by == "email":
+        primary_clauses = [apply_direction(_lead_list_normalized_text_expr(Lead.email))]
+    elif params.sort_by == "evento":
+        primary_clauses = [
+            apply_direction(
+                _lead_list_normalized_text_expr(
+                    _lead_list_effective_event_name_expr(evento_canonico.nome, evento_origem.nome)
                 )
             )
-    return filters
+        ]
+    elif params.sort_by == "origem":
+        primary_clauses = [apply_direction(_lead_list_normalized_text_expr(origem_bucket_expr))]
+    elif params.sort_by == "local":
+        primary_clauses = [
+            apply_direction(_lead_list_normalized_text_expr(Lead.cidade)),
+            apply_direction(_lead_list_normalized_text_expr(Lead.estado)),
+        ]
+    else:
+        primary_clauses = [apply_direction(Lead.data_criacao)]
+
+    if params.sort_by != "data_criacao":
+        primary_clauses.append(Lead.data_criacao.desc())
+    primary_clauses.append(Lead.id.desc() if descending else Lead.id.asc())
+    return primary_clauses
 
 
 def _configure_listar_leads_statement_timeout(session: Session, params: LeadListQuery) -> None:
@@ -483,21 +705,69 @@ def listar_leads(
     _ = current_user
     _configure_listar_leads_statement_timeout(session, params)
     offset = (params.page - 1) * params.page_size
+    lead_evento_preferido = _preferred_lead_evento_subquery()
+    evento_canonico = aliased(Evento)
+    tipo_evento_canonico = aliased(TipoEvento)
     evento_origem = aliased(Evento)
     tipo_evento_origem = aliased(TipoEvento)
+    latest_conversao_subquery = _build_latest_lead_conversao_subquery()
+    origem_bucket_expr = _lead_list_origin_bucket_expr(
+        Lead.fonte_origem,
+        LeadBatch.origem_lote,
+        LeadBatch.plataforma_origem,
+    )
 
-    latest_conversao_subquery = (
-        select(
-            LeadConversao.lead_id.label("lead_id"),
-            func.max(LeadConversao.id).label("latest_conversao_id"),
+    list_filters = _lead_list_filters(
+        params,
+        canonical_evento_id_col=lead_evento_preferido.c.evento_id,
+        origem_evento_id_col=LeadBatch.evento_id,
+        evento_canonico=evento_canonico,
+        evento_origem=evento_origem,
+        origem_bucket_expr=origem_bucket_expr,
+    )
+    order_by_clauses = _lead_list_order_by_clauses(
+        params,
+        evento_canonico=evento_canonico,
+        evento_origem=evento_origem,
+        origem_bucket_expr=origem_bucket_expr,
+    )
+
+    base_ids_stmt = (
+        select(Lead.id.label("lead_id"))
+        .select_from(Lead)
+        .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
+        .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
+        .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
+        .outerjoin(lead_evento_preferido, lead_evento_preferido.c.lead_id == Lead.id)
+        .outerjoin(evento_canonico, evento_canonico.id == lead_evento_preferido.c.evento_id)
+        .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
+        .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
+    )
+    if list_filters:
+        base_ids_stmt = base_ids_stmt.where(and_(*list_filters))
+
+    total = int(
+        session.exec(
+            select(func.count()).select_from(base_ids_stmt.subquery())
+        ).one()
+        or 0
+    )
+    if total == 0:
+        return LeadListResponse(
+            page=params.page,
+            page_size=params.page_size,
+            total=0,
+            items=[],
         )
-        .group_by(LeadConversao.lead_id)
+
+    page_ids = (
+        base_ids_stmt.order_by(*order_by_clauses)
+        .offset(offset)
+        .limit(params.page_size)
         .subquery()
     )
 
-    list_filters = _lead_list_filters(params, LeadBatch.evento_id, evento_origem=evento_origem)
-
-    base_from = (
+    rows = session.exec(
         select(
             Lead.id,
             Lead.nome,
@@ -521,7 +791,16 @@ def listar_leads(
             Evento.cidade.label("evento_cidade"),
             Evento.estado.label("evento_estado"),
             TipoEvento.nome.label("tipo_evento_nome"),
+            lead_evento_preferido.c.evento_id.label("evento_canonico_id"),
+            evento_canonico.nome.label("evento_canonico_nome"),
+            evento_canonico.data_inicio_prevista.label("evento_canonico_data_inicio_prevista"),
+            evento_canonico.data_fim_prevista.label("evento_canonico_data_fim_prevista"),
+            evento_canonico.cidade.label("evento_canonico_cidade"),
+            evento_canonico.estado.label("evento_canonico_estado"),
+            evento_canonico.tipo_id.label("evento_canonico_tipo_id"),
+            tipo_evento_canonico.nome.label("tipo_evento_canonico_nome"),
             LeadBatch.evento_id.label("evento_origem_id"),
+            evento_origem.nome.label("evento_origem_nome"),
             evento_origem.data_inicio_prevista.label("evento_origem_data_inicio_prevista"),
             evento_origem.data_fim_prevista.label("evento_origem_data_fim_prevista"),
             evento_origem.cidade.label("evento_origem_cidade"),
@@ -541,33 +820,19 @@ def listar_leads(
             LeadBatch.origem_lote,
             LeadBatch.plataforma_origem,
         )
-        .select_from(Lead)
+        .select_from(page_ids)
+        .join(Lead, Lead.id == page_ids.c.lead_id)
         .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
         .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
         .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
         .outerjoin(TipoEvento, TipoEvento.id == Evento.tipo_id)
+        .outerjoin(lead_evento_preferido, lead_evento_preferido.c.lead_id == Lead.id)
+        .outerjoin(evento_canonico, evento_canonico.id == lead_evento_preferido.c.evento_id)
+        .outerjoin(tipo_evento_canonico, tipo_evento_canonico.id == evento_canonico.tipo_id)
         .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
         .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
         .outerjoin(tipo_evento_origem, tipo_evento_origem.id == evento_origem.tipo_id)
-    )
-    if list_filters:
-        base_from = base_from.where(and_(*list_filters))
-
-    count_stmt = (
-        select(func.count(Lead.id))
-        .select_from(Lead)
-        .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
-        .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
-        .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
-        .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
-        .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
-    )
-    if list_filters:
-        count_stmt = count_stmt.where(and_(*list_filters))
-    total = int(session.exec(count_stmt).one() or 0)
-
-    rows = session.exec(
-        base_from.order_by(Lead.data_criacao.desc(), Lead.id.desc()).offset(offset).limit(params.page_size)
+        .order_by(*order_by_clauses)
     ).all()
 
     items: list[LeadListItemRead] = []
@@ -594,7 +859,16 @@ def listar_leads(
         evento_cidade,
         evento_estado,
         tipo_evento_nome,
+        evento_canonico_id,
+        evento_canonico_nome,
+        evento_canonico_data_inicio_prevista,
+        evento_canonico_data_fim_prevista,
+        evento_canonico_cidade,
+        evento_canonico_estado,
+        evento_canonico_tipo_id,
+        tipo_evento_canonico_nome,
         evento_origem_id,
+        evento_origem_nome,
         evento_origem_data_inicio_prevista,
         evento_origem_data_fim_prevista,
         evento_origem_cidade,
@@ -626,19 +900,43 @@ def listar_leads(
         ) or None
         data_conv = data_conversao_evento or data_conversao_criada
         has_evento_convertido = evento_convertido_id is not None
+        evento_origem_resolvido_nome = (
+            evento_canonico_nome or evento_origem_nome or evento_nome
+        )
+        evento_origem_resolvido_inicio = (
+            evento_canonico_data_inicio_prevista or evento_origem_data_inicio_prevista
+        )
+        evento_origem_resolvido_fim = (
+            evento_canonico_data_fim_prevista or evento_origem_data_fim_prevista
+        )
+        evento_origem_resolvido_cidade = (
+            evento_canonico_cidade or evento_origem_cidade
+        )
+        evento_origem_resolvido_estado = (
+            evento_canonico_estado or evento_origem_estado
+        )
+
         evento_data_export = (
-            evento_data_inicio_prevista if has_evento_convertido else evento_origem_data_inicio_prevista
+            evento_data_inicio_prevista
+            if has_evento_convertido
+            else evento_origem_resolvido_inicio
         )
         evento_fim_export = (
-            evento_data_fim_prevista if has_evento_convertido else evento_origem_data_fim_prevista
+            evento_data_fim_prevista
+            if has_evento_convertido
+            else evento_origem_resolvido_fim
         )
         local_evento = _format_local_evento_export(
-            evento_cidade if has_evento_convertido else evento_origem_cidade,
-            evento_estado if has_evento_convertido else evento_origem_estado,
+            evento_cidade if has_evento_convertido else evento_origem_resolvido_cidade,
+            evento_estado if has_evento_convertido else evento_origem_resolvido_estado,
         )
         tipo_evento_export = tipo_evento_nome
         if not has_evento_convertido:
-            if tipo_evento_origem_nome:
+            if tipo_evento_canonico_nome:
+                tipo_evento_export = tipo_evento_canonico_nome
+            elif evento_canonico_id is not None and evento_canonico_tipo_id is None:
+                tipo_evento_export = TIPO_EVENTO_PADRAO
+            elif tipo_evento_origem_nome:
                 tipo_evento_export = tipo_evento_origem_nome
             elif evento_origem_id is not None and evento_origem_tipo_id is None:
                 tipo_evento_export = TIPO_EVENTO_PADRAO
@@ -654,7 +952,7 @@ def listar_leads(
                 email=email,
                 cpf=cpf,
                 telefone=telefone,
-                evento_nome=evento_nome,
+                evento_nome=evento_origem_resolvido_nome,
                 cidade=cidade,
                 estado=estado,
                 data_compra=data_compra,
@@ -708,7 +1006,6 @@ LEADS_LIST_EXPORT_HEADERS = [
     "telefone",
     "origem",
     "evento",
-    "tipo_evento",
     "local",
     "data_evento",
 ]
@@ -759,7 +1056,6 @@ def _build_leads_list_export_cells(item: LeadListItemRead) -> list[str]:
         item.telefone or "",
         item.origem or "",
         _resolve_leads_list_export_event(item),
-        item.tipo_evento or "",
         item.local_evento or "",
         _format_leads_list_export_date(item.data_evento),
     ]
@@ -773,6 +1069,8 @@ def _iter_leads_list_export_csv(
     data_inicio: date | None = None,
     data_fim: date | None = None,
     evento_id: int | None = None,
+    search: str | None = None,
+    origem: str | None = None,
 ):
     csv_buffer = io.StringIO()
     writer = csv.writer(csv_buffer, delimiter=",", quoting=csv.QUOTE_MINIMAL, lineterminator="\r\n")
@@ -787,7 +1085,6 @@ def _iter_leads_list_export_csv(
 
     page = 2
     while True:
-        response = FastAPIResponse()
         result = listar_leads(
             LeadListQuery(
                 page=page,
@@ -796,6 +1093,8 @@ def _iter_leads_list_export_csv(
                 data_inicio=data_inicio,
                 data_fim=data_fim,
                 evento_id=evento_id,
+                search=search,
+                origem=origem,
             ),
             session=session,
             current_user=current_user,
@@ -823,6 +1122,8 @@ def exportar_leads_csv(
     data_inicio: date | None = Query(None),
     data_fim: date | None = Query(None),
     evento_id: int | None = Query(None, ge=1),
+    search: str | None = Query(None, min_length=2, max_length=120),
+    origem: str | None = Query(None, pattern="^(proponente|ativacao)$"),
 ):
     first_page = listar_leads(
         LeadListQuery(
@@ -832,6 +1133,8 @@ def exportar_leads_csv(
             data_inicio=data_inicio,
             data_fim=data_fim,
             evento_id=evento_id,
+            search=search,
+            origem=origem,
         ),
         session=session,
         current_user=current_user,
@@ -848,6 +1151,8 @@ def exportar_leads_csv(
             data_inicio=data_inicio,
             data_fim=data_fim,
             evento_id=evento_id,
+            search=search,
+            origem=origem,
         ),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

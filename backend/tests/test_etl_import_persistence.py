@@ -305,12 +305,53 @@ def test_persist_lead_batch_links_canonical_event_by_explicit_evento_id_even_wit
     assert result.created == 1
     lead = db_session.exec(select(Lead).where(Lead.email == "evento-id@example.com")).first()
     assert lead is not None
-    assert lead.evento_nome == "Evento Antigo Ou Ambiguo"
+    assert lead.evento_nome == "Evento Atual"
 
     lead_eventos = db_session.exec(select(LeadEvento).where(LeadEvento.lead_id == lead.id)).all()
     assert len(lead_eventos) == 1
     assert lead_eventos[0].evento_id == evento.id
     assert lead_eventos[0].source_kind == LeadEventoSourceKind.EVENT_DIRECT
+
+
+def test_persist_lead_batch_corrige_evento_nome_contaminado_em_lead_existente_com_evento_canonico(
+    db_session: Session,
+) -> None:
+    evento = _seed_evento(db_session, nome="Evento Corrigido")
+    existing = Lead(
+        email="contaminated@example.com",
+        cpf="52998224725",
+        nome="Lead Contaminado",
+        evento_nome="Ativação",
+        sessao="Sessao A",
+    )
+    db_session.add(existing)
+    db_session.commit()
+    db_session.refresh(existing)
+
+    db_session.add(
+        LeadEvento(
+            lead_id=int(existing.id),
+            evento_id=int(evento.id),
+            source_kind=LeadEventoSourceKind.EVENT_DIRECT,
+        )
+    )
+    db_session.commit()
+
+    payload = _lead_payload("contaminated@example.com", "52998224725", "Lead Atualizado")
+    payload["evento_nome"] = "Proponente"
+
+    result = persist_lead_batch(
+        db_session,
+        [(payload, 2)],
+        canonical_evento_id=int(evento.id),
+    )
+
+    assert result.created == 0
+    assert result.updated == 1
+
+    lead = db_session.exec(select(Lead).where(Lead.email == "contaminated@example.com")).first()
+    assert lead is not None
+    assert lead.evento_nome == "Evento Corrigido"
 
 
 def test_find_existing_lead_ignores_homonymous_lead_from_other_canonical_event(

@@ -51,7 +51,7 @@ def test_leads_deploy_gates_fail_closed_on_runtime_and_db_hardening() -> None:
     assert "DATABASE_URL da API Supabase deve usar transaction pooler na porta 6543" in runtime_gate
     assert "worker requer WORKER_DATABASE_URL ou DIRECT_URL" in runtime_gate
 
-    assert 'REQUIRED_ALEMBIC_VERSION = "8b6f4c2d9a1e"' in db_gate
+    assert 'REQUIRED_ALEMBIC_VERSION = "a9b8c7d6e5f4"' in db_gate
     assert "roles dedicadas ausentes" in db_gate
     assert "RLS desligada em tabelas esperadas" in db_gate
     assert "rolbypassrls" in db_gate

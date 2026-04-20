@@ -70,7 +70,6 @@ describe("leadsListExport", () => {
       "11999990000",
       "",
       "Evento de origem",
-      "",
       "Navegantes-SC",
       "",
     ]);
@@ -80,7 +79,7 @@ describe("leadsListExport", () => {
     const row = makeLead({
       nome: 'User "A", teste',
       local_evento: "Rio,\nJaneiro-RJ",
-      tipo_evento: 'Show "Especial"',
+      origem: 'Proponente "teste"',
       data_evento: "2025-06-28T00:00:00Z",
     });
 
@@ -97,7 +96,7 @@ describe("leadsListExport", () => {
     expect(values).toHaveLength(LEADS_LIST_CSV_HEADERS.length);
     expect(lines[1]).toContain('"User ""A"", teste"');
     expect(lines[1]).toContain('"Rio,');
-    expect(lines[1]).toContain('Show ""Especial""');
+    expect(lines[1]).toContain('Proponente ""teste""');
     expect(lines[1]).toContain("6/28/2025");
   });
 });

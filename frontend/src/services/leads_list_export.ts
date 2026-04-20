@@ -6,6 +6,8 @@ export type LeadsListExportParams = {
   data_inicio?: string;
   data_fim?: string;
   evento_id?: number | null;
+  search?: string;
+  origem?: "proponente" | "ativacao" | null;
 };
 
 function parseFilenameFromContentDisposition(value: string | null): string | null {
@@ -47,6 +49,8 @@ export async function exportLeadsListCsv(
   if (params.data_inicio) qs.set("data_inicio", params.data_inicio);
   if (params.data_fim) qs.set("data_fim", params.data_fim);
   if (typeof params.evento_id === "number") qs.set("evento_id", String(params.evento_id));
+  if (params.search) qs.set("search", params.search);
+  if (params.origem) qs.set("origem", params.origem);
 
   const res = await fetchWithAuth(`/leads/export/csv${qs.toString() ? `?${qs.toString()}` : ""}`, {
     token,

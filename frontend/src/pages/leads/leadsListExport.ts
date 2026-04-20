@@ -1,12 +1,11 @@
-import { LEADS_EXPORT_TIMEOUT_MS, listLeads, type LeadListItem } from "../../services/leads_import";
-
-/** Max supported by GET /leads (backend LeadListQuery.page_size le=100). */
-export const LEADS_EXPORT_PAGE_SIZE = 100;
+import type { LeadListItem } from "../../services/leads_import";
 
 export type AppliedLeadsListFilters = {
+  search: string;
   data_inicio: string;
   data_fim: string;
   evento_id: number | null;
+  origem: "proponente" | "ativacao" | null;
 };
 
 /** Cabecalhos identicos ao arquivo aurea_tour_2025_hevert(in).csv. */
@@ -18,7 +17,6 @@ export const LEADS_LIST_CSV_HEADERS = [
   "telefone",
   "origem",
   "evento",
-  "tipo_evento",
   "local",
   "data_evento",
 ] as const;
@@ -28,7 +26,7 @@ export const LEADS_LIST_CSV_HEADERS = [
  * - Export the same dataset rendered by the list page.
  * - The CSV contract matches `aurea_tour_2025_hevert(in).csv`.
  * - `evento` prefers the latest conversion event and falls back to the lead origin event.
- * - `tipo_evento`, `local` and `data_evento` prefer the latest conversion event and fall back to the origin event.
+ * - `local` and `data_evento` prefer the latest conversion event and fall back to the origin event.
  */
 export function resolveLeadListExportEvent(row: LeadListItem): string {
   return row.evento_convertido_nome ?? row.evento_nome ?? "";
@@ -101,7 +99,6 @@ export function getLeadListCsvCells(row: LeadListItem): readonly string[] {
     row.telefone ?? "",
     row.origem ?? "",
     resolveLeadListExportEvent(row),
-    row.tipo_evento ?? "",
     row.local_evento ?? "",
     formatReferenceDate(row.data_evento ?? null),
   ];
@@ -120,37 +117,6 @@ export function buildLeadsListCsvContent(items: LeadListItem[]): string {
     getLeadListCsvCells(row).map((cell) => escapeCsvField(cell)).join(","),
   );
   return `\uFEFF${[headerLine, ...dataLines].join("\r\n")}`;
-}
-
-function listParamsForExport(page: number, appliedFilters: AppliedLeadsListFilters) {
-  return {
-    page,
-    page_size: LEADS_EXPORT_PAGE_SIZE,
-    long_running: true,
-    timeoutMs: LEADS_EXPORT_TIMEOUT_MS,
-    ...(appliedFilters.data_inicio ? { data_inicio: appliedFilters.data_inicio } : {}),
-    ...(appliedFilters.data_fim ? { data_fim: appliedFilters.data_fim } : {}),
-    ...(typeof appliedFilters.evento_id === "number" ? { evento_id: appliedFilters.evento_id } : {}),
-  };
-}
-
-/**
- * Loads every lead row matching the same filters as the list UI, using API pagination.
- */
-export async function fetchAllLeadsMatchingFilters(
-  token: string,
-  appliedFilters: AppliedLeadsListFilters,
-): Promise<LeadListItem[]> {
-  const first = await listLeads(token, listParamsForExport(1, appliedFilters));
-  const all: LeadListItem[] = [...first.items];
-  let page = 2;
-  while (all.length < first.total) {
-    const res = await listLeads(token, listParamsForExport(page, appliedFilters));
-    if (res.items.length === 0) break;
-    all.push(...res.items);
-    page += 1;
-  }
-  return all;
 }
 
 /** Local calendar YYYY-MM-DD for default export filename. */

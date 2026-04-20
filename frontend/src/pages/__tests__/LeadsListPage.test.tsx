@@ -184,7 +184,7 @@ describe("LeadsListPage", () => {
       expect(mockedListLeads).toHaveBeenCalled();
     });
 
-    fireEvent.change(screen.getByLabelText(/data inicio/i), { target: { value: "2026-02-01" } });
+    fireEvent.change(screen.getByLabelText(/data início/i), { target: { value: "2026-02-01" } });
     fireEvent.change(screen.getByLabelText(/data fim/i), { target: { value: "2026-02-28" } });
     await user.click(screen.getByRole("button", { name: /aplicar filtros/i }));
 

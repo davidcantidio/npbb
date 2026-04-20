@@ -78,6 +78,7 @@ def _create_helper_functions() -> None:
             returns integer
             language sql
             stable
+            set search_path = ''
             as $$
               select nullif(current_setting('app.user_id', true), '')::integer
             $$;
@@ -86,6 +87,7 @@ def _create_helper_functions() -> None:
             returns text
             language sql
             stable
+            set search_path = ''
             as $$
               select nullif(lower(current_setting('app.user_type', true)), '')
             $$;
@@ -94,6 +96,7 @@ def _create_helper_functions() -> None:
             returns integer
             language sql
             stable
+            set search_path = ''
             as $$
               select nullif(current_setting('app.agencia_id', true), '')::integer
             $$;
@@ -102,6 +105,7 @@ def _create_helper_functions() -> None:
             returns boolean
             language sql
             stable
+            set search_path = ''
             as $$
               select coalesce(public.npbb_current_user_type() in ('npbb', 'bb'), false)
             $$;

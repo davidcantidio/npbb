@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BASE_DIR.parent
-REQUIRED_ALEMBIC_VERSION = "8b6f4c2d9a1e"
+REQUIRED_ALEMBIC_VERSION = "a9b8c7d6e5f4"
 
 CENTRAL_RLS_TABLES = (
     "usuario",

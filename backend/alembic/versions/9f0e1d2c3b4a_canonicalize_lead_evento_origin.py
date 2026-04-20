@@ -366,6 +366,7 @@ def _create_postgres_triggers() -> None:
         CREATE OR REPLACE FUNCTION validate_lead_evento_activation_link()
         RETURNS trigger
         LANGUAGE plpgsql
+        SET search_path = ''
         AS $$
         DECLARE
             matched_ativacao_lead_id integer;
@@ -381,8 +382,8 @@ def _create_postgres_triggers() -> None:
 
             SELECT al.id
             INTO matched_ativacao_lead_id
-            FROM ativacao_lead AS al
-            JOIN ativacao AS a ON a.id = al.ativacao_id
+            FROM public.ativacao_lead AS al
+            JOIN public.ativacao AS a ON a.id = al.ativacao_id
             WHERE al.id = NEW.source_ref_id
               AND al.lead_id = NEW.lead_id
               AND a.evento_id = NEW.evento_id;
@@ -416,11 +417,12 @@ def _create_postgres_triggers() -> None:
         CREATE OR REPLACE FUNCTION prevent_ativacao_lead_delete_if_linked()
         RETURNS trigger
         LANGUAGE plpgsql
+        SET search_path = ''
         AS $$
         BEGIN
             IF EXISTS (
                 SELECT 1
-                FROM lead_evento AS le
+                FROM public.lead_evento AS le
                 WHERE CAST(le.source_kind AS TEXT) = 'ativacao'
                   AND le.source_ref_id = OLD.id
             ) THEN

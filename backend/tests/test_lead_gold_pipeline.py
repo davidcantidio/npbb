@@ -944,6 +944,61 @@ def test_load_batch_without_bronze_defers_blob_column(engine):
         assert "arquivo_bronze" not in sa_inspect(batch).unloaded
 
 
+def test_claim_next_gold_pipeline_batch_does_not_touch_expired_batch_after_commit(monkeypatch):
+    from app.services import lead_pipeline_service
+
+    class _CommitExpiringBatch:
+        def __init__(self) -> None:
+            self._id = 244
+            self.pipeline_progress = {"step": "queued"}
+            self.pipeline_report = None
+            self._expired_after_commit = False
+
+        @property
+        def id(self):
+            if self._expired_after_commit:
+                raise RuntimeError("post-commit reload attempted")
+            return self._id
+
+    class _ExecResult:
+        def __init__(self, batch: _CommitExpiringBatch) -> None:
+            self._batch = batch
+
+        def first(self):
+            return self._batch
+
+    class _FakeSession:
+        def __init__(self, batch: _CommitExpiringBatch) -> None:
+            self.batch = batch
+            self.committed = False
+
+        def exec(self, _stmt):
+            return _ExecResult(self.batch)
+
+        def add(self, _obj) -> None:
+            return None
+
+        def commit(self) -> None:
+            self.committed = True
+            self.batch._expired_after_commit = True
+
+    batch = _CommitExpiringBatch()
+    session = _FakeSession(batch)
+
+    monkeypatch.setattr(lead_pipeline_service, "_resume_context_from_batch", lambda _batch: None)
+
+    def _set_pipeline_progress(fake_batch: _CommitExpiringBatch, *, step: str, **_kwargs) -> None:
+        fake_batch.pipeline_progress = {"step": step}
+
+    monkeypatch.setattr(lead_pipeline_service, "set_pipeline_progress", _set_pipeline_progress)
+
+    claimed = lead_pipeline_service.claim_next_gold_pipeline_batch(session)
+
+    assert claimed == 244
+    assert session.committed is True
+    assert batch.pipeline_progress == {"step": "silver_csv"}
+
+
 class TestExecutarPipeline:
     def test_returns_400_if_stage_not_silver(self, client, engine):
         with Session(engine) as s:

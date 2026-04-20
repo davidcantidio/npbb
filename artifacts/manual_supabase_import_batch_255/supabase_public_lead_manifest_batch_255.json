@@ -1,0 +1,24 @@
+{
+  "batch_id": 255,
+  "source_file": "South Summit Base 2026 Banco do Brasil(brasileiros).csv",
+  "arquivo_sha256": "f7b6f60ac164b7766a7f793937ff353195baad834f6c42cd2d408a59a74d6338",
+  "encoding": "latin-1",
+  "evento_id": 10,
+  "evento_nome": "South Summit",
+  "sessao": "Porto Alegre-RS",
+  "summary": {
+    "raw_rows": 15943,
+    "internal_duplicates_skipped": 2,
+    "existing_conflicts_skipped": 0,
+    "final_rows": 15941,
+    "document_blank": 44,
+    "document_over_11": 1,
+    "phone_blank_scientific": 15147,
+    "birth_date_blank": 23
+  },
+  "artifacts": {
+    "import_csv_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_batch_255\\supabase_public_lead_import_batch_255.csv",
+    "skipped_csv_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_batch_255\\supabase_public_lead_skipped_batch_255.csv",
+    "manifest_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_batch_255\\supabase_public_lead_manifest_batch_255.json"
+  }
+}

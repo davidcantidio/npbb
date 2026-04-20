@@ -4,9 +4,11 @@ import { fetchWithAuth, handleApiResponse } from "./http";
  * Servidor le/parseia ficheiros grandes do lote; o timeout HTTP por defeito (20s) e insuficiente
  * com XLSX pesados, DB lenta ou GET de estado do lote durante o pipeline Gold (locks / fila).
  * O estado do pipeline na UI usa polling com backoff quando step/pct ficam estagnados (Task 5).
+ * GETs de estado (getLeadBatch, preview, colunas) partilham o mesmo limite: durante insert_leads
+ * com dezenas de milhares de linhas a resposta pode demorar >15s sem o pipeline estar falho.
  */
 const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
-const LEAD_BATCH_STATUS_TIMEOUT_MS = 15_000;
+const LEAD_BATCH_STATUS_TIMEOUT_MS = 120_000;
 const LEAD_BATCH_READINESS_TIMEOUT_MS = 20_000;
 export const LEADS_EXPORT_TIMEOUT_MS = 15 * 60_000;
 export const DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON =
@@ -454,6 +456,10 @@ export type LeadListResponse = {
   total: number;
   items: LeadListItem[];
 };
+
+export type LeadListOrigin = "proponente" | "ativacao";
+export type LeadListSortBy = "data_criacao" | "nome" | "email" | "evento" | "origem" | "local";
+export type LeadListSortDir = "asc" | "desc";
 
 /**
  * Uploads a lead file and returns parsed preview metadata and suggestions.
@@ -1002,8 +1008,13 @@ export async function listLeads(
     data_inicio?: string;
     data_fim?: string;
     evento_id?: number;
+    search?: string;
+    origem?: LeadListOrigin;
+    sort_by?: LeadListSortBy;
+    sort_dir?: LeadListSortDir;
     long_running?: boolean;
     timeoutMs?: number;
+    signal?: AbortSignal;
   },
 ): Promise<LeadListResponse> {
   const qs = new URLSearchParams();
@@ -1012,12 +1023,17 @@ export async function listLeads(
   if (params?.data_inicio) qs.set("data_inicio", params.data_inicio);
   if (params?.data_fim) qs.set("data_fim", params.data_fim);
   if (typeof params?.evento_id === "number") qs.set("evento_id", String(params.evento_id));
+  if (params?.search) qs.set("search", params.search);
+  if (params?.origem) qs.set("origem", params.origem);
+  if (params?.sort_by) qs.set("sort_by", params.sort_by);
+  if (params?.sort_dir) qs.set("sort_dir", params.sort_dir);
   if (params?.long_running) qs.set("long_running", "true");
   const url = `/leads${qs.toString() ? `?${qs}` : ""}`;
 
   const res = await fetchWithAuth(url, {
     token,
     ...(typeof params?.timeoutMs === "number" ? { timeoutMs: params.timeoutMs } : {}),
+    ...(params?.signal ? { signal: params.signal } : {}),
   });
   return handleApiResponse<LeadListResponse>(res);
 }

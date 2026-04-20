@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+LeadListOrigin = Literal["proponente", "ativacao"]
+LeadListSortBy = Literal["data_criacao", "nome", "email", "evento", "origem", "local"]
+LeadListSortDir = Literal["asc", "desc"]
 
 
 class LeadListQuery(BaseModel):
@@ -27,6 +33,32 @@ class LeadListQuery(BaseModel):
         ge=1,
         description="Filtra pela conversao mais recente do lead ou pelo evento de origem do lote.",
     )
+    search: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=120,
+        description="Busca prefixada por nome, email, CPF, telefone, localidade e evento.",
+    )
+    origem: LeadListOrigin | None = Field(
+        default=None,
+        description="Filtra a origem operacional do lead: proponente ou ativacao.",
+    )
+    sort_by: LeadListSortBy = Field(
+        default="data_criacao",
+        description="Campo de ordenacao server-side da listagem.",
+    )
+    sort_dir: LeadListSortDir = Field(
+        default="desc",
+        description="Direcao da ordenacao server-side.",
+    )
+
+    @field_validator("search")
+    @classmethod
+    def normalize_search(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
 
 class LeadListItemRead(BaseModel):

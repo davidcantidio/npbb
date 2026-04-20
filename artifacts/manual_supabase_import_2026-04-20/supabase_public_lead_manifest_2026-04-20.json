@@ -1,0 +1,302 @@
+{
+  "export_date": "2026-04-20",
+  "generated_at": "2026-04-20T19:12:07.230232+00:00",
+  "lote_id": "manual_supabase_import_2026-04-20",
+  "pipeline": {
+    "status": "PASS_WITH_WARNINGS",
+    "decision": "promote",
+    "exit_code": 0,
+    "output_dir": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20",
+    "report_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20\\report.json",
+    "summary_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20\\validation-summary.md",
+    "consolidated_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20\\leads_multieventos_2025.csv"
+  },
+  "artifacts": {
+    "import_csv_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\supabase_public_lead_import_2026-04-20.csv",
+    "skipped_existing_csv_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\supabase_public_lead_skipped_existing_2026-04-20.csv",
+    "manifest_path": "C:\\Users\\NPBB\\npbb\\artifacts\\manual_supabase_import_2026-04-20\\supabase_public_lead_manifest_2026-04-20.json"
+  },
+  "summary": {
+    "frozen_batches": 15,
+    "pipeline_consolidated_rows": 47703,
+    "skipped_existing_rows": 38299,
+    "import_ready_rows": 9404,
+    "skipped_existing_reason_counts": {
+      "ticketing_key_exists": 38299
+    }
+  },
+  "files": [
+    {
+      "file_name": "1ª Etapa Circuito Brasileiro de Vôlei de Praia - CBVP Adulto.xlsx",
+      "arquivo_sha256": "01f97edac26f2d5f932fc720f16760984ffca0b9f1a00393f292f8cd91e4966f",
+      "batch_id": 188,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 3137,
+      "raw_rows": 3137,
+      "pipeline_rejected_rows": 0,
+      "pipeline_accepted_rows": 3137,
+      "skipped_existing_rows": 1837,
+      "import_ready_rows": 1300
+    },
+    {
+      "file_name": "Circuito Banco do Brasil de Surf - CBBS WSL (2).xlsx",
+      "arquivo_sha256": "cc295232c6b9d5fb46822b3943b0aaa798a86e77e7b2a69dc1dd89f8ec788b1b",
+      "batch_id": 187,
+      "stage": "gold",
+      "pipeline_status": "pass",
+      "silver_rows": 52,
+      "raw_rows": 52,
+      "pipeline_rejected_rows": 0,
+      "pipeline_accepted_rows": 52,
+      "skipped_existing_rows": 52,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Circuito Banco do Brasil de Surf - CBBS WSL.xlsx",
+      "arquivo_sha256": "ebd69f17ed9343ab891fb252712248439e8be8b5081493a2eb3c5b535ec7c682",
+      "batch_id": 250,
+      "stage": "silver",
+      "pipeline_status": "pending",
+      "silver_rows": 0,
+      "raw_rows": 0,
+      "pipeline_rejected_rows": 0,
+      "pipeline_accepted_rows": 0,
+      "skipped_existing_rows": 0,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Copa Brasil.xlsx",
+      "arquivo_sha256": "66ef60f67f35e27351289ff068b841fa151a4d60229883ee70a36121374e8cf6",
+      "batch_id": 115,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 4782,
+      "raw_rows": 4782,
+      "pipeline_rejected_rows": 2,
+      "pipeline_accepted_rows": 4780,
+      "skipped_existing_rows": 4780,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Festival de Verão (2).xlsx",
+      "arquivo_sha256": "7fe278d62a302b0169ef453007bf37d235ddc6002cd402a1c9ccb93fc14b1365",
+      "batch_id": 117,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 2909,
+      "raw_rows": 2909,
+      "pipeline_rejected_rows": 164,
+      "pipeline_accepted_rows": 2745,
+      "skipped_existing_rows": 2745,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Festival de Verão.xlsx",
+      "arquivo_sha256": "ff9ee62d8c72e9fec92a1db99c68b3f6e9ba8ecbf750635fbcadf408d4b5a43e",
+      "batch_id": 118,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 4068,
+      "raw_rows": 4068,
+      "pipeline_rejected_rows": 4068,
+      "pipeline_accepted_rows": 0,
+      "skipped_existing_rows": 0,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Leads 1ª Etapa BPT João Pessoa.xlsx",
+      "arquivo_sha256": "785bac8c363b13fc3bc0548a895e64469d54e28894ef0b9187150d368d920848",
+      "batch_id": 193,
+      "stage": "silver",
+      "pipeline_status": "pending",
+      "silver_rows": 8121,
+      "raw_rows": 8121,
+      "pipeline_rejected_rows": 538,
+      "pipeline_accepted_rows": 7583,
+      "skipped_existing_rows": 5800,
+      "import_ready_rows": 1783
+    },
+    {
+      "file_name": "Leads 2ª Etapa CBVP João Pessoa.xlsx",
+      "arquivo_sha256": "c35c1e079130397c40b54f6aa35daf79a7b9b739f8faa965f13542939f6f7b46",
+      "batch_id": 252,
+      "stage": "silver",
+      "pipeline_status": "pending",
+      "silver_rows": 6047,
+      "raw_rows": 6047,
+      "pipeline_rejected_rows": 384,
+      "pipeline_accepted_rows": 5663,
+      "skipped_existing_rows": 800,
+      "import_ready_rows": 4863
+    },
+    {
+      "file_name": "Leads Base expodireto Cotrijal - Diária.xlsx",
+      "arquivo_sha256": "9c25bce675dcd24783cb8fe979ffa3d383cd6e6abc060d536969f10206fe4c8a",
+      "batch_id": 253,
+      "stage": "silver",
+      "pipeline_status": "pending",
+      "silver_rows": 2884,
+      "raw_rows": 2884,
+      "pipeline_rejected_rows": 16,
+      "pipeline_accepted_rows": 2868,
+      "skipped_existing_rows": 2462,
+      "import_ready_rows": 406
+    },
+    {
+      "file_name": "Opt-in Gilberto Gil - PA.xlsx",
+      "arquivo_sha256": "3d331a50aa336c71a01d426eec31b41b1cad08e66cdb748c52663ab5697f4479",
+      "batch_id": 247,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 2789,
+      "raw_rows": 2789,
+      "pipeline_rejected_rows": 83,
+      "pipeline_accepted_rows": 2706,
+      "skipped_existing_rows": 2706,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Opt-in Gilberto Gil - SP.xlsx",
+      "arquivo_sha256": "c42e72038c3a527d627b0ae21bcb39e66c5b5dea4039c6c4b4ed387a1aa77104",
+      "batch_id": 244,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 9587,
+      "raw_rows": 9587,
+      "pipeline_rejected_rows": 186,
+      "pipeline_accepted_rows": 9401,
+      "skipped_existing_rows": 9401,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Opt-in Gilberto Gil - SSA.xlsx",
+      "arquivo_sha256": "ee4bcbeb873ee05ee43572eb95ff588400a5b2b91ee9eaa6006fd8db8ceafbd5",
+      "batch_id": 248,
+      "stage": "silver",
+      "pipeline_status": "pending",
+      "silver_rows": 8566,
+      "raw_rows": 8566,
+      "pipeline_rejected_rows": 114,
+      "pipeline_accepted_rows": 8452,
+      "skipped_existing_rows": 7400,
+      "import_ready_rows": 1052
+    },
+    {
+      "file_name": "Show Rural Coopavel.xlsx",
+      "arquivo_sha256": "5a89d59605685eb31e2099d57b99024981118f6f0d74958b34e0e42583c2883f",
+      "batch_id": 199,
+      "stage": "silver",
+      "pipeline_status": "pending",
+      "silver_rows": 1639,
+      "raw_rows": 1639,
+      "pipeline_rejected_rows": 1639,
+      "pipeline_accepted_rows": 0,
+      "skipped_existing_rows": 0,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Turnê Alceu Valença - RJ - 14-03.xlsx",
+      "arquivo_sha256": "8c014db779bd869c18262ddac577e1d5add5c535606b34b1e34fed7e6f37e986",
+      "batch_id": 245,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 67,
+      "raw_rows": 67,
+      "pipeline_rejected_rows": 3,
+      "pipeline_accepted_rows": 64,
+      "skipped_existing_rows": 64,
+      "import_ready_rows": 0
+    },
+    {
+      "file_name": "Turnê Alceu Valença - SP - 28-03.xlsx",
+      "arquivo_sha256": "2ddbb81df5fa10a45b822091d07d5e354f47659f021b53b117755f9573f503d1",
+      "batch_id": 246,
+      "stage": "gold",
+      "pipeline_status": "pass_with_warnings",
+      "silver_rows": 263,
+      "raw_rows": 263,
+      "pipeline_rejected_rows": 11,
+      "pipeline_accepted_rows": 252,
+      "skipped_existing_rows": 252,
+      "import_ready_rows": 0
+    }
+  ],
+  "frozen_batch_specs": [
+    {
+      "file_name": "1ª Etapa Circuito Brasileiro de Vôlei de Praia - CBVP Adulto.xlsx",
+      "arquivo_sha256": "01f97edac26f2d5f932fc720f16760984ffca0b9f1a00393f292f8cd91e4966f",
+      "batch_id": 188
+    },
+    {
+      "file_name": "Circuito Banco do Brasil de Surf - CBBS WSL (2).xlsx",
+      "arquivo_sha256": "cc295232c6b9d5fb46822b3943b0aaa798a86e77e7b2a69dc1dd89f8ec788b1b",
+      "batch_id": 187
+    },
+    {
+      "file_name": "Circuito Banco do Brasil de Surf - CBBS WSL.xlsx",
+      "arquivo_sha256": "ebd69f17ed9343ab891fb252712248439e8be8b5081493a2eb3c5b535ec7c682",
+      "batch_id": 250
+    },
+    {
+      "file_name": "Copa Brasil.xlsx",
+      "arquivo_sha256": "66ef60f67f35e27351289ff068b841fa151a4d60229883ee70a36121374e8cf6",
+      "batch_id": 115
+    },
+    {
+      "file_name": "Festival de Verão (2).xlsx",
+      "arquivo_sha256": "7fe278d62a302b0169ef453007bf37d235ddc6002cd402a1c9ccb93fc14b1365",
+      "batch_id": 117
+    },
+    {
+      "file_name": "Festival de Verão.xlsx",
+      "arquivo_sha256": "ff9ee62d8c72e9fec92a1db99c68b3f6e9ba8ecbf750635fbcadf408d4b5a43e",
+      "batch_id": 118
+    },
+    {
+      "file_name": "Leads 1ª Etapa BPT João Pessoa.xlsx",
+      "arquivo_sha256": "785bac8c363b13fc3bc0548a895e64469d54e28894ef0b9187150d368d920848",
+      "batch_id": 193
+    },
+    {
+      "file_name": "Leads 2ª Etapa CBVP João Pessoa.xlsx",
+      "arquivo_sha256": "c35c1e079130397c40b54f6aa35daf79a7b9b739f8faa965f13542939f6f7b46",
+      "batch_id": 252
+    },
+    {
+      "file_name": "Leads Base expodireto Cotrijal - Diária.xlsx",
+      "arquivo_sha256": "9c25bce675dcd24783cb8fe979ffa3d383cd6e6abc060d536969f10206fe4c8a",
+      "batch_id": 253
+    },
+    {
+      "file_name": "Opt-in Gilberto Gil - PA.xlsx",
+      "arquivo_sha256": "3d331a50aa336c71a01d426eec31b41b1cad08e66cdb748c52663ab5697f4479",
+      "batch_id": 247
+    },
+    {
+      "file_name": "Opt-in Gilberto Gil - SP.xlsx",
+      "arquivo_sha256": "c42e72038c3a527d627b0ae21bcb39e66c5b5dea4039c6c4b4ed387a1aa77104",
+      "batch_id": 244
+    },
+    {
+      "file_name": "Opt-in Gilberto Gil - SSA.xlsx",
+      "arquivo_sha256": "ee4bcbeb873ee05ee43572eb95ff588400a5b2b91ee9eaa6006fd8db8ceafbd5",
+      "batch_id": 248
+    },
+    {
+      "file_name": "Show Rural Coopavel.xlsx",
+      "arquivo_sha256": "5a89d59605685eb31e2099d57b99024981118f6f0d74958b34e0e42583c2883f",
+      "batch_id": 199
+    },
+    {
+      "file_name": "Turnê Alceu Valença - RJ - 14-03.xlsx",
+      "arquivo_sha256": "8c014db779bd869c18262ddac577e1d5add5c535606b34b1e34fed7e6f37e986",
+      "batch_id": 245
+    },
+    {
+      "file_name": "Turnê Alceu Valença - SP - 28-03.xlsx",
+      "arquivo_sha256": "2ddbb81df5fa10a45b822091d07d5e354f47659f021b53b117755f9573f503d1",
+      "batch_id": 246
+    }
+  ]
+}

@@ -84,14 +84,15 @@ class _DuplicateRowsCheck(Check):
 
 
 def _normalize_payload(raw_row: dict[str, Any], *, evento_nome: str) -> dict[str, Any]:
-    payload: dict[str, Any] = {"evento_nome": evento_nome}
+    payload: dict[str, Any] = {}
     for key, value in raw_row.items():
         if key.startswith("__"):
             continue
         normalized_key = normalize_column_name(key)
+        if normalized_key in {"evento", "evento_nome"}:
+            continue
         payload[normalized_key] = value
-    if "evento" in payload and not payload.get("evento_nome"):
-        payload["evento_nome"] = payload.get("evento")
+    payload["evento_nome"] = evento_nome
     if "sexo" in payload and "genero" not in payload:
         payload["genero"] = payload.get("sexo")
     return payload

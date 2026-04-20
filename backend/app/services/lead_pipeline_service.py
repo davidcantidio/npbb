@@ -1096,9 +1096,10 @@ def claim_next_gold_pipeline_batch(db: Session) -> int | None:
     if batch is None:
         return None
     set_pipeline_progress(batch, step="silver_csv", resume_context=_resume_context_from_batch(batch))
+    claimed_batch_id = int(batch.id)
     db.add(batch)
     db.commit()
-    return int(batch.id)
+    return claimed_batch_id
 
 
 def _persist_pipeline_progress(engine: Any, batch_id: int, event: PipelineProgressEvent) -> None:

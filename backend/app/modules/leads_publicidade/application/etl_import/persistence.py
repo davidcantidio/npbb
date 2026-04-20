@@ -12,10 +12,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import func as sql_func
 from sqlmodel import Session, select
 
-from app.models.models import Lead, LeadEvento, LeadEventoSourceKind
+from app.models.models import Evento, Lead, LeadEvento, LeadEventoSourceKind
 from app.modules.leads_publicidade.application.lead_merge_policy import merge_lead_payload_fill_missing
 from app.services.lead_event_service import ensure_lead_event, resolve_unique_evento_by_name
 from app.utils.log_sanitize import sanitize_exception
+from app.utils.text_normalize import normalize_text
 
 from .validators import format_validation_reasons, validate_normalized_lead_payload
 
@@ -28,6 +29,53 @@ TICKETING_DEDUPE_INDEX_NAMES = (
 TICKETING_DEDUPE_SQLITE_SIGNATURES = (
     "unique constraint failed: lead.email, lead.cpf, lead.evento_nome, lead.sessao",
 )
+CONTAMINATED_EVENT_NAME_LABELS = frozenset({"ativacao", "proponente"})
+
+
+def _is_contaminated_event_name(value: object) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    return normalize_text(value) in CONTAMINATED_EVENT_NAME_LABELS
+
+
+def _resolve_canonical_event_name(
+    session: Session,
+    *,
+    canonical_evento_id: int | None,
+) -> str | None:
+    if canonical_evento_id is None:
+        return None
+    evento = session.get(Evento, canonical_evento_id)
+    if evento is None or not evento.nome or not evento.nome.strip():
+        return None
+    return evento.nome.strip()
+
+
+def _payload_with_canonical_event_name(
+    payload: dict[str, object],
+    *,
+    canonical_evento_name: str | None,
+) -> dict[str, object]:
+    if not canonical_evento_name:
+        return payload
+    if payload.get("evento_nome") == canonical_evento_name:
+        return payload
+    return {**payload, "evento_nome": canonical_evento_name}
+
+
+def _apply_canonical_event_name_to_existing_lead(
+    lead: Lead,
+    *,
+    canonical_evento_name: str | None,
+) -> None:
+    if not canonical_evento_name:
+        return
+    current_name = getattr(lead, "evento_nome", None)
+    if isinstance(current_name, str) and current_name.strip() and not _is_contaminated_event_name(
+        current_name
+    ):
+        return
+    lead.evento_nome = canonical_evento_name
 
 
 def _ticketing_field_norm(value: object) -> str:
@@ -451,6 +499,10 @@ def persist_lead_batch(
         return LeadBatchPersistenceResult(failed_rows=validation_failed_rows)
 
     _ensure_outer_transaction(session)
+    canonical_evento_name = _resolve_canonical_event_name(
+        session,
+        canonical_evento_id=canonical_evento_id,
+    )
     lookup_context = _load_lead_lookup_context(
         session,
         effective_items,
@@ -463,6 +515,7 @@ def persist_lead_batch(
                 session,
                 effective_items,
                 canonical_evento_id=canonical_evento_id,
+                canonical_evento_name=canonical_evento_name,
                 lookup_context=lookup_context,
             )
     except Exception as exc:
@@ -474,6 +527,7 @@ def persist_lead_batch(
             session,
             effective_items,
             canonical_evento_id=canonical_evento_id,
+            canonical_evento_name=canonical_evento_name,
             lookup_context=lookup_context,
         )
         result = _ensure_attempted_rows_are_reported(result, effective_items)
@@ -545,6 +599,7 @@ def _persist_lead_batch_bulk(
     batch: list[tuple[dict[str, object], int]],
     *,
     canonical_evento_id: int | None = None,
+    canonical_evento_name: str | None = None,
     lookup_context: LeadLookupContext | None = None,
 ) -> LeadBatchPersistenceResult:
     created = 0
@@ -574,9 +629,17 @@ def _persist_lead_batch_bulk(
                 lead_cache[key] = existing
         if existing:
             merge_lead(existing, payload)
+            _apply_canonical_event_name_to_existing_lead(
+                existing,
+                canonical_evento_name=canonical_evento_name,
+            )
             update_objects.append((existing, payload, row_number))
             continue
-        new_objects.append((Lead(**payload), payload, row_number))
+        create_payload = _payload_with_canonical_event_name(
+            payload,
+            canonical_evento_name=canonical_evento_name,
+        )
+        new_objects.append((Lead(**create_payload), create_payload, row_number))
 
     if new_objects:
         session.add_all([lead for lead, _payload, _row_number in new_objects])
@@ -626,6 +689,7 @@ def _persist_lead_batch_row_by_row(
     batch: list[tuple[dict[str, object], int]],
     *,
     canonical_evento_id: int | None = None,
+    canonical_evento_name: str | None = None,
     lookup_context: LeadLookupContext | None = None,
 ) -> LeadBatchPersistenceResult:
     created = 0
@@ -640,6 +704,7 @@ def _persist_lead_batch_row_by_row(
                     session,
                     payload,
                     canonical_evento_id=canonical_evento_id,
+                    canonical_evento_name=canonical_evento_name,
                     lookup_context=lookup_context,
                 )
         except Exception as exc:
@@ -676,6 +741,7 @@ def _persist_single_lead_row(
     payload: dict[str, object],
     *,
     canonical_evento_id: int | None = None,
+    canonical_evento_name: str | None = None,
     lookup_context: LeadLookupContext | None = None,
 ) -> tuple[str, int | None]:
     if lookup_context is not None:
@@ -692,6 +758,10 @@ def _persist_single_lead_row(
         )
     if existing:
         merge_lead(existing, payload)
+        _apply_canonical_event_name_to_existing_lead(
+            existing,
+            canonical_evento_name=canonical_evento_name,
+        )
         session.add(existing)
         session.flush()
         _ensure_canonical_event_link(
@@ -704,7 +774,11 @@ def _persist_single_lead_row(
 
     try:
         with session.begin_nested():
-            lead = Lead(**payload)
+            create_payload = _payload_with_canonical_event_name(
+                payload,
+                canonical_evento_name=canonical_evento_name,
+            )
+            lead = Lead(**create_payload)
             session.add(lead)
             session.flush()
     except IntegrityError as exc:
@@ -718,6 +792,10 @@ def _persist_single_lead_row(
             )
             raise
         merge_lead(winner, payload)
+        _apply_canonical_event_name_to_existing_lead(
+            winner,
+            canonical_evento_name=canonical_evento_name,
+        )
         session.add(winner)
         session.flush()
         _ensure_canonical_event_link(

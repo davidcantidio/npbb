@@ -172,3 +172,48 @@ def test_import_leads_with_etl_non_strict_persists_only_approved_rows(engine) ->
 
         leads = session.exec(select(Lead)).all()
         assert leads == []
+
+
+def test_import_leads_with_etl_ignora_colunas_de_evento_ruidosas_no_preview_e_commit(engine) -> None:
+    with Session(engine) as session:
+        evento = _create_event(session, nome="Evento ETL Canonico")
+        file = _make_upload_file(
+            [
+                ["Email", "CPF", "Nome", "Sessao", "Evento", "Evento_Nome"],
+                [
+                    "contaminado-etl@example.com",
+                    "52998224725",
+                    "Lead ETL Contaminado",
+                    "Show 1",
+                    "Ativação",
+                    "Proponente",
+                ],
+            ]
+        )
+
+        preview = asyncio.run(
+            import_leads_with_etl(
+                file=file,
+                evento_id=int(evento.id),
+                db=session,
+                strict=False,
+            )
+        )
+
+        assert preview.valid_rows == 1
+        assert len(preview.approved_rows) == 1
+        assert preview.approved_rows[0].payload["evento_nome"] == "Evento ETL Canonico"
+
+        commit = asyncio.run(
+            commit_leads_with_etl(
+                session_token=preview.session_token,
+                evento_id=int(evento.id),
+                db=session,
+                force_warnings=True,
+            )
+        )
+
+        assert commit.created == 1
+        lead = session.exec(select(Lead).where(Lead.email == "contaminado-etl@example.com")).first()
+        assert lead is not None
+        assert lead.evento_nome == "Evento ETL Canonico"

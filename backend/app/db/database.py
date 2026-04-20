@@ -1,9 +1,7 @@
 """Configuracao de conexao, contexto RLS e utilitarios de sessao do SQLModel."""
 
-import json
 import os
 import sys
-import time
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse
@@ -26,38 +24,6 @@ def _env_int(name: str, default: int, *, min_value: int | None = None) -> int:
     if min_value is not None:
         return max(min_value, value)
     return value
-
-
-def _agent_debug_ndjson(
-    location: str,
-    message: str,
-    data: dict,
-    hypothesis_id: str,
-) -> None:
-    # #region agent log
-    raw = os.getenv("NPBB_DEBUG_AGENT_LOG", "").strip().lower()
-    if raw not in {"1", "true", "yes", "on"}:
-        return
-    try:
-        # Raiz do backend (npbb/backend/debug-649b68.log), visível junto ao .env / .venv
-        log_path = Path(__file__).resolve().parents[2] / "debug-649b68.log"
-        line = json.dumps(
-            {
-                "sessionId": "649b68",
-                "timestamp": int(time.time() * 1000),
-                "location": location,
-                "message": message,
-                "data": data,
-                "hypothesisId": hypothesis_id,
-            },
-            ensure_ascii=False,
-        )
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with log_path.open("a", encoding="utf-8") as f:
-            f.write(line + "\n")
-    except OSError:
-        pass
-    # #endregion
 
 
 def _safe_db_endpoint(url: str) -> dict:
@@ -91,8 +57,16 @@ def _validate_supabase_runtime_url(url: str) -> None:
     if "supabase" not in host:
         return
     if parsed.port != 6543:
+        hint = ""
+        if host.startswith("db.") and host.endswith(".supabase.co"):
+            hint = (
+                " Parece que DATABASE_URL esta com o host direto (tipico de DIRECT_URL/worker). "
+                "Para a API use o transaction pooler na porta 6543 e uma role dedicada (ex.: npbb_api), "
+                "conforme backend/.env.example."
+            )
         raise RuntimeError(
-            "DATABASE_URL de runtime da API deve usar o transaction pooler do Supabase (:6543), nao a conexao direta :5432."
+            "DATABASE_URL de runtime da API deve usar o transaction pooler do Supabase (:6543), "
+            "nao a conexao direta :5432." + hint
         )
     username = (parsed.username or "").lower()
     if username.startswith("postgres"):
@@ -227,22 +201,7 @@ def _build_engine_from_url(url: str):
         connect_args = _postgres_connect_args()
     echo = os.getenv("SQL_ECHO", "false").lower() == "true"
     engine_kwargs: dict = {"echo": echo, "connect_args": connect_args, **_pool_kwargs_for_url(url)}
-    # #region agent log
-    eng = create_engine(url, **engine_kwargs)
-    pool = eng.pool
-    _agent_debug_ndjson(
-        "database.py:_build_engine",
-        "engine_created",
-        {
-            "endpoint": _safe_db_endpoint(url),
-            "pool_pre_ping": getattr(pool, "_pre_ping", None),
-            "pool_class": type(pool).__name__,
-            "pool_recycle": getattr(pool, "_recycle", None),
-        },
-        "H1",
-    )
-    # #endregion
-    return eng
+    return create_engine(url, **engine_kwargs)
 
 
 def _dialect_name_for_session(session: Session) -> str:

@@ -8,6 +8,7 @@ import {
   computeFileSha256Hex,
   commitLeadImportEtl,
   createLeadBatch,
+  createLeadBatchIntake,
   getLeadBatch,
   getLeadBatchPreview,
   getLeadImportMetadataHint,
@@ -174,6 +175,7 @@ vi.mock("../../services/leads_import", () => ({
   computeFileSha256Hex: vi.fn(),
   commitLeadImportEtl: vi.fn(),
   createLeadBatch: vi.fn(),
+  createLeadBatchIntake: vi.fn(),
   getActivationImportBlockReason: (evento?: { activation_import_block_reason?: string | null }) =>
     evento?.activation_import_block_reason ?? null,
   getLeadBatch: vi.fn(),
@@ -199,6 +201,7 @@ const mockedListAgencias = vi.mocked(listAgencias);
 const mockedComputeFileSha256Hex = vi.mocked(computeFileSha256Hex);
 const mockedCommitLeadImportEtl = vi.mocked(commitLeadImportEtl);
 const mockedCreateLeadBatch = vi.mocked(createLeadBatch);
+const mockedCreateLeadBatchIntake = vi.mocked(createLeadBatchIntake);
 const mockedGetLeadBatch = vi.mocked(getLeadBatch);
 const mockedGetLeadBatchPreview = vi.mocked(getLeadBatchPreview);
 const mockedGetLeadImportMetadataHint = vi.mocked(getLeadImportMetadataHint);
@@ -336,6 +339,29 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       { id: 10, nome: "Agencia Alpha", dominio: "alpha.com.br" },
     ]);
     mockedComputeFileSha256Hex.mockResolvedValue("a".repeat(64));
+    mockedCreateLeadBatchIntake.mockImplementation(async (token, payload) => {
+      const items = [];
+      for (const item of payload.items) {
+        const batch = await mockedCreateLeadBatch(token, {
+          plataforma_origem: item.plataforma_origem,
+          data_envio: item.data_envio,
+          evento_id: item.evento_id,
+          file: item.file,
+          origem_lote: item.origem_lote,
+          tipo_lead_proponente: item.tipo_lead_proponente,
+          ativacao_id: item.ativacao_id,
+          quem_enviou: "demo@npbb.com.br",
+        });
+        const preview = await mockedGetLeadBatchPreview(token, batch.id);
+        items.push({
+          client_row_id: item.client_row_id,
+          batch,
+          preview,
+          hint_applied: null,
+        });
+      }
+      return { items };
+    });
     mockedListReferenciaEventos.mockResolvedValue([
       {
         id: 42,
@@ -378,6 +404,54 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Selecione um arquivo CSV ou XLSX.")).toBeInTheDocument();
     expect(mockedCreateLeadBatch).not.toHaveBeenCalled();
+  });
+
+  it("does not hash or call the legacy import-hint preflight in the main Bronze flow", async () => {
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 10,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: 42,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+      ...bronzeBatchBase(),
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Alice", "alice@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "email" }));
+
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Enviar para Bronze" })).toBeEnabled();
+    });
+
+    expect(mockedComputeFileSha256Hex).not.toHaveBeenCalled();
+    expect(mockedGetLeadImportMetadataHint).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
+
+    await waitFor(() => expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(1));
+    expect(mockedComputeFileSha256Hex).not.toHaveBeenCalled();
+    expect(mockedGetLeadImportMetadataHint).not.toHaveBeenCalled();
   });
 
   it("uploads a batch and keeps the operator in the canonical shell preview", async () => {
@@ -443,127 +517,48 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     });
   });
 
-  it("rehydrates Bronze metadata from the import hint before submit", async () => {
-    mockedComputeFileSha256Hex.mockResolvedValueOnce("b".repeat(64));
-    mockedGetLeadImportMetadataHint.mockResolvedValueOnce({
+  it("accepts Bronze metadata hint returned by server-side intake after submit", async () => {
+    const hint = {
       arquivo_sha256: "b".repeat(64),
       source_batch_id: 91,
       plataforma_origem: "manual",
       data_envio: "2026-03-15T14:00:00",
-      origem_lote: "ativacao",
+      origem_lote: "ativacao" as const,
       tipo_lead_proponente: null,
       evento_id: 42,
       ativacao_id: 5,
-      confidence: "exact_hash_match",
+      confidence: "exact_hash_match" as const,
       source_created_at: "2026-03-10T09:00:00",
-    });
-    mockedListEventoAtivacoes.mockResolvedValue([
-      {
-        id: 5,
-        evento_id: 42,
-        nome: "Stand reidratado",
-        descricao: null,
-        mensagem_qrcode: null,
-        gamificacao_id: null,
-        landing_url: null,
-        qr_code_url: null,
-        url_promotor: null,
-        redireciona_pesquisa: false,
-        checkin_unico: false,
-        termo_uso: false,
-        gera_cupom: false,
-        created_at: "2026-03-10T09:00:00",
-        updated_at: "2026-03-10T09:00:00",
-      },
-    ]);
-    mockedCreateLeadBatch.mockResolvedValue({
-      id: 14,
-      enviado_por: 1,
-      plataforma_origem: "manual",
-      data_envio: "2026-03-15T00:00:00",
-      data_upload: "2026-03-15T12:00:00",
-      nome_arquivo_original: "leads.csv",
-      stage: "bronze",
-      evento_id: 42,
-      origem_lote: "ativacao",
-      tipo_lead_proponente: null,
-      ativacao_id: 5,
-      pipeline_status: "pending",
-      pipeline_progress: null,
-      pipeline_report: null,
-      created_at: "2026-03-15T12:00:00",
-    });
-    mockedGetLeadBatchPreview.mockResolvedValue({
-      headers: ["nome", "email"],
-      rows: [["Alice", "alice@npbb.com.br"]],
-      total_rows: 1,
-    });
-
-    const { container } = renderImportacaoPage();
-    const user = userEvent.setup();
-
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const csvFile = createCsvFile();
-    fireEvent.change(fileInput, { target: { files: [csvFile] } });
-
-    expect(
-      await screen.findByText("Metadados recuperados de uma importacao anterior (mesmo ficheiro)."),
-    ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(mockedListEventoAtivacoes).toHaveBeenCalledWith("token-123", 42);
-    });
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Enviar para Bronze" })).toBeEnabled();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
-
-    await waitFor(() => {
-      expect(mockedCreateLeadBatch).toHaveBeenCalledWith("token-123", {
-        quem_enviou: "demo@npbb.com.br",
-        plataforma_origem: "manual",
-        data_envio: "2026-03-15",
-        evento_id: 42,
-        file: csvFile,
-        origem_lote: "ativacao",
-        ativacao_id: 5,
-      });
-    });
-  });
-
-  it("preserves manual Bronze edits when the hint resolves later", async () => {
-    const hintDeferred = createDeferred<{
-      arquivo_sha256: string;
-      source_batch_id: number;
-      plataforma_origem: string;
-      data_envio: string;
-      origem_lote: "proponente";
-      tipo_lead_proponente: "entrada_evento";
-      evento_id: number;
-      ativacao_id: null;
-      confidence: "exact_hash_match";
-      source_created_at: string;
-    } | null>();
-    mockedComputeFileSha256Hex.mockResolvedValueOnce("c".repeat(64));
-    mockedGetLeadImportMetadataHint.mockReturnValueOnce(hintDeferred.promise);
-    mockedCreateLeadBatch.mockResolvedValue({
-      id: 15,
-      enviado_por: 1,
-      plataforma_origem: "manual",
-      data_envio: "2026-03-20T00:00:00",
-      data_upload: "2026-03-20T12:00:00",
-      nome_arquivo_original: "leads.csv",
-      stage: "bronze",
-      evento_id: 42,
-      pipeline_status: "pending",
-      pipeline_report: null,
-      created_at: "2026-03-20T12:00:00",
-      ...bronzeBatchBase(),
-    });
-    mockedGetLeadBatchPreview.mockResolvedValue({
-      headers: ["nome", "email"],
-      rows: [["Alice", "alice@npbb.com.br"]],
-      total_rows: 1,
+    };
+    mockedCreateLeadBatchIntake.mockResolvedValueOnce({
+      items: [
+        {
+          client_row_id: "single-upload",
+          batch: {
+            id: 14,
+            enviado_por: 1,
+            plataforma_origem: "manual",
+            data_envio: "2026-03-15T00:00:00",
+            data_upload: "2026-03-15T12:00:00",
+            nome_arquivo_original: "leads.csv",
+            stage: "bronze",
+            evento_id: 42,
+            origem_lote: "ativacao",
+            tipo_lead_proponente: null,
+            ativacao_id: 5,
+            pipeline_status: "pending",
+            pipeline_progress: null,
+            pipeline_report: null,
+            created_at: "2026-03-15T12:00:00",
+          },
+          preview: {
+            headers: ["nome", "email"],
+            rows: [["Alice", "alice@npbb.com.br"]],
+            total_rows: 1,
+          },
+          hint_applied: hint,
+        },
+      ],
     });
 
     const { container } = renderImportacaoPage();
@@ -576,36 +571,93 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
     await user.click(await screen.findByRole("option", { name: "manual" }));
 
-    hintDeferred.resolve({
-      arquivo_sha256: "c".repeat(64),
-      source_batch_id: 92,
-      plataforma_origem: "email",
-      data_envio: "2026-03-20T14:00:00",
-      origem_lote: "proponente",
-      tipo_lead_proponente: "entrada_evento",
-      evento_id: 42,
-      ativacao_id: null,
-      confidence: "exact_hash_match",
-      source_created_at: "2026-03-11T09:00:00",
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Enviar para Bronze" })).toBeEnabled();
     });
 
-    expect(
-      await screen.findByText("Metadados recuperados de uma importacao anterior (mesmo ficheiro)."),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
+
+    expect(await screen.findByText("Preview do lote #14")).toBeInTheDocument();
+    expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(1);
+    expect(mockedComputeFileSha256Hex).not.toHaveBeenCalled();
+    expect(mockedGetLeadImportMetadataHint).not.toHaveBeenCalled();
+  });
+
+  it("preserves manual Bronze edits in the server-side intake payload", async () => {
+    mockedCreateLeadBatchIntake.mockResolvedValueOnce({
+      items: [
+        {
+          client_row_id: "single-upload",
+          batch: {
+            id: 15,
+            enviado_por: 1,
+            plataforma_origem: "manual",
+            data_envio: "2026-03-20T00:00:00",
+            data_upload: "2026-03-20T12:00:00",
+            nome_arquivo_original: "leads.csv",
+            stage: "bronze",
+            evento_id: 42,
+            pipeline_status: "pending",
+            pipeline_report: null,
+            created_at: "2026-03-20T12:00:00",
+            ...bronzeBatchBase(),
+          },
+          preview: {
+            headers: ["nome", "email"],
+            rows: [["Alice", "alice@npbb.com.br"]],
+            total_rows: 1,
+          },
+          hint_applied: {
+            arquivo_sha256: "c".repeat(64),
+            source_batch_id: 92,
+            plataforma_origem: "email",
+            data_envio: "2026-03-20T14:00:00",
+            origem_lote: "proponente",
+            tipo_lead_proponente: "entrada_evento",
+            evento_id: 42,
+            ativacao_id: null,
+            confidence: "exact_hash_match",
+            source_created_at: "2026-03-11T09:00:00",
+          },
+        },
+      ],
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = createCsvFile();
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "manual" }));
+
+    await user.click(screen.getByRole("combobox", { name: /evento de referencia/i }));
+    await user.click(await screen.findByRole("option", { name: /Evento ETL/i }));
 
     await user.click(screen.getByRole("button", { name: "Enviar para Bronze" }));
 
     await waitFor(() => {
-      expect(mockedCreateLeadBatch).toHaveBeenCalledWith(
+      expect(mockedCreateLeadBatchIntake).toHaveBeenCalledWith(
         "token-123",
-        expect.objectContaining({
-          file: csvFile,
-          plataforma_origem: "manual",
-          evento_id: 42,
-          origem_lote: "proponente",
-        }),
+        {
+          items: [
+            expect.objectContaining({
+              file: csvFile,
+              plataforma_origem: "manual",
+              evento_id: 42,
+              origem_lote: "proponente",
+            }),
+          ],
+        },
       );
     });
+    expect(mockedComputeFileSha256Hex).not.toHaveBeenCalled();
+    expect(mockedGetLeadImportMetadataHint).not.toHaveBeenCalled();
   });
 
   it("envia lote de ativacao com ativacao_id selecionada", async () => {
@@ -1103,41 +1155,46 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     expect(screen.getByText("2 arquivo(s)")).toBeInTheDocument();
   });
 
-  it("rehydrates only the matching batch row and keeps the others manual", async () => {
-    mockedComputeFileSha256Hex
-      .mockResolvedValueOnce("d".repeat(64))
-      .mockResolvedValueOnce("e".repeat(64));
-    mockedGetLeadImportMetadataHint
-      .mockResolvedValueOnce({
-        arquivo_sha256: "d".repeat(64),
-        source_batch_id: 101,
-        plataforma_origem: "manual",
-        data_envio: "2026-03-25T10:00:00",
-        origem_lote: "proponente",
-        tipo_lead_proponente: "bilheteria",
-        evento_id: 42,
-        ativacao_id: null,
-        confidence: "exact_hash_match",
-        source_created_at: "2026-03-12T08:00:00",
-      })
-      .mockResolvedValueOnce(null);
-    mockedCreateLeadBatch.mockResolvedValue({
-      id: 63,
-      enviado_por: 1,
-      plataforma_origem: "manual",
-      data_envio: "2026-03-25T00:00:00",
-      data_upload: "2026-03-25T12:00:00",
-      nome_arquivo_original: "batch-com-hint.csv",
-      stage: "bronze",
-      evento_id: 42,
-      pipeline_status: "pending",
-      pipeline_report: null,
-      created_at: "2026-03-25T12:00:00",
-      origem_lote: "proponente",
-      tipo_lead_proponente: "bilheteria",
-      ativacao_id: null,
-      pipeline_progress: null,
-    });
+  it("applies a server-side intake hint only to the matching valid batch row", async () => {
+    mockedCreateLeadBatchIntake.mockImplementationOnce(async (_token, payload) => ({
+      items: [
+        {
+          client_row_id: payload.items[0].client_row_id,
+          batch: {
+            id: 63,
+            enviado_por: 1,
+            plataforma_origem: "manual",
+            data_envio: "2026-03-25T00:00:00",
+            data_upload: "2026-03-25T12:00:00",
+            nome_arquivo_original: "batch-com-hint.csv",
+            stage: "bronze",
+            evento_id: 42,
+            pipeline_status: "pending",
+            pipeline_report: null,
+            created_at: "2026-03-25T12:00:00",
+            ...bronzeBatchBase(),
+            tipo_lead_proponente: "bilheteria",
+          },
+          preview: {
+            headers: ["nome", "email"],
+            rows: [["Alice", "alice@npbb.com.br"]],
+            total_rows: 1,
+          },
+          hint_applied: {
+            arquivo_sha256: "d".repeat(64),
+            source_batch_id: 101,
+            plataforma_origem: "manual",
+            data_envio: "2026-03-25T10:00:00",
+            origem_lote: "proponente",
+            tipo_lead_proponente: "bilheteria",
+            evento_id: 42,
+            ativacao_id: null,
+            confidence: "exact_hash_match",
+            source_created_at: "2026-03-12T08:00:00",
+          },
+        },
+      ],
+    }));
 
     const { container } = renderImportacaoPage();
     const user = userEvent.setup();
@@ -1154,26 +1211,32 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     const hintedRow = findBatchRow("batch-com-hint.csv");
     const plainRow = findBatchRow("batch-sem-hint.csv");
 
-    expect(
-      await within(hintedRow).findByText("Metadados recuperados de uma importacao anterior (lote #101)."),
-    ).toBeInTheDocument();
+    await selectBatchRowPlatform(hintedRow, user, "manual");
+    await selectBatchRowEvent(hintedRow, user, /Evento ETL/i);
     expect(within(plainRow).queryByText(/Metadados recuperados/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
 
-    await waitFor(() => expect(mockedCreateLeadBatch).toHaveBeenCalledTimes(1));
-    expect(mockedCreateLeadBatch).toHaveBeenCalledWith(
+    await waitFor(() => expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(1));
+    expect(mockedCreateLeadBatchIntake).toHaveBeenCalledWith(
       "token-123",
       expect.objectContaining({
-        file: fileWithHint,
-        plataforma_origem: "manual",
-        data_envio: "2026-03-25",
-        evento_id: 42,
-        origem_lote: "proponente",
-        tipo_lead_proponente: "bilheteria",
+        items: [
+          expect.objectContaining({
+            file: fileWithHint,
+            plataforma_origem: "manual",
+            evento_id: 42,
+            origem_lote: "proponente",
+          }),
+        ],
       }),
     );
+    expect(
+      await within(hintedRow).findByText("Metadados recuperados de uma importacao anterior (lote #101)."),
+    ).toBeInTheDocument();
     expect(within(plainRow).getByText(/Selecione a plataforma de origem\./i)).toBeInTheDocument();
+    expect(mockedComputeFileSha256Hex).not.toHaveBeenCalled();
+    expect(mockedGetLeadImportMetadataHint).not.toHaveBeenCalled();
   });
 
   it("shows the inline agency editor in batch mode and unlocks activation import after updateEvento", async () => {

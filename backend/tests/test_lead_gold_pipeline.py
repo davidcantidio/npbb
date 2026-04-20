@@ -11,6 +11,7 @@ import io
 import json
 from datetime import date as date_type, datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -1016,6 +1017,93 @@ class TestExecutarPipeline:
 
         assert duplicate_resp.status_code == 409
         assert duplicate_resp.json()["detail"]["code"] == "PIPELINE_ALREADY_RUNNING"
+
+    def test_dispatch_does_not_touch_expired_batch_after_commit(self, monkeypatch):
+        from app.routers import leads as leads_router
+
+        class _CommitExpiringBatch:
+            def __init__(self) -> None:
+                self.id = 243
+                self.pipeline_progress = None
+                self.pipeline_report = None
+                self._stage = BatchStage.SILVER
+                self._pipeline_status = PipelineStatus.PASS
+                self._evento_id = 12
+                self._expired_after_commit = False
+
+            def _read(self, value):
+                if self._expired_after_commit:
+                    raise RuntimeError("post-commit reload attempted")
+                return value
+
+            @property
+            def stage(self):
+                return self._read(self._stage)
+
+            @stage.setter
+            def stage(self, value):
+                self._stage = value
+
+            @property
+            def pipeline_status(self):
+                return self._read(self._pipeline_status)
+
+            @pipeline_status.setter
+            def pipeline_status(self, value):
+                self._pipeline_status = value
+
+            @property
+            def evento_id(self):
+                return self._read(self._evento_id)
+
+            @evento_id.setter
+            def evento_id(self, value):
+                self._evento_id = value
+
+        class _FakeSession:
+            def __init__(self, batch: _CommitExpiringBatch) -> None:
+                self.batch = batch
+                self.committed = False
+
+            def add(self, _obj) -> None:
+                return None
+
+            def commit(self) -> None:
+                self.committed = True
+                self.batch._expired_after_commit = True
+
+        batch = _CommitExpiringBatch()
+        session = _FakeSession(batch)
+
+        monkeypatch.setattr(
+            leads_router,
+            "load_batch_without_bronze_for_update",
+            lambda _session, _batch_id: batch,
+        )
+
+        def _queue_pipeline(fake_batch: _CommitExpiringBatch) -> None:
+            fake_batch.pipeline_status = PipelineStatus.PENDING
+            fake_batch.pipeline_progress = {
+                "step": "queued",
+                "label": "Na fila para processamento",
+                "pct": None,
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
+
+        monkeypatch.setattr(leads_router, "queue_pipeline_batch", _queue_pipeline)
+
+        response = asyncio.run(
+            leads_router.disparar_pipeline(
+                batch_id=243,
+                session=session,
+                current_user=SimpleNamespace(id=999),
+            )
+        )
+
+        assert session.committed is True
+        assert response.batch_id == 243
+        assert response.status == "queued"
+        assert response.reclaimed_stale_lock is False
 
     def test_failed_insert_rerun_keeps_resume_checkpoint_in_queued_progress(
         self, client, engine, monkeypatch

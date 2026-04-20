@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
+import os
 import zipfile
 from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
 
 import pytest
+from fastapi import UploadFile
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
 from sqlalchemy.pool import StaticPool
@@ -26,7 +31,11 @@ from app.models.models import (
     StatusEvento,
     Usuario,
 )
+from app.schemas.lead_batch import LeadBatchIntakeRequest
+from app.services import lead_batch_intake_service
 from app.services.imports.contracts import ImportPreviewResult
+from app.services.imports.payload_storage import PayloadStorageError, persist_batch_payload_file
+from app.services.imports.upload_spool import spool_upload_payload
 from app.utils.security import hash_password
 
 
@@ -41,6 +50,13 @@ def _make_engine():
 @pytest.fixture
 def engine(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "secret-test")
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.delenv("PUBLIC_APP_BASE_URL", raising=False)
+    monkeypatch.setenv("OBJECT_STORAGE_BACKEND", "local")
+    monkeypatch.setenv(
+        "OBJECT_STORAGE_LOCAL_ROOT",
+        str(Path.cwd() / "test-object-storage" / uuid4().hex),
+    )
     eng = _make_engine()
     SQLModel.metadata.create_all(eng)
     return eng
@@ -126,6 +142,18 @@ CSV_CONTENT_WITH_PREAMBLE = (
 INVALID_XLSX_CONTENT = b"nao-e-um-xlsx-valido"
 
 
+class TrackingBytesIO(io.BytesIO):
+    def __init__(self, initial_bytes: bytes):
+        super().__init__(initial_bytes)
+        self.read_sizes: list[int] = []
+
+    def read(self, size: int = -1) -> bytes:
+        self.read_sizes.append(size)
+        if size < 0:
+            raise AssertionError("unbounded read() is not allowed in chunked upload spooling")
+        return super().read(size)
+
+
 def _make_non_xlsx_zip_bytes() -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
@@ -195,7 +223,91 @@ def _seed_lead_batch(
     return batch
 
 
+class TestLeadBatchPayloadStorage:
+    def test_spool_upload_payload_reads_in_bounded_chunks(self):
+        payload = b"nome,email\n" + (b"Alice,alice@example.com\n" * 4)
+        tracked_file = TrackingBytesIO(payload)
+        upload = UploadFile(file=tracked_file, filename="leads.csv")
+
+        spooled = spool_upload_payload(upload, max_bytes=1024, chunk_size=7)
+        try:
+            assert spooled.sha256 == hashlib.sha256(payload).hexdigest()
+            assert spooled.size_bytes == len(payload)
+            assert spooled.file.read() == payload
+            assert tracked_file.read_sizes
+            assert all(size == 7 for size in tracked_file.read_sizes[:-1])
+            assert tracked_file.read_sizes[-1] == 7
+        finally:
+            spooled.close()
+
+    def test_local_storage_backend_is_blocked_in_production(self, monkeypatch):
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("OBJECT_STORAGE_BACKEND", "local")
+        monkeypatch.delenv("PUBLIC_APP_BASE_URL", raising=False)
+        batch = LeadBatch(
+            enviado_por=1,
+            plataforma_origem="email",
+            data_envio=datetime(2026, 3, 1, 10, 0, 0),
+            nome_arquivo_original="leads.csv",
+            arquivo_sha256=hashlib.sha256(CSV_CONTENT).hexdigest(),
+            stage=BatchStage.BRONZE,
+            pipeline_status=PipelineStatus.PENDING,
+        )
+
+        with pytest.raises(PayloadStorageError, match="OBJECT_STORAGE_BACKEND=local nao e permitido"):
+            persist_batch_payload_file(
+                batch,
+                io.BytesIO(CSV_CONTENT),
+                size_bytes=len(CSV_CONTENT),
+                content_type="text/csv",
+            )
+
+
 class TestPostLeadsBatches:
+    def test_batch_intake_creates_multiple_batches(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches/intake",
+            headers=headers,
+            data={
+                "manifest_json": json.dumps(
+                    {
+                        "items": [
+                            {
+                                "client_row_id": "row-a",
+                                "plataforma_origem": "email",
+                                "data_envio": "2026-03-01T10:00:00",
+                                "file_name": "leads-a.csv",
+                            },
+                            {
+                                "client_row_id": "row-b",
+                                "plataforma_origem": "manual",
+                                "data_envio": "2026-03-02T11:30:00",
+                                "file_name": "leads-b.csv",
+                            },
+                        ]
+                    },
+                    ensure_ascii=False,
+                )
+            },
+            files=[
+                ("files", ("leads-a.csv", io.BytesIO(CSV_CONTENT), "text/csv")),
+                ("files", ("leads-b.csv", io.BytesIO(CSV_CONTENT), "text/csv")),
+            ],
+        )
+
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert [item["client_row_id"] for item in body["items"]] == ["row-a", "row-b"]
+        assert [item["batch"]["nome_arquivo_original"] for item in body["items"]] == [
+            "leads-a.csv",
+            "leads-b.csv",
+        ]
+        assert all(item["batch"]["id"] is not None for item in body["items"])
+        assert all(item["preview"]["headers"] == ["nome", "email", "cpf"] for item in body["items"])
+
     def test_upload_csv_creates_batch(self, client, engine):
         with Session(engine) as s:
             headers = _auth_header(client, s)
@@ -217,6 +329,21 @@ class TestPostLeadsBatches:
         assert body["id"] is not None
         assert body.get("origem_lote") == "proponente"
         assert body.get("ativacao_id") is None
+
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, body["id"])
+            assert batch is not None
+            assert batch.arquivo_bronze is None
+            assert batch.bronze_storage_bucket == "lead-imports"
+            assert batch.bronze_storage_key
+            assert batch.bronze_content_type == "text/csv"
+            assert batch.bronze_size_bytes == len(CSV_CONTENT)
+            stored_path = (
+                Path(os.environ["OBJECT_STORAGE_LOCAL_ROOT"])
+                / batch.bronze_storage_bucket
+                / batch.bronze_storage_key
+            )
+            assert stored_path.read_bytes() == CSV_CONTENT
 
     def test_upload_origem_ativacao_requires_ativacao_id(self, client, engine):
         with Session(engine) as s:
@@ -602,6 +729,56 @@ class TestGetLeadBatchImportHint:
         detail = resp.json()["detail"]
         assert detail["code"] == "INVALID_ARQUIVO_SHA256"
         assert detail["field"] == "arquivo_sha256"
+
+
+class TestLeadBatchIntakeService:
+    def test_execute_intake_materializes_batch_read_before_commit(self, engine, monkeypatch):
+        with Session(engine) as s:
+            user = _seed_user(s)
+            manifest = LeadBatchIntakeRequest.model_validate(
+                {
+                    "items": [
+                        {
+                            "client_row_id": "row-1",
+                            "plataforma_origem": "email",
+                            "data_envio": "2026-03-01T10:00:00",
+                            "file_name": "leads.csv",
+                        }
+                    ]
+                }
+            )
+            upload = UploadFile(file=io.BytesIO(CSV_CONTENT), filename="leads.csv")
+
+            commit_started = False
+            original_commit = s.commit
+            original_model_validate = lead_batch_intake_service.LeadBatchRead.model_validate
+
+            def tracked_commit():
+                nonlocal commit_started
+                commit_started = True
+                return original_commit()
+
+            def guarded_model_validate(cls, obj, *args, **kwargs):
+                assert commit_started is False
+                return original_model_validate(obj, *args, **kwargs)
+
+            monkeypatch.setattr(s, "commit", tracked_commit)
+            monkeypatch.setattr(
+                lead_batch_intake_service.LeadBatchRead,
+                "model_validate",
+                classmethod(guarded_model_validate),
+            )
+
+            response = lead_batch_intake_service.execute_lead_batch_intake(
+                session=s,
+                user_id=int(user.id),
+                manifest=manifest,
+                files=[upload],
+                max_import_file_bytes=1024 * 1024,
+            )
+
+        assert response.items[0].client_row_id == "row-1"
+        assert response.items[0].batch.nome_arquivo_original == "leads.csv"
 
 
 class TestGetBatchArquivo:

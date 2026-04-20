@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlmodel import Session, select
 
-from app.db.database import get_session
+from app.db.database import get_session, set_internal_service_db_context
 from app.models.models import Ativacao, ConversaoAtivacao, Evento
 from app.schemas.landing import LandingPayload
 from app.schemas.gamificacao_landing import (
@@ -46,6 +46,7 @@ router = APIRouter(tags=["landing-public"])
 
 
 def _get_evento_or_404(session: Session, evento_id: int) -> Evento:
+    set_internal_service_db_context(session)
     evento = session.get(Evento, evento_id)
     if not evento:
         raise_http_error(
@@ -57,6 +58,7 @@ def _get_evento_or_404(session: Session, evento_id: int) -> Evento:
 
 
 def _get_ativacao_or_404(session: Session, ativacao_id: int) -> Ativacao:
+    set_internal_service_db_context(session)
     ativacao = session.get(Ativacao, ativacao_id)
     if not ativacao:
         raise_http_error(

@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 PHASE_F4_EVIDENCE_DIR ?= artifacts/phase-f4/evidence
 
-.PHONY: eval-integrations __eval-integrations ci-quality __ci-quality phase-f4-summary
+.PHONY: eval-integrations __eval-integrations ci-quality __ci-quality leads-deploy-gate phase-f4-summary
 
 eval-integrations:
 	mkdir -p "$(PHASE_F4_EVIDENCE_DIR)"
@@ -35,6 +35,11 @@ __ci-quality:
 	python3 scripts/check_etl_cross_layer_coverage.py
 	./scripts/check_architecture_guards.sh
 	./scripts/check_repo_hygiene.sh
+
+leads-deploy-gate:
+	cd backend && python scripts/verify_leads_runtime_env.py --service api
+	cd backend && python scripts/verify_leads_runtime_env.py --service worker
+	cd backend && python scripts/verify_leads_hardening_db.py
 
 phase-f4-summary:
 	python3 scripts/render_phase_validation_summary.py --project LEAD-ETL-FUSION --output artifacts/phase-f4/validation-summary.md

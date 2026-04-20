@@ -159,7 +159,11 @@ describe("LeadsListPage", () => {
       expect(mockedTriggerBlobDownload).toHaveBeenCalledTimes(1);
     });
 
-    expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {});
+    expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {
+      data_inicio: "",
+      data_fim: "",
+      evento_id: null,
+    });
     const [blob, filename] = mockedTriggerBlobDownload.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
     expect(filename).toBe("leads-2026-01-15.csv");
@@ -202,6 +206,7 @@ describe("LeadsListPage", () => {
       expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {
         data_inicio: "2026-02-01",
         data_fim: "2026-02-28",
+        evento_id: null,
       });
       expect(mockedTriggerBlobDownload).toHaveBeenCalledTimes(1);
     });

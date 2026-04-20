@@ -10,7 +10,7 @@ import logging
 import os
 import re
 import tracemalloc
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime
 from pathlib import Path
 from collections.abc import Iterator
 
@@ -22,7 +22,7 @@ from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import load_only
-from sqlalchemy import and_, func
+from sqlalchemy import and_, case, func
 from sqlalchemy import or_
 from sqlalchemy.sql import text
 from sqlmodel import Session, select
@@ -30,7 +30,7 @@ from lead_pipeline.constants import TIPO_EVENTO_PADRAO
 
 from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
-from app.db.database import get_session
+from app.db.database import get_session, set_internal_service_db_context
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
 from app.models.models import (
     Ativacao,
@@ -263,6 +263,7 @@ def _get_public_submit_context(
     *,
     payload: LandingSubmitRequest,
 ) -> tuple[Evento, Ativacao | None, str | None]:
+    set_internal_service_db_context(session)
     ativacao: Ativacao | None = None
 
     if payload.ativacao_id is not None:
@@ -358,16 +359,12 @@ def reconhecer_lead_publico(
     evento_id: int,
     session: Session = Depends(get_session),
 ):
+    set_internal_service_db_context(session)
     result = validar_token(session, token=token, evento_id=evento_id)
     return LeadRecognitionRead(
         lead_reconhecido=result is not None,
         lead_id=result.lead_id if result else None,
     )
-
-
-def _lead_list_day_window_bounds(value: date) -> tuple[datetime, datetime]:
-    start = datetime.combine(value, time.min, tzinfo=timezone.utc)
-    return start, start + timedelta(days=1)
 
 
 def _format_data_csv_dia_meia_noite(d: date | None) -> str | None:
@@ -432,14 +429,26 @@ def _format_local_evento_export(cidade: str | None, estado: str | None) -> str |
     return cidade_value or estado_value
 
 
-def _lead_list_filters(params: LeadListQuery, origem_evento_id_col=None) -> list:
+def _lead_list_effective_event_date_expr(evento_origem):
+    """Data do evento usada na listagem (conversao mais recente com evento ou evento de origem do lote)."""
+    data_conv = func.coalesce(LeadConversao.data_conversao_evento, LeadConversao.created_at)
+    conversao_branch = func.coalesce(Evento.data_inicio_prevista, func.date(data_conv))
+    return case(
+        (LeadConversao.evento_id.isnot(None), conversao_branch),
+        else_=evento_origem.data_inicio_prevista,
+    )
+
+
+def _lead_list_filters(params: LeadListQuery, origem_evento_id_col=None, *, evento_origem=None) -> list:
     filters: list = []
-    if params.data_inicio is not None:
-        start_at, _ = _lead_list_day_window_bounds(params.data_inicio)
-        filters.append(Lead.data_criacao >= start_at)
-    if params.data_fim is not None:
-        _, end_exclusive = _lead_list_day_window_bounds(params.data_fim)
-        filters.append(Lead.data_criacao < end_exclusive)
+    if params.data_inicio is not None or params.data_fim is not None:
+        if evento_origem is None:
+            raise ValueError("evento_origem is required when filtering by data_inicio/data_fim")
+        eff = _lead_list_effective_event_date_expr(evento_origem)
+        if params.data_inicio is not None:
+            filters.append(eff >= params.data_inicio)
+        if params.data_fim is not None:
+            filters.append(eff <= params.data_fim)
     if params.evento_id is not None:
         if origem_evento_id_col is None:
             filters.append(LeadConversao.evento_id == params.evento_id)
@@ -486,7 +495,7 @@ def listar_leads(
         .subquery()
     )
 
-    list_filters = _lead_list_filters(params, LeadBatch.evento_id)
+    list_filters = _lead_list_filters(params, LeadBatch.evento_id, evento_origem=evento_origem)
 
     base_from = (
         select(
@@ -508,11 +517,13 @@ def listar_leads(
             LeadConversao.evento_id,
             Evento.nome.label("evento_convertido_nome"),
             Evento.data_inicio_prevista.label("evento_data_inicio_prevista"),
+            Evento.data_fim_prevista.label("evento_data_fim_prevista"),
             Evento.cidade.label("evento_cidade"),
             Evento.estado.label("evento_estado"),
             TipoEvento.nome.label("tipo_evento_nome"),
             LeadBatch.evento_id.label("evento_origem_id"),
             evento_origem.data_inicio_prevista.label("evento_origem_data_inicio_prevista"),
+            evento_origem.data_fim_prevista.label("evento_origem_data_fim_prevista"),
             evento_origem.cidade.label("evento_origem_cidade"),
             evento_origem.estado.label("evento_origem_estado"),
             evento_origem.tipo_id.label("evento_origem_tipo_id"),
@@ -549,6 +560,7 @@ def listar_leads(
         .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
         .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
         .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
+        .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
     )
     if list_filters:
         count_stmt = count_stmt.where(and_(*list_filters))
@@ -578,11 +590,13 @@ def listar_leads(
         evento_convertido_id,
         evento_convertido_nome,
         evento_data_inicio_prevista,
+        evento_data_fim_prevista,
         evento_cidade,
         evento_estado,
         tipo_evento_nome,
         evento_origem_id,
         evento_origem_data_inicio_prevista,
+        evento_origem_data_fim_prevista,
         evento_origem_cidade,
         evento_origem_estado,
         evento_origem_tipo_id,
@@ -614,6 +628,9 @@ def listar_leads(
         has_evento_convertido = evento_convertido_id is not None
         evento_data_export = (
             evento_data_inicio_prevista if has_evento_convertido else evento_origem_data_inicio_prevista
+        )
+        evento_fim_export = (
+            evento_data_fim_prevista if has_evento_convertido else evento_origem_data_fim_prevista
         )
         local_evento = _format_local_evento_export(
             evento_cidade if has_evento_convertido else evento_origem_cidade,
@@ -669,6 +686,8 @@ def listar_leads(
                 faixa_etaria=faixa_val,
                 soma_de_idade=idade_val,
                 origem=origem_export or None,
+                evento_inicio_prevista=evento_data_export,
+                evento_fim_prevista=evento_fim_export,
             )
         )
 
@@ -712,9 +731,16 @@ def _format_origem_lead_export(
     return ""
 
 
-def _format_leads_list_export_date(value: date | datetime | None) -> str:
-    if value is None:
+def _format_leads_list_export_date(value: date | datetime | str | None) -> str:
+    if value is None or value == "":
         return ""
+    if isinstance(value, str):
+        head = value.split(" ", 1)[0]
+        try:
+            parsed = date.fromisoformat(head)
+        except ValueError:
+            return value
+        return f"{parsed.month}/{parsed.day}/{parsed.year}"
     if isinstance(value, datetime):
         value = value.date()
     return f"{value.month}/{value.day}/{value.year}"
@@ -2497,6 +2523,9 @@ async def disparar_pipeline(
             )
 
     queue_pipeline_batch(batch)
+    queued_stage = batch.stage
+    queued_pipeline_status = batch.pipeline_status
+    queued_evento_id = batch.evento_id
     session.add(batch)
     session.commit()
 
@@ -2504,9 +2533,9 @@ async def disparar_pipeline(
         "lead_gold_pipeline.dispatch.accepted batch_id=%r user_id=%r stage=%r pipeline_status=%r evento_id=%r reclaimed_stale=%r",
         batch_id,
         user_id,
-        batch.stage,
-        batch.pipeline_status,
-        batch.evento_id,
+        queued_stage,
+        queued_pipeline_status,
+        queued_evento_id,
         reclaimed_stale_lock,
     )
     return ExecutarPipelineResponse(

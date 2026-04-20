@@ -84,6 +84,7 @@ def get_current_user(
         )
 
     try:
+        set_db_request_context(session, user_id=user_id)
         usuario = session.get(Usuario, user_id)
     except OperationalError as e:
         msg = str(e.orig) if getattr(e, "orig", None) else str(e)
@@ -133,6 +134,7 @@ def get_current_user_optional(
         return None
 
     try:
+        set_db_request_context(session, user_id=user_id)
         usuario = session.get(Usuario, user_id)
     except OperationalError as e:
         raise _database_unavailable_exception(e) from e

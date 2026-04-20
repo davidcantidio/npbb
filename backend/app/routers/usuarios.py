@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlmodel import Session, select
 
 from app.core.auth import get_current_user
-from app.db.database import get_session
+from app.db.database import get_session, set_internal_service_db_context
 from app.models.models import Agencia, Diretoria, Funcionario, Usuario
 from app.schemas.dominios import DiretoriaRead
 from app.schemas.password_reset import (
@@ -171,6 +171,7 @@ def criar_usuario(
     - Senha: minimo 6 chars, com letra e numero.
     - Duplicados: retorna 409.
     """
+    set_internal_service_db_context(session)
     email = str(usuario_in.email).strip().lower()
     _enforce_registration_policy(request)
     _enforce_rate_limit(

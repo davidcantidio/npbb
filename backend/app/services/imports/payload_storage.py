@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import mimetypes
 import os
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import BinaryIO, Iterator
 from uuid import uuid4
 
 import httpx
 
 from app.models.lead_batch import LeadBatch
 from app.models.lead_public_models import LeadImportEtlJob
+from app.utils.urls import is_production_environment
 
 
 class PayloadStorageError(RuntimeError):
@@ -37,7 +40,13 @@ def _now_utc() -> datetime:
 
 
 def _storage_backend() -> str:
-    return (os.getenv("OBJECT_STORAGE_BACKEND", "local").strip() or "local").lower()
+    backend = (os.getenv("OBJECT_STORAGE_BACKEND", "local").strip() or "local").lower()
+    if backend == "local" and is_production_environment():
+        raise PayloadStorageError(
+            "OBJECT_STORAGE_BACKEND=local nao e permitido em producao. "
+            "Configure OBJECT_STORAGE_BACKEND=supabase e credenciais de storage."
+        )
+    return backend
 
 
 def _storage_bucket() -> str:
@@ -108,6 +117,30 @@ def _store_local(*, bucket: str, key: str, payload: bytes, content_type: str) ->
     )
 
 
+def _store_local_file(
+    *,
+    bucket: str,
+    key: str,
+    file_obj: BinaryIO,
+    content_type: str,
+    size_bytes: int,
+) -> StoredPayload:
+    root = _storage_local_root() / bucket
+    path = root / Path(key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    file_obj.seek(0)
+    with path.open("wb") as destination:
+        shutil.copyfileobj(file_obj, destination, length=1024 * 1024)
+    file_obj.seek(0)
+    return StoredPayload(
+        bucket=bucket,
+        key=key,
+        content_type=content_type,
+        size_bytes=size_bytes,
+        uploaded_at=_now_utc(),
+    )
+
+
 def _read_local(*, bucket: str, key: str) -> bytes:
     path = _storage_local_root() / bucket / Path(key)
     if not path.exists():
@@ -140,6 +173,50 @@ def _store_supabase(*, bucket: str, key: str, payload: bytes, content_type: str)
     )
 
 
+def _iter_file_chunks(file_obj: BinaryIO, *, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+    file_obj.seek(0)
+    try:
+        while True:
+            chunk = file_obj.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+    finally:
+        file_obj.seek(0)
+
+
+def _store_supabase_file(
+    *,
+    bucket: str,
+    key: str,
+    file_obj: BinaryIO,
+    content_type: str,
+    size_bytes: int,
+) -> StoredPayload:
+    base_url = _supabase_base_url()
+    service_role_key = _supabase_service_role_key()
+    url = f"{base_url}/storage/v1/object/{bucket}/{key}"
+    headers = {
+        "Authorization": f"Bearer {service_role_key}",
+        "apikey": service_role_key,
+        "x-upsert": "true",
+        "Content-Type": content_type,
+    }
+    with httpx.Client(timeout=60.0) as client:
+        response = client.post(url, headers=headers, content=_iter_file_chunks(file_obj))
+    if response.status_code >= 400:
+        raise PayloadStorageError(
+            f"Falha ao gravar objeto no Supabase Storage ({response.status_code}): {response.text[:240]}"
+        )
+    return StoredPayload(
+        bucket=bucket,
+        key=key,
+        content_type=content_type,
+        size_bytes=size_bytes,
+        uploaded_at=_now_utc(),
+    )
+
+
 def _read_supabase(*, bucket: str, key: str) -> bytes:
     base_url = _supabase_base_url()
     service_role_key = _supabase_service_role_key()
@@ -164,6 +241,32 @@ def _store_bytes(*, bucket: str, key: str, payload: bytes, content_type: str) ->
     if backend == "supabase":
         return _store_supabase(bucket=bucket, key=key, payload=payload, content_type=content_type)
     return _store_local(bucket=bucket, key=key, payload=payload, content_type=content_type)
+
+
+def _store_file(
+    *,
+    bucket: str,
+    key: str,
+    file_obj: BinaryIO,
+    content_type: str,
+    size_bytes: int,
+) -> StoredPayload:
+    backend = _storage_backend()
+    if backend == "supabase":
+        return _store_supabase_file(
+            bucket=bucket,
+            key=key,
+            file_obj=file_obj,
+            content_type=content_type,
+            size_bytes=size_bytes,
+        )
+    return _store_local_file(
+        bucket=bucket,
+        key=key,
+        file_obj=file_obj,
+        content_type=content_type,
+        size_bytes=size_bytes,
+    )
 
 
 def _read_bytes(*, bucket: str, key: str) -> bytes:
@@ -191,6 +294,36 @@ def persist_batch_payload(
         key=key,
         payload=payload,
         content_type=_guess_content_type(batch.nome_arquivo_original, content_type),
+    )
+    batch.bronze_storage_bucket = stored.bucket
+    batch.bronze_storage_key = stored.key
+    batch.bronze_content_type = stored.content_type
+    batch.bronze_size_bytes = stored.size_bytes
+    batch.bronze_uploaded_at = stored.uploaded_at
+    batch.arquivo_bronze = None
+    return stored
+
+
+def persist_batch_payload_file(
+    batch: LeadBatch,
+    file_obj: BinaryIO,
+    *,
+    size_bytes: int,
+    content_type: str | None = None,
+) -> StoredPayload:
+    bucket = _storage_bucket()
+    key = _build_key(
+        prefix="lead-batches",
+        stable_id=str(int(batch.enviado_por)),
+        filename=batch.nome_arquivo_original,
+        sha256=batch.arquivo_sha256,
+    )
+    stored = _store_file(
+        bucket=bucket,
+        key=key,
+        file_obj=file_obj,
+        content_type=_guess_content_type(batch.nome_arquivo_original, content_type),
+        size_bytes=size_bytes,
     )
     batch.bronze_storage_bucket = stored.bucket
     batch.bronze_storage_key = stored.key

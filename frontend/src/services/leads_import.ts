@@ -440,6 +440,9 @@ export type LeadListItem = {
   soma_de_idade?: number | null;
   /** Proponente | Ativação (export CSV / listagem). */
   origem?: string | null;
+  /** Datas do evento priorizando conversão mais recente; senão evento de origem do lote (ISO). */
+  evento_inicio_prevista?: string | null;
+  evento_fim_prevista?: string | null;
 };
 
 /**

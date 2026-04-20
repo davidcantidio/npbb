@@ -31,4 +31,24 @@ if [[ ! -f "${ROOT_DIR}/docs/render.yaml" ]]; then
   exit 1
 fi
 
+echo "[deploy] checking leads import runtime gates in Render blueprints..."
+for blueprint in render.yaml docs/render.yaml; do
+  if ! rg -q 'python scripts/verify_leads_runtime_env.py --service api' "${ROOT_DIR}/${blueprint}"; then
+    echo "[deploy] FAIL: ${blueprint} must run verify_leads_runtime_env.py before API startup."
+    exit 1
+  fi
+  if ! rg -q 'python scripts/verify_leads_runtime_env.py --service worker' "${ROOT_DIR}/${blueprint}"; then
+    echo "[deploy] FAIL: ${blueprint} must run verify_leads_runtime_env.py before worker startup."
+    exit 1
+  fi
+  if ! rg -q 'name: npbb-leads-worker' "${ROOT_DIR}/${blueprint}"; then
+    echo "[deploy] FAIL: ${blueprint} must declare the dedicated leads worker."
+    exit 1
+  fi
+  if [[ "$(rg -c 'value: supabase' "${ROOT_DIR}/${blueprint}")" -lt 2 ]]; then
+    echo "[deploy] FAIL: ${blueprint} must pin OBJECT_STORAGE_BACKEND=supabase for API and worker."
+    exit 1
+  fi
+done
+
 echo "[deploy] OK"

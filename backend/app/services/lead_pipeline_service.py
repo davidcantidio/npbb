@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import shutil
+import tempfile
 import time as time_module
 from urllib.parse import urlparse
 from datetime import date as date_type, datetime as datetime_type, time as time_type, timezone
@@ -67,7 +68,15 @@ from app.services.imports.file_reader import read_raw_file_rows
 
 logger = logging.getLogger(__name__)
 
-TMP_ROOT = Path("/tmp/npbb_pipeline")
+
+def _resolve_pipeline_tmp_root() -> Path:
+    raw = os.getenv("NPBB_PIPELINE_TMP_ROOT", "").strip()
+    if raw:
+        return Path(raw)
+    return Path(tempfile.gettempdir()) / "npbb_pipeline"
+
+
+TMP_ROOT = _resolve_pipeline_tmp_root()
 SOURCE_METADATA_COLUMNS = ("source_file", "source_sheet", "source_row")
 DEFAULT_GOLD_INSERT_COMMIT_BATCH_SIZE = 100
 DEFAULT_GOLD_INSERT_LOOKUP_CHUNK_SIZE = 1500

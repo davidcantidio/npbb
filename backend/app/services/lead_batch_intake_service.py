@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from datetime import date as date_type
@@ -26,8 +25,9 @@ from app.services.evento_activation_import import (
     ACTIVATION_IMPORT_REQUIRES_AGENCY_CODE,
     get_activation_import_block_reason,
 )
-from app.services.imports.file_reader import ImportFileError, inspect_upload, read_raw_file_preview
-from app.services.imports.payload_storage import persist_batch_payload
+from app.services.imports.file_reader import ImportFileError, inspect_upload, read_fileobj_preview
+from app.services.imports.payload_storage import persist_batch_payload_file
+from app.services.imports.upload_spool import SpooledUploadPayload, spool_upload_payload
 from app.utils.http_errors import raise_http_error
 
 
@@ -157,9 +157,9 @@ def _resolve_data_envio(item_data_envio: str, hint: LeadBatchImportHintRead | No
     raise AssertionError("unreachable")
 
 
-def _build_preview(raw: bytes, *, filename: str) -> LeadBatchPreviewResponse:
+def _build_preview(spooled: SpooledUploadPayload) -> LeadBatchPreviewResponse:
     try:
-        preview = read_raw_file_preview(raw, filename=filename, sample_rows=3)
+        preview = read_fileobj_preview(spooled.file, filename=spooled.filename, sample_rows=3)
     except Exception:
         raise_http_error(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -315,8 +315,10 @@ def execute_lead_batch_intake(
     batches_to_persist: list[LeadBatch] = []
 
     for item, upload in zip(manifest.items, files, strict=True):
+        spooled: SpooledUploadPayload | None = None
         try:
             filename, _ext, _size = inspect_upload(upload, max_bytes=max_import_file_bytes)
+            spooled = spool_upload_payload(upload, max_bytes=max_import_file_bytes)
         except ImportFileError as err:
             raise_http_error(
                 status.HTTP_400_BAD_REQUEST,
@@ -325,50 +327,58 @@ def execute_lead_batch_intake(
                 field=err.field,
                 extra=err.extra,
             )
-        _validate_file_name(item.file_name, filename)
-        raw = upload.file.read()
-        arquivo_sha256 = hashlib.sha256(raw).hexdigest()
-        hint = _find_import_hint(session, user_id=user_id, arquivo_sha256=arquivo_sha256)
-        plataforma_origem = _resolve_platform(item.plataforma_origem, hint)
-        parsed_data_envio = _resolve_data_envio(item.data_envio, hint)
-        resolved_evento_id, origem_clean, tipo_lead_prop, resolved_ativacao_id = _resolve_batch_metadata(
-            session=session,
-            evento_id=item.evento_id,
-            origem_lote=item.origem_lote,
-            tipo_lead_proponente=item.tipo_lead_proponente,
-            ativacao_id=item.ativacao_id,
-        )
-
-        batch = LeadBatch(
-            enviado_por=user_id,
-            plataforma_origem=plataforma_origem,
-            data_envio=parsed_data_envio,
-            nome_arquivo_original=filename,
-            arquivo_sha256=arquivo_sha256,
-            stage=BatchStage.BRONZE,
-            evento_id=resolved_evento_id,
-            origem_lote=origem_clean,
-            tipo_lead_proponente=tipo_lead_prop,
-            ativacao_id=resolved_ativacao_id,
-            pipeline_status=PipelineStatus.PENDING,
-        )
-        persist_batch_payload(batch, raw, content_type=getattr(upload, "content_type", None))
-        batches_to_persist.append(batch)
-        prepared_items.append(
-            PreparedLeadBatchIntakeItem(
-                client_row_id=item.client_row_id,
-                batch=batch,
-                preview=_build_preview(raw, filename=filename),
-                hint_applied=hint,
+        try:
+            _validate_file_name(item.file_name, filename)
+            arquivo_sha256 = spooled.sha256
+            hint = _find_import_hint(session, user_id=user_id, arquivo_sha256=arquivo_sha256)
+            plataforma_origem = _resolve_platform(item.plataforma_origem, hint)
+            parsed_data_envio = _resolve_data_envio(item.data_envio, hint)
+            resolved_evento_id, origem_clean, tipo_lead_prop, resolved_ativacao_id = _resolve_batch_metadata(
+                session=session,
+                evento_id=item.evento_id,
+                origem_lote=item.origem_lote,
+                tipo_lead_proponente=item.tipo_lead_proponente,
+                ativacao_id=item.ativacao_id,
             )
-        )
+
+            batch = LeadBatch(
+                enviado_por=user_id,
+                plataforma_origem=plataforma_origem,
+                data_envio=parsed_data_envio,
+                nome_arquivo_original=filename,
+                arquivo_sha256=arquivo_sha256,
+                stage=BatchStage.BRONZE,
+                evento_id=resolved_evento_id,
+                origem_lote=origem_clean,
+                tipo_lead_proponente=tipo_lead_prop,
+                ativacao_id=resolved_ativacao_id,
+                pipeline_status=PipelineStatus.PENDING,
+            )
+            persist_batch_payload_file(
+                batch,
+                spooled.file,
+                size_bytes=spooled.size_bytes,
+                content_type=getattr(upload, "content_type", None),
+            )
+            batches_to_persist.append(batch)
+            prepared_items.append(
+                PreparedLeadBatchIntakeItem(
+                    client_row_id=item.client_row_id,
+                    batch=batch,
+                    preview=_build_preview(spooled),
+                    hint_applied=hint,
+                )
+            )
+        finally:
+            spooled.close()
 
     for batch in batches_to_persist:
         session.add(batch)
     session.flush()
-    session.commit()
 
-    return LeadBatchIntakeResponse(
+    # Materialize the response before commit. Postgres request context for RLS is
+    # transaction-local in this app, so ORM reloads after commit can see zero rows.
+    response = LeadBatchIntakeResponse(
         items=[
             LeadBatchIntakeItemRead(
                 client_row_id=item.client_row_id,
@@ -379,3 +389,5 @@ def execute_lead_batch_intake(
             for item in prepared_items
         ]
     )
+    session.commit()
+    return response

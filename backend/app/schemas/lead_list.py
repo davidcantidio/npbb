@@ -16,11 +16,11 @@ class LeadListQuery(BaseModel):
     )
     data_inicio: date | None = Field(
         default=None,
-        description="Inicio inclusivo (UTC) para filtrar por data de criacao do lead.",
+        description="Inicio inclusivo para filtrar pela data do evento (conversao mais recente com evento ou evento de origem do lote).",
     )
     data_fim: date | None = Field(
         default=None,
-        description="Fim inclusivo (UTC) para filtrar por data de criacao do lead.",
+        description="Fim inclusivo para filtrar pela data do evento (conversao mais recente com evento ou evento de origem do lote).",
     )
     evento_id: int | None = Field(
         default=None,
@@ -79,6 +79,14 @@ class LeadListItemRead(BaseModel):
     origem: str | None = Field(
         default=None,
         description="Proponente ou Ativação (lote de importação / fonte do lead).",
+    )
+    evento_inicio_prevista: date | None = Field(
+        default=None,
+        description="Data de início prevista do evento (conversão mais recente com evento ou evento de origem do lote).",
+    )
+    evento_fim_prevista: date | None = Field(
+        default=None,
+        description="Data de fim prevista do evento (mesmo critério de priorização que evento_inicio_prevista).",
     )
 
 

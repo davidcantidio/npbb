@@ -67,6 +67,8 @@ reports/**/*.docx
 **/.pytest_cache/
 /.tmp-pytest/
 /.tmp-fabrica-pytest/
+/codex-pytest-tmp/
+/backend/test-object-storage/
 **/tmp-pytest/
 **/test-results/
 frontend/playwright-report/

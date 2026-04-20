@@ -1,16 +1,36 @@
 """Configuracao de conexao, contexto RLS e utilitarios de sessao do SQLModel."""
 
+import json
 import os
 import sys
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse
 
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlmodel import create_engine, Session
 
 from app.db.metadata import SQLModel
 from dotenv import load_dotenv
+
+
+def _agent_debug_ndjson(
+    source: str,
+    event: str,
+    payload: dict | None = None,
+    hypothesis: str | None = None,
+) -> None:
+    """Emit optional agent diagnostics without making routers depend on stdout side effects."""
+    enabled = os.getenv("AGENT_DEBUG_NDJSON", "").strip().lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return
+    record = {
+        "source": source,
+        "event": event,
+        "payload": payload or {},
+        "hypothesis": hypothesis,
+    }
+    print(json.dumps(record, ensure_ascii=False, default=str), file=sys.stderr)
 
 
 def _env_int(name: str, default: int, *, min_value: int | None = None) -> int:
@@ -230,6 +250,12 @@ def set_db_request_context(
     user_type: str | None = None,
     agencia_id: int | None = None,
 ) -> None:
+    context_payload = {
+        "user_id": str(user_id or ""),
+        "user_type": str(user_type or ""),
+        "agencia_id": str(agencia_id or ""),
+    }
+    session.info["npbb_db_context"] = context_payload
     if not _is_postgres_session(session):
         return
     session.execute(
@@ -241,16 +267,32 @@ def set_db_request_context(
                 set_config('app.agencia_id', :agencia_id, true)
             """
         ),
-        {
-            "user_id": str(user_id or ""),
-            "user_type": str(user_type or ""),
-            "agencia_id": str(agencia_id or ""),
-        },
+        context_payload,
     )
 
 
 def set_internal_service_db_context(session: Session) -> None:
     set_db_request_context(session, user_id=None, user_type="npbb", agencia_id=None)
+
+
+@event.listens_for(Session, "after_begin")
+def _reapply_db_request_context(session: Session, transaction, connection) -> None:
+    context_payload = session.info.get("npbb_db_context")
+    if not isinstance(context_payload, dict):
+        return
+    if str(getattr(connection.dialect, "name", "") or "").lower() != "postgresql":
+        return
+    connection.execute(
+        text(
+            """
+            select
+                set_config('app.user_id', :user_id, true),
+                set_config('app.user_type', :user_type, true),
+                set_config('app.agencia_id', :agencia_id, true)
+            """
+        ),
+        context_payload,
+    )
 
 
 @lru_cache(maxsize=1)

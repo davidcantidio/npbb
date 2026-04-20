@@ -123,6 +123,11 @@ Windows/PowerShell:
 .\scripts\dev_backend.ps1
 ```
 
+Os scripts `dev_backend.sh` e `dev_backend.ps1` agora sobem a API e o worker local de leads.
+Isso e necessario para consumir a fila do Gold pipeline (`/leads/batches/{id}/executar-pipeline`).
+Logs do worker local: `backend/.runtime/leads_worker.stdout.log` e `backend/.runtime/leads_worker.stderr.log`.
+Para desabilitar esse bootstrap automatico, defina `START_LEADS_WORKER=false`.
+
 Opcao B (dentro de `backend/`, oficial):
 ```bash
 PYTHONPATH=.. python -m uvicorn app.main:app --reload

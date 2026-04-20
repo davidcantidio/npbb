@@ -300,6 +300,49 @@ def _read_xlsx_preview_from_raw(raw: bytes, *, filename: str, sample_rows: int) 
         wb.close()
 
 
+def read_fileobj_preview(
+    file_obj: BinaryIO,
+    *,
+    filename: str,
+    sample_rows: int,
+) -> ImportPreviewResult:
+    """Read a small preview window from an already-spooled upload."""
+    ext = _validate_extension(filename)
+    file_obj.seek(0)
+    if ext == ".xlsx":
+        wb = load_workbook(file_obj, read_only=True, data_only=True)
+        try:
+            ws = wb.worksheets[0]
+            normalized_rows = (_normalize_row(row) for row in ws.iter_rows(values_only=True))
+            return _read_preview_window_from_rows(
+                normalized_rows,
+                filename=filename,
+                delimiter=None,
+                sample_rows=sample_rows,
+                sheet_name=ws.title,
+            )
+        finally:
+            wb.close()
+            file_obj.seek(0)
+
+    encoding, sample_text = _detect_csv_stream_encoding(file_obj)
+    text_io = io.TextIOWrapper(file_obj, encoding=encoding, newline="")
+    try:
+        delimiter = _detect_csv_delimiter(sample_text[:4096] if sample_text else "")
+        text_io.seek(0)
+        reader = csv.reader(text_io, delimiter=delimiter)
+        normalized_rows = (_normalize_row(row) for row in reader)
+        return _read_preview_window_from_rows(
+            normalized_rows,
+            filename=filename,
+            delimiter=delimiter,
+            sample_rows=sample_rows,
+        )
+    finally:
+        text_io.detach()
+        file_obj.seek(0)
+
+
 def inspect_upload(
     file: UploadFile,
     *,

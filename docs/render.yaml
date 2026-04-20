@@ -6,7 +6,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: bash -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: bash -lc "python scripts/verify_leads_runtime_env.py --service api && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -15,8 +15,10 @@ services:
         sync: false
       - key: WORKER_DATABASE_URL
         sync: false
+      - key: DB_REQUIRE_SUPABASE_POOLER
+        value: "true"
       - key: OBJECT_STORAGE_BACKEND
-        sync: false
+        value: supabase
       - key: OBJECT_STORAGE_BUCKET
         value: lead-imports
       - key: SUPABASE_URL
@@ -59,7 +61,7 @@ services:
     branch: main
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: python scripts/run_leads_worker.py
+    startCommand: bash -lc "python scripts/verify_leads_runtime_env.py --service worker && python scripts/run_leads_worker.py"
     envVars:
       - key: WORKER_DATABASE_URL
         sync: false
@@ -72,7 +74,7 @@ services:
       - key: DB_REQUIRE_SUPABASE_POOLER
         value: "false"
       - key: OBJECT_STORAGE_BACKEND
-        sync: false
+        value: supabase
       - key: OBJECT_STORAGE_BUCKET
         value: lead-imports
       - key: SUPABASE_URL
@@ -85,5 +87,9 @@ services:
         sync: false
       - key: LEADS_WORKER_IDLE_SLEEP_SECONDS
         value: "2"
+      - key: LEADS_WORKER_FAILURE_SLEEP_SECONDS
+        value: "5"
+      - key: LEADS_WORKER_HEALTH_FILE
+        value: /tmp/npbb-leads-worker-health.json
       - key: LEADS_WORKER_LOG_LEVEL
         value: INFO

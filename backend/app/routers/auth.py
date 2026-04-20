@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
 from app.core.auth import SESSION_COOKIE_NAME, get_current_user, get_current_user_optional
-from app.db.database import get_session
+from app.db.database import get_session, set_internal_service_db_context
 from app.models.models import Usuario, UsuarioTipo
 from app.schemas.auth import LoginRequest, LoginResponse, SessionStatusResponse
 from app.schemas.usuario import UsuarioRead
@@ -94,6 +94,7 @@ def login(
     session: Session = Depends(get_session),
 ):
     """Autentica usuario e retorna token de acesso."""
+    set_internal_service_db_context(session)
     usuario = _authenticate(session, credentials.email, credentials.password)
     if not usuario:
         raise HTTPException(

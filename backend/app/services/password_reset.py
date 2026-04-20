@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+from app.db.database import set_internal_service_db_context
 from app.models.models import PasswordResetToken, Usuario
 from app.services.email import send_email
 
@@ -86,6 +87,7 @@ def request_password_reset(session: Session, email: str) -> PasswordResetRequest
 
     Por boas praticas, este metodo nao informa se o usuario existe.
     """
+    set_internal_service_db_context(session)
     email_norm = (email or "").strip().lower()
     usuario = session.exec(select(Usuario).where(func.lower(Usuario.email) == email_norm)).first()
     if not usuario or not usuario.ativo:
@@ -127,6 +129,7 @@ def request_password_reset(session: Session, email: str) -> PasswordResetRequest
 
 def reset_password(session: Session, token: str, new_password_hash: str) -> None:
     """Consome um token valido e atualiza a senha do usuario."""
+    set_internal_service_db_context(session)
     token_norm = (token or "").strip()
     if not token_norm:
         raise PasswordResetError("TOKEN_INVALID", "Token invalido")

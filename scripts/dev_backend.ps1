@@ -45,6 +45,10 @@ if ($env:PYTHONPATH) {
 
 $uvHost = if ($env:UVICORN_HOST) { $env:UVICORN_HOST } else { "127.0.0.1" }
 $uvPort = if ($env:UVICORN_PORT) { $env:UVICORN_PORT } else { "8000" }
+$runtimeDir = Join-Path $RepoRoot "backend\.runtime"
+$workerStdout = Join-Path $runtimeDir "leads_worker.stdout.log"
+$workerStderr = Join-Path $runtimeDir "leads_worker.stderr.log"
+$startLeadsWorker = -not ($env:START_LEADS_WORKER -and $env:START_LEADS_WORKER.ToLower() -in @("0", "false", "no"))
 
 $portListeners = Get-NetTCPConnection -LocalPort ([int]$uvPort) -State Listen -ErrorAction SilentlyContinue
 if ($portListeners) {
@@ -65,6 +69,11 @@ if ($portListeners) {
 
 Set-Location -LiteralPath $RepoRoot
 Write-Host "Backend Python: $VenvPython"
+
+function Get-LeadsWorkerProcess {
+    Get-CimInstance Win32_Process -Filter "name = 'python.exe' or name = 'pythonw.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like "*run_leads_worker.py*" }
+}
 
 $skipDbPreflight = $env:SKIP_DB_PREFLIGHT -and $env:SKIP_DB_PREFLIGHT.ToLower() -in @("1", "true", "yes")
 if (-not $skipDbPreflight) {
@@ -92,4 +101,48 @@ else:
     }
 }
 
-& $VenvPython -m uvicorn app.main:app --reload --app-dir backend --host $uvHost --port $uvPort
+$workerProcess = $null
+if ($startLeadsWorker) {
+    $existingWorker = Get-LeadsWorkerProcess | Select-Object -First 1
+    if ($existingWorker) {
+        Write-Host "Leads worker ja em execucao (PID $($existingWorker.ProcessId))."
+    } else {
+        New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+        Remove-Item -LiteralPath $workerStdout -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $workerStderr -Force -ErrorAction SilentlyContinue
+        $workerProcess = Start-Process `
+            -FilePath $VenvPython `
+            -ArgumentList @("backend\scripts\run_leads_worker.py") `
+            -WorkingDirectory $RepoRoot `
+            -RedirectStandardOutput $workerStdout `
+            -RedirectStandardError $workerStderr `
+            -PassThru
+        Start-Sleep -Seconds 2
+        if ($workerProcess.HasExited) {
+            $stderrTail = if (Test-Path -LiteralPath $workerStderr) {
+                ((Get-Content -LiteralPath $workerStderr -Tail 40) -join "`n").Trim()
+            } else {
+                ""
+            }
+            Write-Error ("Falha ao iniciar leads worker. Logs: {0}`n{1}" -f $workerStderr, $stderrTail)
+            exit 1
+        }
+        Write-Host "Leads worker iniciado em background (PID $($workerProcess.Id)). Logs: $workerStdout"
+    }
+} else {
+    Write-Host "START_LEADS_WORKER=false: worker local de leads nao sera iniciado."
+}
+
+$backendExitCode = 0
+try {
+    & $VenvPython -m uvicorn app.main:app --reload --app-dir backend --host $uvHost --port $uvPort
+    $backendExitCode = $LASTEXITCODE
+}
+finally {
+    if ($workerProcess -and -not $workerProcess.HasExited) {
+        Write-Host "Encerrando leads worker local (PID $($workerProcess.Id))..."
+        Stop-Process -Id $workerProcess.Id -Force -ErrorAction SilentlyContinue
+    }
+}
+
+exit $backendExitCode

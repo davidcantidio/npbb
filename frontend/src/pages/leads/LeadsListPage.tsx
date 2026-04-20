@@ -156,7 +156,7 @@ export default function LeadsListPage() {
             Leads
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-            Lista de leads cadastrados. Filtre por periodo de criacao e pelo evento relacionado ao lead.
+            Lista de leads cadastrados. Filtre por periodo da data do evento e pelo evento relacionado ao lead.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -275,6 +275,8 @@ export default function LeadsListPage() {
                 <TableCell>Nome</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Criado em</TableCell>
+                <TableCell>Proponente / Ativação</TableCell>
+                <TableCell>Início e fim do evento</TableCell>
                 <TableCell>Evento (conversao)</TableCell>
                 <TableCell>Evento (origem)</TableCell>
                 <TableCell>Local</TableCell>
@@ -283,7 +285,7 @@ export default function LeadsListPage() {
             <TableBody>
               {rows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={8}>
                     <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
                       Nenhum lead encontrado para os filtros atuais.
                     </Typography>
@@ -291,12 +293,15 @@ export default function LeadsListPage() {
                 </TableRow>
               ) : (
                 rows.map((row) => {
-                  const [nome, email, criadoEm, evConv, evOrig, local] = getLeadListDisplayCells(row);
+                  const [nome, email, criadoEm, origem, periodoEvento, evConv, evOrig, local] =
+                    getLeadListDisplayCells(row);
                   return (
                     <TableRow key={row.id} hover>
                       <TableCell>{nome}</TableCell>
                       <TableCell>{email}</TableCell>
                       <TableCell>{criadoEm}</TableCell>
+                      <TableCell>{origem}</TableCell>
+                      <TableCell>{periodoEvento}</TableCell>
                       <TableCell>{evConv}</TableCell>
                       <TableCell>{evOrig}</TableCell>
                       <TableCell>{local}</TableCell>

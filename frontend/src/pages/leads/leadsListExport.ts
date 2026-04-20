@@ -41,12 +41,41 @@ function formatDateTime(iso: string | null | undefined) {
   return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-/** Mesmos valores visiveis da tabela (6 colunas). */
-export function getLeadListDisplayCells(row: LeadListItem): [string, string, string, string, string, string] {
+/** Data ISO YYYY-MM-DD em pt-BR (sem deslocar por fuso). */
+function formatIsoDatePt(ymd: string | null | undefined): string {
+  if (!ymd?.trim()) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+  if (!m) return ymd;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatEventPeriod(inicio: string | null | undefined, fim: string | null | undefined): string {
+  const hasIni = Boolean(inicio?.trim());
+  const hasFim = Boolean(fim?.trim());
+  if (!hasIni && !hasFim) return "—";
+  if (hasIni && hasFim) return `${formatIsoDatePt(inicio)} – ${formatIsoDatePt(fim)}`;
+  if (hasIni) return formatIsoDatePt(inicio);
+  return formatIsoDatePt(fim);
+}
+
+/** Mesmos valores visiveis da tabela (8 colunas). */
+export function getLeadListDisplayCells(row: LeadListItem): [
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+] {
   return [
     row.nome ?? "—",
     row.email ?? "—",
     formatDateTime(row.data_criacao),
+    row.origem?.trim() ? row.origem : "—",
+    formatEventPeriod(row.evento_inicio_prevista ?? null, row.evento_fim_prevista ?? null),
     row.evento_convertido_nome ?? "—",
     row.evento_nome ?? "—",
     [row.cidade, row.estado].filter(Boolean).join(" / ") || "—",

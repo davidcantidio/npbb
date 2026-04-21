@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 LeadListOrigin = Literal["proponente", "ativacao"]
@@ -15,7 +15,7 @@ LeadListSortDir = Literal["asc", "desc"]
 
 class LeadListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=100)
+    page_size: int = Field(default=20, ge=1)
     long_running: bool = Field(
         default=False,
         description="Sinal interno para listagens pesadas, como exportacao CSV paginada.",
@@ -51,6 +51,13 @@ class LeadListQuery(BaseModel):
         default="desc",
         description="Direcao da ordenacao server-side.",
     )
+
+    @model_validator(mode="after")
+    def validate_page_size_cap(self):
+        cap = 500 if self.long_running else 100
+        if self.page_size > cap:
+            raise ValueError(f"page_size must be <= {cap} for this request.")
+        return self
 
     @field_validator("search")
     @classmethod

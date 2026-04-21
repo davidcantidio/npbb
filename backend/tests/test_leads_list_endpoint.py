@@ -150,11 +150,12 @@ def seed_leads(session: Session):
     )
     batch_lead_4 = LeadBatch(
         enviado_por=uploader.id,
-        plataforma_origem="Meta Ads",
+        plataforma_origem="Ativacao QR",
         data_envio=datetime(2026, 1, 7, tzinfo=timezone.utc),
         nome_arquivo_original="lead-4.csv",
         arquivo_bronze=b"csv",
         evento_id=evento_d.id,
+        origem_lote="ativacao",
     )
     session.add_all([batch_lead_3, batch_lead_4])
     session.commit()
@@ -371,6 +372,53 @@ def test_listar_leads_filtra_por_evento_id_de_origem_do_lote_sem_conversao(clien
     assert data["items"][0]["evento_convertido_nome"] is None
 
 
+def test_listar_leads_filtra_por_busca_prefixada(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/leads?search=ana&page_size=10", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["email"] == "ana@example.com"
+
+
+def test_listar_leads_filtra_por_origem_sem_carregar_demais(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    proponente = client.get("/leads?origem=proponente&page_size=10", headers=headers)
+    assert proponente.status_code == 200
+    data_proponente = proponente.json()
+    assert data_proponente["total"] == 1
+    assert data_proponente["items"][0]["email"] == "carla@example.com"
+
+    ativacao = client.get("/leads?origem=ativacao&page_size=10", headers=headers)
+    assert ativacao.status_code == 200
+    data_ativacao = ativacao.json()
+    assert data_ativacao["total"] == 1
+    assert data_ativacao["items"][0]["email"] == "davi@example.com"
+
+
+def test_listar_leads_aceita_ordenacao_server_side(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/leads?sort_by=nome&sort_dir=asc&page_size=10", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    emails = [item["email"] for item in data["items"]]
+    assert emails == [
+        "ana@example.com",
+        "bruno@example.com",
+        "carla@example.com",
+        "davi@example.com",
+    ]
+
+
 def test_listar_leads_faz_fallback_do_evento_de_origem_para_exportacao(client, engine):
     with Session(engine) as session:
         seed_leads(session)
@@ -577,6 +625,19 @@ def test_exportar_leads_csv_retorna_arquivo_e_aplica_filtros(client, engine):
     )
     assert "ana@example.com" in lines[1]
     assert "bruno@example.com" not in content
+
+
+def test_exportar_leads_csv_aplica_busca_e_origem(client, engine):
+    with Session(engine) as session:
+        seed_leads(session)
+        headers = get_auth_header(client, session)
+
+    response = client.get("/leads/export/csv?search=dav&origem=ativacao", headers=headers)
+    assert response.status_code == 200
+
+    content = response.content.decode("utf-8-sig")
+    assert "davi@example.com" in content
+    assert "carla@example.com" not in content
 
 
 def test_exportar_leads_csv_retorna_204_quando_nao_existirem_leads(client, engine):

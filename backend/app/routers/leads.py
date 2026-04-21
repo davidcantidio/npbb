@@ -684,6 +684,22 @@ def _lead_list_order_by_clauses(
     return primary_clauses
 
 
+def _lead_list_has_complex_filters(params: LeadListQuery) -> bool:
+    return any(
+        (
+            params.data_inicio is not None,
+            params.data_fim is not None,
+            params.evento_id is not None,
+            params.origem is not None,
+            bool(params.search),
+        )
+    )
+
+
+def _lead_list_requires_id_joins(params: LeadListQuery) -> bool:
+    return _lead_list_has_complex_filters(params) or params.sort_by in {"evento", "origem"}
+
+
 def _configure_listar_leads_statement_timeout(session: Session, params: LeadListQuery) -> None:
     if not params.long_running:
         return
@@ -695,13 +711,14 @@ def _configure_listar_leads_statement_timeout(session: Session, params: LeadList
     session.exec(text(f"SET LOCAL statement_timeout = {timeout_ms}"))
 
 
-@router.get("", response_model=LeadListResponse)
-@router.get("/", response_model=LeadListResponse)
-def listar_leads(
-    params: LeadListQuery = Depends(),
-    session: Session = Depends(get_session),
-    current_user: Usuario = Depends(get_current_user),
-):
+def listar_leads_impl(
+    session: Session,
+    current_user: Usuario,
+    params: LeadListQuery,
+    *,
+    compute_total: bool = True,
+) -> LeadListResponse:
+    """Implementacao interna da listagem; exportacao CSV usa compute_total=False para evitar COUNT por pagina."""
     _ = current_user
     _configure_listar_leads_statement_timeout(session, params)
     offset = (params.page - 1) * params.page_size
@@ -731,34 +748,41 @@ def listar_leads(
         evento_origem=evento_origem,
         origem_bucket_expr=origem_bucket_expr,
     )
+    has_complex_filters = _lead_list_has_complex_filters(params)
+    requires_id_joins = _lead_list_requires_id_joins(params)
 
-    base_ids_stmt = (
-        select(Lead.id.label("lead_id"))
-        .select_from(Lead)
-        .outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
-        .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
-        .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
-        .outerjoin(lead_evento_preferido, lead_evento_preferido.c.lead_id == Lead.id)
-        .outerjoin(evento_canonico, evento_canonico.id == lead_evento_preferido.c.evento_id)
-        .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
-        .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
-    )
+    base_ids_stmt = select(Lead.id.label("lead_id")).select_from(Lead)
+    if requires_id_joins:
+        base_ids_stmt = (
+            base_ids_stmt.outerjoin(latest_conversao_subquery, latest_conversao_subquery.c.lead_id == Lead.id)
+            .outerjoin(LeadConversao, LeadConversao.id == latest_conversao_subquery.c.latest_conversao_id)
+            .outerjoin(Evento, Evento.id == LeadConversao.evento_id)
+            .outerjoin(lead_evento_preferido, lead_evento_preferido.c.lead_id == Lead.id)
+            .outerjoin(evento_canonico, evento_canonico.id == lead_evento_preferido.c.evento_id)
+            .outerjoin(LeadBatch, LeadBatch.id == Lead.batch_id)
+            .outerjoin(evento_origem, evento_origem.id == LeadBatch.evento_id)
+        )
     if list_filters:
         base_ids_stmt = base_ids_stmt.where(and_(*list_filters))
 
-    total = int(
-        session.exec(
-            select(func.count()).select_from(base_ids_stmt.subquery())
-        ).one()
-        or 0
-    )
-    if total == 0:
-        return LeadListResponse(
-            page=params.page,
-            page_size=params.page_size,
-            total=0,
-            items=[],
-        )
+    total = 0
+    if compute_total:
+        if has_complex_filters:
+            total = int(
+                session.exec(
+                    select(func.count()).select_from(base_ids_stmt.subquery())
+                ).one()
+                or 0
+            )
+        else:
+            total = int(session.exec(select(func.count(Lead.id)).select_from(Lead)).one() or 0)
+        if total == 0:
+            return LeadListResponse(
+                page=params.page,
+                page_size=params.page_size,
+                total=0,
+                items=[],
+            )
 
     page_ids = (
         base_ids_stmt.order_by(*order_by_clauses)
@@ -997,7 +1021,17 @@ def listar_leads(
     )
 
 
-LEADS_LIST_EXPORT_PAGE_SIZE = 100
+@router.get("", response_model=LeadListResponse)
+@router.get("/", response_model=LeadListResponse)
+def listar_leads(
+    params: LeadListQuery = Depends(),
+    session: Session = Depends(get_session),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return listar_leads_impl(session, current_user, params, compute_total=True)
+
+
+LEADS_LIST_EXPORT_PAGE_SIZE = 500
 LEADS_LIST_EXPORT_HEADERS = [
     "nome",
     "cpf",
@@ -1085,7 +1119,9 @@ def _iter_leads_list_export_csv(
 
     page = 2
     while True:
-        result = listar_leads(
+        result = listar_leads_impl(
+            session,
+            current_user,
             LeadListQuery(
                 page=page,
                 page_size=LEADS_LIST_EXPORT_PAGE_SIZE,
@@ -1096,8 +1132,7 @@ def _iter_leads_list_export_csv(
                 search=search,
                 origem=origem,
             ),
-            session=session,
-            current_user=current_user,
+            compute_total=False,
         )
 
         for item in result.items:
@@ -1125,7 +1160,9 @@ def exportar_leads_csv(
     search: str | None = Query(None, min_length=2, max_length=120),
     origem: str | None = Query(None, pattern="^(proponente|ativacao)$"),
 ):
-    first_page = listar_leads(
+    first_page = listar_leads_impl(
+        session,
+        current_user,
         LeadListQuery(
             page=1,
             page_size=LEADS_LIST_EXPORT_PAGE_SIZE,
@@ -1136,10 +1173,9 @@ def exportar_leads_csv(
             search=search,
             origem=origem,
         ),
-        session=session,
-        current_user=current_user,
+        compute_total=False,
     )
-    if first_page.total == 0:
+    if not first_page.items:
         return FastAPIResponse(status_code=204)
 
     filename = f"leads-{date.today().isoformat()}.csv"

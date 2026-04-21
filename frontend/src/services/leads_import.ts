@@ -11,6 +11,8 @@ const LEAD_BATCH_FILE_IO_TIMEOUT_MS = 120_000;
 const LEAD_BATCH_STATUS_TIMEOUT_MS = 120_000;
 const LEAD_BATCH_READINESS_TIMEOUT_MS = 20_000;
 export const LEADS_EXPORT_TIMEOUT_MS = 15 * 60_000;
+/** GET /leads com filtros (intervalo de datas do evento, busca, evento, origem) dispara COUNT/joins pesados; 20s corta o pedido. */
+export const LEADS_LIST_FILTERED_TIMEOUT_MS = 600_000;
 export const DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON =
   "Vincule uma agencia ao evento antes de importar leads de ativacao.";
 
@@ -1000,6 +1002,25 @@ export async function executarPipeline(
  * @returns Paginated lead list response.
  * @throws Error When request fails.
  */
+function leadListUsesHeavyBackendQuery(
+  params?: {
+    data_inicio?: string;
+    data_fim?: string;
+    search?: string;
+    evento_id?: number;
+    origem?: LeadListOrigin;
+    long_running?: boolean;
+  },
+): boolean {
+  if (!params) return false;
+  if (params.long_running) return true;
+  if (params.data_inicio || params.data_fim) return true;
+  if (typeof params.evento_id === "number") return true;
+  if (params.origem) return true;
+  if (params.search && params.search.trim().length >= 2) return true;
+  return false;
+}
+
 export async function listLeads(
   token: string,
   params?: {
@@ -1027,12 +1048,20 @@ export async function listLeads(
   if (params?.origem) qs.set("origem", params.origem);
   if (params?.sort_by) qs.set("sort_by", params.sort_by);
   if (params?.sort_dir) qs.set("sort_dir", params.sort_dir);
-  if (params?.long_running) qs.set("long_running", "true");
+  const heavy = leadListUsesHeavyBackendQuery(params);
+  if (heavy) qs.set("long_running", "true");
   const url = `/leads${qs.toString() ? `?${qs}` : ""}`;
+
+  const resolvedTimeoutMs =
+    typeof params?.timeoutMs === "number"
+      ? params.timeoutMs
+      : heavy
+        ? LEADS_LIST_FILTERED_TIMEOUT_MS
+        : undefined;
 
   const res = await fetchWithAuth(url, {
     token,
-    ...(typeof params?.timeoutMs === "number" ? { timeoutMs: params.timeoutMs } : {}),
+    ...(typeof resolvedTimeoutMs === "number" ? { timeoutMs: resolvedTimeoutMs } : {}),
     ...(params?.signal ? { signal: params.signal } : {}),
   });
   return handleApiResponse<LeadListResponse>(res);

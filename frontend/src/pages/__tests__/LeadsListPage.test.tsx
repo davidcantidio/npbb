@@ -13,6 +13,7 @@ vi.mock("../../store/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../../services/leads_import", () => ({
   listLeads: vi.fn(),
   LEADS_EXPORT_TIMEOUT_MS: 15 * 60_000,
+  LEADS_LIST_FILTERED_TIMEOUT_MS: 600_000,
 }));
 vi.mock("../../services/leads_export", () => ({
   triggerBlobDownload: vi.fn(),
@@ -82,7 +83,7 @@ function LocationProbe() {
 }
 
 describe("LeadsListPage", () => {
-  vi.setConfig({ testTimeout: 15_000 });
+  vi.setConfig({ testTimeout: 30_000 });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -129,6 +130,15 @@ describe("LeadsListPage", () => {
     await waitFor(() => {
       expect(mockedListLeads).toHaveBeenCalled();
     });
+    expect(mockedListLeads).toHaveBeenCalledWith(
+      "token-123",
+      expect.objectContaining({
+        page: 1,
+        page_size: 20,
+        sort_by: "data_criacao",
+        sort_dir: "desc",
+      }),
+    );
 
     expect(await screen.findByRole("cell", { name: "User 1" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "user1@example.com" })).toBeInTheDocument();
@@ -160,9 +170,11 @@ describe("LeadsListPage", () => {
     });
 
     expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {
+      search: "",
       data_inicio: "",
       data_fim: "",
       evento_id: null,
+      origem: null,
     });
     const [blob, filename] = mockedTriggerBlobDownload.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
@@ -204,11 +216,42 @@ describe("LeadsListPage", () => {
 
     await waitFor(() => {
       expect(mockedExportLeadsListCsv).toHaveBeenCalledWith("token-123", {
+        search: "",
         data_inicio: "2026-02-01",
         data_fim: "2026-02-28",
         evento_id: null,
+        origem: null,
       });
       expect(mockedTriggerBlobDownload).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("envia busca server-side preservando a ordenacao do backend", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/leads"]}>
+        <Routes>
+          <Route path="/leads" element={<LeadsListPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockedListLeads).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText(/busca/i), { target: { value: "user" } });
+    await user.click(screen.getByRole("button", { name: /aplicar filtros/i }));
+
+    await waitFor(() => {
+      const withSearchAndSort = mockedListLeads.mock.calls.some(
+        ([, params]) =>
+          params?.search === "user" &&
+          params?.sort_by === "data_criacao" &&
+          params?.sort_dir === "desc",
+      );
+      expect(withSearchAndSort).toBe(true);
     });
   });
 });

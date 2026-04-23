@@ -1,11 +1,8 @@
 import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import RuleRoundedIcon from "@mui/icons-material/RuleRounded";
-import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import TimelineRoundedIcon from "@mui/icons-material/TimelineRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import { Grid } from "@mui/material";
@@ -21,9 +18,7 @@ type AgeAnalysisKpiGridProps = {
 };
 
 const KPI_TOOLTIP_COPY = {
-  baseTotal: "Volume consolidado de vinculos lead-evento no filtro atual.",
-  baseComIdade: "Quantidade de vinculos com data de nascimento suficiente para calcular a idade.",
-  baseBbCoberta: "Quantidade de vinculos com informacao BB preenchida no cruzamento atual.",
+  leadsValidos: "Quantidade de vinculos com data de nascimento suficiente para calcular a idade.",
   canal: "Distribuicao de vinculos por classificacao de canal: proponente, ativacao ou nao classificado.",
   faixa1840: "Soma das faixas 18-25 e 26-40. Percentual sempre comunicado sobre a base com idade.",
   fora1840: "Leads fora de 18 a 40 anos dentro da base com idade conhecida.",
@@ -61,59 +56,15 @@ export function AgeAnalysisKpiGrid({ data, eventosTotal, appliedFilters }: AgeAn
     <Grid container spacing={2}>
       <Grid item xs={12} sm={6} lg={4} xl={3}>
         <KpiCard
-          title="Base total"
-          value={formatInteger(consolidated.base_total)}
-          subtitle="Vinculos lead-evento no filtro."
-          helperText={`Gerado em ${new Date(data.generated_at).toLocaleString("pt-BR")}`}
-          titleTooltip={KPI_TOOLTIP_COPY.baseTotal}
-          icon={<GroupsRoundedIcon fontSize="small" />}
-          ariaLabel="Base total de vinculos lead-evento"
-        />
-      </Grid>
-      <Grid item xs={12} sm={6} lg={4} xl={3}>
-        <KpiCard
-          title="Base com idade"
+          title="Leads validos"
           value={`${formatInteger(consolidated.base_com_idade_volume)} (${formatPercent(
             (consolidated.base_com_idade_volume / Math.max(consolidated.base_total, 1)) * 100,
           )})`}
           subtitle="Sobre vinculos consolidados."
           helperText={`Referencia etaria: ${new Date(data.age_reference_date).toLocaleDateString("pt-BR")}`}
-          titleTooltip={KPI_TOOLTIP_COPY.baseComIdade}
+          titleTooltip={KPI_TOOLTIP_COPY.leadsValidos}
           icon={<TimelineRoundedIcon fontSize="small" />}
-          ariaLabel="Base consolidada com idade conhecida"
-        />
-      </Grid>
-      <Grid item xs={12} sm={6} lg={4} xl={3}>
-        <KpiCard
-          title="Base BB coberta"
-          value={`${formatInteger(consolidated.base_bb_coberta_volume)} (${formatPercent(
-            consolidated.cobertura_bb_pct,
-          )})`}
-          subtitle="Sobre vinculos consolidados."
-          helperText={`BB indefinido: ${formatInteger(consolidated.bb_indefinido_volume)}`}
-          titleTooltip={KPI_TOOLTIP_COPY.baseBbCoberta}
-          icon={<VerifiedRoundedIcon fontSize="small" />}
-          ariaLabel="Base consolidada com cobertura BB"
-        />
-      </Grid>
-      <Grid item xs={12} sm={6} lg={4} xl={3}>
-        <KpiCard
-          title="Proponente"
-          value={formatInteger(consolidated.leads_proponente)}
-          subtitle="Bilheteria e entrada_evento sobre vinculos."
-          titleTooltip={KPI_TOOLTIP_COPY.canal}
-          icon={<StorefrontRoundedIcon fontSize="small" />}
-          ariaLabel="Total de vinculos do proponente"
-        />
-      </Grid>
-      <Grid item xs={12} sm={6} lg={4} xl={3}>
-        <KpiCard
-          title="Ativacao"
-          value={formatInteger(consolidated.leads_ativacao)}
-          subtitle="Captacao classificada como ativacao."
-          titleTooltip={KPI_TOOLTIP_COPY.canal}
-          icon={<CampaignRoundedIcon fontSize="small" />}
-          ariaLabel="Total de vinculos da ativacao"
+          ariaLabel="Leads validos com idade conhecida"
         />
       </Grid>
       <Grid item xs={12} sm={6} lg={4} xl={3}>

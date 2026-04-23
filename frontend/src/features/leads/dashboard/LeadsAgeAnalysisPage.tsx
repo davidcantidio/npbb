@@ -1,6 +1,6 @@
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import { Alert, Box, Button, Snackbar, Stack, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { AgeAnalysisFilters, ALL_EVENTS_OPTION_ID } from "../../../components/dashboard/AgeAnalysisFilters";
 import { AgeAnalysisKpiGrid } from "../../../components/dashboard/AgeAnalysisKpiGrid";
@@ -8,6 +8,7 @@ import { AgeDistributionChart } from "../../../components/dashboard/AgeDistribut
 import { ChannelMixChart } from "../../../components/dashboard/ChannelMixChart";
 import { ChartSkeleton } from "../../../components/dashboard/ChartSkeleton";
 import { ConfidenceSummaryCard } from "../../../components/dashboard/ConfidenceSummaryCard";
+import { ProponenteAtivacaoPieChart } from "../../../components/dashboard/ProponenteAtivacaoPieChart";
 import { CoverageBanner } from "../../../components/dashboard/CoverageBanner";
 import { DataQualityTable } from "../../../components/dashboard/DataQualityTable";
 import { EventsAgeTable } from "../../../components/dashboard/EventsAgeTable";
@@ -86,8 +87,12 @@ export default function LeadsAgeAnalysisPage() {
 
   const [isCoverageBannerDismissed, setIsCoverageBannerDismissed] = useState(false);
   const [isErrorToastOpen, setIsErrorToastOpen] = useState(false);
+  const pieBlockRef = useRef<HTMLDivElement | null>(null);
+  const [pieBlockHeightPx, setPieBlockHeightPx] = useState<number | null>(null);
   const queryFiltersKey = useMemo(() => JSON.stringify(queryFilters), [queryFilters]);
   const viewModel = useMemo(() => (data ? buildAgeAnalysisViewModel(data) : null), [data]);
+  const isEmpty = Boolean(data && data.consolidado.base_total === 0);
+  const showInitialLoadingState = isLoading && !data;
 
   useEffect(() => {
     setIsCoverageBannerDismissed(false);
@@ -97,8 +102,25 @@ export default function LeadsAgeAnalysisPage() {
     setIsErrorToastOpen(Boolean(error));
   }, [error]);
 
-  const isEmpty = Boolean(data && data.consolidado.base_total === 0);
-  const showInitialLoadingState = isLoading && !data;
+  useLayoutEffect(() => {
+    const el = pieBlockRef.current;
+    if (!el) {
+      setPieBlockHeightPx(null);
+      return;
+    }
+    const update = () => {
+      setPieBlockHeightPx(Math.round(el.getBoundingClientRect().height));
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+    };
+  }, [data, viewModel, isEmpty, showInitialLoadingState]);
 
   return (
     <Stack spacing={3} sx={{ minWidth: 0 }}>
@@ -174,7 +196,7 @@ export default function LeadsAgeAnalysisPage() {
               },
             }}
           >
-            {Array.from({ length: 12 }).map((_, index) => (
+            {Array.from({ length: 8 }).map((_, index) => (
               <KpiCardSkeleton key={index} />
             ))}
           </Box>
@@ -197,8 +219,46 @@ export default function LeadsAgeAnalysisPage() {
             <EmptyState detail={data.insights.alertas[0] ?? null} />
           ) : (
             <>
-              {viewModel ? <ConfidenceSummaryCard data={data} viewModel={viewModel} /> : null}
-              <AgeAnalysisKpiGrid data={data} eventosTotal={data.por_evento.length} appliedFilters={appliedFilters} />
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", lg: "row" },
+                  gap: 2,
+                  alignItems: { xs: "stretch", lg: "flex-start" },
+                }}
+              >
+                <Box
+                  ref={pieBlockRef}
+                  sx={{ flex: 1, minWidth: 0, alignSelf: { xs: "stretch", lg: "flex-start" } }}
+                >
+                  <ProponenteAtivacaoPieChart data={data} />
+                </Box>
+                {viewModel ? (
+                  <Box
+                    sx={{
+                      width: { lg: 360 },
+                      maxWidth: "100%",
+                      flexShrink: 0,
+                      alignSelf: { xs: "stretch", lg: "flex-start" },
+                      display: { xs: "block", lg: "flex" },
+                      flexDirection: "column",
+                      minHeight: 0,
+                      ...(pieBlockHeightPx != null && pieBlockHeightPx > 0
+                        ? { height: { xs: "auto", lg: `${pieBlockHeightPx}px` } }
+                        : {}),
+                    }}
+                  >
+                    <ConfidenceSummaryCard data={data} viewModel={viewModel} />
+                  </Box>
+                ) : null}
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <AgeAnalysisKpiGrid
+                  data={data}
+                  eventosTotal={data.por_evento.length}
+                  appliedFilters={appliedFilters}
+                />
+              </Box>
               <AgeDistributionChart events={data.por_evento} />
               <ChannelMixChart events={data.por_evento} />
               <DataQualityTable

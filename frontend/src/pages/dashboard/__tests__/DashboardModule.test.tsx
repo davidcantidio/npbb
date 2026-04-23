@@ -235,7 +235,7 @@ describe("Dashboard module", { timeout: 30000 }, () => {
 
     renderDashboardModule("/dashboard/leads/analise-etaria");
 
-    expect(await screen.findByText("Base total")).toBeInTheDocument();
+    expect(await screen.findByText("Leads validos")).toBeInTheDocument();
     expect(screen.getByText("Confianca e cobertura")).toBeInTheDocument();
     expect(screen.getByText("Distribuicao etaria por evento")).toBeInTheDocument();
     expect(screen.getAllByText("Evento Alpha").length).toBeGreaterThan(0);

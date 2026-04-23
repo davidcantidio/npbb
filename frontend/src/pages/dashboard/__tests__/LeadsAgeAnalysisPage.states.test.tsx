@@ -79,7 +79,7 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
 
     renderPage();
 
-    expect(await screen.findAllByTestId("kpi-card-skeleton")).toHaveLength(12);
+    expect(await screen.findAllByTestId("kpi-card-skeleton")).toHaveLength(8);
     expect(screen.getByTestId("chart-skeleton")).toBeInTheDocument();
     expect(screen.getByTestId("table-skeleton")).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
 
     renderPage();
 
-    expect(await screen.findByText("Base total")).toBeInTheDocument();
+    expect(await screen.findByText("Leads validos")).toBeInTheDocument();
     expect(screen.queryByTestId("kpi-card-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chart-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByTestId("table-skeleton")).not.toBeInTheDocument();
@@ -164,8 +164,11 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
 
     renderPage();
 
-    const baseCard = getRequiredCard((await screen.findByText("Base total")).closest(".MuiCard-root"), "Base total card not found");
-    expect(within(baseCard).getByText("10")).toBeInTheDocument();
+    const leadsValidosCard = getRequiredCard(
+      (await screen.findByText("Leads validos")).closest(".MuiCard-root"),
+      "Leads validos card not found",
+    );
+    expect(within(leadsValidosCard).getByText(/10 \(100/)).toBeInTheDocument();
 
     const clientesCard = getRequiredCard(screen.getByText(/4 \(40,0%\)/).closest(".MuiCard-root"), "Clientes BB card not found");
     expect(within(clientesCard).getByText("Clientes BB")).toBeInTheDocument();

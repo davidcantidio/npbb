@@ -1,4 +1,6 @@
-import { Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { Box, Card, CardContent, Chip, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 
 import type { AgeAnalysisResponse } from "../../types/dashboard";
 import { formatInteger, formatPercent } from "../../utils/ageAnalysis";
@@ -7,107 +9,96 @@ import type { AgeAnalysisViewModel } from "../../utils/ageAnalysisViewModel";
 type ConfidenceSummaryCardProps = {
   data: AgeAnalysisResponse;
   viewModel: AgeAnalysisViewModel;
+  /** Permite o container pai forçar altura (alinhamento com o bloco do gráfico). */
+  sx?: SxProps<Theme>;
 };
 
-function MetricBlock({
-  label,
-  value,
-  helperText,
-}: {
+type MetricChipProps = {
   label: string;
-  value: string;
-  helperText: string;
-}) {
+  tooltip: string;
+};
+
+function MetricChip({ label, tooltip }: MetricChipProps) {
   return (
-    <Box
-      sx={{
-        border: 1,
-        borderColor: "divider",
-        borderRadius: 2,
-        px: 1.5,
-        py: 1.25,
-        minWidth: 0,
-      }}
-    >
-      <Typography variant="overline" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="h6" fontWeight={800}>
-        {value}
-      </Typography>
-      <Typography variant="caption" color="text.secondary">
-        {helperText}
-      </Typography>
-    </Box>
+    <Tooltip title={tooltip} describeChild>
+      <Chip label={label} size="small" variant="outlined" sx={{ maxWidth: "100%" }} />
+    </Tooltip>
   );
 }
 
-export function ConfidenceSummaryCard({ data, viewModel }: ConfidenceSummaryCardProps) {
+export function ConfidenceSummaryCard({ data, viewModel, sx }: ConfidenceSummaryCardProps) {
   const quality = data.qualidade_consolidado;
   const confidence = data.confianca_consolidado;
 
+  const overline = "Sobre vinculos consolidados.";
+
   return (
-    <Card variant="outlined" component="section" aria-label="Resumo de confianca e cobertura">
-      <CardContent>
-        <Stack spacing={2}>
-          <Box>
-            <Typography variant="subtitle1" fontWeight={800}>
-              Confianca e cobertura
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-              Leitura executiva da base consolidada: denominadores antes da interpretacao.
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1.5,
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr)",
-                md: "repeat(3, minmax(0, 1fr))",
-              },
-            }}
+    <Card
+      variant="outlined"
+      component="section"
+      aria-labelledby="confianca-cobertura-heading"
+      sx={[
+        { height: "100%", minHeight: 0, display: "flex", flexDirection: "column" },
+        ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
+      ]}
+    >
+      <CardContent
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "auto",
+          py: 1.5,
+          "&:last-child": { pb: 1.5 },
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0, mb: 1.25 }}>
+          <Typography id="confianca-cobertura-heading" variant="subtitle1" fontWeight={800} component="h2">
+            Confianca e cobertura
+          </Typography>
+          <Tooltip
+            title="Leitura executiva da base consolidada: denominadores antes da interpretacao."
+            describeChild
           >
-            <MetricBlock
-              label="Base consolidada"
-              value={formatInteger(confidence.base_vinculos)}
-              helperText={`Gerado em ${viewModel.generatedAtLabel}`}
-            />
-            <MetricBlock
-              label="Base com idade"
-              value={`${formatInteger(confidence.base_com_idade_volume)} (${formatPercent(
-                (confidence.base_com_idade_volume / Math.max(confidence.base_vinculos, 1)) * 100,
-              )})`}
-              helperText={`Idade de referencia: ${viewModel.ageReferenceLabel}`}
-            />
-            <MetricBlock
-              label="Base BB coberta"
-              value={`${formatInteger(confidence.base_bb_coberta_volume)} (${formatPercent(
-                data.consolidado.cobertura_bb_pct,
-              )})`}
-              helperText="Percentual sobre vinculos consolidados."
-            />
-          </Box>
+            <IconButton
+              size="small"
+              edge="end"
+              aria-label="Explicacao do bloco Confianca e cobertura"
+              sx={{ p: 0.25, color: "text.secondary" }}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
 
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-            <Chip
-              label={`Sem CPF: ${formatInteger(quality.sem_cpf_volume)} (${formatPercent(quality.sem_cpf_pct)})`}
-              variant="outlined"
-            />
-            <Chip
-              label={`Sem nascimento: ${formatInteger(quality.sem_data_nascimento_volume)} (${formatPercent(
-                quality.sem_data_nascimento_pct,
-              )})`}
-              variant="outlined"
-            />
-            <Chip
-              label={`Sem nome completo: ${formatInteger(quality.sem_nome_completo_volume)} (${formatPercent(
-                quality.sem_nome_completo_pct,
-              )})`}
-              variant="outlined"
-            />
-          </Stack>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ alignContent: "flex-start" }}>
+          <MetricChip
+            label={`Total na base: ${formatInteger(confidence.base_vinculos)}`}
+            tooltip={`Gerado em ${viewModel.generatedAtLabel}`}
+          />
+          <MetricChip
+            label={`Sem data de nascimento: ${formatInteger(quality.sem_data_nascimento_volume)} (${formatPercent(
+              quality.sem_data_nascimento_pct,
+            )})`}
+            tooltip={overline}
+          />
+          <MetricChip
+            label={`Sem Status de Cliente: ${formatInteger(confidence.base_bb_coberta_volume)} (${formatPercent(
+              data.consolidado.cobertura_bb_pct,
+            )})`}
+            tooltip="Percentual sobre vinculos consolidados."
+          />
+          <MetricChip
+            label={`Sem CPF: ${formatInteger(quality.sem_cpf_volume)} (${formatPercent(quality.sem_cpf_pct)})`}
+            tooltip={overline}
+          />
+          <MetricChip
+            label={`Sem nome completo: ${formatInteger(quality.sem_nome_completo_volume)} (${formatPercent(
+              quality.sem_nome_completo_pct,
+            )})`}
+            tooltip={overline}
+          />
         </Stack>
       </CardContent>
     </Card>

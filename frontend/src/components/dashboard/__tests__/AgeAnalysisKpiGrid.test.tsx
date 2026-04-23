@@ -70,20 +70,19 @@ function buildResponse(): AgeAnalysisResponse {
 }
 
 describe("AgeAnalysisKpiGrid", () => {
-  it("exibe tooltips para cobertura BB e faixa dominante com os textos da issue", async () => {
-    const user = userEvent.setup();
+  const defaultProps = {
+    data: buildResponse(),
+    eventosTotal: 1,
+    appliedFilters: {
+      evento_id: null,
+      data_inicio: "",
+      data_fim: "",
+    },
+  } as const;
 
-    render(
-      <AgeAnalysisKpiGrid
-        data={buildResponse()}
-        eventosTotal={1}
-        appliedFilters={{
-          evento_id: null,
-          data_inicio: "",
-          data_fim: "",
-        }}
-      />,
-    );
+  it("exibe o tooltip da faixa dominante com o texto da issue", async () => {
+    const user = userEvent.setup();
+    render(<AgeAnalysisKpiGrid {...defaultProps} />);
 
     const faixaTooltipButton = screen.getByRole("button", {
       name: "Saiba mais sobre Faixa dominante",
@@ -93,16 +92,19 @@ describe("AgeAnalysisKpiGrid", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Faixa com maior volume na base consolidada. Em empate, trate como sinal fraco.",
     );
+  }, 20_000);
 
-    await user.unhover(faixaTooltipButton);
+  it("exibe o tooltip de Leads validos com o texto da issue", async () => {
+    const user = userEvent.setup();
+    render(<AgeAnalysisKpiGrid {...defaultProps} />);
 
-    const coberturaTooltipButton = screen.getByRole("button", {
-      name: "Saiba mais sobre Base BB coberta",
+    const leadsValidosTooltipButton = screen.getByRole("button", {
+      name: "Saiba mais sobre Leads validos",
     });
-    expect(coberturaTooltipButton).toHaveTextContent("ℹ️");
-    await user.hover(coberturaTooltipButton);
+    expect(leadsValidosTooltipButton).toHaveTextContent("ℹ️");
+    await user.hover(leadsValidosTooltipButton);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Quantidade de vinculos com informacao BB preenchida no cruzamento atual.",
+      "Quantidade de vinculos com data de nascimento suficiente para calcular a idade.",
     );
   }, 20_000);
 });

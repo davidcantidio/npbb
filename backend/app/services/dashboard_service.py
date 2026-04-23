@@ -79,6 +79,13 @@ class EventAccumulator:
     faixa_26_40_volume: int = 0
     fora_18_40_volume: int = 0
     sem_info_volume: int = 0
+    # Idade (faixas) apenas quando is_cliente_bb e conhecido (True/False)
+    perfil_cliente_faixa_18_25: int = 0
+    perfil_cliente_faixa_26_40: int = 0
+    perfil_cliente_fora_18_40: int = 0
+    perfil_nao_faixa_18_25: int = 0
+    perfil_nao_faixa_26_40: int = 0
+    perfil_nao_fora_18_40: int = 0
 
 
 @dataclass
@@ -552,6 +559,21 @@ def _consume_fact(accumulator: EventAccumulator, fact: LeadEventFact, reference_
     faixa = classify_age_range(age)
     accumulator.base_com_idade += 1
 
+    if fact.is_cliente_bb is True:
+        if faixa == "faixa_18_25":
+            accumulator.perfil_cliente_faixa_18_25 += 1
+        elif faixa == "faixa_26_40":
+            accumulator.perfil_cliente_faixa_26_40 += 1
+        else:
+            accumulator.perfil_cliente_fora_18_40 += 1
+    elif fact.is_cliente_bb is False:
+        if faixa == "faixa_18_25":
+            accumulator.perfil_nao_faixa_18_25 += 1
+        elif faixa == "faixa_26_40":
+            accumulator.perfil_nao_faixa_26_40 += 1
+        else:
+            accumulator.perfil_nao_fora_18_40 += 1
+
     if faixa == "faixa_18_25":
         accumulator.faixa_18_25_volume += 1
         return
@@ -663,6 +685,26 @@ def _finalize_event_analysis(
     )
 
 
+def _perfil_idade_faixas(
+    f18_25: int,
+    f26_40: int,
+    fora: int,
+    visible: bool,
+) -> tuple[int | None, int | None, float | None, int | None, float | None]:
+    """Metricas 18-40 e fora_18-40 com percentual sobre a base com idade do perfil."""
+    if not visible:
+        return None, None, None, None, None
+    base_idade = f18_25 + f26_40 + fora
+    v1840 = f18_25 + f26_40
+    return (
+        base_idade,
+        v1840,
+        _safe_pct(v1840, base_idade),
+        fora,
+        _safe_pct(fora, base_idade),
+    )
+
+
 def _build_consolidated_analysis(
     event_analyses: list[EventoAgeAnalysis],
     consolidated_accumulator: EventAccumulator,
@@ -674,6 +716,31 @@ def _build_consolidated_analysis(
             consolidated_accumulator,
             bb_coverage_threshold_pct=bb_coverage_threshold_pct,
         )
+    )
+    vis_bb = clientes_bb_volume is not None
+    (
+        clientes_bb_base_idade,
+        c1840v,
+        c1840p,
+        cforav,
+        cforap,
+    ) = _perfil_idade_faixas(
+        consolidated_accumulator.perfil_cliente_faixa_18_25,
+        consolidated_accumulator.perfil_cliente_faixa_26_40,
+        consolidated_accumulator.perfil_cliente_fora_18_40,
+        vis_bb,
+    )
+    (
+        nao_clientes_bb_base_idade,
+        n1840v,
+        n1840p,
+        nforav,
+        nforap,
+    ) = _perfil_idade_faixas(
+        consolidated_accumulator.perfil_nao_faixa_18_25,
+        consolidated_accumulator.perfil_nao_faixa_26_40,
+        consolidated_accumulator.perfil_nao_fora_18_40,
+        vis_bb,
     )
 
     ordered_by_volume = sorted(
@@ -713,6 +780,16 @@ def _build_consolidated_analysis(
             consolidated_accumulator.base_leads,
         ),
         faixa_dominante_status=faixa_dominante_status,
+        clientes_bb_base_idade_volume=clientes_bb_base_idade,
+        clientes_bb_faixa_18_40_volume=c1840v,
+        clientes_bb_faixa_18_40_pct=c1840p,
+        clientes_bb_fora_18_40_volume=cforav,
+        clientes_bb_fora_18_40_pct=cforap,
+        nao_clientes_bb_base_idade_volume=nao_clientes_bb_base_idade,
+        nao_clientes_bb_faixa_18_40_volume=n1840v,
+        nao_clientes_bb_faixa_18_40_pct=n1840p,
+        nao_clientes_bb_fora_18_40_volume=nforav,
+        nao_clientes_bb_fora_18_40_pct=nforap,
     )
 
 

@@ -65,41 +65,27 @@ function buildResponse(): AgeAnalysisResponse {
       mediana_por_evento: 100,
       concentracao_top3_pct: 100,
       faixa_dominante_status: "resolved",
+      clientes_bb_base_idade_volume: 40,
+      clientes_bb_faixa_18_40_volume: 30,
+      clientes_bb_faixa_18_40_pct: 75,
+      clientes_bb_fora_18_40_volume: 10,
+      clientes_bb_fora_18_40_pct: 25,
+      nao_clientes_bb_base_idade_volume: 55,
+      nao_clientes_bb_faixa_18_40_volume: 40,
+      nao_clientes_bb_faixa_18_40_pct: 72.73,
+      nao_clientes_bb_fora_18_40_volume: 15,
+      nao_clientes_bb_fora_18_40_pct: 27.27,
     },
   });
 }
 
 describe("AgeAnalysisKpiGrid", () => {
-  const defaultProps = {
-    data: buildResponse(),
-    eventosTotal: 1,
-    appliedFilters: {
-      evento_id: null,
-      data_inicio: "",
-      data_fim: "",
-    },
-  } as const;
-
-  it("exibe o tooltip da faixa dominante com o texto da issue", async () => {
+  it("exibe o tooltip de Leads validos com o texto explicativo", async () => {
     const user = userEvent.setup();
-    render(<AgeAnalysisKpiGrid {...defaultProps} />);
-
-    const faixaTooltipButton = screen.getByRole("button", {
-      name: "Saiba mais sobre Faixa dominante",
-    });
-    expect(faixaTooltipButton).toHaveTextContent("ℹ️");
-    await user.hover(faixaTooltipButton);
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Faixa com maior volume na base consolidada. Em empate, trate como sinal fraco.",
-    );
-  }, 20_000);
-
-  it("exibe o tooltip de Leads validos com o texto da issue", async () => {
-    const user = userEvent.setup();
-    render(<AgeAnalysisKpiGrid {...defaultProps} />);
+    render(<AgeAnalysisKpiGrid data={buildResponse()} />);
 
     const leadsValidosTooltipButton = screen.getByRole("button", {
-      name: "Saiba mais sobre Leads validos",
+      name: "Saiba mais sobre Leads válidos",
     });
     expect(leadsValidosTooltipButton).toHaveTextContent("ℹ️");
     await user.hover(leadsValidosTooltipButton);

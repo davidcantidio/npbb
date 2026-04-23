@@ -253,11 +253,7 @@ export default function LeadsAgeAnalysisPage() {
                 ) : null}
               </Box>
               <Box sx={{ minWidth: 0 }}>
-                <AgeAnalysisKpiGrid
-                  data={data}
-                  eventosTotal={data.por_evento.length}
-                  appliedFilters={appliedFilters}
-                />
+                <AgeAnalysisKpiGrid data={data} />
               </Box>
               <AgeDistributionChart events={data.por_evento} />
               <ChannelMixChart events={data.por_evento} />

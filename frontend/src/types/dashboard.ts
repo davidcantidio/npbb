@@ -92,6 +92,17 @@ export type ConsolidadoAgeAnalysis = {
   mediana_por_evento: number;
   concentracao_top3_pct: number;
   faixa_dominante_status: DominantRangeStatus;
+  /** Com idade; denominador dos percentuais de faixa no perfil clientes BB. */
+  clientes_bb_base_idade_volume: number | null;
+  clientes_bb_faixa_18_40_volume: number | null;
+  clientes_bb_faixa_18_40_pct: number | null;
+  clientes_bb_fora_18_40_volume: number | null;
+  clientes_bb_fora_18_40_pct: number | null;
+  nao_clientes_bb_base_idade_volume: number | null;
+  nao_clientes_bb_faixa_18_40_volume: number | null;
+  nao_clientes_bb_faixa_18_40_pct: number | null;
+  nao_clientes_bb_fora_18_40_volume: number | null;
+  nao_clientes_bb_fora_18_40_pct: number | null;
 };
 
 export type CompletenessMetrics = {

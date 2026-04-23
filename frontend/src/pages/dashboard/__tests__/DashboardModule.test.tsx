@@ -98,6 +98,16 @@ const ageAnalysisFixture = buildAgeAnalysisFixture({
     mediana_por_evento: 4,
     concentracao_top3_pct: 100,
     faixa_dominante_status: "resolved",
+    clientes_bb_base_idade_volume: 2,
+    clientes_bb_faixa_18_40_volume: 2,
+    clientes_bb_faixa_18_40_pct: 100,
+    clientes_bb_fora_18_40_volume: 0,
+    clientes_bb_fora_18_40_pct: 0,
+    nao_clientes_bb_base_idade_volume: 2,
+    nao_clientes_bb_faixa_18_40_volume: 1,
+    nao_clientes_bb_faixa_18_40_pct: 50,
+    nao_clientes_bb_fora_18_40_volume: 1,
+    nao_clientes_bb_fora_18_40_pct: 50,
   },
   qualidade_consolidado: {
     base_vinculos: 4,
@@ -235,7 +245,7 @@ describe("Dashboard module", { timeout: 30000 }, () => {
 
     renderDashboardModule("/dashboard/leads/analise-etaria");
 
-    expect(await screen.findByText("Leads validos")).toBeInTheDocument();
+    expect(await screen.findByText("Leads válidos")).toBeInTheDocument();
     expect(screen.getByText("Confianca e cobertura")).toBeInTheDocument();
     expect(screen.getByText("Distribuicao etaria por evento")).toBeInTheDocument();
     expect(screen.getAllByText("Evento Alpha").length).toBeGreaterThan(0);

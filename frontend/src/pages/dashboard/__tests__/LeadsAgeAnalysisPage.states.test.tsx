@@ -94,7 +94,7 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
 
     renderPage();
 
-    expect(await screen.findByText("Leads validos")).toBeInTheDocument();
+    expect(await screen.findByText("Leads válidos")).toBeInTheDocument();
     expect(screen.queryByTestId("kpi-card-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chart-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByTestId("table-skeleton")).not.toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
     renderPage();
 
     const leadsValidosCard = getRequiredCard(
-      (await screen.findByText("Leads validos")).closest(".MuiCard-root"),
+      (await screen.findByText("Leads válidos")).closest(".MuiCard-root"),
       "Leads validos card not found",
     );
     expect(within(leadsValidosCard).getByText(/10 \(100/)).toBeInTheDocument();

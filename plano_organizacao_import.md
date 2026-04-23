@@ -1,6 +1,6 @@
 ---
 name: Plano incremental de organizacao de leads/importacao
-overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads com wrappers legados em pages/* e hooks/*; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5 e implementado em FEATURE-6, tornando app.modules.lead_imports o pacote real e preservando app.modules.leads_publicidade como compatibilidade temporaria; importacao/ETL seguem congelados."
+overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads com wrappers legados em pages/* e hooks/*; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5, implementado em FEATURE-6 e limpo em FEATURE-7, tornando app.modules.lead_imports o unico caminho backend real; importacao/ETL seguem congelados."
 todos:
   - id: doc-align
     content: Alinhar docs com as rotas reais de leads e dashboard.
@@ -38,6 +38,9 @@ todos:
   - id: rename-module-implementation
     content: Implementar rename fisico para app.modules.lead_imports mantendo app.modules.leads_publicidade como alias temporario.
     status: done
+  - id: remove-legacy-alias
+    content: Remover alias temporario app.modules.leads_publicidade apos busca sem consumidores ativos.
+    status: done
 isProject: false
 ---
 
@@ -59,9 +62,9 @@ Esta parte do plano ja foi implementada:
   - Os contratos publicos sob `/leads` foram preservados.
   - O pacote real de importacao/ETL de leads agora e
     [backend/app/modules/lead_imports](backend/app/modules/lead_imports).
-  - [backend/app/modules/leads_publicidade](backend/app/modules/leads_publicidade)
-    permanece como compatibilidade temporaria por shims, para preservar imports
-    legados profundos ate uma rodada posterior de remocao.
+  - O alias temporario `backend/app/modules/leads_publicidade` foi removido em
+    `FEATURE-7` apos busca sem consumidores ativos fora dos shims e do teste
+    dedicado.
   - Consumers ativos em routers, servico, worker e testes focados passaram a
     importar por `app.modules.lead_imports`.
 
@@ -135,6 +138,16 @@ Esta parte do plano ja foi implementada:
     - `app.modules.leads_publicidade` segue como alias temporario
     - imports ativos de producao, script worker e testes focados foram migrados
     - remocao do alias antigo permanece como follow-up posterior
+  - A remocao do alias legado foi aberta em:
+    - [PROJETOS/NPBB/INTAKE-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/INTAKE-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
+    - [PROJETOS/NPBB/PRD-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/PRD-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
+    - [PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
+  - A execucao registrada foi:
+    - `backend/app/modules/leads_publicidade` removido
+    - `backend/tests/test_lead_imports_compat.py` removido
+    - `app.modules.lead_imports` permanece como unico caminho backend real
+    - referencias restantes a `leads_publicidade` sao historicas em
+      docs/governanca/plano
 
 ## 2. Validacao executada
 
@@ -203,6 +216,21 @@ Esta parte do plano ja foi implementada:
   - Resultado: `136 passed, 1 skipped`.
   - Nenhum contrato HTTP, schema, rota publica, frontend, dashboard,
     `lead_pipeline/` ou `core/leads_etl/` foi alterado por esta rodada.
+- Rodada de remocao do alias legado em 2026-04-23:
+  - `rg -n "app\\.modules\\.leads_publicidade|leads_publicidade" backend/app backend/scripts backend/tests -g "!backend/app/modules/leads_publicidade/**" -g "!backend/tests/test_lead_imports_compat.py"`:
+    sem consumidores ativos.
+  - `backend/app/modules/leads_publicidade` foi removido.
+  - `backend/tests/test_lead_imports_compat.py` foi removido porque validava
+    apenas a compatibilidade temporaria encerrada.
+  - `Test-Path backend/app/modules/leads_publicidade`: `False`.
+  - `rg -n "app\\.modules\\.lead_imports|lead_imports" backend/app backend/scripts backend/tests`
+    confirmou consumidores ativos no caminho real.
+  - Suite focada backend executada a partir da raiz no PowerShell com
+    `PYTHONPATH=C:\Users\NPBB\npbb;C:\Users\NPBB\npbb\backend`,
+    `SECRET_KEY=ci-secret-key` e `TESTING=true`.
+  - Resultado: `134 passed, 1 skipped`.
+  - Nenhum contrato HTTP, schema, rota publica, frontend, dashboard,
+    `lead_pipeline/` ou `core/leads_etl/` foi alterado por esta rodada.
 
 ### Residual conhecido
 
@@ -210,6 +238,8 @@ Esta parte do plano ja foi implementada:
   continua fora do gate enquanto o freeze de importacao/ETL estiver ativo.
 - As rodadas recentes nao incluem smoke manual executado em browser; a validacao
   feita aqui foi `typecheck` + suites focadas.
+- As referencias restantes a `leads_publicidade` em docs, governanca e neste
+  plano sao historicas ou registro da propria remocao.
 
 ## 3. O que continua explicitamente fora deste escopo
 
@@ -224,7 +254,6 @@ Enquanto o objetivo for seguir com muito cuidado, **nao mexer agora** em:
 - `lead_pipeline/`
 - `core/leads_etl/`
 - qualquer contrato HTTP, schema ou rota publica
-- remocao do alias temporario `backend/app/modules/leads_publicidade`
 
 Em outras palavras: o shell `/leads/importar`, Bronze, ETL, mapeamento e
 pipeline ficam **congelados** por enquanto.
@@ -239,8 +268,8 @@ pipeline ficam **congelados** por enquanto.
   decisao de produto e feature propria.
 - Nao confundir a remocao da tela frontend legada com remocao do endpoint
   backend `/dashboard/leads/relatorio`, que continua preservado.
-- Nao remover `app.modules.leads_publicidade` enquanto houver qualquer
-  consumidor legado ou sem feature propria de limpeza.
+- Nao recriar `app.modules.leads_publicidade`; o caminho interno suportado
+  agora e `app.modules.lead_imports`.
 - Preferir `app.modules.lead_imports` para qualquer novo import backend.
 - Se uma alteracao comecar a puxar `MapeamentoPage`, `BatchMapeamentoPage`,
   `PipelineStatusPage` ou ETL junto, parar e reduzir o escopo.
@@ -250,11 +279,9 @@ pipeline ficam **congelados** por enquanto.
 Depois de estabilizar este slice inicial, ai sim considerar:
 
 1. mover o restante do frontend de leads para `features/leads`
-2. planejar a remocao dos shims temporarios de `app.modules.leads_publicidade`
-   quando a busca confirmar ausencia de consumidores legados
-3. se produto reabrir `/dashboard/leads/conversao`, criar nova tela em feature
+2. se produto reabrir `/dashboard/leads/conversao`, criar nova tela em feature
    propria sem recuperar automaticamente o legado removido
-4. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
+3. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
 
 ## 6. Leitura minima para o proximo agente
 
@@ -269,6 +296,8 @@ Antes de mexer em qualquer coisa, ler:
 - [PROJETOS/NPBB/features/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/features/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS.md)
 - [PROJETOS/NPBB/PRD-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/PRD-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
 - [PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
+- [PROJETOS/NPBB/PRD-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/PRD-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
+- [PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
 - [frontend/src/features/leads/list/LeadsListPage.tsx](frontend/src/features/leads/list/LeadsListPage.tsx)
 - [frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx](frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx)
 - [frontend/src/features/leads/shared/useReferenciaEventos.ts](frontend/src/features/leads/shared/useReferenciaEventos.ts)
@@ -282,7 +311,7 @@ em `features/leads` com compatibilidade legada preservada; por fim, fechou a
 decisao sobre `DashboardLeads.tsx` removendo a superficie frontend orfa e
 mantendo o endpoint de relatorio como API/script sem tela roteada. O passo
 seguinte planejou e executou o rename de `app.modules.leads_publicidade` para
-`app.modules.lead_imports`, mantendo compatibilidade temporaria no caminho
-antigo. Se a ordem for seguir com muito cuidado, **nao e** reabrir
-importacao/ETL; o proximo passo tecnico para backend e apenas uma feature
-posterior de limpeza do alias antigo, depois de busca sem consumidores.
+`app.modules.lead_imports`; depois, a `FEATURE-7` removeu o alias legado apos
+busca sem consumidores ativos. Se a ordem for seguir com muito cuidado, **nao
+e** reabrir importacao/ETL; o proximo passo tecnico estrutural deve ser
+definido em nova feature pequena, sem misturar com importacao funcional.

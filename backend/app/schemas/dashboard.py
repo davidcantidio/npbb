@@ -286,6 +286,22 @@ class ConsolidadoAgeAnalysis(BaseModel):
     mediana_por_evento: float
     concentracao_top3_pct: float
     faixa_dominante_status: str
+    clientes_bb_base_idade_volume: int | None = Field(
+        default=None,
+        description="Vinculos clientes BB com idade conhecida; denominador dos percentuais abaixo.",
+    )
+    clientes_bb_faixa_18_40_volume: int | None = None
+    clientes_bb_faixa_18_40_pct: float | None = None
+    clientes_bb_fora_18_40_volume: int | None = None
+    clientes_bb_fora_18_40_pct: float | None = None
+    nao_clientes_bb_base_idade_volume: int | None = Field(
+        default=None,
+        description="Vinculos nao clientes BB com idade conhecida; denominador dos percentuais abaixo.",
+    )
+    nao_clientes_bb_faixa_18_40_volume: int | None = None
+    nao_clientes_bb_faixa_18_40_pct: float | None = None
+    nao_clientes_bb_fora_18_40_volume: int | None = None
+    nao_clientes_bb_fora_18_40_pct: float | None = None
 
 
 class CompletenessMetrics(BaseModel):

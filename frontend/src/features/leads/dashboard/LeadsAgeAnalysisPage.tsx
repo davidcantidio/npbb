@@ -201,11 +201,21 @@ export default function LeadsAgeAnalysisPage() {
                   display: "flex",
                   flexDirection: { xs: "column", lg: "row" },
                   gap: 2,
-                  alignItems: { xs: "stretch", lg: "flex-start" },
+                  alignItems: "stretch",
                 }}
               >
-                <Box sx={{ flex: 1, minWidth: 0, alignSelf: { xs: "stretch", lg: "flex-start" } }}>
-                  <ProponenteAtivacaoPieChart data={data} />
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%" }}>
+                    <ProponenteAtivacaoPieChart data={data} />
+                  </Box>
                 </Box>
                 {viewModel ? (
                   <Box
@@ -213,10 +223,15 @@ export default function LeadsAgeAnalysisPage() {
                       width: { lg: 360 },
                       maxWidth: "100%",
                       flexShrink: 0,
-                      alignSelf: { xs: "stretch", lg: "flex-start" },
+                      minWidth: 0,
+                      minHeight: 0,
+                      display: "flex",
+                      flexDirection: "column",
                     }}
                   >
-                    <ConfidenceSummaryCard data={data} viewModel={viewModel} />
+                    <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%" }}>
+                      <ConfidenceSummaryCard data={data} viewModel={viewModel} />
+                    </Box>
                   </Box>
                 ) : null}
               </Box>

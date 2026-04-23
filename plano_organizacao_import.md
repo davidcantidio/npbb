@@ -1,6 +1,6 @@
 ---
 name: Plano incremental de organizacao de leads/importacao
-overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads com wrappers legados em pages/* e hooks/*; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5, implementado em FEATURE-6 e limpo em FEATURE-7, tornando app.modules.lead_imports o unico caminho backend real; importacao/ETL seguem congelados."
+overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para rotas e testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads; wrappers legados nao-import em pages/* e hooks/* foram removidos em FEATURE-8; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5, implementado em FEATURE-6 e limpo em FEATURE-7, tornando app.modules.lead_imports o unico caminho backend real; importacao/ETL seguem congelados."
 todos:
   - id: doc-align
     content: Alinhar docs com as rotas reais de leads e dashboard.
@@ -41,6 +41,9 @@ todos:
   - id: remove-legacy-alias
     content: Remover alias temporario app.modules.leads_publicidade apos busca sem consumidores ativos.
     status: done
+  - id: remove-fe-leads-wrappers
+    content: Remover wrappers legados frontend nao-import e lazy-loadar rotas pelo slice features/leads.
+    status: done
 isProject: false
 ---
 
@@ -80,14 +83,17 @@ Esta parte do plano ja foi implementada:
     - [frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx](frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx)
     - [frontend/src/features/leads/dashboard/useAgeAnalysisFilters.ts](frontend/src/features/leads/dashboard/useAgeAnalysisFilters.ts)
     - [frontend/src/features/leads/shared/useReferenciaEventos.ts](frontend/src/features/leads/shared/useReferenciaEventos.ts)
-  - Os caminhos legados continuam validos via wrappers finos:
-    - [frontend/src/pages/leads/LeadsListPage.tsx](frontend/src/pages/leads/LeadsListPage.tsx)
-    - [frontend/src/pages/leads/leadsListExport.ts](frontend/src/pages/leads/leadsListExport.ts)
-    - [frontend/src/pages/leads/leadsListQuarterPresets.ts](frontend/src/pages/leads/leadsListQuarterPresets.ts)
-    - [frontend/src/pages/dashboard/LeadsAgeAnalysisPage.tsx](frontend/src/pages/dashboard/LeadsAgeAnalysisPage.tsx)
-    - [frontend/src/pages/dashboard/useAgeAnalysisFilters.ts](frontend/src/pages/dashboard/useAgeAnalysisFilters.ts)
-    - [frontend/src/hooks/useReferenciaEventos.ts](frontend/src/hooks/useReferenciaEventos.ts)
-  - [frontend/src/app/AppRoutes.tsx](frontend/src/app/AppRoutes.tsx) permanece funcionalmente igual.
+  - Em `FEATURE-8`, [frontend/src/app/AppRoutes.tsx](frontend/src/app/AppRoutes.tsx)
+    passou a lazy-loadar `/leads` e `/dashboard/leads/analise-etaria`
+    diretamente de `frontend/src/features/leads`.
+  - Os wrappers legados nao-import foram removidos apos busca sem consumidores
+    relevantes:
+    - `frontend/src/pages/leads/LeadsListPage.tsx`
+    - `frontend/src/pages/leads/leadsListExport.ts`
+    - `frontend/src/pages/leads/leadsListQuarterPresets.ts`
+    - `frontend/src/pages/dashboard/LeadsAgeAnalysisPage.tsx`
+    - `frontend/src/pages/dashboard/useAgeAnalysisFilters.ts`
+    - `frontend/src/hooks/useReferenciaEventos.ts`
   - `frontend/src/pages/DashboardLeads.tsx` e
     `frontend/src/services/dashboard_leads.ts` foram removidos em `FEATURE-4`
     por serem superficie frontend orfa sem rota publica.
@@ -148,6 +154,20 @@ Esta parte do plano ja foi implementada:
     - `app.modules.lead_imports` permanece como unico caminho backend real
     - referencias restantes a `leads_publicidade` sao historicas em
       docs/governanca/plano
+  - A remocao dos wrappers frontend nao-import foi aberta em:
+    - [PROJETOS/NPBB/INTAKE-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/INTAKE-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
+    - [PROJETOS/NPBB/PRD-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/PRD-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
+    - [PROJETOS/NPBB/features/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/features/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
+  - A execucao registrada foi:
+    - `AppRoutes.tsx` lazy-loada `LeadsListPage` de
+      `frontend/src/features/leads/list`
+    - `AppRoutes.tsx` lazy-loada `LeadsAgeAnalysisPage` de
+      `frontend/src/features/leads/dashboard`
+    - wrappers legados nao-import em `pages/*` e `hooks/*` foram removidos
+    - `/leads`, `/leads/importar` e `/dashboard/leads/analise-etaria`
+      permanecem como rotas publicas
+    - importacao/ETL, backend, contratos HTTP, schemas e rotas publicas nao
+      foram alterados por esta rodada
 
 ## 2. Validacao executada
 
@@ -231,6 +251,22 @@ Esta parte do plano ja foi implementada:
   - Resultado: `134 passed, 1 skipped`.
   - Nenhum contrato HTTP, schema, rota publica, frontend, dashboard,
     `lead_pipeline/` ou `core/leads_etl/` foi alterado por esta rodada.
+- Rodada de remocao dos wrappers frontend nao-import em 2026-04-23:
+  - `rg -n "pages/leads/LeadsListPage|pages/leads/leadsListExport|pages/leads/leadsListQuarterPresets|pages/dashboard/LeadsAgeAnalysisPage|pages/dashboard/useAgeAnalysisFilters|hooks/useReferenciaEventos|features/leads" frontend/src`
+    confirmou antes da edicao que os consumidores internos ja preferiam o
+    slice real, restando wrappers e duas lazy routes.
+  - `AppRoutes.tsx` passou a importar lista e analise etaria diretamente de
+    `frontend/src/features/leads`.
+  - Wrappers legados nao-import foram removidos.
+  - Busca posterior confirmou ausencia dos caminhos removidos em codigo ativo,
+    restando apenas imports do slice real.
+  - `rg -n "ImportacaoPage|pages/leads/importacao|PipelineStatusPage|MapeamentoPage|BatchMapeamentoPage" frontend/src`
+    confirmou que o shell de importacao e telas de mapeamento/pipeline
+    permaneceram no local atual.
+  - `cd frontend && npm run typecheck`: passou.
+  - Suite focada de lista/dashboard: `25 passed`.
+  - Suite focada de manifesto em `src/config/__tests__/dashboardManifest.test.ts`:
+    `2 passed`.
 
 ### Residual conhecido
 
@@ -240,6 +276,8 @@ Esta parte do plano ja foi implementada:
   feita aqui foi `typecheck` + suites focadas.
 - As referencias restantes a `leads_publicidade` em docs, governanca e neste
   plano sao historicas ou registro da propria remocao.
+- Existem mudancas locais de dashboard anteriores a `FEATURE-8` no worktree;
+  esta rodada preservou essas alteracoes e nao as reverteu.
 
 ## 3. O que continua explicitamente fora deste escopo
 
@@ -278,7 +316,8 @@ pipeline ficam **congelados** por enquanto.
 
 Depois de estabilizar este slice inicial, ai sim considerar:
 
-1. mover o restante do frontend de leads para `features/leads`
+1. mover o shell de importacao de leads para `features/leads`, somente em
+   feature propria e depois de destravar o escopo de importacao/ETL
 2. se produto reabrir `/dashboard/leads/conversao`, criar nova tela em feature
    propria sem recuperar automaticamente o legado removido
 3. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
@@ -298,6 +337,8 @@ Antes de mexer em qualquer coisa, ler:
 - [PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
 - [PROJETOS/NPBB/PRD-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/PRD-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
 - [PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
+- [PROJETOS/NPBB/PRD-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/PRD-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
+- [PROJETOS/NPBB/features/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/features/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
 - [frontend/src/features/leads/list/LeadsListPage.tsx](frontend/src/features/leads/list/LeadsListPage.tsx)
 - [frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx](frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx)
 - [frontend/src/features/leads/shared/useReferenciaEventos.ts](frontend/src/features/leads/shared/useReferenciaEventos.ts)
@@ -312,6 +353,7 @@ decisao sobre `DashboardLeads.tsx` removendo a superficie frontend orfa e
 mantendo o endpoint de relatorio como API/script sem tela roteada. O passo
 seguinte planejou e executou o rename de `app.modules.leads_publicidade` para
 `app.modules.lead_imports`; depois, a `FEATURE-7` removeu o alias legado apos
-busca sem consumidores ativos. Se a ordem for seguir com muito cuidado, **nao
-e** reabrir importacao/ETL; o proximo passo tecnico estrutural deve ser
-definido em nova feature pequena, sem misturar com importacao funcional.
+busca sem consumidores ativos. A `FEATURE-8` removeu os wrappers frontend
+nao-import depois de migrar as lazy routes para `features/leads`. Se a ordem
+for seguir com muito cuidado, **nao e** reabrir importacao/ETL sem feature
+propria, escopo proprio e gate proprio.

@@ -13,7 +13,7 @@ type KpiCardProps = {
   progressValue?: number | null;
   progressLabel?: string;
   progressTooltip?: string;
-  /** Alinhamento do conteúdo textual; `center` empilha ícone e centraliza o bloco. */
+  /** `center`: ícone e bloco de métricas centralizados (grid de KPIs). `left`: cabeçalho com ícone à direita. */
   contentAlign?: "left" | "center";
   /** Rótulo acessível da região (ex.: nome do KPI para leitores de tela). */
   ariaLabel?: string;
@@ -90,11 +90,7 @@ export function KpiCard({
     >
       <CardContent>
         {contentAlign === "center" ? (
-          <Stack
-            alignItems="center"
-            spacing={2}
-            sx={{ textAlign: "center", width: "100%" }}
-          >
+          <Stack alignItems="center" spacing={2} sx={{ textAlign: "center", width: "100%" }}>
             {iconBox}
             <Box sx={{ width: "100%" }}>
               <Box

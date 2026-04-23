@@ -20,7 +20,25 @@ type MetricChipProps = {
 function MetricChip({ label, tooltip }: MetricChipProps) {
   return (
     <Tooltip title={tooltip} describeChild>
-      <Chip label={label} size="small" variant="outlined" sx={{ maxWidth: "100%" }} />
+      <Chip
+        label={label}
+        size="small"
+        variant="outlined"
+        sx={{
+          maxWidth: "100%",
+          width: "100%",
+          height: "auto",
+          justifyContent: "flex-start",
+          "& .MuiChip-label": {
+            display: "block",
+            textAlign: "left",
+            whiteSpace: "normal",
+            py: 0.75,
+            px: 0.5,
+            lineHeight: 1.35,
+          },
+        }}
+      />
     </Tooltip>
   );
 }
@@ -37,18 +55,30 @@ export function ConfidenceSummaryCard({ data, viewModel, sx }: ConfidenceSummary
       component="section"
       aria-labelledby="confianca-cobertura-heading"
       sx={[
-        { alignSelf: "stretch", maxWidth: "100%" },
+        {
+          maxWidth: "100%",
+          width: "100%",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+        },
         ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
       ]}
     >
       <CardContent
         sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
           py: 1.5,
           px: 2,
+          alignItems: "stretch",
           "&:last-child": { pb: 1.5 },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0, mb: 1.25 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0, mb: 1.25, textAlign: "left" }}>
           <Typography id="confianca-cobertura-heading" variant="subtitle1" fontWeight={800} component="h2">
             Confianca e cobertura
           </Typography>
@@ -67,7 +97,7 @@ export function ConfidenceSummaryCard({ data, viewModel, sx }: ConfidenceSummary
           </Tooltip>
         </Box>
 
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ alignContent: "flex-start" }}>
+        <Stack direction="column" alignItems="stretch" useFlexGap spacing={2}>
           <MetricChip
             label={`Total na base: ${formatInteger(confidence.base_vinculos)}`}
             tooltip={`Gerado em ${viewModel.generatedAtLabel}`}

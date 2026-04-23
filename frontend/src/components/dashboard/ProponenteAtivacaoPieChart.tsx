@@ -69,9 +69,30 @@ export function ProponenteAtivacaoPieChart({ data }: ProponenteAtivacaoPieChartP
   );
 
   return (
-    <Card variant="outlined" component="section" aria-labelledby="pie-proponente-ativacao-heading">
-      <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 2 }}>
+    <Card
+      variant="outlined"
+      component="section"
+      aria-labelledby="pie-proponente-ativacao-heading"
+      sx={{
+        overflow: "visible",
+        flex: 1,
+        minHeight: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <CardContent
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflow: "visible",
+          "&:last-child": { pb: 2 },
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 2, flexShrink: 0 }}>
           <Typography variant="subtitle1" fontWeight={800} component="h2" id="pie-proponente-ativacao-heading">
             Proponente e ativacao
           </Typography>
@@ -96,17 +117,30 @@ export function ProponenteAtivacaoPieChart({ data }: ProponenteAtivacaoPieChartP
         ) : (
           <Box
             sx={{
+              flex: 1,
               display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
               justifyContent: "center",
+              minHeight: 0,
               width: "100%",
-              maxWidth: 320,
-              mx: "auto",
             }}
           >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                width: "100%",
+                maxWidth: 380,
+                overflow: "visible",
+                // Evita corte de rótulos SVG do Recharts
+                "& .recharts-surface, & .recharts-wrapper, & .recharts-legend-wrapper": { overflow: "visible" },
+              }}
+            >
             <PieChart
-              width={300}
-              height={200}
-              margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
+              width={360}
+              height={280}
+              margin={{ top: 24, right: 16, bottom: 40, left: 16 }}
             >
               <RechartsTooltip
                 content={(props: TooltipContentProps) => (
@@ -118,24 +152,30 @@ export function ProponenteAtivacaoPieChart({ data }: ProponenteAtivacaoPieChartP
                   />
                 )}
               />
-              <Legend verticalAlign="bottom" />
+              <Legend
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{ paddingTop: 8 }}
+              />
               <Pie
                 data={chartData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
-                cy="42%"
-                innerRadius={44}
-                outerRadius={78}
+                cy="50%"
+                innerRadius={48}
+                outerRadius={82}
                 paddingAngle={2}
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1).replace(".", ",")}%`}
+                // Só o percentual no anel; nomes completos na legenda (evita overflow com textos longos)
+                label={({ percent }) => `${((percent ?? 0) * 100).toFixed(1).replace(".", ",")}%`}
               >
                 {chartData.map((entry) => (
                   <Cell key={entry.name} fill={entry.fill} />
                 ))}
               </Pie>
             </PieChart>
+            </Box>
           </Box>
         )}
       </CardContent>

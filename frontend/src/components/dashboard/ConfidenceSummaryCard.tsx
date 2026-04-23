@@ -1,4 +1,4 @@
-import { Alert, Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
 
 import type { AgeAnalysisResponse } from "../../types/dashboard";
 import { formatInteger, formatPercent } from "../../utils/ageAnalysis";
@@ -55,7 +55,7 @@ export function ConfidenceSummaryCard({ data, viewModel }: ConfidenceSummaryCard
               Confianca e cobertura
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-              Leitura executiva da base consolidada: denominadores, lineage e riscos de merge antes da interpretacao.
+              Leitura executiva da base consolidada: denominadores antes da interpretacao.
             </Typography>
           </Box>
 
@@ -107,49 +107,6 @@ export function ConfidenceSummaryCard({ data, viewModel }: ConfidenceSummaryCard
               )})`}
               variant="outlined"
             />
-          </Stack>
-
-          <Box>
-            <Typography variant="body2" fontWeight={700}>
-              Lineage consolidada
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {viewModel.lineageSummary}
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              display: "grid",
-              gap: 1.5,
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr)",
-                lg: "repeat(2, minmax(0, 1fr))",
-              },
-            }}
-          >
-            <MetricBlock
-              label="Deduplicacao"
-              value={`${formatInteger(confidence.dedupe_suppressed_volume)} (${formatPercent(
-                confidence.dedupe_suppressed_pct,
-              )})`}
-              helperText={`Sobre ${formatInteger(confidence.dedupe_candidate_volume)} candidatos ao merge.`}
-            />
-            <MetricBlock
-              label="Ambiguidade por nome"
-              value={`${formatInteger(confidence.ambiguous_event_name_volume)} (${formatPercent(
-                confidence.ambiguous_event_name_pct,
-              )})`}
-              helperText={`Sobre ${formatInteger(confidence.event_name_candidate_volume)} candidatos por nome.`}
-            />
-          </Box>
-
-          <Stack spacing={1}>
-            {viewModel.confidenceNotes.map((note) => (
-              <Alert key={note} severity={note.startsWith("Sem alertas") ? "success" : "warning"} variant="outlined">
-                {note}
-              </Alert>
-            ))}
           </Stack>
         </Stack>
       </CardContent>

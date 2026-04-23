@@ -9,7 +9,6 @@ import type { AgeAnalysisViewModel } from "../../utils/ageAnalysisViewModel";
 type ConfidenceSummaryCardProps = {
   data: AgeAnalysisResponse;
   viewModel: AgeAnalysisViewModel;
-  /** Permite o container pai forçar altura (alinhamento com o bloco do gráfico). */
   sx?: SxProps<Theme>;
 };
 
@@ -38,18 +37,14 @@ export function ConfidenceSummaryCard({ data, viewModel, sx }: ConfidenceSummary
       component="section"
       aria-labelledby="confianca-cobertura-heading"
       sx={[
-        { height: "100%", minHeight: 0, display: "flex", flexDirection: "column" },
+        { alignSelf: "stretch", maxWidth: "100%" },
         ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
       ]}
     >
       <CardContent
         sx={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "auto",
           py: 1.5,
+          px: 2,
           "&:last-child": { pb: 1.5 },
         }}
       >

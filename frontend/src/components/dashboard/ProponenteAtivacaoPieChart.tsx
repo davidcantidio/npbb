@@ -99,13 +99,14 @@ export function ProponenteAtivacaoPieChart({ data }: ProponenteAtivacaoPieChartP
               display: "flex",
               justifyContent: "center",
               width: "100%",
-              minHeight: 280,
+              maxWidth: 320,
+              mx: "auto",
             }}
           >
             <PieChart
-              width={400}
-              height={280}
-              margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              width={300}
+              height={200}
+              margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
             >
               <RechartsTooltip
                 content={(props: TooltipContentProps) => (
@@ -123,9 +124,9 @@ export function ProponenteAtivacaoPieChart({ data }: ProponenteAtivacaoPieChartP
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
-                cy="45%"
-                innerRadius={56}
-                outerRadius={100}
+                cy="42%"
+                innerRadius={44}
+                outerRadius={78}
                 paddingAngle={2}
                 labelLine={false}
                 label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1).replace(".", ",")}%`}

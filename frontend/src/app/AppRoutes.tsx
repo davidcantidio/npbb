@@ -22,9 +22,15 @@ const EventLandingPage = lazy(() => import("../pages/EventLandingPage"));
 const EventLeadFormConfig = lazy(() => import("../pages/EventLeadFormConfig"));
 const EventQuestionario = lazy(() => import("../pages/EventQuestionario"));
 const EventsList = lazy(() => import("../pages/EventsList"));
-const LeadsAgeAnalysisPage = lazy(() => import("../pages/dashboard/LeadsAgeAnalysisPage"));
+const LeadsAgeAnalysisPage = lazy(() =>
+  import("../features/leads/dashboard").then(({ LeadsAgeAnalysisPage }) => ({
+    default: LeadsAgeAnalysisPage,
+  })),
+);
 const ImportacaoPage = lazy(() => import("../pages/leads/ImportacaoPage"));
-const LeadsListPage = lazy(() => import("../pages/leads/LeadsListPage"));
+const LeadsListPage = lazy(() =>
+  import("../features/leads/list").then(({ LeadsListPage }) => ({ default: LeadsListPage })),
+);
 const NewEvent = lazy(() => import("../pages/NewEvent"));
 const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
 const PatrocinadosPage = lazy(() => import("../features/patrocinados/PatrocinadosPage"));

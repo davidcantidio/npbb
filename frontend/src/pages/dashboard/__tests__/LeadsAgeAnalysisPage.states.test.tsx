@@ -173,15 +173,11 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
     const clientesCard = getRequiredCard(screen.getByText(/4 \(40,0%\)/).closest(".MuiCard-root"), "Clientes BB card not found");
     expect(within(clientesCard).getByText("Clientes BB")).toBeInTheDocument();
     expect(within(clientesCard).getByText(/4 \(40,0%\)/)).toBeInTheDocument();
-    expect(within(clientesCard).getByText("Base BB coberta: 9")).toBeInTheDocument();
-    expect(within(clientesCard).getByText("Cobertura BB")).toBeInTheDocument();
-    expect(within(clientesCard).getByText("90.0%")).toBeInTheDocument();
-
-    const faixaCard = getRequiredCard(screen.getByLabelText("Faixa etaria dominante"), "Faixa dominante card not found");
-    expect(within(faixaCard).getByText("18–25")).toBeInTheDocument();
-
-    const eventosCard = getRequiredCard(screen.getByText("Eventos").closest(".MuiCard-root"), "Eventos card not found");
-    expect(within(eventosCard).getByText("1")).toBeInTheDocument();
+    expect(screen.getByText("Nao clientes BB")).toBeInTheDocument();
+    expect(screen.getAllByText("18 a 40 anos").length).toBe(2);
+    expect(screen.getAllByText("Fora de 18-40").length).toBe(2);
+    expect(screen.getAllByText("Sobre base com idade (de clientes BB).").length).toBe(2);
+    expect(screen.getAllByText("Sobre base com idade (de nao clientes BB).").length).toBe(2);
   });
 
   it("shows error toast with retry action", async () => {

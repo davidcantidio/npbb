@@ -1,6 +1,6 @@
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import { Alert, Box, Button, Snackbar, Stack, Typography } from "@mui/material";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AgeAnalysisFilters, ALL_EVENTS_OPTION_ID } from "../../../components/dashboard/AgeAnalysisFilters";
 import { AgeAnalysisKpiGrid } from "../../../components/dashboard/AgeAnalysisKpiGrid";
@@ -10,7 +10,6 @@ import { ChartSkeleton } from "../../../components/dashboard/ChartSkeleton";
 import { ConfidenceSummaryCard } from "../../../components/dashboard/ConfidenceSummaryCard";
 import { ProponenteAtivacaoPieChart } from "../../../components/dashboard/ProponenteAtivacaoPieChart";
 import { CoverageBanner } from "../../../components/dashboard/CoverageBanner";
-import { DataQualityTable } from "../../../components/dashboard/DataQualityTable";
 import { EventsAgeTable } from "../../../components/dashboard/EventsAgeTable";
 import { KpiCardSkeleton } from "../../../components/dashboard/KpiCardSkeleton";
 import { TableSkeleton } from "../../../components/dashboard/TableSkeleton";
@@ -87,8 +86,6 @@ export default function LeadsAgeAnalysisPage() {
 
   const [isCoverageBannerDismissed, setIsCoverageBannerDismissed] = useState(false);
   const [isErrorToastOpen, setIsErrorToastOpen] = useState(false);
-  const pieBlockRef = useRef<HTMLDivElement | null>(null);
-  const [pieBlockHeightPx, setPieBlockHeightPx] = useState<number | null>(null);
   const queryFiltersKey = useMemo(() => JSON.stringify(queryFilters), [queryFilters]);
   const viewModel = useMemo(() => (data ? buildAgeAnalysisViewModel(data) : null), [data]);
   const isEmpty = Boolean(data && data.consolidado.base_total === 0);
@@ -101,26 +98,6 @@ export default function LeadsAgeAnalysisPage() {
   useEffect(() => {
     setIsErrorToastOpen(Boolean(error));
   }, [error]);
-
-  useLayoutEffect(() => {
-    const el = pieBlockRef.current;
-    if (!el) {
-      setPieBlockHeightPx(null);
-      return;
-    }
-    const update = () => {
-      setPieBlockHeightPx(Math.round(el.getBoundingClientRect().height));
-    };
-    update();
-    if (typeof ResizeObserver === "undefined") {
-      return;
-    }
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-    };
-  }, [data, viewModel, isEmpty, showInitialLoadingState]);
 
   return (
     <Stack spacing={3} sx={{ minWidth: 0 }}>
@@ -227,10 +204,7 @@ export default function LeadsAgeAnalysisPage() {
                   alignItems: { xs: "stretch", lg: "flex-start" },
                 }}
               >
-                <Box
-                  ref={pieBlockRef}
-                  sx={{ flex: 1, minWidth: 0, alignSelf: { xs: "stretch", lg: "flex-start" } }}
-                >
+                <Box sx={{ flex: 1, minWidth: 0, alignSelf: { xs: "stretch", lg: "flex-start" } }}>
                   <ProponenteAtivacaoPieChart data={data} />
                 </Box>
                 {viewModel ? (
@@ -240,12 +214,6 @@ export default function LeadsAgeAnalysisPage() {
                       maxWidth: "100%",
                       flexShrink: 0,
                       alignSelf: { xs: "stretch", lg: "flex-start" },
-                      display: { xs: "block", lg: "flex" },
-                      flexDirection: "column",
-                      minHeight: 0,
-                      ...(pieBlockHeightPx != null && pieBlockHeightPx > 0
-                        ? { height: { xs: "auto", lg: `${pieBlockHeightPx}px` } }
-                        : {}),
                     }}
                   >
                     <ConfidenceSummaryCard data={data} viewModel={viewModel} />
@@ -257,10 +225,6 @@ export default function LeadsAgeAnalysisPage() {
               </Box>
               <AgeDistributionChart events={data.por_evento} />
               <ChannelMixChart events={data.por_evento} />
-              <DataQualityTable
-                consolidated={data.qualidade_consolidado}
-                rows={data.qualidade_por_origem}
-              />
               <EventsAgeTable events={data.por_evento} onSelectEvento={handleSelectEvento} />
             </>
           )}

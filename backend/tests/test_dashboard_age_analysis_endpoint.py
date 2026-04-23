@@ -7,6 +7,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.db.database import get_session
 from app.main import app
+from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
 from app.models.models import (
     Agencia,
     Ativacao,
@@ -271,13 +272,19 @@ def test_dashboard_age_analysis_ok(client, engine):
 
     consolidado = data["consolidado"]
     assert consolidado["base_total"] == 10
+    assert consolidado["leads_ativacao"] == 10
+    assert consolidado["leads_proponente"] == 0
     assert consolidado["clientes_bb_volume"] == 5
     assert consolidado["clientes_bb_pct"] == 50.0
     assert consolidado["cobertura_bb_pct"] == 90.0
+    assert consolidado["bb_indefinido_volume"] == 1
     assert consolidado["faixas"]["faixa_18_25"]["volume"] == 4
     assert consolidado["faixas"]["faixa_26_40"]["volume"] == 2
+    assert consolidado["faixas"]["faixa_18_40"]["volume"] == 6
     assert consolidado["faixas"]["fora_18_40"]["volume"] == 3
     assert consolidado["faixas"]["sem_info_volume"] == 1
+    assert len(data["qualidade_por_origem"]) >= 1
+    assert data["insights"]["resumo"]
     assert [item["evento_nome"] for item in consolidado["top_eventos"]] == [
         "Evento Alpha",
         "Evento Beta",
@@ -400,6 +407,9 @@ def test_dashboard_age_analysis_empty_response(client, engine):
     assert data["consolidado"]["media_por_evento"] == 0.0
     assert data["consolidado"]["mediana_por_evento"] == 0.0
     assert data["consolidado"]["concentracao_top3_pct"] == 0.0
+    assert data["qualidade_consolidado"]["base_vinculos"] == 0
+    assert data["qualidade_por_origem"] == []
+    assert "Nenhum vinculo" in data["insights"]["resumo"][0]
 
 
 def test_dashboard_age_analysis_requires_auth(client, engine):
@@ -614,3 +624,268 @@ def test_dashboard_age_analysis_consolidado_conta_vinculos_mesmo_lead(client, en
     assert all(item["base_leads"] == 1 for item in data["por_evento"])
     assert data["consolidado"]["base_total"] == 2
     assert data["consolidado"]["faixas"]["faixa_18_25"]["volume"] == 2
+
+
+def test_dashboard_age_analysis_uses_batch_tipo_lead_proponente_when_link_is_missing(client, engine):
+    with Session(engine) as session:
+        today = date.today()
+        agencia = Agencia(nome="Agencia Batch", dominio="ag-batch.com.br", lote=1)
+        status = StatusEvento(nome="Ativo")
+        session.add_all([agencia, status])
+        session.commit()
+        session.refresh(agencia)
+        session.refresh(status)
+
+        evento = Evento(
+            nome="Evento Batch",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Curitiba",
+            estado="PR",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        session.add(evento)
+        session.commit()
+        session.refresh(evento)
+
+        user = seed_user(session, email="batch-owner@npbb.com.br")
+        batch = LeadBatch(
+            enviado_por=user.id,
+            plataforma_origem="planilha",
+            data_envio=datetime(2026, 1, 5, tzinfo=timezone.utc),
+            nome_arquivo_original="batch.csv",
+            stage=BatchStage.GOLD,
+            evento_id=evento.id,
+            origem_lote="proponente",
+            tipo_lead_proponente="bilheteria",
+            pipeline_status=PipelineStatus.PASS,
+        )
+        session.add(batch)
+        session.commit()
+        session.refresh(batch)
+
+        lead = Lead(
+            nome="Lead Batch",
+            sobrenome="Teste",
+            cpf="40000000001",
+            evento_nome=evento.nome,
+            data_nascimento=birthdate_for_age(29, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 1, 6, tzinfo=timezone.utc),
+            batch_id=batch.id,
+        )
+        session.add(lead)
+        session.commit()
+
+        headers = get_auth_header(
+            client,
+            session,
+            email="batch-auth@npbb.com.br",
+        )
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["consolidado"]["base_total"] == 1
+    assert data["consolidado"]["leads_proponente"] == 1
+    assert data["consolidado"]["leads_ativacao"] == 0
+    assert data["consolidado"]["leads_canal_desconhecido"] == 0
+    assert data["por_evento"][0]["leads_proponente"] == 1
+    assert data["por_evento"][0]["leads_canal_desconhecido"] == 0
+    assert data["confianca_consolidado"]["lineage_mix"][0]["source_kind"] == "lead_batch"
+
+
+def test_dashboard_age_analysis_discards_ambiguous_event_name_fallback(client, engine):
+    with Session(engine) as session:
+        today = date.today()
+        agencia = Agencia(nome="Agencia Ambigua", dominio="ag-amb.com.br", lote=1)
+        status = StatusEvento(nome="Ativo")
+        session.add_all([agencia, status])
+        session.commit()
+        session.refresh(agencia)
+        session.refresh(status)
+
+        evento_a = Evento(
+            nome="Evento Duplicado",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Sao Paulo",
+            estado="SP",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        evento_b = Evento(
+            nome="Evento Duplicado",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Rio de Janeiro",
+            estado="RJ",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        session.add_all([evento_a, evento_b])
+        session.commit()
+
+        lead = Lead(
+            nome="Lead Ambiguo",
+            sobrenome="Teste",
+            cpf="50000000001",
+            evento_nome="Evento Duplicado",
+            data_nascimento=birthdate_for_age(32, today),
+            is_cliente_bb=False,
+            data_criacao=datetime(2026, 1, 9, tzinfo=timezone.utc),
+        )
+        session.add(lead)
+        session.commit()
+
+        headers = get_auth_header(
+            client,
+            session,
+            email="ambiguous@npbb.com.br",
+        )
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["por_evento"] == []
+    assert data["consolidado"]["base_total"] == 0
+    assert data["confianca_consolidado"]["event_name_candidate_volume"] == 1
+    assert data["confianca_consolidado"]["ambiguous_event_name_volume"] == 1
+    assert "event_name_backfill_ambiguous" in data["insights"]["flags"]
+    assert "ambiguo" in data["insights"]["alertas"][0]
+
+
+def test_dashboard_age_analysis_evento_id_skips_event_name_backfill_scan(client, engine):
+    with Session(engine) as session:
+        today = date.today()
+        agencia = Agencia(nome="Agencia Filtro Evento", dominio="ag-filtro.com.br", lote=1)
+        status = StatusEvento(nome="Ativo")
+        session.add_all([agencia, status])
+        session.commit()
+        session.refresh(agencia)
+        session.refresh(status)
+
+        evento = Evento(
+            nome="Evento Filtro",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Brasilia",
+            estado="DF",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        session.add(evento)
+        session.commit()
+        session.refresh(evento)
+        evento_id = evento.id
+
+        lead = Lead(
+            nome="Lead Sem Vinculo",
+            sobrenome="Teste",
+            cpf="51000000001",
+            evento_nome=evento.nome,
+            data_nascimento=birthdate_for_age(28, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 1, 9, tzinfo=timezone.utc),
+        )
+        session.add(lead)
+        session.commit()
+
+        headers = get_auth_header(
+            client,
+            session,
+            email="event-filter@npbb.com.br",
+        )
+
+    response_all = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response_all.status_code == 200
+    data_all = response_all.json()
+    assert data_all["consolidado"]["base_total"] == 1
+    assert data_all["confianca_consolidado"]["event_name_candidate_volume"] == 1
+    assert data_all["confianca_consolidado"]["lineage_mix"][0]["source_kind"] == "evento_nome_backfill"
+
+    response_filtered = client.get(
+        f"/dashboard/leads/analise-etaria?evento_id={evento_id}",
+        headers=headers,
+    )
+    assert response_filtered.status_code == 200
+
+    data_filtered = response_filtered.json()
+    assert data_filtered["por_evento"] == []
+    assert data_filtered["consolidado"]["base_total"] == 0
+    assert data_filtered["confianca_consolidado"]["event_name_candidate_volume"] == 0
+    assert "event_name_backfill_disabled" not in data_filtered["insights"]["flags"]
+
+
+def test_dashboard_age_analysis_exposes_age_reference_date_and_tied_dominant_range(client, engine):
+    with Session(engine) as session:
+        today = date.today()
+        agencia = Agencia(nome="Agencia Tie", dominio="ag-tie.com.br", lote=1)
+        status = StatusEvento(nome="Ativo")
+        session.add_all([agencia, status])
+        session.commit()
+        session.refresh(agencia)
+        session.refresh(status)
+
+        evento = Evento(
+            nome="Evento Tie",
+            descricao="Desc",
+            concorrencia=False,
+            cidade="Recife",
+            estado="PE",
+            agencia_id=agencia.id,
+            status_id=status.id,
+        )
+        session.add(evento)
+        session.commit()
+        session.refresh(evento)
+
+        ativacao = Ativacao(nome="Ativacao Tie", evento_id=evento.id)
+        session.add(ativacao)
+        session.commit()
+        session.refresh(ativacao)
+
+        lead_18_25 = Lead(
+            nome="Lead Faixa 18-25",
+            sobrenome="Teste",
+            cpf="60000000001",
+            evento_nome=evento.nome,
+            data_nascimento=birthdate_for_age(24, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 2, 10, tzinfo=timezone.utc),
+        )
+        lead_26_40 = Lead(
+            nome="Lead Faixa 26-40",
+            sobrenome="Teste",
+            cpf="60000000002",
+            evento_nome=evento.nome,
+            data_nascimento=birthdate_for_age(34, today),
+            is_cliente_bb=True,
+            data_criacao=datetime(2026, 2, 10, tzinfo=timezone.utc),
+        )
+        session.add_all([lead_18_25, lead_26_40])
+        session.commit()
+        session.refresh(lead_18_25)
+        session.refresh(lead_26_40)
+
+        add_activation_canonical_link(session, ativacao=ativacao, lead=lead_18_25)
+        add_activation_canonical_link(session, ativacao=ativacao, lead=lead_26_40)
+        session.commit()
+
+        headers = get_auth_header(
+            client,
+            session,
+            email="tie@npbb.com.br",
+        )
+
+    response = client.get("/dashboard/leads/analise-etaria", headers=headers)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["age_reference_date"] == date.today().isoformat()
+    assert data["por_evento"][0]["faixa_dominante_status"] == "tied"
+    assert data["consolidado"]["faixa_dominante_status"] == "tied"
+    assert "dominant_range_tied" in data["insights"]["flags"]

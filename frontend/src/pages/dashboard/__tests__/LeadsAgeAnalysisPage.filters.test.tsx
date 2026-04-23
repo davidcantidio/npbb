@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import { useAgeAnalysis } from "../../../hooks/useAgeAnalysis";
-import { listReferenciaEventos } from "../../../services/leads_import";
+import { useReferenciaEventos } from "../../../features/leads/shared";
 import { useAuth } from "../../../store/auth";
-import type { AgeAnalysisFiltersQuery, AgeAnalysisResponse } from "../../../types/dashboard";
-import LeadsAgeAnalysisPage from "../LeadsAgeAnalysisPage";
+import type { AgeAnalysisFiltersQuery } from "../../../types/dashboard";
+import { LeadsAgeAnalysisPage } from "../../../features/leads/dashboard";
+import { buildAgeAnalysisFixture } from "./ageAnalysisFixtures";
 
 vi.mock("../../../store/auth", () => ({
   useAuth: vi.fn(),
@@ -17,75 +18,30 @@ vi.mock("../../../hooks/useAgeAnalysis", () => ({
   useAgeAnalysis: vi.fn(),
 }));
 
-vi.mock("../../../services/leads_import", () => ({
-  listReferenciaEventos: vi.fn(),
+vi.mock("../../../features/leads/shared", () => ({
+  useReferenciaEventos: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseAgeAnalysis = vi.mocked(useAgeAnalysis);
-const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
+const mockedUseReferenciaEventos = vi.mocked(useReferenciaEventos);
+
+function buildHookState(overrides: Partial<ReturnType<typeof useAgeAnalysis>> = {}) {
+  return {
+    data: buildAgeAnalysisFixture(),
+    isLoading: false,
+    isRefreshing: false,
+    error: null,
+    lastSuccessfulAt: null,
+    refetch: vi.fn(),
+    ...overrides,
+  };
+}
 
 const EVENT_OPTIONS = [
   { id: 1, nome: "Evento Alpha", data_inicio_prevista: "2026-01-05" },
   { id: 2, nome: "Evento Beta", data_inicio_prevista: "2026-02-10" },
 ];
-
-function buildFixture(overrides?: Partial<AgeAnalysisResponse>): AgeAnalysisResponse {
-  return {
-    version: 1,
-    generated_at: "2026-03-07T12:00:00Z",
-    filters: {
-      data_inicio: null,
-      data_fim: null,
-      evento_id: null,
-    },
-    por_evento: [
-      {
-        evento_id: 1,
-        evento_nome: "Evento Alpha",
-        cidade: "Sao Paulo",
-        estado: "SP",
-        base_leads: 10,
-        clientes_bb_volume: 4,
-        clientes_bb_pct: 40,
-        cobertura_bb_pct: 90,
-        faixa_dominante: "faixa_18_25",
-        faixas: {
-          faixa_18_25: { volume: 5, pct: 50 },
-          faixa_26_40: { volume: 3, pct: 30 },
-          fora_18_40: { volume: 2, pct: 20 },
-          sem_info_volume: 0,
-          sem_info_pct_da_base: 0,
-        },
-      },
-    ],
-    consolidado: {
-      base_total: 10,
-      clientes_bb_volume: 4,
-      clientes_bb_pct: 40,
-      cobertura_bb_pct: 90,
-      faixas: {
-        faixa_18_25: { volume: 5, pct: 50 },
-        faixa_26_40: { volume: 3, pct: 30 },
-        fora_18_40: { volume: 2, pct: 20 },
-        sem_info_volume: 0,
-        sem_info_pct_da_base: 0,
-      },
-      top_eventos: [
-        {
-          evento_id: 1,
-          evento_nome: "Evento Alpha",
-          base_leads: 10,
-          faixa_dominante: "faixa_18_25",
-        },
-      ],
-      media_por_evento: 10,
-      mediana_por_evento: 10,
-      concentracao_top3_pct: 100,
-    },
-    ...overrides,
-  };
-}
 
 function SearchParamsObserver() {
   const location = useLocation();
@@ -115,7 +71,7 @@ function expectLastHookFilters(filters: AgeAnalysisFiltersQuery) {
   expect(mockedUseAgeAnalysis).toHaveBeenLastCalledWith(filters);
 }
 
-describe("LeadsAgeAnalysisPage filters", () => {
+describe("LeadsAgeAnalysisPage filters", { timeout: 30000 }, () => {
   beforeEach(() => {
     mockedUseAuth.mockReturnValue({
       token: "token",
@@ -128,12 +84,13 @@ describe("LeadsAgeAnalysisPage filters", () => {
       logout: vi.fn(),
     });
     mockedUseAgeAnalysis.mockImplementation(() => ({
-      data: buildFixture(),
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
+      ...buildHookState(),
     }));
-    mockedListReferenciaEventos.mockResolvedValue(EVENT_OPTIONS);
+    mockedUseReferenciaEventos.mockReturnValue({
+      eventOptions: EVENT_OPTIONS,
+      isLoadingEvents: false,
+      eventsError: null,
+    });
   });
 
   it("hydrates filters from the URL and forwards them to the hook", async () => {

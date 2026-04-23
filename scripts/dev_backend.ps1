@@ -135,7 +135,19 @@ if ($startLeadsWorker) {
 
 $backendExitCode = 0
 try {
-    & $VenvPython -m uvicorn app.main:app --reload --app-dir backend --host $uvHost --port $uvPort
+    # Vigia so backend/app (codigo da API). Evita: (1) reload ao editar Alembic;
+    # (2) no PowerShell, --reload-exclude com "path/*" expande o * e quebra a linha de comando.
+    $uvAppDir = Join-Path "backend" "app"
+    $uvicornArgs = @(
+        "-m", "uvicorn",
+        "app.main:app",
+        "--reload",
+        "--reload-dir", $uvAppDir,
+        "--app-dir", "backend",
+        "--host", $uvHost,
+        "--port", $uvPort
+    )
+    & $VenvPython @uvicornArgs
     $backendExitCode = $LASTEXITCODE
 }
 finally {

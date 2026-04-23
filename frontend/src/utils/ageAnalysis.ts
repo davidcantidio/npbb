@@ -15,6 +15,10 @@ export const AGE_RANGE_META: Record<
     label: "26–40",
     color: "#2e7d32",
   },
+  faixa_18_40: {
+    label: "18–40",
+    color: "#00838f",
+  },
   fora_18_40: {
     label: "Fora de 18–40",
     color: "#ed6c02",
@@ -82,16 +86,24 @@ export function buildEventLabel(evento: Pick<EventoAgeAnalysis, "evento_nome" | 
   return `${evento.evento_nome} (${formatEventLocation(evento)})`;
 }
 
-export function getNonBbMetrics(evento: EventoAgeAnalysis) {
-  if (evento.clientes_bb_volume === null || evento.clientes_bb_pct === null) {
-    return {
-      volume: null,
-      pct: null,
-    };
-  }
+function pctPart(part: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((part / total) * 100 * 100) / 100;
+}
 
+export function getNonBbMetrics(evento: EventoAgeAnalysis) {
+  if (evento.nao_clientes_bb_volume !== null && evento.nao_clientes_bb_pct !== null) {
+    return { volume: evento.nao_clientes_bb_volume, pct: evento.nao_clientes_bb_pct };
+  }
+  if (evento.clientes_bb_volume === null || evento.clientes_bb_pct === null) {
+    return { volume: null, pct: null };
+  }
+  const volume = Math.max(
+    evento.base_leads - evento.clientes_bb_volume - evento.bb_indefinido_volume,
+    0,
+  );
   return {
-    volume: Math.max(evento.base_leads - evento.clientes_bb_volume, 0),
-    pct: Math.max(100 - evento.clientes_bb_pct, 0),
+    volume,
+    pct: pctPart(volume, evento.base_leads),
   };
 }

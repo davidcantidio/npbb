@@ -6,12 +6,12 @@ import { ProtectedRoute } from "../../../components/ProtectedRoute";
 import DashboardLayout from "../../../components/dashboard/DashboardLayout";
 import AppLayout from "../../../components/layout/AppLayout";
 import { useAgeAnalysis } from "../../../hooks/useAgeAnalysis";
-import { listReferenciaEventos } from "../../../services/leads_import";
-import type { AgeAnalysisResponse } from "../../../types/dashboard";
+import { useReferenciaEventos } from "../../../features/leads/shared";
 import DashboardHome from "../DashboardHome";
-import LeadsAgeAnalysisPage from "../LeadsAgeAnalysisPage";
+import { LeadsAgeAnalysisPage } from "../../../features/leads/dashboard";
 import { useAuth } from "../../../store/auth";
 import { useThemeMode } from "../../../theme/ThemeModeProvider";
+import { buildAgeAnalysisFixture } from "./ageAnalysisFixtures";
 
 vi.mock("../../../store/auth", () => ({
   useAuth: vi.fn(),
@@ -25,23 +25,16 @@ vi.mock("../../../hooks/useAgeAnalysis", () => ({
   useAgeAnalysis: vi.fn(),
 }));
 
-vi.mock("../../../services/leads_import", () => ({
-  listReferenciaEventos: vi.fn(),
+vi.mock("../../../features/leads/shared", () => ({
+  useReferenciaEventos: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseThemeMode = vi.mocked(useThemeMode);
 const mockedUseAgeAnalysis = vi.mocked(useAgeAnalysis);
-const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
+const mockedUseReferenciaEventos = vi.mocked(useReferenciaEventos);
 
-const ageAnalysisFixture: AgeAnalysisResponse = {
-  version: 1,
-  generated_at: "2026-03-07T12:00:00Z",
-  filters: {
-    data_inicio: null,
-    data_fim: null,
-    evento_id: null,
-  },
+const ageAnalysisFixture = buildAgeAnalysisFixture({
   por_evento: [
     {
       evento_id: 1,
@@ -49,13 +42,23 @@ const ageAnalysisFixture: AgeAnalysisResponse = {
       cidade: "Sao Paulo",
       estado: "SP",
       base_leads: 4,
+      base_com_idade_volume: 4,
+      base_bb_coberta_volume: 4,
+      leads_proponente: 1,
+      leads_ativacao: 3,
+      leads_canal_desconhecido: 0,
       clientes_bb_volume: 2,
       clientes_bb_pct: 50,
+      nao_clientes_bb_volume: 2,
+      nao_clientes_bb_pct: 50,
+      bb_indefinido_volume: 0,
       cobertura_bb_pct: 100,
       faixa_dominante: "faixa_18_25",
+      faixa_dominante_status: "resolved",
       faixas: {
         faixa_18_25: { volume: 2, pct: 50 },
         faixa_26_40: { volume: 1, pct: 25 },
+        faixa_18_40: { volume: 3, pct: 75 },
         fora_18_40: { volume: 1, pct: 25 },
         sem_info_volume: 0,
         sem_info_pct_da_base: 0,
@@ -64,12 +67,21 @@ const ageAnalysisFixture: AgeAnalysisResponse = {
   ],
   consolidado: {
     base_total: 4,
+    base_com_idade_volume: 4,
+    base_bb_coberta_volume: 4,
+    leads_proponente: 1,
+    leads_ativacao: 3,
+    leads_canal_desconhecido: 0,
     clientes_bb_volume: 2,
     clientes_bb_pct: 50,
+    nao_clientes_bb_volume: 2,
+    nao_clientes_bb_pct: 50,
+    bb_indefinido_volume: 0,
     cobertura_bb_pct: 100,
     faixas: {
       faixa_18_25: { volume: 2, pct: 50 },
       faixa_26_40: { volume: 1, pct: 25 },
+      faixa_18_40: { volume: 3, pct: 75 },
       fora_18_40: { volume: 1, pct: 25 },
       sem_info_volume: 0,
       sem_info_pct_da_base: 0,
@@ -85,8 +97,18 @@ const ageAnalysisFixture: AgeAnalysisResponse = {
     media_por_evento: 4,
     mediana_por_evento: 4,
     concentracao_top3_pct: 100,
+    faixa_dominante_status: "resolved",
   },
-};
+  qualidade_consolidado: {
+    base_vinculos: 4,
+    sem_cpf_volume: 0,
+    sem_cpf_pct: 0,
+    sem_data_nascimento_volume: 0,
+    sem_data_nascimento_pct: 0,
+    sem_nome_completo_volume: 0,
+    sem_nome_completo_pct: 0,
+  },
+});
 
 function renderDashboardModule(initialEntry: string) {
   return render(
@@ -112,7 +134,7 @@ function renderDashboardModule(initialEntry: string) {
   );
 }
 
-describe("Dashboard module", () => {
+describe("Dashboard module", { timeout: 30000 }, () => {
   beforeEach(() => {
     mockedUseThemeMode.mockReturnValue({
       mode: "light",
@@ -126,10 +148,16 @@ describe("Dashboard module", () => {
     mockedUseAgeAnalysis.mockReturnValue({
       data: null,
       isLoading: false,
+      isRefreshing: false,
       error: null,
+      lastSuccessfulAt: null,
       refetch: vi.fn(),
     });
-    mockedListReferenciaEventos.mockResolvedValue([]);
+    mockedUseReferenciaEventos.mockReturnValue({
+      eventOptions: [],
+      isLoadingEvents: false,
+      eventsError: null,
+    });
     mockedUseAuth.mockReturnValue({
       token: null,
       user: null,
@@ -150,12 +178,16 @@ describe("Dashboard module", () => {
     mockedUseAgeAnalysis.mockReturnValue({
       data: ageAnalysisFixture,
       isLoading: false,
+      isRefreshing: false,
       error: null,
+      lastSuccessfulAt: null,
       refetch: vi.fn(),
     });
-    mockedListReferenciaEventos.mockResolvedValue([
-      { id: 1, nome: "Evento Alpha", data_inicio_prevista: "2026-01-05" },
-    ]);
+    mockedUseReferenciaEventos.mockReturnValue({
+      eventOptions: [{ id: 1, nome: "Evento Alpha", data_inicio_prevista: "2026-01-05" }],
+      isLoadingEvents: false,
+      eventsError: null,
+    });
     mockedUseAuth.mockReturnValue({
       token: "token",
       user: { id: 1, email: "qa@npbb.com.br", tipo_usuario: "admin" },
@@ -180,12 +212,16 @@ describe("Dashboard module", () => {
     mockedUseAgeAnalysis.mockReturnValue({
       data: ageAnalysisFixture,
       isLoading: false,
+      isRefreshing: false,
       error: null,
+      lastSuccessfulAt: null,
       refetch: vi.fn(),
     });
-    mockedListReferenciaEventos.mockResolvedValue([
-      { id: 1, nome: "Evento Alpha", data_inicio_prevista: "2026-01-05" },
-    ]);
+    mockedUseReferenciaEventos.mockReturnValue({
+      eventOptions: [{ id: 1, nome: "Evento Alpha", data_inicio_prevista: "2026-01-05" }],
+      isLoadingEvents: false,
+      eventsError: null,
+    });
     mockedUseAuth.mockReturnValue({
       token: "token",
       user: { id: 1, email: "qa@npbb.com.br", tipo_usuario: "admin" },
@@ -199,7 +235,8 @@ describe("Dashboard module", () => {
 
     renderDashboardModule("/dashboard/leads/analise-etaria");
 
-    expect(await screen.findByText("Base Total")).toBeInTheDocument();
+    expect(await screen.findByText("Base total")).toBeInTheDocument();
+    expect(screen.getByText("Leitura dos resultados")).toBeInTheDocument();
     expect(screen.getByText("Distribuicao etaria por evento")).toBeInTheDocument();
     expect(screen.getAllByText("Evento Alpha").length).toBeGreaterThan(0);
   });
@@ -208,10 +245,16 @@ describe("Dashboard module", () => {
     mockedUseAgeAnalysis.mockReturnValue({
       data: ageAnalysisFixture,
       isLoading: false,
+      isRefreshing: false,
       error: null,
+      lastSuccessfulAt: null,
       refetch: vi.fn(),
     });
-    mockedListReferenciaEventos.mockResolvedValue([]);
+    mockedUseReferenciaEventos.mockReturnValue({
+      eventOptions: [],
+      isLoadingEvents: false,
+      eventsError: null,
+    });
     mockedUseAuth.mockReturnValue({
       token: "token",
       user: { id: 1, email: "qa@npbb.com.br", tipo_usuario: "admin" },

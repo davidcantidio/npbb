@@ -170,28 +170,29 @@ Use esta rotina quando chegar uma planilha de contatos.
 
 O que fazer:
 
-1. Faça login.
-2. Acesse `/leads`.
-3. Clique em `Importar XLSX`.
+1. Faca login.
+2. Acesse `/leads` para consultar a base atual.
+3. Clique em `Importar leads` ou va direto para `/leads/importar`.
 4. Escolha um arquivo `.csv` ou `.xlsx`.
-5. Revise o mapeamento das colunas.
-6. Ajuste referências, se o sistema pedir.
-7. Clique em `Importar`.
-8. Confira a tabela de leads na mesma tela.
+5. Revise o preview e o mapeamento das colunas.
+6. Ajuste referencias, se o sistema pedir.
+7. Avance pelo shell canonico `/leads/importar`.
+8. Se voce abrir `/leads/mapeamento` ou `/leads/pipeline`, o sistema redireciona para o shell canonico preservando o contexto suportado.
+9. Confira a tabela de leads em `/leads`.
 
-O que você deve observar:
+O que voce deve observar:
 
 - os nomes das colunas precisam bater com o sentido dos dados
-- depois da importação, a lista recarrega
+- depois da importacao, a lista recarrega
 
-Exemplo fictício:
+Exemplo ficticio:
 
 - arquivo: `leads_feira_inverno_2026.xlsx`
 - coluna `Nome completo` vai para nome
 - coluna `Celular` vai para telefone
 - coluna `Cidade do evento` vai para cidade
 
-Se depois da importação a pessoa "Bruno Costa" aparece na lista, a rotina funcionou.
+Se depois da importacao a pessoa "Bruno Costa" aparece na lista, a rotina funcionou.
 
 ## 3. Importar dados de publicidade
 
@@ -222,27 +223,32 @@ Se o `dry-run` disser que as linhas válidas foram reconhecidas, você está no 
 
 ## 4. Ver o dashboard de leads
 
-Use esta rotina quando quiser uma visão resumida dos resultados.
+Use esta rotina quando quiser uma visao resumida dos resultados.
 
 O que fazer:
 
-1. Faça login.
-2. Acesse `/dashboard/leads`.
+1. Faca login.
+2. Acesse `/dashboard/leads` ou diretamente `/dashboard/leads/analise-etaria`.
 3. Ajuste filtros como data, evento, cidade ou estado.
-4. Leia os números e gráficos.
+4. Leia os numeros e graficos.
 
-Exemplo fictício:
+Observacao importante:
+
+- `/dashboard/leads` redireciona para `/dashboard/leads/analise-etaria`
+- `/dashboard/leads/relatorio` continua disponivel como endpoint/script, nao como tela navegavel nesta rodada
+
+Exemplo ficticio:
 
 - evento: `Feira de Inverno 2026`
-- período: `01/06/2026` até `30/06/2026`
+- periodo: `01/06/2026` ate `30/06/2026`
 
-O que você pode descobrir:
+O que voce pode descobrir:
 
 - quantos leads entraram
 - de quais cidades vieram
-- como a captação evoluiu ao longo do tempo
+- como a captacao evoluiu ao longo do tempo
 
-## 5. Gerar relatório DOCX
+## 5. Gerar relatorio DOCX
 
 Use esta rotina quando precisar de um relatório em arquivo Word.
 

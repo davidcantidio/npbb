@@ -420,9 +420,9 @@ export default function AppLayout() {
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, width: "100%" }}>
+      <Box component="main" sx={{ flexGrow: 1, width: "100%", minWidth: 0 }}>
         <Toolbar />
-        <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 } }}>
+        <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, minWidth: 0 }}>
           <Outlet />
         </Box>
       </Box>

@@ -246,8 +246,16 @@ def _detect_batch_header_collisions(batch: LeadBatch, headers: list[str]) -> lis
     return collisions
 
 
-def _get_batch_or_raise(batch_id: int, db: Session) -> LeadBatch:
-    batch = db.get(LeadBatch, batch_id)
+def _get_batch_or_raise(
+    batch_id: int,
+    db: Session,
+    *,
+    owner_user_id: int | None = None,
+) -> LeadBatch:
+    stmt = select(LeadBatch).where(LeadBatch.id == batch_id)
+    if owner_user_id is not None:
+        stmt = stmt.where(LeadBatch.enviado_por == owner_user_id)
+    batch = db.exec(stmt).first()
     if not batch:
         raise ValueError(f"Lote {batch_id} nao encontrado")
     return batch
@@ -302,16 +310,23 @@ def _load_batch_mapping_context_from_batch(
     )
 
 
-def _load_batch_mapping_context(batch_id: int, db: Session) -> _LoadedBatchMappingContext:
-    batch = _get_batch_or_raise(batch_id, db)
+def _load_batch_mapping_context(
+    batch_id: int,
+    db: Session,
+    *,
+    owner_user_id: int | None = None,
+) -> _LoadedBatchMappingContext:
+    batch = _get_batch_or_raise(batch_id, db, owner_user_id=owner_user_id)
     return _load_batch_mapping_context_from_batch(batch, db)
 
 
 def _load_batch_mapping_contexts(
     batch_ids: list[int],
     db: Session,
+    *,
+    owner_user_id: int | None = None,
 ) -> tuple[list[_LoadedBatchMappingContext], dict[str, dict[str, LeadColumnAlias]]]:
-    batches = [_get_batch_or_raise(batch_id, db) for batch_id in batch_ids]
+    batches = [_get_batch_or_raise(batch_id, db, owner_user_id=owner_user_id) for batch_id in batch_ids]
     alias_rows_by_platform = _load_alias_rows_by_platform(
         db,
         {batch.plataforma_origem for batch in batches},
@@ -453,11 +468,11 @@ def _build_batch_column_preview(
 def suggest_column_mapping(
     batch_id: int,
     db: Session,
+    *,
+    owner_user_id: int | None = None,
 ) -> list[ColumnSuggestion]:
     """Retorna sugestoes automaticas de mapeamento para todas as colunas do lote."""
-    batch = db.get(LeadBatch, batch_id)
-    if not batch:
-        raise ValueError(f"Lote {batch_id} nao encontrado")
+    batch = _get_batch_or_raise(batch_id, db, owner_user_id=owner_user_id)
     payload = read_batch_payload(batch)
     if not payload:
         raise ValueError(f"Lote {batch_id} nao possui arquivo Bronze disponivel")
@@ -473,12 +488,14 @@ def suggest_column_mapping(
 def suggest_batch_column_mapping(
     batch_ids: list[int],
     db: Session,
+    *,
+    owner_user_id: int | None = None,
 ) -> BatchColumnPreview:
     unique_batch_ids = _unique_positive_batch_ids(batch_ids)
     if not unique_batch_ids:
         raise ValueError("Informe ao menos um lote valido para o mapeamento batch.")
 
-    contexts, _ = _load_batch_mapping_contexts(unique_batch_ids, db)
+    contexts, _ = _load_batch_mapping_contexts(unique_batch_ids, db, owner_user_id=owner_user_id)
     return _build_batch_column_preview(unique_batch_ids, contexts)
 
 
@@ -632,7 +649,7 @@ def mapear_batch(
 ) -> MapearResult:
     """Aplica mapeamento confirmado em um lote e persiste a camada silver."""
     started_at = perf_counter()
-    batch = _get_batch_or_raise(batch_id, db)
+    batch = _get_batch_or_raise(batch_id, db, owner_user_id=user_id)
     alias_rows_by_platform = _load_alias_rows_by_platform(db, {batch.plataforma_origem})
     aliases_lookup_by_platform = {
         platform: _alias_lookup_from_rows(alias_rows)
@@ -695,7 +712,11 @@ def mapear_batches(
     if not any(normalized_mapping.values()):
         raise ValueError("mapeamento nao pode ser vazio")
 
-    contexts, alias_rows_by_platform = _load_batch_mapping_contexts(unique_batch_ids, db)
+    contexts, alias_rows_by_platform = _load_batch_mapping_contexts(
+        unique_batch_ids,
+        db,
+        owner_user_id=user_id,
+    )
     preview = _build_batch_column_preview(unique_batch_ids, contexts)
     if preview.blockers:
         raise BatchMappingBlockedError(preview.blockers)

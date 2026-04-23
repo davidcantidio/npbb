@@ -1,0 +1,3 @@
+column,rows_seen,format_blank,format_iso_like,format_mdy_only,format_dmy_only,format_both_valid_same,format_both_valid_different,format_unparseable,iso_valid_rows,mdy_valid_rows,dmy_valid_rows,auto_safe_valid_rows,auto_safe_ambiguous_rows,auto_safe_missing_rows,auto_safe_unparseable_rows,auto_safe_before_min_rows,auto_safe_future_rows
+data_evento,57793,0,0,44394,0,0,13399,0,0,57793,13399,44394,13399,0,0,0,0
+data_nascimento,57793,9027,0,29426,0,1679,17661,0,0,48766,19340,29424,19340,9027,0,1,1

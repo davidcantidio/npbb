@@ -5,7 +5,8 @@ import { useEffect } from "react";
 import { useAgeAnalysis } from "../useAgeAnalysis";
 import { getAgeAnalysis } from "../../services/dashboard_age_analysis";
 import { useAuth } from "../../store/auth";
-import type { AgeAnalysisFiltersQuery, AgeAnalysisResponse } from "../../types/dashboard";
+import type { AgeAnalysisFiltersQuery } from "../../types/dashboard";
+import { buildAgeAnalysisFixture } from "../../pages/dashboard/__tests__/ageAnalysisFixtures";
 
 vi.mock("../../store/auth", () => ({
   useAuth: vi.fn(),
@@ -36,63 +37,6 @@ function HookStateObserver({
   return null;
 }
 
-function buildFixture(overrides: Partial<AgeAnalysisResponse> = {}): AgeAnalysisResponse {
-  return {
-    version: 1,
-    generated_at: "2026-03-07T12:00:00Z",
-    filters: {
-      data_inicio: null,
-      data_fim: null,
-      evento_id: null,
-    },
-    por_evento: [
-      {
-        evento_id: 1,
-        evento_nome: "Evento Alpha",
-        cidade: "Sao Paulo",
-        estado: "SP",
-        base_leads: 10,
-        clientes_bb_volume: 4,
-        clientes_bb_pct: 40,
-        cobertura_bb_pct: 90,
-        faixa_dominante: "faixa_18_25",
-        faixas: {
-          faixa_18_25: { volume: 5, pct: 50 },
-          faixa_26_40: { volume: 3, pct: 30 },
-          fora_18_40: { volume: 2, pct: 20 },
-          sem_info_volume: 0,
-          sem_info_pct_da_base: 0,
-        },
-      },
-    ],
-    consolidado: {
-      base_total: 10,
-      clientes_bb_volume: 4,
-      clientes_bb_pct: 40,
-      cobertura_bb_pct: 90,
-      faixas: {
-        faixa_18_25: { volume: 5, pct: 50 },
-        faixa_26_40: { volume: 3, pct: 30 },
-        fora_18_40: { volume: 2, pct: 20 },
-        sem_info_volume: 0,
-        sem_info_pct_da_base: 0,
-      },
-      top_eventos: [
-        {
-          evento_id: 1,
-          evento_nome: "Evento Alpha",
-          base_leads: 10,
-          faixa_dominante: "faixa_18_25",
-        },
-      ],
-      media_por_evento: 10,
-      mediana_por_evento: 10,
-      concentracao_top3_pct: 100,
-    },
-    ...overrides,
-  };
-}
-
 describe("useAgeAnalysis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -118,7 +62,7 @@ describe("useAgeAnalysis", () => {
       data_inicio: "2026-01-01",
       data_fim: "",
     };
-    const response = buildFixture();
+    const response = buildAgeAnalysisFixture();
     mockedGetAgeAnalysis.mockResolvedValue(response);
 
     const states: HookState[] = [];
@@ -155,7 +99,7 @@ describe("useAgeAnalysis", () => {
       logout: vi.fn(),
     });
 
-    mockedGetAgeAnalysis.mockResolvedValue(buildFixture());
+    mockedGetAgeAnalysis.mockResolvedValue(buildAgeAnalysisFixture());
 
     const states: HookState[] = [];
     render(<HookStateObserver filters={{}} onState={(state) => states.push(state)} />);
@@ -187,9 +131,10 @@ describe("useAgeAnalysis", () => {
     expect(latestState()?.error).toBe("network-failed");
   });
 
-  it("refetches with normalized filters and resets data on subsequent failures", async () => {
+  it("refetches with normalized filters, preserves cached data and exposes the new error", async () => {
+    const response = buildAgeAnalysisFixture();
     mockedGetAgeAnalysis
-      .mockResolvedValueOnce(buildFixture())
+      .mockResolvedValueOnce(response)
       .mockRejectedValueOnce(new Error("timeout"));
 
     const states: HookState[] = [];
@@ -209,7 +154,7 @@ describe("useAgeAnalysis", () => {
 
     await waitFor(() => {
       expect(latestState()?.isLoading).toBe(false);
-      expect(latestState()?.data).toEqual(buildFixture());
+      expect(latestState()?.data).toEqual(response);
     });
 
     expect(mockedGetAgeAnalysis).toHaveBeenCalledTimes(1);
@@ -224,7 +169,7 @@ describe("useAgeAnalysis", () => {
     await waitFor(() => {
       expect(mockedGetAgeAnalysis).toHaveBeenCalledTimes(2);
       expect(latestState()?.isLoading).toBe(false);
-      expect(latestState()?.data).toBeNull();
+      expect(latestState()?.data).toEqual(response);
       expect(latestState()?.error).toBe("timeout");
     });
 

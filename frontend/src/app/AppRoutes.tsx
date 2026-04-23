@@ -23,7 +23,7 @@ const EventLeadFormConfig = lazy(() => import("../pages/EventLeadFormConfig"));
 const EventQuestionario = lazy(() => import("../pages/EventQuestionario"));
 const EventsList = lazy(() => import("../pages/EventsList"));
 const LeadsAgeAnalysisPage = lazy(() => import("../pages/dashboard/LeadsAgeAnalysisPage"));
-const LeadsImport = lazy(() => import("../pages/LeadsImport"));
+const ImportacaoPage = lazy(() => import("../pages/leads/ImportacaoPage"));
 const LeadsListPage = lazy(() => import("../pages/leads/LeadsListPage"));
 const NewEvent = lazy(() => import("../pages/NewEvent"));
 const EventSelectorPage = lazy(() => import("../pages/EventSelectorPage"));
@@ -115,7 +115,7 @@ export default function AppRoutes() {
           <Route path="/ativos" element={<AtivosList />} />
           <Route path="/ingressos" element={<IngressosPortal />} />
           <Route path="/leads" element={withSuspense(<LeadsListPage />)} />
-          <Route path="/leads/importar" element={withSuspense(<LeadsImport />)} />
+          <Route path="/leads/importar" element={withSuspense(<ImportacaoPage />)} />
           <Route path="/leads/importacao-avancada" element={<Navigate to="/leads/importar" replace />} />
           <Route path="/leads/mapeamento" element={<LegacyLeadStepRedirect step="mapping" />} />
           <Route path="/leads/pipeline" element={<LegacyLeadStepRedirect step="pipeline" />} />

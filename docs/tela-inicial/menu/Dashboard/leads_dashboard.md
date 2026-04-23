@@ -2,6 +2,11 @@
 
 Status: backend MVP implementado.
 
+## Rotas e endpoints
+- UI atual: `/dashboard/leads/analise-etaria`
+- Redirect de compatibilidade: `/dashboard/leads` -> `/dashboard/leads/analise-etaria`
+- Sem tela roteada nesta fase: `/dashboard/leads/relatorio`
+
 ## Endpoint
 - `GET /dashboard/leads`
 - `GET /dashboard/leads/relatorio` (TMJ 2025)

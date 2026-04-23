@@ -161,22 +161,38 @@ def _lead_batch_file_sha256(batch: LeadBatch | None) -> str | None:
     return _normalize_sha256(batch.__dict__.get("arquivo_sha256"))
 
 
-def load_batch_without_bronze(db: Session, batch_id: int) -> LeadBatch | None:
-    return db.exec(
+def load_batch_without_bronze(
+    db: Session,
+    batch_id: int,
+    *,
+    owner_user_id: int | None = None,
+) -> LeadBatch | None:
+    stmt = (
         select(LeadBatch)
         .options(load_only(*LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE))
         .where(LeadBatch.id == batch_id)
-    ).first()
+    )
+    if owner_user_id is not None:
+        stmt = stmt.where(LeadBatch.enviado_por == owner_user_id)
+    return db.exec(stmt).first()
 
 
-def load_batch_without_bronze_for_update(db: Session, batch_id: int) -> LeadBatch | None:
+def load_batch_without_bronze_for_update(
+    db: Session,
+    batch_id: int,
+    *,
+    owner_user_id: int | None = None,
+) -> LeadBatch | None:
     """Carrega o lote sem blob Bronze com bloqueio de linha para despacho seguro da pipeline."""
-    return db.exec(
+    stmt = (
         select(LeadBatch)
         .options(load_only(*LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE))
         .where(LeadBatch.id == batch_id)
         .with_for_update()
-    ).first()
+    )
+    if owner_user_id is not None:
+        stmt = stmt.where(LeadBatch.enviado_por == owner_user_id)
+    return db.exec(stmt).first()
 
 
 def pipeline_stale_after_seconds() -> int:

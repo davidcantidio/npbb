@@ -13,6 +13,8 @@ type KpiCardProps = {
   progressValue?: number | null;
   progressLabel?: string;
   progressTooltip?: string;
+  /** Rótulo acessível da região (ex.: nome do KPI para leitores de tela). */
+  ariaLabel?: string;
 };
 
 export function KpiCard({
@@ -25,12 +27,18 @@ export function KpiCard({
   progressValue,
   progressLabel,
   progressTooltip,
+  ariaLabel,
 }: KpiCardProps) {
   const normalizedProgress =
     typeof progressValue === "number" ? Math.min(Math.max(progressValue, 0), 100) : null;
 
   return (
-    <Card variant="outlined" sx={{ height: "100%" }}>
+    <Card
+      variant="outlined"
+      component="section"
+      aria-label={ariaLabel ?? title}
+      sx={{ height: "100%" }}
+    >
       <CardContent>
         <Stack spacing={2}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>

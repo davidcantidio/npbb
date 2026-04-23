@@ -20,4 +20,20 @@ fi
 export PYTHONPATH="${REPO_ROOT}:${BACKEND_DIR}:${REPO_ROOT}/PROJETOS${PYTHONPATH:+:${PYTHONPATH}}"
 cd "${BACKEND_DIR}"
 
-exec "${PYTHON_BIN}" -m uvicorn app.main:app --reload --host "${UVICORN_HOST:-127.0.0.1}" --port "${UVICORN_PORT:-8000}"
+reload_excludes=(
+  "backend/alembic/versions/*"
+)
+
+uvicorn_args=(
+  -m uvicorn
+  app.main:app
+  --reload
+  --host "${UVICORN_HOST:-127.0.0.1}"
+  --port "${UVICORN_PORT:-8000}"
+)
+
+for pattern in "${reload_excludes[@]}"; do
+  uvicorn_args+=(--reload-exclude "${pattern}")
+done
+
+exec "${PYTHON_BIN}" "${uvicorn_args[@]}"

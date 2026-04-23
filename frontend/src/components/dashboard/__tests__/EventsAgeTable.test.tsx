@@ -12,13 +12,23 @@ function buildEvent(overrides: Partial<EventoAgeAnalysis>): EventoAgeAnalysis {
     cidade: "Sao Paulo",
     estado: "SP",
     base_leads: 10,
+    base_com_idade_volume: 9,
+    base_bb_coberta_volume: 9,
+    leads_proponente: 3,
+    leads_ativacao: 7,
+    leads_canal_desconhecido: 0,
     clientes_bb_volume: 4,
     clientes_bb_pct: 40,
+    nao_clientes_bb_volume: 5,
+    nao_clientes_bb_pct: 50,
+    bb_indefinido_volume: 1,
     cobertura_bb_pct: 90,
     faixa_dominante: "faixa_18_25",
+    faixa_dominante_status: "resolved",
     faixas: {
       faixa_18_25: { volume: 5, pct: 50 },
       faixa_26_40: { volume: 3, pct: 30 },
+      faixa_18_40: { volume: 8, pct: 80 },
       fora_18_40: { volume: 2, pct: 20 },
       sem_info_volume: 0,
       sem_info_pct_da_base: 0,
@@ -41,30 +51,50 @@ function getRowCells(eventId: number) {
 describe("EventsAgeTable", () => {
   it("renders all required fields from PRD section 3.2 and keeps extra columns", () => {
     render(<EventsAgeTable events={[buildEvent({})]} />);
-    const [eventCell, baseCell, clientesBbCell, naoClientesCell, , faixa18a25Cell, faixa26a40Cell, fora1840Cell, , faixaDominanteCell] =
-      getRowCells(1);
+    const table = screen.getByRole("table", { name: /analise etaria/i });
+    const [
+      eventCell,
+      baseCell,
+      propCell,
+      ativCell,
+      clientesBbCell,
+      naoClientesCell,
+      ,
+      faixa1840Cell,
+      faixa18a25Cell,
+      faixa26a40Cell,
+      fora1840Cell,
+      ,
+      faixaDominanteCell,
+    ] = getRowCells(1);
 
-    expect(screen.getByRole("button", { name: "Evento" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Base" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clientes BB" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nao clientes" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "18-25" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "26-40" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Fora 18-40" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Faixa dominante" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cobertura BB" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sem info" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Evento" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Base" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Proponente" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Ativacao" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Clientes BB" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Nao clientes" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "18-40" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "18-25" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "26-40" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Fora 18-40" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Faixa dominante" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Cobertura BB" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Sem info" })).toBeInTheDocument();
 
     expect(eventCell).toHaveTextContent("Evento Alpha");
     expect(eventCell).toHaveTextContent("Sao Paulo - SP");
     expect(baseCell).toHaveTextContent("10");
+    expect(propCell).toHaveTextContent("3");
+    expect(ativCell).toHaveTextContent("7");
     expect(clientesBbCell).toHaveTextContent(/4\s*\/\s*40,0%/);
-    expect(naoClientesCell).toHaveTextContent(/6\s*\/\s*60,0%/);
+    expect(naoClientesCell).toHaveTextContent(/5\s*\/\s*50,0%/);
+    expect(faixa1840Cell).toHaveTextContent(/8\s*\/\s*80,0%/);
     expect(faixa18a25Cell).toHaveTextContent(/5\s*\/\s*50,0%/);
     expect(faixa26a40Cell).toHaveTextContent(/3\s*\/\s*30,0%/);
     expect(fora1840Cell).toHaveTextContent(/2\s*\/\s*20,0%/);
     expect(faixaDominanteCell).toHaveTextContent("18–25");
-  });
+  }, 20_000);
 
   it("renders compact warning banner text when coverage is partial", () => {
     render(
@@ -96,12 +126,14 @@ describe("EventsAgeTable", () => {
             evento_nome: "Evento Null",
             clientes_bb_volume: null,
             clientes_bb_pct: null,
+            nao_clientes_bb_volume: null,
+            nao_clientes_bb_pct: null,
             cobertura_bb_pct: 15,
           }),
         ]}
       />,
     );
-    const [, , clientesBbCell, naoClientesCell] = getRowCells(3);
+    const [, , , , clientesBbCell, naoClientesCell] = getRowCells(3);
 
     expect(clientesBbCell).toHaveTextContent(/—\s*\/\s*—/);
     expect(naoClientesCell).toHaveTextContent(/—\s*\/\s*—/);
@@ -126,36 +158,40 @@ describe("EventsAgeTable", () => {
             base_leads: 5,
             clientes_bb_volume: null,
             clientes_bb_pct: null,
+            nao_clientes_bb_volume: null,
+            nao_clientes_bb_pct: null,
             cobertura_bb_pct: 15,
           }),
         ]}
       />,
     );
 
+    const table = screen.getByRole("table", { name: /analise etaria/i });
+
     expect(getRenderedRowIds()).toEqual([2, 1, 3]);
-    expect(screen.getByRole("button", { name: "Base" }).closest("th")).toHaveAttribute(
+    expect(within(table).getByRole("button", { name: "Base" }).closest("th")).toHaveAttribute(
       "aria-sort",
       "descending",
     );
 
-    await user.click(screen.getByRole("button", { name: "Base" }));
+    await user.click(within(table).getByRole("button", { name: "Base" }));
     await waitFor(() => {
       expect(getRenderedRowIds()).toEqual([3, 1, 2]);
     });
-    expect(screen.getByRole("button", { name: "Base" }).closest("th")).toHaveAttribute(
+    expect(within(table).getByRole("button", { name: "Base" }).closest("th")).toHaveAttribute(
       "aria-sort",
       "ascending",
     );
 
-    await user.click(screen.getByRole("button", { name: "Clientes BB" }));
+    await user.click(within(table).getByRole("button", { name: "Clientes BB" }));
     await waitFor(() => {
       expect(getRenderedRowIds()).toEqual([2, 1, 3]);
     });
-    expect(screen.getByRole("button", { name: "Clientes BB" }).closest("th")).toHaveAttribute(
+    expect(within(table).getByRole("button", { name: "Clientes BB" }).closest("th")).toHaveAttribute(
       "aria-sort",
       "descending",
     );
-  });
+  }, 20_000);
 
   it("makes rows clickable and calls onSelectEvento with the event id", async () => {
     const user = userEvent.setup();

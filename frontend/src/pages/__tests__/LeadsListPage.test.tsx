@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
-import LeadsListPage from "../leads/LeadsListPage";
+import { LeadsListPage } from "../../features/leads/list";
 import { useAuth } from "../../store/auth";
 import { listLeads, type LeadListItem } from "../../services/leads_import";
 import { triggerBlobDownload } from "../../services/leads_export";
@@ -21,7 +21,7 @@ vi.mock("../../services/leads_export", () => ({
 vi.mock("../../services/leads_list_export", () => ({
   exportLeadsListCsv: vi.fn(),
 }));
-vi.mock("../dashboard/useReferenciaEventos", () => ({
+vi.mock("../../features/leads/shared", () => ({
   useReferenciaEventos: () => ({
     eventOptions: [],
     isLoadingEvents: false,

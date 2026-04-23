@@ -6,7 +6,7 @@ import {
   getLeadListCsvCells,
   LEADS_LIST_CSV_HEADERS,
   resolveLeadListExportEvent,
-} from "../leads/leadsListExport";
+} from "../../features/leads/list";
 
 function makeLead(overrides: Partial<LeadListItem> = {}): LeadListItem {
   return {

@@ -49,6 +49,9 @@ class LeadBatchRead(BaseModel):
     gold_dq_discarded_rows: Optional[int] = None
     gold_dq_issue_counts: Optional[dict[str, int]] = None
     gold_dq_invalid_records_total: Optional[int] = None
+    reprocess_kind: Optional[str] = None
+    reprocess_run_id: Optional[str] = None
+    reprocess_source_batch_id: Optional[int] = None
     created_at: datetime
     # Metadados de recuperacao Gold (nao sao colunas ORM; preenchidos no router).
     gold_pipeline_stale_after_seconds: Optional[int] = None

@@ -1,6 +1,7 @@
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import { Alert, Box, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography, useTheme } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import { formatPercent } from "../../utils/ageAnalysis";
 import {
@@ -38,14 +39,19 @@ export function CoverageBanner({
   variant = "default",
   scope = "consolidated",
 }: CoverageBannerProps) {
+  const theme = useTheme();
   const status = getCoverageStatus(coverage, { warning: thresholdWarning, danger: thresholdDanger });
   if (status === "normal") return null;
 
   const isDanger = status === "danger";
   const message = getCoverageMessage(status, scope);
   const label = isDanger ? "Cobertura critica" : "Cobertura parcial";
-  const backgroundColor = isDanger ? "#FEE2E2" : "#FEF3C7";
-  const foregroundColor = isDanger ? "#991B1B" : "#92400E";
+  const isDark = theme.palette.mode === "dark";
+  const backgroundColor = isDanger
+    ? alpha(theme.palette.error.main, isDark ? 0.2 : 0.12)
+    : alpha(theme.palette.warning.main, isDark ? 0.22 : 0.14);
+  const foregroundColor = theme.palette.text.primary;
+  const iconColor = isDanger ? theme.palette.error.main : theme.palette.warning.main;
 
   if (variant === "compact") {
     return (
@@ -67,6 +73,7 @@ export function CoverageBanner({
             borderRadius: 1.5,
             bgcolor: backgroundColor,
             color: foregroundColor,
+            "& .MuiSvgIcon-root": { color: iconColor },
           }}
         >
           <Box sx={{ display: "flex", pt: 0.1 }}>
@@ -93,7 +100,7 @@ export function CoverageBanner({
         bgcolor: backgroundColor,
         color: foregroundColor,
         "& .MuiAlert-icon": {
-          color: foregroundColor,
+          color: iconColor,
         },
       }}
     >

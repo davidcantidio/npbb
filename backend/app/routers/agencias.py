@@ -2,10 +2,9 @@
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func
-from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
-from app.db.database import _agent_debug_ndjson, get_session
+from app.db.database import get_session
 from app.models.models import Agencia
 from app.schemas.agencia import AgenciaRead
 
@@ -33,23 +32,7 @@ def listar_agencias(
         query = query.where((Agencia.nome.ilike(like)) | (Agencia.dominio.ilike(like)))
         count_query = count_query.where((Agencia.nome.ilike(like)) | (Agencia.dominio.ilike(like)))
 
-    # #region agent log
-    try:
-        total = session.exec(count_query).one()
-        items = session.exec(query.order_by(Agencia.nome).offset(skip).limit(limit)).all()
-    except OperationalError as e:
-        msg = str(e.orig) if getattr(e, "orig", None) else str(e)
-        _agent_debug_ndjson(
-            "agencias.py:listar_agencias",
-            "OperationalError_list",
-            {
-                "msg_prefix": msg[:240],
-                "has_timeout": "timed out" in msg.lower() or "10060" in msg,
-                "has_server_closed": "server closed the connection" in msg.lower(),
-            },
-            "H3",
-        )
-        raise
-    # #endregion
+    total = session.exec(count_query).one()
+    items = session.exec(query.order_by(Agencia.nome).offset(skip).limit(limit)).all()
     response.headers["X-Total-Count"] = str(total)
     return items

@@ -14,12 +14,14 @@ import {
   TableSortLabel,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import type { EventoAgeAnalysis } from "../../types/dashboard";
 import {
   formatEventLocation,
   formatInteger,
   formatPercent,
+  getAgeBreakdownPercent,
   getDominantAgeRangeLabel,
   getNonBbMetrics,
 } from "../../utils/ageAnalysis";
@@ -32,11 +34,15 @@ type SortDirection = "asc" | "desc";
 type SortKey =
   | "evento_nome"
   | "base_leads"
+  | "leads_proponente"
+  | "leads_ativacao"
   | "clientes_bb_volume"
   | "clientes_bb_pct"
   | "nao_clientes_volume"
   | "nao_clientes_pct"
   | "cobertura_bb_pct"
+  | "faixa_18_40_volume"
+  | "faixa_18_40_pct"
   | "faixa_18_25_volume"
   | "faixa_18_25_pct"
   | "faixa_26_40_volume"
@@ -82,6 +88,20 @@ const columns: ColumnDefinition[] = [
     align: "right",
     accessor: (event) => event.base_leads,
     render: (event) => formatInteger(event.base_leads),
+  },
+  {
+    key: "leads_proponente",
+    label: "Proponente",
+    align: "right",
+    accessor: (event) => event.leads_proponente,
+    render: (event) => formatInteger(event.leads_proponente),
+  },
+  {
+    key: "leads_ativacao",
+    label: "Ativacao",
+    align: "right",
+    accessor: (event) => event.leads_ativacao,
+    render: (event) => formatInteger(event.leads_ativacao),
   },
   {
     key: "clientes_bb_volume",
@@ -136,6 +156,16 @@ const columns: ColumnDefinition[] = [
         <CoverageBanner coverage={event.cobertura_bb_pct} variant="compact" scope="event" />
       </Box>
     ),
+  },
+  {
+    key: "faixa_18_40_volume",
+    label: "18-40",
+    align: "right",
+    accessor: (event) => event.faixas.faixa_18_40.volume,
+    render: (event) =>
+      `${formatInteger(event.faixas.faixa_18_40.volume)} / ${formatPercent(
+        getAgeBreakdownPercent(event.faixas, "faixa_18_40"),
+      )}`,
   },
   {
     key: "faixa_18_25_volume",
@@ -215,8 +245,14 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
     setSortDirection(key === "evento_nome" || key === "faixa_dominante" ? "asc" : "desc");
   };
 
+  const handleRowKeyDown = (eventoId: number, key: string) => {
+    if (!onSelectEvento) return;
+    if (key !== "Enter" && key !== " ") return;
+    onSelectEvento(eventoId);
+  };
+
   return (
-    <Card variant="outlined">
+    <Card variant="outlined" component="section" aria-label="Tabela de eventos da analise etaria">
       <CardContent>
         <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>
           Eventos no filtro
@@ -232,7 +268,7 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
               data-testid="events-age-table-grid"
               aria-label="Tabela de eventos da analise etaria"
               size="small"
-              sx={{ minWidth: 1240 }}
+              sx={{ minWidth: 1480 }}
             >
               <TableHead>
                 <TableRow>
@@ -260,9 +296,24 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
                     data-testid={`events-age-table-row-${event.evento_id}`}
                     hover
                     onClick={onSelectEvento ? () => onSelectEvento(event.evento_id) : undefined}
+                    onKeyDown={
+                      onSelectEvento ? (tableEvent) => handleRowKeyDown(event.evento_id, tableEvent.key) : undefined
+                    }
+                    tabIndex={onSelectEvento ? 0 : undefined}
+                    aria-label={onSelectEvento ? `Selecionar evento ${event.evento_nome}` : undefined}
                     sx={{
                       cursor: onSelectEvento ? "pointer" : "default",
-                      bgcolor: index % 2 === 0 ? "transparent" : "grey.50",
+                      bgcolor: (theme) =>
+                        index % 2 === 0
+                          ? "transparent"
+                          : theme.palette.mode === "dark"
+                            ? alpha(theme.palette.common.white, 0.06)
+                            : theme.palette.grey[50],
+                      "&:focus-visible": {
+                        outline: "2px solid",
+                        outlineColor: "primary.main",
+                        outlineOffset: -2,
+                      },
                     }}
                   >
                     {columns.map((column) => (

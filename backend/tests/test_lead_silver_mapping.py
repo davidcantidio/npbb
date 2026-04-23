@@ -55,10 +55,15 @@ def client(engine):
     app.dependency_overrides.clear()
 
 
-def _seed_user(session: Session) -> Usuario:
+def _seed_user(
+    session: Session,
+    *,
+    email: str = "silver@npbb.com.br",
+    password: str = "senha123",
+) -> Usuario:
     user = Usuario(
-        email="silver@npbb.com.br",
-        password_hash=hash_password("senha123"),
+        email=email,
+        password_hash=hash_password(password),
         tipo_usuario="npbb",
         ativo=True,
     )
@@ -92,9 +97,15 @@ def _seed_evento(session: Session) -> Evento:
     return evento
 
 
-def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
-    _seed_user(session)
-    resp = client.post("/auth/login", json={"email": "silver@npbb.com.br", "password": "senha123"})
+def _auth_header(
+    client: TestClient,
+    session: Session,
+    *,
+    email: str = "silver@npbb.com.br",
+    password: str = "senha123",
+) -> dict[str, str]:
+    _seed_user(session, email=email, password=password)
+    resp = client.post("/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200, resp.text
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -321,6 +332,15 @@ class TestGetColunas:
         resp = client.get("/leads/batches/9999/colunas", headers=auth)
         assert resp.status_code == 404
 
+    def test_hides_batch_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            owner_auth = _auth_header(client, s, email="silver-owner@npbb.com.br", password="senha123")
+            other_auth = _auth_header(client, s, email="silver-other@npbb.com.br", password="senha456")
+
+        batch_id = _upload_batch(client, owner_auth, CSV_CANONICAL)
+        resp = client.get(f"/leads/batches/{batch_id}/colunas", headers=other_auth)
+        assert resp.status_code == 404
+
     def test_requires_auth(self, client):
         resp = client.get("/leads/batches/1/colunas")
         assert resp.status_code == 401
@@ -426,6 +446,23 @@ class TestPostMapear:
             by_col = {a.nome_coluna_original: a.campo_canonico for a in aliases}
             assert by_col["nome_do_cliente"] == "nome"
             assert by_col["cpf_lead"] == "cpf"
+
+    def test_hides_single_mapping_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            owner_auth = _auth_header(client, s, email="single-owner@npbb.com.br", password="senha123")
+            other_auth = _auth_header(client, s, email="single-other@npbb.com.br", password="senha456")
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, owner_auth, CSV_CANONICAL)
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**other_auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {"cpf": "cpf", "nome": "nome"},
+            },
+        )
+        assert resp.status_code == 404
 
     def test_remapping_is_idempotent(self, client, engine):
         with Session(engine) as s:
@@ -649,6 +686,18 @@ class TestBatchMappingEndpoints:
         assert cpf_group["confianca"] == "exact_match"
         assert [item["batch_id"] for item in cpf_group["ocorrencias"]] == [batch_a, batch_b]
 
+    def test_batch_colunas_hides_batches_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            owner_auth = _auth_header(client, s, email="batch-owner@npbb.com.br", password="senha123")
+            other_auth = _auth_header(client, s, email="batch-other@npbb.com.br", password="senha456")
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, owner_auth, b"cpf\n12345678901\n")
+        _set_batch_evento(engine, batch_id, evento.id)
+
+        resp = client.post("/leads/batches/colunas", headers=other_auth, json={"batch_ids": [batch_id]})
+        assert resp.status_code == 404
+
     def test_batch_colunas_warns_when_group_suggestions_diverge(self, client, engine):
         with Session(engine) as s:
             auth = _auth_header(client, s)
@@ -828,6 +877,25 @@ class TestBatchMappingEndpoints:
             assert batch_ok_db is not None and batch_ok_db.stage == BatchStage.BRONZE
             assert batch_missing_db is not None and batch_missing_db.stage == BatchStage.BRONZE
             assert s.exec(select(LeadSilver)).all() == []
+
+    def test_batch_mapear_hides_batches_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            owner_auth = _auth_header(client, s, email="map-owner@npbb.com.br", password="senha123")
+            other_auth = _auth_header(client, s, email="map-other@npbb.com.br", password="senha456")
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, owner_auth, b"cpf\n12345678901\n")
+        _set_batch_evento(engine, batch_id, evento.id)
+
+        resp = client.post(
+            "/leads/batches/mapear",
+            headers={**other_auth, "Content-Type": "application/json"},
+            json={
+                "batch_ids": [batch_id],
+                "mapeamento": {"cpf": "cpf"},
+            },
+        )
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------

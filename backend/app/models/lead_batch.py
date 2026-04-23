@@ -76,6 +76,13 @@ class LeadBatch(SQLModel, table=True):
     gold_dq_discarded_rows: Optional[int] = Field(default=None)
     gold_dq_issue_counts: Optional[dict[str, int]] = Field(default=None, sa_column=Column(JSON, nullable=True))
     gold_dq_invalid_records_total: Optional[int] = Field(default=None)
+    reprocess_kind: Optional[str] = Field(default=None, max_length=64, index=True)
+    reprocess_run_id: Optional[str] = Field(default=None, max_length=36, index=True)
+    reprocess_source_batch_id: Optional[int] = Field(
+        default=None,
+        foreign_key="lead_batches.id",
+        index=True,
+    )
 
     created_at: datetime = Field(default_factory=now_utc)
     updated_at: datetime = Field(

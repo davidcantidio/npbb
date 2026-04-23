@@ -8,12 +8,21 @@ import { ConsolidatedPanel } from "../ConsolidatedPanel";
 function buildConsolidated(overrides: Partial<ConsolidadoAgeAnalysis> = {}): ConsolidadoAgeAnalysis {
   return {
     base_total: 250,
+    base_com_idade_volume: 240,
+    base_bb_coberta_volume: 225,
+    leads_proponente: 80,
+    leads_ativacao: 170,
+    leads_canal_desconhecido: 0,
     clientes_bb_volume: 120,
     clientes_bb_pct: 48,
+    nao_clientes_bb_volume: 115,
+    nao_clientes_bb_pct: 46,
+    bb_indefinido_volume: 15,
     cobertura_bb_pct: 90,
     faixas: {
       faixa_18_25: { volume: 100, pct: 40 },
       faixa_26_40: { volume: 120, pct: 48 },
+      faixa_18_40: { volume: 220, pct: 88 },
       fora_18_40: { volume: 20, pct: 8 },
       sem_info_volume: 10,
       sem_info_pct_da_base: 4,
@@ -41,6 +50,7 @@ function buildConsolidated(overrides: Partial<ConsolidadoAgeAnalysis> = {}): Con
     media_por_evento: 83.333,
     mediana_por_evento: 60.49,
     concentracao_top3_pct: 80,
+    faixa_dominante_status: "resolved",
     ...overrides,
   };
 }

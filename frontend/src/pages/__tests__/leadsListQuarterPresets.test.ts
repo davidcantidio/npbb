@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { inferActiveQuarter, quarterDateRangeISO } from "../leads/leadsListQuarterPresets";
+import { inferActiveQuarter, quarterDateRangeISO } from "../../features/leads/list";
 
 describe("quarterDateRangeISO", () => {
   it("retorna intervalos inclusivos corretos para 2026", () => {

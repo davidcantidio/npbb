@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import { useAgeAnalysis } from "../../../hooks/useAgeAnalysis";
-import { listReferenciaEventos } from "../../../services/leads_import";
+import { useReferenciaEventos } from "../../../features/leads/shared";
 import { useAuth } from "../../../store/auth";
-import type { AgeAnalysisResponse } from "../../../types/dashboard";
-import LeadsAgeAnalysisPage from "../LeadsAgeAnalysisPage";
+import { LeadsAgeAnalysisPage } from "../../../features/leads/dashboard";
+import { buildAgeAnalysisFixture } from "./ageAnalysisFixtures";
 
 vi.mock("../../../store/auth", () => ({
   useAuth: vi.fn(),
@@ -17,67 +17,22 @@ vi.mock("../../../hooks/useAgeAnalysis", () => ({
   useAgeAnalysis: vi.fn(),
 }));
 
-vi.mock("../../../services/leads_import", () => ({
-  listReferenciaEventos: vi.fn(),
+vi.mock("../../../features/leads/shared", () => ({
+  useReferenciaEventos: vi.fn(),
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseAgeAnalysis = vi.mocked(useAgeAnalysis);
-const mockedListReferenciaEventos = vi.mocked(listReferenciaEventos);
+const mockedUseReferenciaEventos = vi.mocked(useReferenciaEventos);
 
-function buildFixture(overrides?: Partial<AgeAnalysisResponse>): AgeAnalysisResponse {
+function buildHookState(overrides: Partial<ReturnType<typeof useAgeAnalysis>>) {
   return {
-    version: 1,
-    generated_at: "2026-03-07T12:00:00Z",
-    filters: {
-      data_inicio: null,
-      data_fim: null,
-      evento_id: null,
-    },
-    por_evento: [
-      {
-        evento_id: 1,
-        evento_nome: "Evento Alpha",
-        cidade: "Sao Paulo",
-        estado: "SP",
-        base_leads: 10,
-        clientes_bb_volume: 4,
-        clientes_bb_pct: 40,
-        cobertura_bb_pct: 90,
-        faixa_dominante: "faixa_18_25",
-        faixas: {
-          faixa_18_25: { volume: 5, pct: 50 },
-          faixa_26_40: { volume: 3, pct: 30 },
-          fora_18_40: { volume: 2, pct: 20 },
-          sem_info_volume: 0,
-          sem_info_pct_da_base: 0,
-        },
-      },
-    ],
-    consolidado: {
-      base_total: 10,
-      clientes_bb_volume: 4,
-      clientes_bb_pct: 40,
-      cobertura_bb_pct: 90,
-      faixas: {
-        faixa_18_25: { volume: 5, pct: 50 },
-        faixa_26_40: { volume: 3, pct: 30 },
-        fora_18_40: { volume: 2, pct: 20 },
-        sem_info_volume: 0,
-        sem_info_pct_da_base: 0,
-      },
-      top_eventos: [
-        {
-          evento_id: 1,
-          evento_nome: "Evento Alpha",
-          base_leads: 10,
-          faixa_dominante: "faixa_18_25",
-        },
-      ],
-      media_por_evento: 10,
-      mediana_por_evento: 10,
-      concentracao_top3_pct: 100,
-    },
+    data: null,
+    isLoading: false,
+    isRefreshing: false,
+    error: null,
+    lastSuccessfulAt: null,
+    refetch: vi.fn(),
     ...overrides,
   };
 }
@@ -100,7 +55,7 @@ function getRequiredCard(element: Element | null, message: string) {
   return element;
 }
 
-describe("LeadsAgeAnalysisPage states", () => {
+describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
   beforeEach(() => {
     mockedUseAuth.mockReturnValue({
       token: "token",
@@ -112,84 +67,114 @@ describe("LeadsAgeAnalysisPage states", () => {
       login: vi.fn(),
       logout: vi.fn(),
     });
-    mockedListReferenciaEventos.mockResolvedValue([{ id: 1, nome: "Evento Alpha", data_inicio_prevista: null }]);
+    mockedUseReferenciaEventos.mockReturnValue({
+      eventOptions: [{ id: 1, nome: "Evento Alpha", data_inicio_prevista: null }],
+      isLoadingEvents: false,
+      eventsError: null,
+    });
   });
 
   it("renders skeleton loaders while loading", async () => {
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: null,
-      isLoading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
+    mockedUseAgeAnalysis.mockReturnValue(buildHookState({ isLoading: true }));
 
     renderPage();
 
-    expect(await screen.findAllByTestId("kpi-card-skeleton")).toHaveLength(4);
+    expect(await screen.findAllByTestId("kpi-card-skeleton")).toHaveLength(12);
     expect(screen.getByTestId("chart-skeleton")).toBeInTheDocument();
     expect(screen.getByTestId("table-skeleton")).toBeInTheDocument();
   });
 
   it("keeps rendered content during refetch to avoid a loading flash", async () => {
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: buildFixture(),
-      isLoading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
+    mockedUseAgeAnalysis.mockReturnValue(
+      buildHookState({
+        data: buildAgeAnalysisFixture(),
+        isLoading: true,
+      }),
+    );
 
     renderPage();
 
-    expect(await screen.findByText("Base Total")).toBeInTheDocument();
+    expect(await screen.findByText("Base total")).toBeInTheDocument();
     expect(screen.queryByTestId("kpi-card-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chart-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByTestId("table-skeleton")).not.toBeInTheDocument();
   });
 
   it("renders centered empty state", async () => {
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: buildFixture({
+    mockedUseAgeAnalysis.mockReturnValue(
+      buildHookState({
+        data: buildAgeAnalysisFixture({
         por_evento: [],
         consolidado: {
-          ...buildFixture().consolidado,
+          ...buildAgeAnalysisFixture().consolidado,
           base_total: 0,
+          leads_proponente: 0,
+          leads_ativacao: 0,
+          leads_canal_desconhecido: 0,
+          clientes_bb_volume: null,
+          clientes_bb_pct: null,
+          nao_clientes_bb_volume: null,
+          nao_clientes_bb_pct: null,
+          bb_indefinido_volume: 0,
+          faixas: {
+            faixa_18_25: { volume: 0, pct: 0 },
+            faixa_26_40: { volume: 0, pct: 0 },
+            faixa_18_40: { volume: 0, pct: 0 },
+            fora_18_40: { volume: 0, pct: 0 },
+            sem_info_volume: 0,
+            sem_info_pct_da_base: 0,
+          },
           top_eventos: [],
+          media_por_evento: 0,
+          mediana_por_evento: 0,
+          concentracao_top3_pct: 0,
+        },
+        confianca_consolidado: {
+          ...buildAgeAnalysisFixture().confianca_consolidado,
+          base_vinculos: 0,
+          base_com_idade_volume: 0,
+          base_bb_coberta_volume: 0,
+        },
+        qualidade_consolidado: {
+          base_vinculos: 0,
+          sem_cpf_volume: 0,
+          sem_cpf_pct: 0,
+          sem_data_nascimento_volume: 0,
+          sem_data_nascimento_pct: 0,
+          sem_nome_completo_volume: 0,
+          sem_nome_completo_pct: 0,
+        },
+        qualidade_por_origem: [],
+        insights: {
+          resumo: ["Nenhum vinculo lead-evento encontrado para os filtros aplicados."],
+          alertas: [],
+          flags: [],
         },
       }),
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
+    }),
+    );
 
     renderPage();
 
     expect(await screen.findByText("Nenhum lead encontrado para os filtros aplicados")).toBeInTheDocument();
   });
 
-  it("renders the four KPI cards with required consolidated metrics", async () => {
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: buildFixture(),
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
+  it("renders KPI cards with required consolidated metrics", async () => {
+    mockedUseAgeAnalysis.mockReturnValue(buildHookState({ data: buildAgeAnalysisFixture() }));
 
     renderPage();
 
-    const baseCard = getRequiredCard((await screen.findByText("Base Total")).closest(".MuiCard-root"), "Base Total card not found");
+    const baseCard = getRequiredCard((await screen.findByText("Base total")).closest(".MuiCard-root"), "Base total card not found");
     expect(within(baseCard).getByText("10")).toBeInTheDocument();
 
-    const clientesCard = getRequiredCard(
-      screen.getByText("Percentual da base: 40,0%").closest(".MuiCard-root"),
-      "Clientes BB card not found",
-    );
+    const clientesCard = getRequiredCard(screen.getByText(/4 \(40,0%\)/).closest(".MuiCard-root"), "Clientes BB card not found");
     expect(within(clientesCard).getByText("Clientes BB")).toBeInTheDocument();
-    expect(within(clientesCard).getByText("4")).toBeInTheDocument();
-    expect(within(clientesCard).getByText("Percentual da base: 40,0%")).toBeInTheDocument();
+    expect(within(clientesCard).getByText(/4 \(40,0%\)/)).toBeInTheDocument();
+    expect(within(clientesCard).getByText("Base BB coberta: 9")).toBeInTheDocument();
     expect(within(clientesCard).getByText("Cobertura BB")).toBeInTheDocument();
     expect(within(clientesCard).getByText("90.0%")).toBeInTheDocument();
 
-    const faixaCard = getRequiredCard(screen.getByText("Faixa Dominante").closest(".MuiCard-root"), "Faixa Dominante card not found");
+    const faixaCard = getRequiredCard(screen.getByLabelText("Faixa etaria dominante"), "Faixa dominante card not found");
     expect(within(faixaCard).getByText("18–25")).toBeInTheDocument();
 
     const eventosCard = getRequiredCard(screen.getByText("Eventos").closest(".MuiCard-root"), "Eventos card not found");
@@ -199,12 +184,12 @@ describe("LeadsAgeAnalysisPage states", () => {
   it("shows error toast with retry action", async () => {
     const refetch = vi.fn();
     const user = userEvent.setup();
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: "Nao foi possivel carregar a analise etaria.",
-      refetch,
-    });
+    mockedUseAgeAnalysis.mockReturnValue(
+      buildHookState({
+        error: "Nao foi possivel carregar a analise etaria.",
+        refetch,
+      }),
+    );
 
     renderPage();
 
@@ -215,29 +200,28 @@ describe("LeadsAgeAnalysisPage states", () => {
 
   it("shows and restores warning coverage banner after filters change", async () => {
     const user = userEvent.setup();
-    const fixture = buildFixture({
+    const fixture = buildAgeAnalysisFixture({
       por_evento: [
         {
-          ...buildFixture().por_evento[0],
+          ...buildAgeAnalysisFixture().por_evento[0],
           clientes_bb_volume: null,
           clientes_bb_pct: null,
+          nao_clientes_bb_volume: null,
+          nao_clientes_bb_pct: null,
           cobertura_bb_pct: 65,
         },
       ],
       consolidado: {
-        ...buildFixture().consolidado,
+        ...buildAgeAnalysisFixture().consolidado,
         clientes_bb_volume: null,
         clientes_bb_pct: null,
+        nao_clientes_bb_volume: null,
+        nao_clientes_bb_pct: null,
         cobertura_bb_pct: 65,
       },
     });
 
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: fixture,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
+    mockedUseAgeAnalysis.mockReturnValue(buildHookState({ data: fixture }));
 
     renderPage();
 
@@ -245,34 +229,37 @@ describe("LeadsAgeAnalysisPage states", () => {
     await user.click(screen.getByRole("button", { name: /close/i }));
     expect(screen.queryByTestId("coverage-banner-warning-default")).not.toBeInTheDocument();
 
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("table", { name: /tabela de eventos da analise etaria/i });
     await user.click(within(table).getByText("Evento Alpha"));
 
     expect(await screen.findByTestId("coverage-banner-warning-default")).toBeInTheDocument();
   });
 
   it("renders danger coverage state and partial-data hints", async () => {
-    mockedUseAgeAnalysis.mockReturnValue({
-      data: buildFixture({
+    mockedUseAgeAnalysis.mockReturnValue(
+      buildHookState({
+        data: buildAgeAnalysisFixture({
         por_evento: [
           {
-            ...buildFixture().por_evento[0],
+            ...buildAgeAnalysisFixture().por_evento[0],
             clientes_bb_volume: null,
             clientes_bb_pct: null,
+            nao_clientes_bb_volume: null,
+            nao_clientes_bb_pct: null,
             cobertura_bb_pct: 12,
           },
         ],
         consolidado: {
-          ...buildFixture().consolidado,
+          ...buildAgeAnalysisFixture().consolidado,
           clientes_bb_volume: null,
           clientes_bb_pct: null,
-          cobertura_bb_pct: 12,
-        },
+          nao_clientes_bb_volume: null,
+          nao_clientes_bb_pct: null,
+            cobertura_bb_pct: 12,
+          },
+        }),
       }),
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
+    );
 
     renderPage();
 

@@ -2,13 +2,19 @@
 
 ## 1) Importacao de Leads (CSV/XLSX)
 ### UI
+Rotas suportadas nesta rodada:
+- shell canonico: `/leads/importar`
+- listagem: `/leads`
+- redirects legados: `/leads/mapeamento` e `/leads/pipeline`
+
+Fluxo recomendado:
 1. Faca login.
-2. Acesse `/leads`.
-3. Clique em **Importar XLSX** e selecione um arquivo `.csv` ou `.xlsx`.
-4. Revise o **mapeamento de colunas**.
+2. Acesse `/leads` para consultar a base atual ou va direto para `/leads/importar`.
+3. No shell `/leads/importar`, envie um arquivo `.csv` ou `.xlsx`.
+4. Revise o preview e o **mapeamento de colunas**.
 5. Ajuste referencias (evento/cidade/estado/genero) quando houver sugestoes.
-6. Clique em **Importar**.
-7. Consulte a tabela **Leads cadastrados** (paginada) na mesma tela.
+6. Avance para mapeamento ou pipeline no mesmo shell.
+7. Consulte `/leads` para validar a listagem paginada apos o processamento.
 
 ### Tabela de leads na UI (`/leads`)
 - Fonte de dados: `GET /leads?page=<n>&page_size=<n>`.
@@ -24,6 +30,8 @@
 Endpoints principais:
 - `GET /leads` (query: `page`, `page_size`)  
   Lista leads com paginacao e dados da conversao mais recente por lead.
+- `POST /leads` e `POST /leads/`  
+  Intake publico autenticado/compatibilizado pelo router principal.
 - `POST /leads/import/preview` (multipart)  
   Retorna headers, amostra e sugestoes de mapeamento.
 - `POST /leads/import/validate` (JSON)  
@@ -91,8 +99,9 @@ Diagnostico rapido:
 
 ## 3) Dashboard de Leads
 ### UI
-- Rota: `/dashboard/leads`
-- Mostra KPIs, serie temporal e rankings agregados.
+- Rota canonica de tela: `/dashboard/leads/analise-etaria`
+- Compatibilidade: `/dashboard/leads` redireciona para `analise-etaria`
+- Observacao: `/dashboard/leads/relatorio` permanece endpoint/script, sem tela roteada nesta fase.
 
 ### API
 - `GET /dashboard/leads`  

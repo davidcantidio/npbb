@@ -16,13 +16,23 @@ function buildEvent(eventoId: number, eventoNome: string): EventoAgeAnalysis {
     cidade: "Sao Paulo",
     estado: "SP",
     base_leads: 10,
+    base_com_idade_volume: 9,
+    base_bb_coberta_volume: 9,
+    leads_proponente: 2,
+    leads_ativacao: 8,
+    leads_canal_desconhecido: 0,
     clientes_bb_volume: 4,
     clientes_bb_pct: 40,
+    nao_clientes_bb_volume: 5,
+    nao_clientes_bb_pct: 50,
+    bb_indefinido_volume: 1,
     cobertura_bb_pct: 90,
     faixa_dominante: "faixa_18_25",
+    faixa_dominante_status: "resolved",
     faixas: {
       faixa_18_25: { volume: 5, pct: 50 },
       faixa_26_40: { volume: 3, pct: 30 },
+      faixa_18_40: { volume: 8, pct: 80 },
       fora_18_40: { volume: 1, pct: 10 },
       sem_info_volume: 1,
       sem_info_pct_da_base: 10,
@@ -81,11 +91,11 @@ describe("AgeDistributionChart", () => {
 
     expect(screen.getAllByText("Evento Tooltip")).toHaveLength(2);
     expect(screen.getByText("18–25")).toBeInTheDocument();
-    expect(screen.getByText("5 • 50,0%")).toBeInTheDocument();
+    expect(screen.getByText("50,0% • 5")).toBeInTheDocument();
     expect(screen.getByText("26–40")).toBeInTheDocument();
-    expect(screen.getByText("3 • 30,0%")).toBeInTheDocument();
+    expect(screen.getByText("30,0% • 3")).toBeInTheDocument();
     expect(screen.getByText("Fora de 18–40")).toBeInTheDocument();
-    expect(screen.getAllByText("1 • 10,0%")).toHaveLength(2);
+    expect(screen.getAllByText("10,0% • 1")).toHaveLength(2);
     expect(screen.getByText("Sem informacao")).toBeInTheDocument();
   });
 

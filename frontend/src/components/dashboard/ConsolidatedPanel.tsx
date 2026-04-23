@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import type { ConsolidadoAgeAnalysis } from "../../types/dashboard";
 import { formatDecimal, formatInteger, formatPercent, getDominantAgeRangeLabel } from "../../utils/ageAnalysis";
@@ -78,7 +79,10 @@ export function ConsolidatedPanel({ data }: ConsolidatedPanelProps) {
                       gap: 2,
                       p: 1.5,
                       borderRadius: 2,
-                      bgcolor: "grey.50",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? alpha(theme.palette.common.white, 0.06)
+                          : theme.palette.grey[50],
                     }}
                   >
                     <Box sx={{ minWidth: 0 }}>

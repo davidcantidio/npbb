@@ -412,6 +412,51 @@ class LeadImportEtlStagingRow(SQLModel, table=True):
     )
 
 
+class LeadGoldVerificationRun(SQLModel, table=True):
+    __tablename__ = "lead_gold_verification_run"
+
+    run_id: str = Field(primary_key=True, max_length=36)
+    idempotency_key: str = Field(index=True, max_length=160, unique=True)
+    rules_version: str = Field(max_length=80)
+    scope_json: dict = Field(sa_column=Column(JSON, nullable=False))
+    status: str = Field(default="queued", max_length=32, index=True)
+    requested_by: Optional[int] = Field(default=None, foreign_key="usuario.id", index=True)
+    started_at: datetime = Field(default_factory=now_utc, index=True)
+    completed_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+
+
+class LeadGoldVerificationResult(SQLModel, table=True):
+    __tablename__ = "lead_gold_verification_result"
+    __table_args__ = (
+        UniqueConstraint("run_id", "source_lead_id", name="uq_lead_gold_verification_result_run_lead"),
+        Index("ix_lead_gold_verification_result_batch_outcome", "verification_batch_id", "outcome"),
+        Index("ix_lead_gold_verification_result_source_lead_created_at", "source_lead_id", "created_at"),
+        Index("ix_lead_gold_verification_result_run_source_batch", "run_id", "source_batch_id"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    run_id: str = Field(foreign_key="lead_gold_verification_run.run_id", index=True, max_length=36)
+    verification_batch_id: int = Field(foreign_key="lead_batches.id", index=True)
+    source_batch_id: Optional[int] = Field(default=None, foreign_key="lead_batches.id", index=True)
+    source_lead_id: int = Field(foreign_key="lead.id", index=True)
+    resolved_evento_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
+    resolved_evento_nome: Optional[str] = Field(default=None, max_length=150)
+    outcome: str = Field(max_length=24, index=True)
+    motivo_rejeicao: Optional[str] = Field(default=None, max_length=255)
+    reason_codes_json: Optional[list[str]] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    row_data_json: dict = Field(sa_column=Column(JSON, nullable=False))
+    source_file: Optional[str] = Field(default=None, max_length=255)
+    source_sheet: Optional[str] = Field(default=None, max_length=120)
+    source_row: Optional[int] = Field(default=None)
+    source_row_ref: Optional[str] = Field(default=None, max_length=120)
+    dedupe_rank: Optional[int] = Field(default=None)
+    duplicate_of_lead_id: Optional[int] = Field(default=None, foreign_key="lead.id", index=True)
+    created_at: datetime = Field(default_factory=now_utc, index=True)
+
+
 class ImportAlias(SQLModel, table=True):
     __tablename__ = "import_alias"
     __table_args__ = (

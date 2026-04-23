@@ -58,3 +58,20 @@ def test_lead_evento_canonical_origin_migration_exists() -> None:
         "Nenhuma migration encontrada para a canonicalizacao de origem do lead_evento "
         "(enum legado, checks e triggers de ativacao)."
     )
+
+
+def test_lead_evento_preference_lookup_index_migration_exists() -> None:
+    """Verifica que a migration de lookup preferencial do lead_evento esta versionada."""
+    backend_dir = Path(__file__).resolve().parents[1]
+    versions_dir = backend_dir / "alembic" / "versions"
+
+    matching_files: list[str] = []
+    for migration_file in versions_dir.glob("*.py"):
+        content = migration_file.read_text(encoding="utf-8")
+        if "idx_lead_evento_lead_preference_lookup" in content:
+            matching_files.append(migration_file.name)
+
+    assert matching_files, (
+        "Nenhuma migration encontrada para o indice "
+        "'idx_lead_evento_lead_preference_lookup' em lead_evento."
+    )

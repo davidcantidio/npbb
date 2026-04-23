@@ -81,10 +81,15 @@ def client(engine):
     app.dependency_overrides.clear()
 
 
-def _seed_user(session: Session) -> Usuario:
+def _seed_user(
+    session: Session,
+    *,
+    email: str = "gold@npbb.com.br",
+    password: str = "senha123",
+) -> Usuario:
     user = Usuario(
-        email="gold@npbb.com.br",
-        password_hash=hash_password("senha123"),
+        email=email,
+        password_hash=hash_password(password),
         tipo_usuario="npbb",
         ativo=True,
     )
@@ -128,9 +133,15 @@ def _seed_agencia(session: Session) -> Agencia:
     return ag
 
 
-def _auth_header(client: TestClient, session: Session) -> dict[str, str]:
-    _seed_user(session)
-    resp = client.post("/auth/login", json={"email": "gold@npbb.com.br", "password": "senha123"})
+def _auth_header(
+    client: TestClient,
+    session: Session,
+    *,
+    email: str = "gold@npbb.com.br",
+    password: str = "senha123",
+) -> dict[str, str]:
+    _seed_user(session, email=email, password=password)
+    resp = client.post("/auth/login", json={"email": email, "password": password})
     assert resp.status_code == 200, resp.text
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -823,6 +834,15 @@ class TestGetBatch:
         resp = client.get("/leads/batches/9999", headers=auth)
         assert resp.status_code == 404
 
+    def test_hides_batch_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            owner_auth = _auth_header(client, s, email="gold-owner@npbb.com.br", password="senha123")
+            other_auth = _auth_header(client, s, email="gold-other@npbb.com.br", password="senha456")
+
+        batch_id = _upload_batch(client, owner_auth)
+        resp = client.get(f"/leads/batches/{batch_id}", headers=other_auth)
+        assert resp.status_code == 404
+
     def test_requires_auth(self, client):
         resp = client.get("/leads/batches/1")
         assert resp.status_code == 401
@@ -1017,6 +1037,18 @@ class TestExecutarPipeline:
         resp = client.post("/leads/batches/9999/executar-pipeline", headers=auth)
         assert resp.status_code == 404
 
+    def test_hides_pipeline_dispatch_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            owner_auth = _auth_header(client, s, email="dispatch-owner@npbb.com.br", password="senha123")
+            other_auth = _auth_header(client, s, email="dispatch-other@npbb.com.br", password="senha456")
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, owner_auth)
+        _promote_to_silver(engine, batch_id, evento.id)
+
+        resp = client.post(f"/leads/batches/{batch_id}/executar-pipeline", headers=other_auth)
+        assert resp.status_code == 404
+
     def test_requires_auth(self, client):
         resp = client.post("/leads/batches/1/executar-pipeline")
         assert resp.status_code == 401
@@ -1133,7 +1165,7 @@ class TestExecutarPipeline:
         monkeypatch.setattr(
             leads_router,
             "load_batch_without_bronze_for_update",
-            lambda _session, _batch_id: batch,
+            lambda _session, _batch_id, **_kwargs: batch,
         )
 
         def _queue_pipeline(fake_batch: _CommitExpiringBatch) -> None:

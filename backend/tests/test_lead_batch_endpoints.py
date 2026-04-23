@@ -806,6 +806,25 @@ class TestGetBatchArquivo:
         resp = client.get("/leads/batches/9999/arquivo", headers=headers)
         assert resp.status_code == 404
 
+    def test_download_hides_batch_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            _seed_user(s, email="owner@npbb.com.br", password="senha123")
+            _seed_user(s, email="other@npbb.com.br", password="senha456")
+
+        owner_headers = _auth_header_for_user(client, email="owner@npbb.com.br", password="senha123")
+        other_headers = _auth_header_for_user(client, email="other@npbb.com.br", password="senha456")
+
+        upload_resp = client.post(
+            "/leads/batches",
+            headers=owner_headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={"plataforma_origem": "email", "data_envio": "2026-03-01T10:00:00"},
+        )
+        batch_id = upload_resp.json()["id"]
+
+        resp = client.get(f"/leads/batches/{batch_id}/arquivo", headers=other_headers)
+        assert resp.status_code == 404
+
     def test_download_requires_auth(self, client):
         resp = client.get("/leads/batches/1/arquivo")
         assert resp.status_code == 401
@@ -989,6 +1008,25 @@ class TestGetBatchPreview:
             headers = _auth_header(client, s)
 
         resp = client.get("/leads/batches/9999/preview", headers=headers)
+        assert resp.status_code == 404
+
+    def test_preview_hides_batch_from_other_user(self, client, engine):
+        with Session(engine) as s:
+            _seed_user(s, email="preview-owner@npbb.com.br", password="senha123")
+            _seed_user(s, email="preview-other@npbb.com.br", password="senha456")
+
+        owner_headers = _auth_header_for_user(client, email="preview-owner@npbb.com.br", password="senha123")
+        other_headers = _auth_header_for_user(client, email="preview-other@npbb.com.br", password="senha456")
+
+        upload_resp = client.post(
+            "/leads/batches",
+            headers=owner_headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={"plataforma_origem": "email", "data_envio": "2026-03-01T10:00:00"},
+        )
+        batch_id = upload_resp.json()["id"]
+
+        resp = client.get(f"/leads/batches/{batch_id}/preview", headers=other_headers)
         assert resp.status_code == 404
 
     def test_preview_requires_auth(self, client):

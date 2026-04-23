@@ -1,6 +1,9 @@
 import { fetchWithAuth, handleApiResponse } from "./http";
 import type { AgeAnalysisFiltersQuery, AgeAnalysisResponse } from "../types/dashboard";
 
+/** Consulta pesada; o defeito 20s+retry (acumulando ~40s) bloqueava eventos com muitos leads. */
+const AGE_ANALYSIS_TIMEOUT_MS = 120_000;
+
 function buildQueryString(filters: AgeAnalysisFiltersQuery) {
   const query = new URLSearchParams();
 
@@ -24,6 +27,8 @@ export async function getAgeAnalysis(
 ): Promise<AgeAnalysisResponse> {
   const res = await fetchWithAuth(`/dashboard/leads/analise-etaria${buildQueryString(filters)}`, {
     token,
+    timeoutMs: AGE_ANALYSIS_TIMEOUT_MS,
+    retries: 0,
   });
   return handleApiResponse<AgeAnalysisResponse>(res);
 }

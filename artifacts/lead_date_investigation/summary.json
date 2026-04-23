@@ -1,0 +1,966 @@
+{
+  "generated_at": "2026-04-21T22:31:51.260723+00:00",
+  "paths": {
+    "leads_v4": "LEADS-v4.csv",
+    "notebook_ipynb": "notebook_origem1 1.ipynb",
+    "notebook_py": "scripts\\databricks_bb_enrichment_notebook.py",
+    "manual_raw": "artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20\\raw.csv",
+    "manual_final": "artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20\\leads_multieventos_2025.csv",
+    "manual_report": "artifacts\\manual_supabase_import_2026-04-20\\_pipeline_output\\manual_supabase_import_2026-04-20\\report.json"
+  },
+  "profile_summary": {
+    "row_count": 57793,
+    "column_profiles": {
+      "data_evento": {
+        "column": "data_evento",
+        "date_kind": "event",
+        "rows_seen": 57793,
+        "format_counts": {
+          "mdy_only": 44394,
+          "both_valid_different": 13399
+        },
+        "auto_safe_counts": {
+          "VALID": 44394,
+          "AMBIGUOUS": 13399
+        },
+        "parse_success_counts": {
+          "ISO_NULL": 57793,
+          "MDY_VALID": 57793,
+          "DMY_NULL": 44394,
+          "DMY_VALID": 13399
+        },
+        "examples": {
+          "AUTO_SAFE_AMBIGUOUS": [
+            {
+              "line_no": 40251,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40252,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40253,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40254,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40255,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            }
+          ],
+          "AUTO_SAFE_VALID": [
+            {
+              "line_no": 2,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 3,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 4,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 5,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 6,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            }
+          ],
+          "both_valid_different": [
+            {
+              "line_no": 40251,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40252,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40253,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40254,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 40255,
+              "raw": "2/4/2026",
+              "iso_value": null,
+              "mdy_value": "2026-02-04",
+              "dmy_value": "2026-04-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            }
+          ],
+          "mdy_only": [
+            {
+              "line_no": 2,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 3,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 4,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 5,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            },
+            {
+              "line_no": 6,
+              "raw": "3/25/2026",
+              "iso_value": null,
+              "mdy_value": "2026-03-25",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2026-03-25"
+            }
+          ]
+        }
+      },
+      "data_nascimento": {
+        "column": "data_nascimento",
+        "date_kind": "birth",
+        "rows_seen": 57793,
+        "format_counts": {
+          "both_valid_different": 17661,
+          "mdy_only": 29426,
+          "both_valid_same": 1679,
+          "blank": 9027
+        },
+        "auto_safe_counts": {
+          "AMBIGUOUS": 19340,
+          "VALID": 29424,
+          "BEFORE_MIN": 1,
+          "FUTURE": 1,
+          "MISSING": 9027
+        },
+        "parse_success_counts": {
+          "ISO_NULL": 57793,
+          "MDY_VALID": 48766,
+          "DMY_VALID": 19340,
+          "DMY_NULL": 38453,
+          "MDY_NULL": 9027
+        },
+        "examples": {
+          "AUTO_SAFE_AMBIGUOUS": [
+            {
+              "line_no": 2,
+              "raw": "9/10/1999",
+              "iso_value": null,
+              "mdy_value": "1999-09-10",
+              "dmy_value": "1999-10-09",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 12,
+              "raw": "12/8/2000",
+              "iso_value": null,
+              "mdy_value": "2000-12-08",
+              "dmy_value": "2000-08-12",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 13,
+              "raw": "4/9/1980",
+              "iso_value": null,
+              "mdy_value": "1980-04-09",
+              "dmy_value": "1980-09-04",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 15,
+              "raw": "4/7/1981",
+              "iso_value": null,
+              "mdy_value": "1981-04-07",
+              "dmy_value": "1981-07-04",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 17,
+              "raw": "3/4/2000",
+              "iso_value": null,
+              "mdy_value": "2000-03-04",
+              "dmy_value": "2000-04-03",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            }
+          ],
+          "AUTO_SAFE_BEFORE_MIN": [
+            {
+              "line_no": 9,
+              "raw": "12/28/1899",
+              "iso_value": null,
+              "mdy_value": "1899-12-28",
+              "dmy_value": null,
+              "auto_safe_status": "BEFORE_MIN",
+              "auto_safe_value": "1899-12-28"
+            }
+          ],
+          "AUTO_SAFE_FUTURE": [
+            {
+              "line_no": 11,
+              "raw": "7/24/9176",
+              "iso_value": null,
+              "mdy_value": "9176-07-24",
+              "dmy_value": null,
+              "auto_safe_status": "FUTURE",
+              "auto_safe_value": "9176-07-24"
+            }
+          ],
+          "AUTO_SAFE_MISSING": [
+            {
+              "line_no": 96,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 112,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 130,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 172,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 199,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            }
+          ],
+          "AUTO_SAFE_VALID": [
+            {
+              "line_no": 3,
+              "raw": "6/30/1956",
+              "iso_value": null,
+              "mdy_value": "1956-06-30",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1956-06-30"
+            },
+            {
+              "line_no": 4,
+              "raw": "7/23/1991",
+              "iso_value": null,
+              "mdy_value": "1991-07-23",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1991-07-23"
+            },
+            {
+              "line_no": 5,
+              "raw": "5/17/1976",
+              "iso_value": null,
+              "mdy_value": "1976-05-17",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1976-05-17"
+            },
+            {
+              "line_no": 6,
+              "raw": "12/27/2004",
+              "iso_value": null,
+              "mdy_value": "2004-12-27",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2004-12-27"
+            },
+            {
+              "line_no": 7,
+              "raw": "5/24/1972",
+              "iso_value": null,
+              "mdy_value": "1972-05-24",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1972-05-24"
+            }
+          ],
+          "blank": [
+            {
+              "line_no": 96,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 112,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 130,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 172,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 199,
+              "raw": "",
+              "iso_value": null,
+              "mdy_value": null,
+              "dmy_value": null,
+              "auto_safe_status": "MISSING",
+              "auto_safe_value": null
+            }
+          ],
+          "both_valid_different": [
+            {
+              "line_no": 2,
+              "raw": "9/10/1999",
+              "iso_value": null,
+              "mdy_value": "1999-09-10",
+              "dmy_value": "1999-10-09",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 12,
+              "raw": "12/8/2000",
+              "iso_value": null,
+              "mdy_value": "2000-12-08",
+              "dmy_value": "2000-08-12",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 13,
+              "raw": "4/9/1980",
+              "iso_value": null,
+              "mdy_value": "1980-04-09",
+              "dmy_value": "1980-09-04",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 15,
+              "raw": "4/7/1981",
+              "iso_value": null,
+              "mdy_value": "1981-04-07",
+              "dmy_value": "1981-07-04",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 17,
+              "raw": "3/4/2000",
+              "iso_value": null,
+              "mdy_value": "2000-03-04",
+              "dmy_value": "2000-04-03",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            }
+          ],
+          "both_valid_same": [
+            {
+              "line_no": 23,
+              "raw": "8/8/1979",
+              "iso_value": null,
+              "mdy_value": "1979-08-08",
+              "dmy_value": "1979-08-08",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 53,
+              "raw": "7/7/1994",
+              "iso_value": null,
+              "mdy_value": "1994-07-07",
+              "dmy_value": "1994-07-07",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 113,
+              "raw": "2/2/1999",
+              "iso_value": null,
+              "mdy_value": "1999-02-02",
+              "dmy_value": "1999-02-02",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 221,
+              "raw": "3/3/1987",
+              "iso_value": null,
+              "mdy_value": "1987-03-03",
+              "dmy_value": "1987-03-03",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            },
+            {
+              "line_no": 304,
+              "raw": "11/11/1967",
+              "iso_value": null,
+              "mdy_value": "1967-11-11",
+              "dmy_value": "1967-11-11",
+              "auto_safe_status": "AMBIGUOUS",
+              "auto_safe_value": null
+            }
+          ],
+          "mdy_only": [
+            {
+              "line_no": 3,
+              "raw": "6/30/1956",
+              "iso_value": null,
+              "mdy_value": "1956-06-30",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1956-06-30"
+            },
+            {
+              "line_no": 4,
+              "raw": "7/23/1991",
+              "iso_value": null,
+              "mdy_value": "1991-07-23",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1991-07-23"
+            },
+            {
+              "line_no": 5,
+              "raw": "5/17/1976",
+              "iso_value": null,
+              "mdy_value": "1976-05-17",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1976-05-17"
+            },
+            {
+              "line_no": 6,
+              "raw": "12/27/2004",
+              "iso_value": null,
+              "mdy_value": "2004-12-27",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "2004-12-27"
+            },
+            {
+              "line_no": 7,
+              "raw": "5/24/1972",
+              "iso_value": null,
+              "mdy_value": "1972-05-24",
+              "dmy_value": null,
+              "auto_safe_status": "VALID",
+              "auto_safe_value": "1972-05-24"
+            }
+          ]
+        }
+      }
+    },
+    "event_value_counts": {
+      "3/25/2026": 15993,
+      "3/15/2026": 8452,
+      "3/21/2026": 2706,
+      "3/28/2026": 9654,
+      "3/14/2026": 64,
+      "2/27/2026": 4780,
+      "2/4/2026": 3137,
+      "3/9/2026": 2462,
+      "3/4/2026": 800,
+      "3/11/2026": 5800,
+      "1/24/2026": 2745,
+      "2/9/2026": 1200
+    },
+    "lead_samples": {
+      "bruna_tomasi_birth_ambiguous": {
+        "line_no": 2,
+        "nome": "Bruna Tomasi",
+        "cpf": "85363103087",
+        "evento": "South Summit",
+        "local": "Porto Alegre-RS",
+        "data_evento": "3/25/2026",
+        "data_nascimento": "9/10/1999"
+      },
+      "hannah_gil_pa": {
+        "line_no": 25446,
+        "nome": "Hannah Lydia Pontes Faria da Silva",
+        "cpf": "00957793294",
+        "evento": "Gilberto Gil - PA",
+        "local": "Belém-PA",
+        "data_evento": "3/21/2026",
+        "data_nascimento": "9/24/1996"
+      },
+      "luis_gergen_expodireto": {
+        "line_no": 42307,
+        "nome": "Luis Gergen",
+        "cpf": "55644392015",
+        "evento": "Expodireto Cotrijal",
+        "local": "Não-Me-Toque-RS",
+        "data_evento": "3/9/2026",
+        "data_nascimento": ""
+      },
+      "amanda_cbvp": {
+        "line_no": 46472,
+        "nome": "Amanda Campos",
+        "cpf": "14439231764",
+        "evento": "2ª Etapa Circuito Brasileiro de Vôlei de Praia",
+        "local": "João Pessoa-PB",
+        "data_evento": "3/4/2026",
+        "data_nascimento": "5/28/1993"
+      },
+      "amanda_beach_pro_tour": {
+        "line_no": 52234,
+        "nome": "Amanda Campos",
+        "cpf": "14439231764",
+        "evento": "1ª Etapa Beach Pro Tour",
+        "local": "João Pessoa-PB",
+        "data_evento": "3/11/2026",
+        "data_nascimento": "5/28/1993"
+      }
+    },
+    "event_gold_mismatch": [
+      {
+        "raw": "2/4/2026",
+        "count": 3137,
+        "notebook_auto_safe_status": "AMBIGUOUS",
+        "mdy_value": "2026-02-04",
+        "gold_parse_value": "2026-04-02",
+        "gold_matches_mdy": false
+      },
+      {
+        "raw": "2/9/2026",
+        "count": 1200,
+        "notebook_auto_safe_status": "AMBIGUOUS",
+        "mdy_value": "2026-02-09",
+        "gold_parse_value": "2026-09-02",
+        "gold_matches_mdy": false
+      },
+      {
+        "raw": "3/4/2026",
+        "count": 800,
+        "notebook_auto_safe_status": "AMBIGUOUS",
+        "mdy_value": "2026-03-04",
+        "gold_parse_value": "2026-04-03",
+        "gold_matches_mdy": false
+      },
+      {
+        "raw": "3/9/2026",
+        "count": 2462,
+        "notebook_auto_safe_status": "AMBIGUOUS",
+        "mdy_value": "2026-03-09",
+        "gold_parse_value": "2026-09-03",
+        "gold_matches_mdy": false
+      },
+      {
+        "raw": "3/11/2026",
+        "count": 5800,
+        "notebook_auto_safe_status": "AMBIGUOUS",
+        "mdy_value": "2026-03-11",
+        "gold_parse_value": "2026-11-03",
+        "gold_matches_mdy": false
+      }
+    ]
+  },
+  "decision_matrix": [
+    {
+      "column": "data_evento",
+      "rows_seen": 57793,
+      "format_blank": 0,
+      "format_iso_like": 0,
+      "format_mdy_only": 44394,
+      "format_dmy_only": 0,
+      "format_both_valid_same": 0,
+      "format_both_valid_different": 13399,
+      "format_unparseable": 0,
+      "iso_valid_rows": 0,
+      "mdy_valid_rows": 57793,
+      "dmy_valid_rows": 13399,
+      "auto_safe_valid_rows": 44394,
+      "auto_safe_ambiguous_rows": 13399,
+      "auto_safe_missing_rows": 0,
+      "auto_safe_unparseable_rows": 0,
+      "auto_safe_before_min_rows": 0,
+      "auto_safe_future_rows": 0
+    },
+    {
+      "column": "data_nascimento",
+      "rows_seen": 57793,
+      "format_blank": 9027,
+      "format_iso_like": 0,
+      "format_mdy_only": 29426,
+      "format_dmy_only": 0,
+      "format_both_valid_same": 1679,
+      "format_both_valid_different": 17661,
+      "format_unparseable": 0,
+      "iso_valid_rows": 0,
+      "mdy_valid_rows": 48766,
+      "dmy_valid_rows": 19340,
+      "auto_safe_valid_rows": 29424,
+      "auto_safe_ambiguous_rows": 19340,
+      "auto_safe_missing_rows": 9027,
+      "auto_safe_unparseable_rows": 0,
+      "auto_safe_before_min_rows": 1,
+      "auto_safe_future_rows": 1
+    }
+  ],
+  "lineage_rows": [
+    {
+      "sample_id": "amanda_cbvp",
+      "cpf": "14439231764",
+      "evento": "2ª Etapa Circuito Brasileiro de Vôlei de Praia",
+      "local_csv_line": 46472,
+      "local_data_evento": "3/4/2026",
+      "local_data_nascimento": "5/28/1993",
+      "notebook_event_status": "AMBIGUOUS",
+      "notebook_event_value": null,
+      "notebook_birth_status": "VALID",
+      "notebook_birth_value": "1993-05-28",
+      "gold_parse_event_from_local": "2026-04-03",
+      "gold_parse_birth_from_local": "1993-05-28",
+      "manual_raw_line": 23354,
+      "manual_raw_data_evento": "2026-03-04",
+      "manual_raw_data_nascimento": "28/05/1993",
+      "manual_raw_source_file": "Leads 2ª Etapa CBVP João Pessoa.xlsx",
+      "manual_raw_source_sheet": "Planilha1",
+      "manual_raw_source_row": "285",
+      "manual_final_line": 18576,
+      "manual_final_data_evento": "2026-03-04",
+      "manual_final_data_nascimento": "1993-05-28"
+    },
+    {
+      "sample_id": "amanda_beach_pro_tour",
+      "cpf": "14439231764",
+      "evento": "1ª Etapa Beach Pro Tour",
+      "local_csv_line": 52234,
+      "local_data_evento": "3/11/2026",
+      "local_data_nascimento": "5/28/1993",
+      "notebook_event_status": "AMBIGUOUS",
+      "notebook_event_value": null,
+      "notebook_birth_status": "VALID",
+      "notebook_birth_value": "1993-05-28",
+      "gold_parse_event_from_local": "2026-11-03",
+      "gold_parse_birth_from_local": "1993-05-28",
+      "manual_raw_line": 15269,
+      "manual_raw_data_evento": "2026-03-11",
+      "manual_raw_data_nascimento": "28/05/1993",
+      "manual_raw_source_file": "Leads 1ª Etapa BPT João Pessoa.xlsx",
+      "manual_raw_source_sheet": "Planilha1",
+      "manual_raw_source_row": "321",
+      "manual_final_line": 11031,
+      "manual_final_data_evento": "2026-03-11",
+      "manual_final_data_nascimento": "1993-05-28"
+    },
+    {
+      "sample_id": "luis_gergen_expodireto",
+      "cpf": "55644392015",
+      "evento": "Expodireto Cotrijal",
+      "local_csv_line": 42307,
+      "local_data_evento": "3/9/2026",
+      "local_data_nascimento": "",
+      "notebook_event_status": "AMBIGUOUS",
+      "notebook_event_value": null,
+      "notebook_birth_status": "MISSING",
+      "notebook_birth_value": null,
+      "gold_parse_event_from_local": "2026-09-03",
+      "gold_parse_birth_from_local": "",
+      "manual_raw_line": 31670,
+      "manual_raw_data_evento": "2026-03-09",
+      "manual_raw_data_nascimento": "",
+      "manual_raw_source_file": "Leads Base expodireto Cotrijal - Diária.xlsx",
+      "manual_raw_source_sheet": "COMPLETA",
+      "manual_raw_source_row": "2554",
+      "manual_final_line": 26500,
+      "manual_final_data_evento": "2026-03-09",
+      "manual_final_data_nascimento": ""
+    },
+    {
+      "sample_id": "hannah_gil_pa",
+      "cpf": "00957793294",
+      "evento": "Gilberto Gil - PA",
+      "local_csv_line": 25446,
+      "local_data_evento": "3/21/2026",
+      "local_data_nascimento": "9/24/1996",
+      "notebook_event_status": "VALID",
+      "notebook_event_value": "2026-03-21",
+      "notebook_birth_status": "VALID",
+      "notebook_birth_value": "1996-09-24",
+      "gold_parse_event_from_local": "2026-03-21",
+      "gold_parse_birth_from_local": "1996-09-24",
+      "manual_raw_line": 33774,
+      "manual_raw_data_evento": "2026-03-21",
+      "manual_raw_data_nascimento": "1996-09-24 00:00:00",
+      "manual_raw_source_file": "Opt-in Gilberto Gil - PA.xlsx",
+      "manual_raw_source_sheet": "BELÉM",
+      "manual_raw_source_row": "1774",
+      "manual_final_line": 28576,
+      "manual_final_data_evento": "2026-03-21",
+      "manual_final_data_nascimento": "1996-09-24"
+    },
+    {
+      "sample_id": "bruna_tomasi_birth_ambiguous",
+      "cpf": "85363103087",
+      "evento": "South Summit",
+      "local_csv_line": 2,
+      "local_data_evento": "3/25/2026",
+      "local_data_nascimento": "9/10/1999",
+      "notebook_event_status": "VALID",
+      "notebook_event_value": "2026-03-25",
+      "notebook_birth_status": "AMBIGUOUS",
+      "notebook_birth_value": null,
+      "gold_parse_event_from_local": "2026-03-25",
+      "gold_parse_birth_from_local": "1999-10-09",
+      "manual_raw_line": null,
+      "manual_raw_data_evento": null,
+      "manual_raw_data_nascimento": null,
+      "manual_raw_source_file": null,
+      "manual_raw_source_sheet": null,
+      "manual_raw_source_row": null,
+      "manual_final_line": null,
+      "manual_final_data_evento": null,
+      "manual_final_data_nascimento": null
+    }
+  ],
+  "notebook_diff": {
+    "findings": [
+      {
+        "id": "date_style_default",
+        "classification": "drift_de_configuracao",
+        "ipynb_evidence": {
+          "cell": 2,
+          "excerpt": "LEAD_DATE_STYLE = \"AUTO_SAFE\""
+        },
+        "py_evidence": {
+          "line": 85,
+          "fallback_line": 157,
+          "excerpt": "dbutils.widgets.dropdown(\"lead_date_style\", \"MDY\", [\"AUTO_SAFE\", \"DMY\", \"MDY\"])"
+        },
+        "summary": "O `.ipynb` fixa `AUTO_SAFE`; o notebook exportado para script defaulta `MDY` via widget."
+      },
+      {
+        "id": "lead_source_contract",
+        "classification": "drift_de_implementacao",
+        "ipynb_evidence": {
+          "cell": 4,
+          "excerpt": "df_leads_raw = spark.read.table(LEADS_TABLE_NAME)"
+        },
+        "py_evidence": {
+          "line": 348,
+          "excerpt": "spark.read.options(**csv_reader_options).csv(LEAD_CSV_PATH)"
+        },
+        "summary": "O `.ipynb` consome uma tabela UC (`main.main.leads_coluna_origem`); o `.py` consome um CSV parametrizado."
+      },
+      {
+        "id": "staging_context_contract",
+        "classification": "drift_de_implementacao",
+        "ipynb_evidence": {
+          "cell": 5,
+          "excerpt": "CONTEXT_COLUMNS = [\"tipo_evento\", \"origem\"]"
+        },
+        "py_evidence": {
+          "line": 57,
+          "excerpt": "CONTEXT_COLUMNS = [\"evento\", \"tipo_evento\", \"local\", \"data_evento\"]"
+        },
+        "summary": "Os dois artefatos exigem contextos e colunas de staging diferentes; o `.ipynb` injeta `origem`, o `.py` exige `evento/local/data_evento`."
+      },
+      {
+        "id": "date_parser_logic",
+        "classification": "mesma_logica_parametrizada",
+        "ipynb_evidence": {
+          "cell": 7,
+          "excerpt": "def add_date_parse_columns(df, raw_column, prefix, date_kind):"
+        },
+        "py_evidence": {
+          "line": 511,
+          "excerpt": "def add_date_parse_columns(df, raw_column, prefix, date_kind):"
+        },
+        "summary": "A função `add_date_parse_columns` é a mesma na lógica; as diferenças relevantes são docstring, comentários e formatação."
+      }
+    ]
+  },
+  "gold_contract": {
+    "final_shape": {
+      "rows": 47703,
+      "columns": 34
+    },
+    "raw_shape": {
+      "rows": 54911,
+      "columns": 37
+    },
+    "final_contract_violations": [],
+    "raw_contract_violations": [
+      "CPF_INVALIDO_NO_PROCESSADO: 51838 linha(s)",
+      "CPF_EVENTO_DUPLICADO_NO_PROCESSADO",
+      "TELEFONE_INVALIDO_NO_PROCESSADO: 29554 linha(s)",
+      "DATA_NASCIMENTO_INVALIDA_NO_PROCESSADO: 47077 linha(s)"
+    ],
+    "manual_report_totals": {
+      "raw_rows": 54911,
+      "valid_rows": 47703,
+      "discarded_rows": 7208
+    },
+    "manual_report_quality_metrics": {
+      "cpf_invalid_discarded": 5902,
+      "telefone_invalid": 257,
+      "data_evento_invalid": 0,
+      "data_nascimento_invalid": 3226,
+      "data_nascimento_missing": 11759,
+      "duplicidades_cpf_evento": 1051,
+      "cidade_fora_mapeamento": 0,
+      "localidade_invalida": 0,
+      "localidade_nao_resolvida": 0,
+      "localidade_fora_brasil": 0,
+      "localidade_cidade_uf_inconsistente": 0
+    },
+    "manual_report_source_profiles": {
+      "silver_input.csv": [
+        "modelo_canonico"
+      ]
+    }
+  },
+  "limitations": [
+    "O artefato `notebook-run(1).docx` nao esta disponivel no workspace local.",
+    "Nao houve acesso a Databricks nem ao banco BB; conclusoes sobre `main.main.leads_coluna_origem` e `corporativos_pd.db2mci.cliente` permanecem locais/inferenciais."
+  ]
+}

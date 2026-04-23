@@ -84,4 +84,15 @@ else
   fi
 fi
 
-"${PYTHON_BIN}" -m uvicorn app.main:app --reload --app-dir backend --host "${UVICORN_HOST:-127.0.0.1}" --port "${UVICORN_PORT:-8000}"
+# So vigia backend/app (codigo da API); evita reload ao editar Alembic.
+uvicorn_args=(
+  -m uvicorn
+  app.main:app
+  --reload
+  --reload-dir backend/app
+  --app-dir backend
+  --host "${UVICORN_HOST:-127.0.0.1}"
+  --port "${UVICORN_PORT:-8000}"
+)
+
+"${PYTHON_BIN}" "${uvicorn_args[@]}"

@@ -21,6 +21,7 @@ type AgeAnalysisFiltersProps = {
   eventOptions: ReferenciaEvento[];
   isLoadingEvents: boolean;
   hasInvalidRange: boolean;
+  invalidEventoOption?: ReferenciaEvento | null;
   onChange: (nextValue: AgeAnalysisFilterFormValues) => void;
   onClear: () => void;
 };
@@ -35,11 +36,25 @@ export function AgeAnalysisFilters({
   eventOptions,
   isLoadingEvents,
   hasInvalidRange,
+  invalidEventoOption = null,
   onChange,
   onClear,
 }: AgeAnalysisFiltersProps) {
-  const selectedEvento =
-    eventOptions.find((option) => option.id === value.evento_id) ?? eventOptions[0] ?? null;
+  const fallbackEvento: ReferenciaEvento =
+    eventOptions[0] ?? invalidEventoOption ?? { id: ALL_EVENTS_OPTION_ID, nome: "Todos os eventos", data_inicio_prevista: null };
+  const hasExplicitEvento = typeof value.evento_id === "number";
+  const selectedEvento = hasExplicitEvento
+    ? eventOptions.find((option) => option.id === value.evento_id) ?? invalidEventoOption ?? fallbackEvento
+    : fallbackEvento;
+  const resolvedEventOptions =
+    invalidEventoOption && !eventOptions.some((option) => option.id === invalidEventoOption.id)
+      ? [invalidEventoOption, ...eventOptions]
+      : eventOptions;
+  const eventoHelperText = invalidEventoOption
+    ? "O evento do filtro nao esta mais disponivel na referencia atual."
+    : isLoadingEvents
+      ? "Carregando eventos disponiveis."
+      : "Use a busca para localizar um evento especifico.";
 
   return (
     <Card variant="outlined">
@@ -57,14 +72,14 @@ export function AgeAnalysisFilters({
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Autocomplete
-                options={eventOptions}
+                options={resolvedEventOptions}
                 disableClearable
                 value={selectedEvento}
                 loading={isLoadingEvents}
                 loadingText="Carregando eventos..."
                 noOptionsText="Nenhum evento encontrado"
                 getOptionLabel={formatEventOptionLabel}
-                isOptionEqualToValue={(option, selectedValue) => option.id === selectedValue.id}
+                isOptionEqualToValue={(option, selectedValue) => option.id === selectedValue?.id}
                 onChange={(_, selectedValue) =>
                   onChange({
                     ...value,
@@ -77,11 +92,8 @@ export function AgeAnalysisFilters({
                     {...params}
                     label="Evento"
                     placeholder="Todos os eventos"
-                    helperText={
-                      isLoadingEvents
-                        ? "Carregando eventos disponiveis."
-                        : "Use a busca para localizar um evento especifico."
-                    }
+                    error={Boolean(invalidEventoOption)}
+                    helperText={eventoHelperText}
                   />
                 )}
               />

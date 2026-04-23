@@ -1,6 +1,5 @@
 """Configuracao de conexao, contexto RLS e utilitarios de sessao do SQLModel."""
 
-import json
 import os
 import sys
 from functools import lru_cache
@@ -12,25 +11,6 @@ from sqlmodel import create_engine, Session
 
 from app.db.metadata import SQLModel
 from dotenv import load_dotenv
-
-
-def _agent_debug_ndjson(
-    source: str,
-    event: str,
-    payload: dict | None = None,
-    hypothesis: str | None = None,
-) -> None:
-    """Emit optional agent diagnostics without making routers depend on stdout side effects."""
-    enabled = os.getenv("AGENT_DEBUG_NDJSON", "").strip().lower() in {"1", "true", "yes", "on"}
-    if not enabled:
-        return
-    record = {
-        "source": source,
-        "event": event,
-        "payload": payload or {},
-        "hypothesis": hypothesis,
-    }
-    print(json.dumps(record, ensure_ascii=False, default=str), file=sys.stderr)
 
 
 def _env_int(name: str, default: int, *, min_value: int | None = None) -> int:

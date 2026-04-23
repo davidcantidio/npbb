@@ -1,6 +1,6 @@
 ---
 name: Plano incremental de organizacao de leads/importacao
-overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads com wrappers legados em pages/* e hooks/*; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename de app.modules.leads_publicidade foi planejado em FEATURE-5 para o alvo app.modules.lead_imports, sem rename fisico ainda; importacao/ETL seguem congelados."
+overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads com wrappers legados em pages/* e hooks/*; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5 e implementado em FEATURE-6, tornando app.modules.lead_imports o pacote real e preservando app.modules.leads_publicidade como compatibilidade temporaria; importacao/ETL seguem congelados."
 todos:
   - id: doc-align
     content: Alinhar docs com as rotas reais de leads e dashboard.
@@ -35,6 +35,9 @@ todos:
   - id: rename-module
     content: Planejar rename de app.modules.leads_publicidade para app.modules.lead_imports com camada de compatibilidade.
     status: done
+  - id: rename-module-implementation
+    content: Implementar rename fisico para app.modules.lead_imports mantendo app.modules.leads_publicidade como alias temporario.
+    status: done
 isProject: false
 ---
 
@@ -54,6 +57,13 @@ Esta parte do plano ja foi implementada:
     - `etl_import.py`
     - `batches.py`
   - Os contratos publicos sob `/leads` foram preservados.
+  - O pacote real de importacao/ETL de leads agora e
+    [backend/app/modules/lead_imports](backend/app/modules/lead_imports).
+  - [backend/app/modules/leads_publicidade](backend/app/modules/leads_publicidade)
+    permanece como compatibilidade temporaria por shims, para preservar imports
+    legados profundos ate uma rodada posterior de remocao.
+  - Consumers ativos em routers, servico, worker e testes focados passaram a
+    importar por `app.modules.lead_imports`.
 
 - Frontend:
   - O shell canonico `/leads/importar` continua direto em
@@ -116,6 +126,15 @@ Esta parte do plano ja foi implementada:
       apenas apos busca sem consumidores
     - escopo desta rodada: planejamento/governanca, sem rename fisico e sem
       alteracao de imports de producao, scripts ou testes
+  - A implementacao do rename foi aberta em:
+    - [PROJETOS/NPBB/INTAKE-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/INTAKE-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
+    - [PROJETOS/NPBB/PRD-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/PRD-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
+    - [PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
+  - A execucao registrada foi:
+    - `app.modules.lead_imports` e o caminho real para novos imports backend
+    - `app.modules.leads_publicidade` segue como alias temporario
+    - imports ativos de producao, script worker e testes focados foram migrados
+    - remocao do alias antigo permanece como follow-up posterior
 
 ## 2. Validacao executada
 
@@ -164,6 +183,26 @@ Esta parte do plano ja foi implementada:
   - Como a rodada foi documental, nenhuma suite funcional foi exigida.
   - Nenhum arquivo Python, script, rota, schema, frontend, dashboard,
     `lead_pipeline/` ou `core/leads_etl/` foi alterado por esta rodada.
+- Rodada de implementacao do rename em 2026-04-23:
+  - `backend/app/modules/lead_imports` foi criado como pacote real.
+  - `backend/app/modules/leads_publicidade` foi transformado em camada de
+    compatibilidade temporaria.
+  - Imports ativos em routers, `lead_pipeline_service.py`,
+    `backend/scripts/run_leads_worker.py` e testes focados foram migrados para
+    `app.modules.lead_imports`.
+  - `backend/tests/test_lead_imports_compat.py` cobre import legado profundo e
+    monkeypatch por string no caminho antigo.
+  - `rg -n "app\\.modules\\.leads_publicidade|leads_publicidade|app\\.modules\\.lead_imports|lead_imports" backend docs PROJETOS plano_organizacao_import.md`
+    usado antes/depois para conferir consumidores e referencias.
+  - `Get-ChildItem -Recurse -Depth 3 backend/app/modules/leads_publicidade`
+    e `Get-ChildItem -Recurse -Depth 3 backend/app/modules/lead_imports`
+    usados para conferir a estrutura dos pacotes.
+  - Suite focada backend executada a partir da raiz no PowerShell com
+    `PYTHONPATH=C:\Users\NPBB\npbb;C:\Users\NPBB\npbb\backend`,
+    `SECRET_KEY=ci-secret-key` e `TESTING=true`.
+  - Resultado: `136 passed, 1 skipped`.
+  - Nenhum contrato HTTP, schema, rota publica, frontend, dashboard,
+    `lead_pipeline/` ou `core/leads_etl/` foi alterado por esta rodada.
 
 ### Residual conhecido
 
@@ -185,8 +224,7 @@ Enquanto o objetivo for seguir com muito cuidado, **nao mexer agora** em:
 - `lead_pipeline/`
 - `core/leads_etl/`
 - qualquer contrato HTTP, schema ou rota publica
-- rename fisico de `backend/app/modules/leads_publicidade` para
-  `backend/app/modules/lead_imports`
+- remocao do alias temporario `backend/app/modules/leads_publicidade`
 
 Em outras palavras: o shell `/leads/importar`, Bronze, ETL, mapeamento e
 pipeline ficam **congelados** por enquanto.
@@ -201,9 +239,9 @@ pipeline ficam **congelados** por enquanto.
   decisao de produto e feature propria.
 - Nao confundir a remocao da tela frontend legada com remocao do endpoint
   backend `/dashboard/leads/relatorio`, que continua preservado.
-- Nao executar o rename fisico de `app.modules.leads_publicidade` sem feature
-  propria de implementacao, pacote `lead_imports` real e alias/reexport
-  temporario no caminho antigo.
+- Nao remover `app.modules.leads_publicidade` enquanto houver qualquer
+  consumidor legado ou sem feature propria de limpeza.
+- Preferir `app.modules.lead_imports` para qualquer novo import backend.
 - Se uma alteracao comecar a puxar `MapeamentoPage`, `BatchMapeamentoPage`,
   `PipelineStatusPage` ou ETL junto, parar e reduzir o escopo.
 
@@ -212,12 +250,11 @@ pipeline ficam **congelados** por enquanto.
 Depois de estabilizar este slice inicial, ai sim considerar:
 
 1. mover o restante do frontend de leads para `features/leads`
-2. planejar a remocao dos reexports temporarios quando os imports estiverem consolidados
+2. planejar a remocao dos shims temporarios de `app.modules.leads_publicidade`
+   quando a busca confirmar ausencia de consumidores legados
 3. se produto reabrir `/dashboard/leads/conversao`, criar nova tela em feature
    propria sem recuperar automaticamente o legado removido
-4. executar em feature propria o rename planejado de `app.modules.leads_publicidade`
-   para `app.modules.lead_imports`, com alias/reexport temporario
-5. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
+4. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
 
 ## 6. Leitura minima para o proximo agente
 
@@ -230,6 +267,8 @@ Antes de mexer em qualquer coisa, ler:
 - [PROJETOS/NPBB/features/FEATURE-4-DECISAO-DASHBOARD-LEADS-LEGADO/FEATURE-4-DECISAO-DASHBOARD-LEADS-LEGADO.md](PROJETOS/NPBB/features/FEATURE-4-DECISAO-DASHBOARD-LEADS-LEGADO/FEATURE-4-DECISAO-DASHBOARD-LEADS-LEGADO.md)
 - [PROJETOS/NPBB/PRD-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/PRD-RENAME-MODULO-LEAD-IMPORTS.md)
 - [PROJETOS/NPBB/features/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/features/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS/FEATURE-5-RENAME-MODULO-LEAD-IMPORTS.md)
+- [PROJETOS/NPBB/PRD-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/PRD-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
+- [PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md](PROJETOS/NPBB/features/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS/FEATURE-6-IMPLEMENTACAO-RENAME-MODULO-LEAD-IMPORTS.md)
 - [frontend/src/features/leads/list/LeadsListPage.tsx](frontend/src/features/leads/list/LeadsListPage.tsx)
 - [frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx](frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx)
 - [frontend/src/features/leads/shared/useReferenciaEventos.ts](frontend/src/features/leads/shared/useReferenciaEventos.ts)
@@ -242,8 +281,8 @@ de rota de importacao; depois a organizacao da superficie nao-import de leads
 em `features/leads` com compatibilidade legada preservada; por fim, fechou a
 decisao sobre `DashboardLeads.tsx` removendo a superficie frontend orfa e
 mantendo o endpoint de relatorio como API/script sem tela roteada. O passo
-seguinte tambem planejou o rename de `app.modules.leads_publicidade` para
-`app.modules.lead_imports` com compatibilidade temporaria, sem executar o
-rename fisico. Se a ordem for seguir com muito cuidado, **nao e** reabrir
-importacao/ETL; o proximo passo tecnico para backend e uma feature propria de
-implementacao do rename com alias/reexport e migracao incremental de imports.
+seguinte planejou e executou o rename de `app.modules.leads_publicidade` para
+`app.modules.lead_imports`, mantendo compatibilidade temporaria no caminho
+antigo. Se a ordem for seguir com muito cuidado, **nao e** reabrir
+importacao/ETL; o proximo passo tecnico para backend e apenas uma feature
+posterior de limpeza do alias antigo, depois de busca sem consumidores.

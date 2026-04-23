@@ -1,32 +1,5 @@
-"""Semantic errors for backend ETL import flows."""
+"""Compatibility shim for app.modules.lead_imports.application.etl_import.exceptions."""
 
-from __future__ import annotations
+from app.modules.leads_publicidade._compat import alias_module
 
-
-class EtlImportError(Exception):
-    """Base ETL import error."""
-
-
-class EtlPreviewSessionNotFoundError(EtlImportError):
-    """Raised when preview session token does not exist."""
-
-
-class EtlPreviewSessionConflictError(EtlImportError):
-    """Raised when preview session cannot be reused."""
-
-
-class EtlImportValidationError(EtlImportError):
-    """Raised when validation gate blocks persistence."""
-
-
-class EtlImportContractError(EtlImportError):
-    """Raised when preview payload cannot be materialized as canonical row."""
-
-
-class EtlImportJobNotFoundError(EtlImportError):
-    """Raised when ETL job id does not exist."""
-
-
-class EtlImportJobConflictError(EtlImportError):
-    """Raised when ETL job transition is invalid for the current state."""
-
+alias_module(__name__, globals())

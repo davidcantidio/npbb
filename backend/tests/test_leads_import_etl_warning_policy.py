@@ -3,14 +3,14 @@ from __future__ import annotations
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.modules.leads_publicidade.application.etl_import.contracts import (
+from app.modules.lead_imports.application.etl_import.contracts import (
     EtlPreviewDQItem,
     EtlPreviewSnapshot,
 )
-from app.modules.leads_publicidade.application.etl_import.dq_report_policy import (
+from app.modules.lead_imports.application.etl_import.dq_report_policy import (
     compute_has_warnings,
 )
-from app.modules.leads_publicidade.application.etl_import.preview_session_repository import (
+from app.modules.lead_imports.application.etl_import.preview_session_repository import (
     create_snapshot,
     get_snapshot,
 )

@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models.models import Evento, Lead, StatusEvento
-from app.modules.leads_publicidade.application.leads_import_etl_usecases import (
+from app.modules.lead_imports.application.leads_import_etl_usecases import (
     commit_leads_with_etl,
     import_leads_with_etl,
 )

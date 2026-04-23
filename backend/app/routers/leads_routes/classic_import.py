@@ -20,13 +20,13 @@ from core.leads_etl.models import coerce_lead_field
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.models import Lead, Usuario
-from app.modules.leads_publicidade.application.etl_import.persistence import (
+from app.modules.lead_imports.application.etl_import.persistence import (
     build_dedupe_key,
     find_existing_lead,
     merge_lead,
     persist_lead_batch,
 )
-from app.modules.leads_publicidade.application.leads_import_usecases import (
+from app.modules.lead_imports.application.leads_import_usecases import (
     importar_leads_usecase,
     preview_import_sample_usecase,
     validar_mapeamento_usecase,

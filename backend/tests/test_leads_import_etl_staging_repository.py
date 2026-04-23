@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.modules.leads_publicidade.application.etl_import.staging_repository import (
+from app.modules.lead_imports.application.etl_import.staging_repository import (
     choose_staging_ingestion_strategy,
     persist_staging_rows,
 )
@@ -55,11 +55,11 @@ def test_persist_staging_rows_falls_back_to_insert_when_copy_fails(monkeypatch) 
         calls.append("insert")
 
     monkeypatch.setattr(
-        "app.modules.leads_publicidade.application.etl_import.staging_repository._copy_rows_to_staging",
+        "app.modules.lead_imports.application.etl_import.staging_repository._copy_rows_to_staging",
         broken_copy,
     )
     monkeypatch.setattr(
-        "app.modules.leads_publicidade.application.etl_import.staging_repository._insert_rows_to_staging",
+        "app.modules.lead_imports.application.etl_import.staging_repository._insert_rows_to_staging",
         insert_stub,
     )
 

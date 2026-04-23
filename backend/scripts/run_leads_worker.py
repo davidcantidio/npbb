@@ -15,7 +15,7 @@ from sqlmodel import Session
 os.environ.setdefault("DB_REQUIRE_SUPABASE_POOLER", "false")
 
 from app.db.database import build_worker_engine, set_internal_service_db_context
-from app.modules.leads_publicidade.application.etl_import.job_service import (
+from app.modules.lead_imports.application.etl_import.job_service import (
     run_next_commit_job,
     run_next_preview_job,
 )

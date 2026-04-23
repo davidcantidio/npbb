@@ -517,7 +517,7 @@ def test_commit_etl_uses_staging_when_inline_preview_rows_are_not_persisted(
 
 
 def test_job_endpoints_expose_summary_and_validation_errors_from_staging(client: TestClient, engine, monkeypatch) -> None:
-    from app.modules.leads_publicidade.application.etl_import import job_service
+    from app.modules.lead_imports.application.etl_import import job_service
 
     monkeypatch.setattr(job_service, "engine", engine)
     seed_statuses(engine)
@@ -565,7 +565,7 @@ def test_job_endpoints_expose_summary_and_validation_errors_from_staging(client:
 
 
 def test_job_endpoints_hide_jobs_from_other_users(client: TestClient, engine, monkeypatch) -> None:
-    from app.modules.leads_publicidade.application.etl_import import job_service
+    from app.modules.lead_imports.application.etl_import import job_service
 
     monkeypatch.setattr(job_service, "engine", engine)
     seed_statuses(engine)
@@ -607,7 +607,7 @@ def test_job_endpoints_hide_jobs_from_other_users(client: TestClient, engine, mo
 
 
 def test_commit_etl_rolls_back_final_write_when_staging_marker_fails(client: TestClient, engine, monkeypatch) -> None:
-    from app.modules.leads_publicidade.application.etl_import import commit_service
+    from app.modules.lead_imports.application.etl_import import commit_service
 
     seed_statuses(engine)
     user = seed_user(engine)
@@ -694,8 +694,8 @@ def test_commit_etl_partial_failure_allows_retry_then_idempotent_committed(
     engine,
     monkeypatch,
 ) -> None:
-    from app.modules.leads_publicidade.application.etl_import import commit_service
-    from app.modules.leads_publicidade.application.etl_import.persistence import (
+    from app.modules.lead_imports.application.etl_import import commit_service
+    from app.modules.lead_imports.application.etl_import.persistence import (
         LeadBatchPersistenceResult,
         LeadPersistenceFailedRow,
         persist_lead_batch as real_persist_lead_batch,

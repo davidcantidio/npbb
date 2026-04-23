@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.modules.leads_publicidade.application.etl_import.validators import (
+from app.modules.lead_imports.application.etl_import.validators import (
     INVALID_CPF_REASON,
     MALFORMED_EMAIL_REASON,
     MISSING_CPF_REASON,

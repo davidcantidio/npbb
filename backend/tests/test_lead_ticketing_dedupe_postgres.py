@@ -78,7 +78,7 @@ def test_parallel_persist_lead_batch_one_lead(postgres_engine: "Engine") -> None
     """Dois imports paralelos com mesmo CPF, sessao nula e email ausente não criam dois leads."""
 
     from app.models.models import Lead
-    from app.modules.leads_publicidade.application.etl_import.persistence import persist_lead_batch
+    from app.modules.lead_imports.application.etl_import.persistence import persist_lead_batch
 
     with Session(postgres_engine) as session:
         evento = _seed_minimal_evento(session)

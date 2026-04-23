@@ -11,7 +11,7 @@ from sqlmodel import Session
 from app.core.auth import get_current_user
 from app.db.database import get_session
 from app.models.models import Usuario
-from app.modules.leads_publicidade.application.etl_import.exceptions import (
+from app.modules.lead_imports.application.etl_import.exceptions import (
     EtlImportContractError,
     EtlImportJobConflictError,
     EtlImportJobNotFoundError,
@@ -19,8 +19,8 @@ from app.modules.leads_publicidade.application.etl_import.exceptions import (
     EtlPreviewSessionConflictError,
     EtlPreviewSessionNotFoundError,
 )
-from app.modules.leads_publicidade.application.etl_import.extract import ETL_MAX_SCAN_ROWS_CAP
-from app.modules.leads_publicidade.application.etl_import.job_service import (
+from app.modules.lead_imports.application.etl_import.extract import ETL_MAX_SCAN_ROWS_CAP
+from app.modules.lead_imports.application.etl_import.job_service import (
     create_preview_job,
     execute_commit_job,
     execute_preview_job,
@@ -29,8 +29,8 @@ from app.modules.leads_publicidade.application.etl_import.job_service import (
     read_job,
     read_job_errors,
 )
-from app.modules.leads_publicidade.application.etl_import.rejection_reasons import aggregate_rejection_reason_counts
-from app.modules.leads_publicidade.application.leads_import_etl_usecases import (
+from app.modules.lead_imports.application.etl_import.rejection_reasons import aggregate_rejection_reason_counts
+from app.modules.lead_imports.application.leads_import_etl_usecases import (
     commit_leads_with_etl,
     import_leads_with_etl,
 )

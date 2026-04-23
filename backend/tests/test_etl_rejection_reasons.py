@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from app.modules.leads_publicidade.application.etl_import.contracts import EtlPreviewRow
-from app.modules.leads_publicidade.application.etl_import.rejection_reasons import (
+from app.modules.lead_imports.application.etl_import.contracts import EtlPreviewRow
+from app.modules.lead_imports.application.etl_import.rejection_reasons import (
     aggregate_rejection_reason_counts,
 )
-from app.modules.leads_publicidade.application.etl_import.validators import (
+from app.modules.lead_imports.application.etl_import.validators import (
     INVALID_CPF_REASON,
     MALFORMED_EMAIL_REASON,
     MISSING_CPF_REASON,

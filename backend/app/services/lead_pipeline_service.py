@@ -51,8 +51,8 @@ from app.models.models import (
     LeadEventoSourceKind,
     TipoEvento,
 )
-from app.modules.leads_publicidade.application.lead_merge_policy import merge_lead_payload_fill_missing
-from app.modules.leads_publicidade.application.etl_import.persistence import (
+from app.modules.lead_imports.application.lead_merge_policy import merge_lead_payload_fill_missing
+from app.modules.lead_imports.application.etl_import.persistence import (
     LeadLookupContext,
     _load_lead_lookup_context,
     find_existing_lead_from_lookup,

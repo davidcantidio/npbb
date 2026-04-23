@@ -6,8 +6,8 @@ from sqlmodel import Session, select
 
 from app.models.lead_public_models import LeadEventoSourceKind
 from app.models.models import Evento, Lead, LeadEvento, StatusEvento
-from app.modules.leads_publicidade.application.etl_import import persistence
-from app.modules.leads_publicidade.application.etl_import.persistence import (
+from app.modules.lead_imports.application.etl_import import persistence
+from app.modules.lead_imports.application.etl_import.persistence import (
     LeadBatchPersistenceResult,
     LeadLookupContext,
     build_dedupe_key,

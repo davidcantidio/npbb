@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models.models import Lead
-from app.modules.leads_publicidade.application.lead_merge_policy import (
+from app.modules.lead_imports.application.lead_merge_policy import (
     lead_field_has_value,
     merge_lead_payload_fill_missing,
 )

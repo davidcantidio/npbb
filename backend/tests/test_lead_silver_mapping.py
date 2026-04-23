@@ -1012,7 +1012,7 @@ class TestEnsureCanonicalEventLink:
             s.refresh(lead)
             lead_id = lead.id
 
-        from app.modules.leads_publicidade.application.etl_import import persistence
+        from app.modules.lead_imports.application.etl_import import persistence
 
         with Session(engine) as s:
             lead = s.get(Lead, lead_id)
@@ -1064,7 +1064,7 @@ class TestEnsureCanonicalEventLink:
             s.commit()
             s.refresh(lead)
 
-        from app.modules.leads_publicidade.application.etl_import import persistence
+        from app.modules.lead_imports.application.etl_import import persistence
 
         with Session(engine) as s:
             lead = s.get(Lead, lead.id)
@@ -1094,7 +1094,7 @@ class TestEnsureCanonicalEventLink:
             s.commit()
             s.refresh(lead)
 
-        from app.modules.leads_publicidade.application.etl_import import persistence
+        from app.modules.lead_imports.application.etl_import import persistence
 
         with Session(engine) as s:
             lead = s.get(Lead, lead.id)

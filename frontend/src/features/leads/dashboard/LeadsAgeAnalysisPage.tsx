@@ -10,7 +10,6 @@ import { ChartSkeleton } from "../../../components/dashboard/ChartSkeleton";
 import { ConfidenceSummaryCard } from "../../../components/dashboard/ConfidenceSummaryCard";
 import { CoverageBanner } from "../../../components/dashboard/CoverageBanner";
 import { DataQualityTable } from "../../../components/dashboard/DataQualityTable";
-import { ExecutiveSummaryCard } from "../../../components/dashboard/ExecutiveSummaryCard";
 import { EventsAgeTable } from "../../../components/dashboard/EventsAgeTable";
 import { KpiCardSkeleton } from "../../../components/dashboard/KpiCardSkeleton";
 import { TableSkeleton } from "../../../components/dashboard/TableSkeleton";
@@ -199,7 +198,6 @@ export default function LeadsAgeAnalysisPage() {
           ) : (
             <>
               {viewModel ? <ConfidenceSummaryCard data={data} viewModel={viewModel} /> : null}
-              <ExecutiveSummaryCard insights={data.insights} highlights={viewModel?.executiveHighlights} />
               <AgeAnalysisKpiGrid data={data} eventosTotal={data.por_evento.length} appliedFilters={appliedFilters} />
               <AgeDistributionChart events={data.por_evento} />
               <ChannelMixChart events={data.por_evento} />

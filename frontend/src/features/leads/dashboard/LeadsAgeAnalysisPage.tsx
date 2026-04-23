@@ -8,7 +8,6 @@ import { AgeDistributionChart } from "../../../components/dashboard/AgeDistribut
 import { ChannelMixChart } from "../../../components/dashboard/ChannelMixChart";
 import { ChartSkeleton } from "../../../components/dashboard/ChartSkeleton";
 import { ConfidenceSummaryCard } from "../../../components/dashboard/ConfidenceSummaryCard";
-import { ConsolidatedPanel } from "../../../components/dashboard/ConsolidatedPanel";
 import { CoverageBanner } from "../../../components/dashboard/CoverageBanner";
 import { DataQualityTable } from "../../../components/dashboard/DataQualityTable";
 import { ExecutiveSummaryCard } from "../../../components/dashboard/ExecutiveSummaryCard";
@@ -204,7 +203,6 @@ export default function LeadsAgeAnalysisPage() {
               <AgeAnalysisKpiGrid data={data} eventosTotal={data.por_evento.length} appliedFilters={appliedFilters} />
               <AgeDistributionChart events={data.por_evento} />
               <ChannelMixChart events={data.por_evento} />
-              <ConsolidatedPanel data={data.consolidado} />
               <DataQualityTable
                 consolidated={data.qualidade_consolidado}
                 rows={data.qualidade_por_origem}

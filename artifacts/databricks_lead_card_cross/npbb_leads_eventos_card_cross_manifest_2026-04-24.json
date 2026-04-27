@@ -1,0 +1,24 @@
+{
+  "created_at": "2026-04-24T18:22:25",
+  "ready_csv": "C:\\Users\\NPBB\\npbb\\artifacts\\databricks_lead_card_cross\\npbb_leads_eventos_card_cross_2026-04-24.csv",
+  "unresolved_csv": "C:\\Users\\NPBB\\npbb\\artifacts\\databricks_lead_card_cross\\npbb_leads_eventos_card_cross_unresolved_2026-04-24.csv",
+  "ready_rows": 69509,
+  "ready_distinct_leads": 66021,
+  "ready_distinct_events": 16,
+  "unresolved_rows": 9713,
+  "unresolved_distinct_leads": 9713,
+  "grain": "one row per lead_id + event_id",
+  "notebook_required_columns": [
+    "cpf",
+    "evento",
+    "local",
+    "data_evento"
+  ],
+  "recommended_notebook_columns": [
+    "lead_id",
+    "event_id",
+    "event_name",
+    "event_location",
+    "event_date"
+  ]
+}

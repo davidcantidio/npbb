@@ -674,8 +674,27 @@ def _resolve_dominant_range(accumulator: EventAccumulator) -> tuple[str, str]:
     return leaders[0], ("resolved" if len(leaders) == 1 else "tied")
 
 
-def _cobertura_bb_pct(accumulator: EventAccumulator) -> float:
-    return _safe_pct(accumulator.bb_covered_volume, accumulator.base_leads)
+def _bb_volumes_entre_leads_validos(
+    accumulator: EventAccumulator,
+) -> tuple[int, int, int]:
+    """Volumes com idade e is_cliente_bb True/False: (classificados_total, clientes_bb, nao_clientes_bb)."""
+    clientes_vol = (
+        accumulator.perfil_cliente_faixa_18_25
+        + accumulator.perfil_cliente_faixa_26_40
+        + accumulator.perfil_cliente_fora_18_40
+    )
+    nao_vol = (
+        accumulator.perfil_nao_faixa_18_25
+        + accumulator.perfil_nao_faixa_26_40
+        + accumulator.perfil_nao_fora_18_40
+    )
+    return clientes_vol + nao_vol, clientes_vol, nao_vol
+
+
+def _cobertura_bb_pct_sobre_base_com_idade(accumulator: EventAccumulator) -> float:
+    """Cobertura BB entre leads validos: share com is_cliente_bb definido sobre base_com_idade."""
+    classified_total, _, _ = _bb_volumes_entre_leads_validos(accumulator)
+    return _safe_pct(classified_total, accumulator.base_com_idade)
 
 
 def _resolve_cliente_bb_public_metrics(
@@ -688,17 +707,19 @@ def _resolve_cliente_bb_public_metrics(
     int | None,
     float | None,
 ]:
-    """Retorna cobertura, (clientes vol, pct), (nao clientes vol, pct) — ultimos Nulos se abaixo do limiar."""
-    cobertura_bb_pct = _cobertura_bb_pct(accumulator)
+    """Retorna cobertura (sobre base com idade), (clientes vol, pct), (nao vol, pct) — Nulos se abaixo do limiar."""
+    _, clientes_vol, nao_vol = _bb_volumes_entre_leads_validos(accumulator)
+    cobertura_bb_pct = _cobertura_bb_pct_sobre_base_com_idade(accumulator)
     if cobertura_bb_pct < bb_coverage_threshold_pct:
         return cobertura_bb_pct, None, None, None, None
 
+    base_idade = accumulator.base_com_idade
     return (
         cobertura_bb_pct,
-        accumulator.bb_clients_volume,
-        _safe_pct(accumulator.bb_clients_volume, accumulator.base_leads),
-        accumulator.bb_nao_cliente_volume,
-        _safe_pct(accumulator.bb_nao_cliente_volume, accumulator.base_leads),
+        clientes_vol,
+        _safe_pct(clientes_vol, base_idade),
+        nao_vol,
+        _safe_pct(nao_vol, base_idade),
     )
 
 
@@ -1010,22 +1031,24 @@ def _build_insights(
     )
 
     resumo.append(
-        f"Denominadores: {consolidado.base_com_idade_volume} vinculo(s) com idade e "
-        f"{consolidado.base_bb_coberta_volume} com cobertura BB."
+        f"Denominadores: {consolidado.base_com_idade_volume} vinculo(s) com idade; "
+        f"{consolidado.base_bb_coberta_volume} vinculo(s) com flag BB preenchida na base total "
+        f"({consolidado.base_total} vinculos)."
     )
 
     if consolidado.cobertura_bb_pct < bb_threshold:
         flags.append("bb_coverage_low")
         alertas.append(
-            f"Cobertura BB ({format(consolidado.cobertura_bb_pct, '.2f')}%) abaixo do limiar de "
-            f"{format(bb_threshold, '.0f')}%; percentuais de cliente e nao cliente BB ficam ocultos."
+            f"Cobertura BB sobre leads com idade ({format(consolidado.cobertura_bb_pct, '.2f')}%) abaixo do limiar de "
+            f"{format(bb_threshold, '.0f')}%; KPIs de cliente e nao cliente BB ficam ocultos."
         )
     elif consolidado.clientes_bb_volume is not None:
         resumo.append(
-            f"Clientes BB: {consolidado.clientes_bb_volume} ({format(consolidado.clientes_bb_pct or 0, '.2f')}%). "
+            f"Clientes BB (sobre leads com idade): {consolidado.clientes_bb_volume} "
+            f"({format(consolidado.clientes_bb_pct or 0, '.2f')}%). "
             f"Nao clientes BB: {consolidado.nao_clientes_bb_volume} "
             f"({format(consolidado.nao_clientes_bb_pct or 0, '.2f')}%). "
-            f"Cruzamento pendente (BB indefinido): {consolidado.bb_indefinido_volume}."
+            f"BB indefinido na base total de vinculos: {consolidado.bb_indefinido_volume}."
         )
 
     if consolidado.faixa_dominante_status == "tied":

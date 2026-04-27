@@ -211,7 +211,9 @@ class EventoAgeAnalysis(BaseModel):
         description="Quantidade de vinculos com data de nascimento suficiente para classificar idade."
     )
     base_bb_coberta_volume: int = Field(
-        description="Quantidade de vinculos com is_cliente_bb preenchido."
+        description=(
+            "Quantidade de vinculos (base total do evento) com is_cliente_bb preenchido (True ou False)."
+        ),
     )
     leads_proponente: int = Field(description="Vinculos com tipo_lead bilheteria ou entrada_evento.")
     leads_ativacao: int = Field(description="Vinculos com tipo_lead ativacao.")
@@ -220,25 +222,38 @@ class EventoAgeAnalysis(BaseModel):
     )
     clientes_bb_volume: int | None = Field(
         default=None,
-        description="Quantidade de clientes BB. Nulo quando a cobertura BB e insuficiente.",
+        description=(
+            "Clientes BB apenas entre vinculos com idade conhecida (base_com_idade_volume). "
+            "Nulo quando cobertura BB entre leads validos e abaixo do limiar."
+        ),
     )
     clientes_bb_pct: float | None = Field(
         default=None,
-        description="Percentual de clientes BB sobre a base total do evento.",
+        description=(
+            "Percentual de clientes BB sobre base_com_idade_volume. Nulo quando cobertura BB abaixo do limiar."
+        ),
     )
     nao_clientes_bb_volume: int | None = Field(
         default=None,
-        description="Leads com is_cliente_bb=false. Nulo quando cobertura BB abaixo do limiar.",
+        description=(
+            "Nao clientes BB apenas entre vinculos com idade. Nulo quando cobertura BB abaixo do limiar."
+        ),
     )
     nao_clientes_bb_pct: float | None = Field(
         default=None,
-        description="Percentual de nao clientes BB sobre a base total. Nulo quando cobertura BB abaixo do limiar.",
+        description=(
+            "Percentual de nao clientes BB sobre base_com_idade_volume. Nulo quando cobertura BB abaixo do limiar."
+        ),
     )
     bb_indefinido_volume: int = Field(
-        description="Leads com is_cliente_bb nulo (cruzamento pendente ou sem dado)."
+        description=(
+            "Vinculos com is_cliente_bb nulo na base total do evento (inclui sem idade)."
+        ),
     )
     cobertura_bb_pct: float = Field(
-        description="Percentual de leads com is_cliente_bb preenchido."
+        description=(
+            "Percentual de leads com idade que tem is_cliente_bb True ou False (sobre base_com_idade_volume)."
+        ),
     )
     faixas: AgeBreakdown
     faixa_dominante: str = Field(
@@ -265,26 +280,34 @@ class ConsolidadoAgeAnalysis(BaseModel):
     leads_canal_desconhecido: int
     clientes_bb_volume: int | None = Field(
         default=None,
-        description="Quantidade consolidada de clientes BB. Nulo quando a cobertura BB e insuficiente.",
+        description=(
+            "Clientes BB consolidados apenas entre vinculos com idade. Nulo quando cobertura BB entre validos e baixa."
+        ),
     )
     clientes_bb_pct: float | None = Field(
         default=None,
-        description="Percentual consolidado de clientes BB sobre a base total.",
+        description=(
+            "Percentual de clientes BB sobre base_com_idade_volume consolidada. Nulo quando cobertura abaixo do limiar."
+        ),
     )
     nao_clientes_bb_volume: int | None = Field(
         default=None,
-        description="Consolidado de is_cliente_bb=false. Nulo quando cobertura BB abaixo do limiar.",
+        description="Nao clientes BB entre vinculos com idade. Nulo quando cobertura BB abaixo do limiar.",
     )
     nao_clientes_bb_pct: float | None = Field(
         default=None,
-        description="Percentual consolidado de nao clientes BB. Nulo quando cobertura BB abaixo do limiar.",
+        description=(
+            "Percentual de nao clientes BB sobre base_com_idade_volume. Nulo quando cobertura abaixo do limiar."
+        ),
     )
     bb_indefinido_volume: int
     bb_indefinido_pct: float = Field(
-        description="Percentual de vinculos com is_cliente_bb nulo sobre a base total consolidada."
+        description="Percentual de vinculos com is_cliente_bb nulo sobre base_total (todos os vinculos)."
     )
     cobertura_bb_pct: float = Field(
-        description="Percentual consolidado de leads com is_cliente_bb preenchido."
+        description=(
+            "Percentual de leads com idade com is_cliente_bb True ou False (sobre base_com_idade_volume)."
+        ),
     )
     faixas: AgeBreakdown
     top_eventos: list[TopEventoAgeAnalysis]

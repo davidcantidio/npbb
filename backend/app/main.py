@@ -1,3 +1,4 @@
+import logging
 import os
 from time import perf_counter
 
@@ -39,6 +40,8 @@ from app.routers.data_quality import router as data_quality_router
 from app.routers.sponsorship import router as sponsorship_router
 from app.api.v1.endpoints.framework import router as framework_router
 from app.observability.request_id_middleware import RequestIDMiddleware
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_root_path(value: str | None) -> str:
@@ -92,6 +95,12 @@ def _database_error_detail(exc: OperationalError, *, path: str | None = None) ->
 
 @app.exception_handler(OperationalError)
 async def database_operational_error_handler(request, exc: OperationalError):
+    logger.exception(
+        "database operational error on %s endpoint=%s detail=%s",
+        request.url.path,
+        get_database_endpoint_info(),
+        str(getattr(exc, "orig", exc)).strip(),
+    )
     return JSONResponse(
         status_code=503,
         content={"detail": _database_error_detail(exc, path=request.url.path)},

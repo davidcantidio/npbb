@@ -120,7 +120,8 @@ export default function BatchUploadTable({
 
       <Alert severity="info">
         Cada linha gera um <code>LeadBatch</code> independente. O mapeamento e aplicado uma unica vez para todos os
-        lotes pendentes do workspace, e o pipeline continua por <code>batch_id</code>.
+        lotes pendentes do workspace vinculados a evento. Linhas de enriquecimento sem evento seguem por arquivo, e o
+        pipeline continua por <code>batch_id</code>.
       </Alert>
 
       <BatchWorkspaceSummaryCard rows={rows} onOpenRowFlow={onOpenRowFlow} />
@@ -141,8 +142,8 @@ export default function BatchUploadTable({
                 <TableCell>Plataforma</TableCell>
                 <TableCell>Data envio</TableCell>
                 <TableCell>Evento</TableCell>
-                <TableCell>Origem</TableCell>
-                <TableCell>Tipo / Ativacao</TableCell>
+                <TableCell>Modo / Origem</TableCell>
+                <TableCell>Classificação / Ativacao</TableCell>
                 <TableCell>Pendencias</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Acoes</TableCell>

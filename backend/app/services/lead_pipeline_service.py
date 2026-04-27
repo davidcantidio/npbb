@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
+import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -31,7 +32,7 @@ import app.db.database as database_module
 from app.db.database import build_worker_engine, set_internal_service_db_context
 from lead_pipeline.constants import ALL_COLUMNS, TIPO_EVENTO_PADRAO
 from lead_pipeline.geo_normalize import normalize_brazilian_locality
-from lead_pipeline.normalization import strip_accents
+from lead_pipeline.normalization import normalize_header, strip_accents
 from lead_pipeline.pipeline import (
     PipelineConfig,
     PipelineProgressEvent,
@@ -65,6 +66,7 @@ from app.services.imports.payload_storage import read_batch_payload
 from app.observability.import_events import log_import_event
 from app.observability.prometheus_leads_import import observe_gold_stage_duration_seconds
 from app.services.imports.file_reader import read_raw_file_rows
+from app.utils.cpf import is_valid_cpf, normalize_cpf
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +124,7 @@ LEAD_BATCH_LOAD_FIELDS_WITHOUT_BRONZE = (
     LeadBatch.stage,
     LeadBatch.evento_id,
     LeadBatch.origem_lote,
+    LeadBatch.enrichment_only,
     LeadBatch.tipo_lead_proponente,
     LeadBatch.ativacao_id,
     LeadBatch.pipeline_status,
@@ -356,6 +359,17 @@ class GoldInsertMetrics:
     time_in_commit_ms: int = 0
     time_in_lead_event_ms: int = 0
     time_in_ativacao_link_ms: int = 0
+
+
+@dataclass
+class EnrichmentInsertMetrics:
+    total_rows: int = 0
+    matched_rows: int = 0
+    updated_rows: int = 0
+    not_found_rows: int = 0
+    ambiguous_rows: int = 0
+    cpf_missing_rows: int = 0
+    cpf_invalid_rows: int = 0
 
 
 @dataclass
@@ -694,7 +708,7 @@ def materializar_silver_como_csv(batch_id: int, db: Session) -> Path:
         writer.writeheader()
         for row in silver_rows:
             dados = row.dados_brutos or {}
-            out_row = {col: str(dados.get(col, "") or "") for col in ALL_COLUMNS}
+            out_row = _normalize_silver_row_for_gold(dados)
             source_file = _clean_text(dados.get("source_file")) or fallback_source_file
             source_sheet = _clean_text(dados.get("source_sheet"))
             if source_sheet is None and batch_is_xlsx:
@@ -1204,6 +1218,29 @@ def _parse_bool_value(value: Any) -> bool | None:
     return None
 
 
+def _first_non_empty_row_value(
+    row: dict[str, Any],
+    *field_names: str,
+) -> Any:
+    for field_name in field_names:
+        if field_name not in row:
+            continue
+        value = row.get(field_name)
+        if str(value or "").strip():
+            return value
+    return None
+
+
+def _parse_bool_field(
+    row: dict[str, Any],
+    canonical_field: str,
+    *,
+    aliases: tuple[str, ...] = (),
+) -> bool | None:
+    raw_value = _first_non_empty_row_value(row, canonical_field, *aliases)
+    return _parse_bool_value(raw_value)
+
+
 def _parse_int_value(value: Any) -> int | None:
     text = str(value or "").strip()
     if not text:
@@ -1215,6 +1252,20 @@ def _parse_int_value(value: Any) -> int | None:
         if pd.isna(parsed):
             return None
         return int(parsed)
+
+
+def _normalize_silver_row_for_gold(dados_brutos: dict[str, Any]) -> dict[str, str]:
+    normalized: dict[str, Any] = {col: dados_brutos.get(col, "") for col in ALL_COLUMNS}
+
+    for raw_key, raw_value in dados_brutos.items():
+        canonical_key = normalize_header(raw_key)
+        if canonical_key not in normalized:
+            continue
+        if str(normalized.get(canonical_key) or "").strip():
+            continue
+        normalized[canonical_key] = raw_value
+
+    return {col: str(normalized.get(col, "") or "") for col in ALL_COLUMNS}
 
 
 def _build_lead_payload(row: dict[str, str], batch: LeadBatch) -> dict[str, Any]:
@@ -1234,7 +1285,7 @@ def _build_lead_payload(row: dict[str, str], batch: LeadBatch) -> dict[str, Any]
         "data_compra_hora": _parse_time_value(row.get("data_compra_hora")),
         "opt_in": _clean_text(row.get("opt_in")),
         "opt_in_id": _clean_text(row.get("opt_in_id")),
-        "opt_in_flag": _parse_bool_value(row.get("opt_in_flag")),
+        "opt_in_flag": _parse_bool_field(row, "opt_in_flag"),
         "metodo_entrega": _clean_text(row.get("metodo_entrega")),
         "rg": _clean_text(row.get("rg")),
         "endereco_rua": _clean_text(row.get("endereco_rua")),
@@ -1249,13 +1300,281 @@ def _build_lead_payload(row: dict[str, str], batch: LeadBatch) -> dict[str, Any]
         "ingresso_tipo": _clean_text(row.get("ingresso_tipo")),
         "ingresso_qtd": _parse_int_value(row.get("ingresso_qtd")),
         "fonte_origem": fonte_origem,
-        "is_cliente_bb": _parse_bool_value(row.get("is_cliente_bb")),
-        "is_cliente_estilo": _parse_bool_value(row.get("is_cliente_estilo")),
+        "is_cliente_bb": _parse_bool_field(
+            row,
+            "is_cliente_bb",
+            aliases=("cliente", "cliente_bb", "eh_cliente", "e_cliente"),
+        ),
+        "is_cliente_estilo": _parse_bool_field(
+            row,
+            "is_cliente_estilo",
+            aliases=("cliente_estilo", "eh_cliente_estilo", "e_cliente_estilo"),
+        ),
     }
 
 
 def _merge_lead_payload_if_missing(lead: Lead, payload: dict[str, Any]) -> None:
     merge_lead_payload_fill_missing(lead, payload)
+
+
+ENRICHMENT_TRUTH_SOURCE_FIELDS = frozenset(
+    {
+        "data_nascimento",
+        "is_cliente_bb",
+        "is_cliente_estilo",
+    }
+)
+
+
+def _merge_enrichment_payload_with_change_flag(
+    lead: Lead,
+    payload: dict[str, Any],
+) -> bool:
+    changed = False
+    for field, value in payload.items():
+        if not _has_value(value):
+            continue
+        current = getattr(lead, field, None)
+        if field in ENRICHMENT_TRUTH_SOURCE_FIELDS:
+            if current != value:
+                setattr(lead, field, value)
+                changed = True
+            continue
+        if _has_value(current):
+            continue
+        setattr(lead, field, value)
+        changed = True
+    return changed
+
+
+_SET_BASED_GOLD_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("id_salesforce", "text"),
+    ("nome", "text"),
+    ("sobrenome", "text"),
+    ("email", "text"),
+    ("telefone", "text"),
+    ("cpf", "text"),
+    ("data_nascimento", "date"),
+    ("evento_nome", "text"),
+    ("sessao", "text"),
+    ("data_compra", "timestamptz"),
+    ("data_compra_data", "date"),
+    ("data_compra_hora", "time"),
+    ("opt_in", "text"),
+    ("opt_in_id", "text"),
+    ("opt_in_flag", "boolean"),
+    ("metodo_entrega", "text"),
+    ("rg", "text"),
+    ("endereco_rua", "text"),
+    ("endereco_numero", "text"),
+    ("complemento", "text"),
+    ("bairro", "text"),
+    ("cep", "text"),
+    ("cidade", "text"),
+    ("estado", "text"),
+    ("genero", "text"),
+    ("codigo_promocional", "text"),
+    ("ingresso_tipo", "text"),
+    ("ingresso_qtd", "integer"),
+    ("fonte_origem", "text"),
+    ("is_cliente_bb", "boolean"),
+    ("is_cliente_estilo", "boolean"),
+)
+
+
+def _lead_gold_supports_set_based_merge(
+    db: Session,
+    *,
+    is_ativacao_batch: bool,
+    batch: LeadBatch,
+) -> bool:
+    bind = db.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return False
+    if is_ativacao_batch:
+        return False
+    return batch.evento_id is not None
+
+
+def _serialize_set_based_lead_payloads(
+    lead_payloads: list[dict[str, Any]],
+    *,
+    row_numbers: list[int],
+) -> str:
+    rows: list[dict[str, Any]] = []
+    for payload, row_number in zip(lead_payloads, row_numbers, strict=False):
+        row: dict[str, Any] = {"row_number": int(row_number)}
+        for field_name, _sql_type in _SET_BASED_GOLD_COLUMNS:
+            value = payload.get(field_name)
+            if isinstance(value, datetime_type) and value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            row[field_name] = value
+        rows.append(row)
+    return json.dumps(rows, ensure_ascii=False, default=str)
+
+
+def _build_fill_missing_update_sql(target_alias: str, source_alias: str) -> str:
+    assignments: list[str] = []
+    for field_name, sql_type in _SET_BASED_GOLD_COLUMNS:
+        source_ref = f"{source_alias}.{field_name}"
+        target_ref = f"{target_alias}.{field_name}"
+        if sql_type in {"text"}:
+            assignments.append(
+                f"{field_name} = CASE "
+                f"WHEN {target_ref} IS NULL OR BTRIM({target_ref}) = '' "
+                f"THEN COALESCE(NULLIF(BTRIM({source_ref}), ''), {target_ref}) "
+                f"ELSE {target_ref} END"
+            )
+        else:
+            assignments.append(f"{field_name} = COALESCE({target_ref}, {source_ref})")
+    return ",\n                    ".join(assignments)
+
+
+def _execute_set_based_gold_chunk(
+    db: Session,
+    *,
+    batch: LeadBatch,
+    lead_payloads: list[dict[str, Any]],
+    row_numbers: list[int],
+    tipo_lead_proponente: TipoLead,
+) -> tuple[int, int, int]:
+    source_columns = ", ".join(f"{name} {sql_type}" for name, sql_type in (("row_number", "integer"), *_SET_BASED_GOLD_COLUMNS))
+    payload_json = _serialize_set_based_lead_payloads(lead_payloads, row_numbers=row_numbers)
+    update_assignments = _build_fill_missing_update_sql("lead", "matched")
+    tipo_lead_value = tipo_lead_proponente.value if isinstance(tipo_lead_proponente, TipoLead) else str(tipo_lead_proponente)
+
+    stmt = text(
+        f"""
+        WITH source_rows AS (
+            SELECT *
+            FROM jsonb_to_recordset(CAST(:rows_json AS jsonb)) AS src({source_columns})
+        ),
+        deduped AS (
+            SELECT *
+            FROM (
+                SELECT
+                    src.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY
+                            COALESCE(NULLIF(BTRIM(src.id_salesforce), ''), '__no_sf__'),
+                            COALESCE(NULLIF(BTRIM(src.email), ''), '__no_email__'),
+                            COALESCE(NULLIF(BTRIM(src.cpf), ''), '__no_cpf__'),
+                            COALESCE(NULLIF(BTRIM(src.sessao), ''), '__no_sessao__')
+                        ORDER BY src.row_number DESC
+                    ) AS dedupe_rank
+                FROM source_rows src
+            ) ranked
+            WHERE ranked.dedupe_rank = 1
+        ),
+        matched AS (
+            SELECT
+                d.*,
+                l.id AS lead_id
+            FROM deduped d
+            JOIN LATERAL (
+                SELECT lead.id
+                FROM lead
+                JOIN lead_evento
+                  ON lead_evento.lead_id = lead.id
+                 AND lead_evento.evento_id = :evento_id
+                WHERE (
+                    NULLIF(BTRIM(d.id_salesforce), '') IS NOT NULL
+                    AND lead.id_salesforce = d.id_salesforce
+                ) OR (
+                    (NULLIF(BTRIM(d.id_salesforce), '') IS NULL)
+                    AND lead.email IS NOT DISTINCT FROM d.email
+                    AND lead.cpf IS NOT DISTINCT FROM d.cpf
+                    AND lead.sessao IS NOT DISTINCT FROM d.sessao
+                )
+                ORDER BY lead.id
+                LIMIT 1
+            ) l ON TRUE
+        ),
+        updated AS (
+            UPDATE lead
+               SET
+                    {update_assignments}
+             FROM matched
+            WHERE lead.id = matched.lead_id
+            RETURNING lead.id
+        ),
+        inserted AS (
+            INSERT INTO lead (
+                id_salesforce, nome, sobrenome, email, telefone, cpf, data_nascimento,
+                evento_nome, sessao, data_compra, data_compra_data, data_compra_hora,
+                opt_in, opt_in_id, opt_in_flag, metodo_entrega, rg, endereco_rua,
+                endereco_numero, complemento, bairro, cep, cidade, estado, genero,
+                codigo_promocional, ingresso_tipo, ingresso_qtd, fonte_origem,
+                is_cliente_bb, is_cliente_estilo, batch_id, data_criacao
+            )
+            SELECT
+                d.id_salesforce, d.nome, d.sobrenome, d.email, d.telefone, d.cpf, d.data_nascimento,
+                d.evento_nome, d.sessao, d.data_compra, d.data_compra_data, d.data_compra_hora,
+                d.opt_in, d.opt_in_id, d.opt_in_flag, d.metodo_entrega, d.rg, d.endereco_rua,
+                d.endereco_numero, d.complemento, d.bairro, d.cep, d.cidade, d.estado, d.genero,
+                d.codigo_promocional, d.ingresso_tipo, d.ingresso_qtd, d.fonte_origem,
+                d.is_cliente_bb, d.is_cliente_estilo, :batch_id, NOW()
+            FROM deduped d
+            LEFT JOIN matched m ON m.row_number = d.row_number
+            WHERE m.lead_id IS NULL
+            RETURNING id
+        ),
+        resolved_links AS (
+            SELECT lead_id FROM matched
+            UNION
+            SELECT lead.id
+            FROM deduped d
+            JOIN lead
+              ON lead.batch_id = :batch_id
+             AND lead.email IS NOT DISTINCT FROM d.email
+             AND lead.cpf IS NOT DISTINCT FROM d.cpf
+             AND lead.sessao IS NOT DISTINCT FROM d.sessao
+             AND lead.evento_nome IS NOT DISTINCT FROM d.evento_nome
+        ),
+        linked AS (
+            INSERT INTO lead_evento (
+                lead_id, evento_id, source_kind, source_ref_id, tipo_lead,
+                responsavel_tipo, responsavel_nome, responsavel_agencia_id,
+                created_at, updated_at
+            )
+            SELECT
+                rl.lead_id,
+                :evento_id,
+                CAST(:source_kind AS leadeventosourcekind),
+                :batch_id,
+                CAST(:tipo_lead AS tipolead),
+                CAST(:responsavel_tipo AS tiporesponsavel),
+                e.nome,
+                NULL,
+                NOW(),
+                NOW()
+            FROM resolved_links rl
+            JOIN evento e ON e.id = :evento_id
+            ON CONFLICT (lead_id, evento_id) DO NOTHING
+            RETURNING lead_id
+        )
+        SELECT
+            (SELECT COUNT(*) FROM inserted) AS created_rows,
+            (SELECT COUNT(*) FROM updated) AS updated_rows,
+            (SELECT COUNT(*) FROM linked) AS linked_rows
+        """
+    )
+    result = db.execute(
+        stmt,
+        {
+            "rows_json": payload_json,
+            "evento_id": int(batch.evento_id),
+            "batch_id": int(batch.id),
+            "source_kind": LeadEventoSourceKind.LEAD_BATCH.value,
+            "tipo_lead": tipo_lead_value,
+            "responsavel_tipo": TipoResponsavel.PROPONENTE.value,
+        },
+    ).mappings().one()
+    return (
+        int(result["created_rows"] or 0),
+        int(result["updated_rows"] or 0),
+        int(result["linked_rows"] or 0),
+    )
 
 
 def _find_lead_by_canonical_event(
@@ -1479,6 +1798,372 @@ def _build_insert_leads_progress_event(
     )
 
 
+def _load_existing_leads_by_cpf(
+    db: Session,
+    *,
+    cpfs: set[str],
+) -> dict[str, list[Lead]]:
+    normalized_cpfs = sorted({normalize_cpf(cpf) for cpf in cpfs if normalize_cpf(cpf)})
+    if not normalized_cpfs:
+        return {}
+
+    leads = db.exec(
+        select(Lead)
+        .where(Lead.cpf.in_(normalized_cpfs))
+        .order_by(Lead.cpf.asc(), Lead.id.asc())
+    ).all()
+
+    grouped: dict[str, list[Lead]] = {}
+    for lead in leads:
+        lead_cpf = normalize_cpf(lead.cpf)
+        if not lead_cpf:
+            continue
+        grouped.setdefault(lead_cpf, []).append(lead)
+    return grouped
+
+
+def _build_enrichment_invalid_record(
+    *,
+    row_index: int,
+    cpf: str | None,
+    reason: str,
+    source_row: str | None = None,
+) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "row_index": row_index,
+        "cpf": cpf or "",
+        "reason": reason,
+    }
+    if source_row:
+        record["source_row"] = source_row
+    return record
+
+
+def _build_enrichment_pipeline_report(
+    *,
+    batch_id: int,
+    total_rows: int,
+    metrics: EnrichmentInsertMetrics,
+    invalid_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    discarded_rows = len(invalid_records)
+    status = "PASS_WITH_WARNINGS" if discarded_rows else "PASS"
+    warnings = ["ENRICHMENT_ROWS_REJECTED"] if discarded_rows else []
+    return {
+        "lote_id": str(batch_id),
+        "run_timestamp": datetime_type.now(timezone.utc).isoformat(),
+        "input_files": [],
+        "input_files_scanned": [],
+        "input_files_processed": [],
+        "input_files_skipped": [],
+        "source_profiles_detected": {},
+        "mapping_version": "",
+        "totals": {
+            "raw_rows": total_rows,
+            "valid_rows": metrics.matched_rows,
+            "discarded_rows": discarded_rows,
+        },
+        "quality_metrics": {
+            "cpf_missing_rows": metrics.cpf_missing_rows,
+            "cpf_invalid_rows": metrics.cpf_invalid_rows,
+            "lead_not_found_rows": metrics.not_found_rows,
+            "ambiguous_match_rows": metrics.ambiguous_rows,
+        },
+        "gate": {
+            "status": status,
+            "decision": "promote",
+            "fail_reasons": [],
+            "warnings": warnings,
+        },
+        "data_nascimento_controle": [],
+        "localidade_controle": [],
+        "cidade_fora_mapeamento_controle": [],
+        "invalid_records": invalid_records,
+        "enrichment": {
+            "mode": "enrichment_only",
+            "lookup_key": "cpf",
+            "merge_policy": "fill_missing_with_truth_source_overrides",
+            "truth_source_fields": sorted(ENRICHMENT_TRUTH_SOURCE_FIELDS),
+            "matched_rows": metrics.matched_rows,
+            "updated_rows": metrics.updated_rows,
+            "not_found_rows": metrics.not_found_rows,
+            "ambiguous_rows": metrics.ambiguous_rows,
+            "cpf_missing_rows": metrics.cpf_missing_rows,
+            "cpf_invalid_rows": metrics.cpf_invalid_rows,
+            "rejection_samples": invalid_records[:25],
+        },
+        "exit_code": 0,
+    }
+
+
+def _inserir_leads_gold_enrichment_only(
+    batch: LeadBatch,
+    consolidated_path: Path,
+    db: Session,
+    *,
+    on_progress: Callable[[PipelineProgressEvent], None] | None = None,
+    report_data: dict[str, Any] | None = None,
+) -> int:
+    if not consolidated_path.exists():
+        raise FileNotFoundError(
+            f"CSV consolidado da pipeline Gold nao encontrado: {consolidated_path}"
+        )
+
+    content_hash = _sha256_file(consolidated_path)
+    batch_file_hash = _lead_batch_file_sha256(batch)
+    total_rows = _count_consolidated_csv_data_rows(consolidated_path)
+    if total_rows <= 0:
+        raise ValueError(
+            f"CSV consolidado da pipeline Gold vazio para o batch {batch.id}"
+        )
+
+    commit_batch_size = _lead_gold_insert_commit_batch_size(db)
+    max_transaction_seconds = _lead_gold_insert_max_transaction_seconds(db)
+    heartbeat_interval = _lead_gold_progress_heartbeat_seconds()
+    lookup_chunk_size = _lead_gold_insert_lookup_chunk_size()
+
+    processed_rows = 0
+    pending_since_commit = 0
+    last_committed_rows = 0
+    started_at = time_module.perf_counter()
+    last_progress_emit_at = started_at
+    chunk_started_at = started_at
+    metrics = EnrichmentInsertMetrics(total_rows=total_rows)
+    invalid_records: list[dict[str, Any]] = []
+
+    _log_pipeline_event(
+        logging.INFO,
+        "insert.start",
+        batch_id=batch.id,
+        evento_id=batch.evento_id,
+        origem_lote=batch.origem_lote,
+        total_rows=total_rows,
+        commit_batch_size=commit_batch_size,
+        max_transaction_seconds=max_transaction_seconds or None,
+        uses_supabase_pooler_6543=_lead_gold_uses_supabase_transaction_pooler(db),
+        consolidated_path=str(consolidated_path),
+        lookup_chunk_size=lookup_chunk_size,
+        mode="enrichment_only",
+        lookup_key="cpf",
+    )
+    if on_progress is not None:
+        on_progress(
+            _build_insert_leads_progress_event(
+                processed_rows=0,
+                total_rows=total_rows,
+                committed_rows=0,
+                content_hash=content_hash,
+                arquivo_sha256=batch_file_hash,
+            )
+        )
+
+    with consolidated_path.open(encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+
+        while True:
+            window: list[dict[str, str]] = []
+            while len(window) < lookup_chunk_size:
+                try:
+                    window.append(next(reader))
+                except StopIteration:
+                    break
+            if not window:
+                break
+
+            cpfs_in_window: set[str] = set()
+            for offset, row in enumerate(window):
+                row_index = processed_rows + offset
+                normalized_cpf = normalize_cpf(row.get("cpf"))
+                source_row = _clean_text(row.get("source_row"))
+                if not normalized_cpf:
+                    metrics.cpf_missing_rows += 1
+                    invalid_records.append(
+                        _build_enrichment_invalid_record(
+                            row_index=row_index,
+                            cpf=None,
+                            reason="cpf_missing",
+                            source_row=source_row,
+                        )
+                    )
+                    continue
+                if not is_valid_cpf(normalized_cpf):
+                    metrics.cpf_invalid_rows += 1
+                    invalid_records.append(
+                        _build_enrichment_invalid_record(
+                            row_index=row_index,
+                            cpf=normalized_cpf,
+                            reason="cpf_invalid",
+                            source_row=source_row,
+                        )
+                    )
+                    continue
+                cpfs_in_window.add(normalized_cpf)
+
+            leads_by_cpf = _load_existing_leads_by_cpf(db, cpfs=cpfs_in_window)
+
+            for offset, row in enumerate(window):
+                row_index = processed_rows + offset
+                normalized_cpf = normalize_cpf(row.get("cpf"))
+                source_row = _clean_text(row.get("source_row"))
+
+                if not normalized_cpf or not is_valid_cpf(normalized_cpf):
+                    processed_rows += 1
+                    pending_since_commit += 1
+                else:
+                    candidates = leads_by_cpf.get(normalized_cpf, [])
+                    if not candidates:
+                        metrics.not_found_rows += 1
+                        invalid_records.append(
+                            _build_enrichment_invalid_record(
+                                row_index=row_index,
+                                cpf=normalized_cpf,
+                                reason="lead_not_found",
+                                source_row=source_row,
+                            )
+                        )
+                    elif len(candidates) > 1:
+                        metrics.ambiguous_rows += 1
+                        invalid_records.append(
+                            _build_enrichment_invalid_record(
+                                row_index=row_index,
+                                cpf=normalized_cpf,
+                                reason="ambiguous_match",
+                                source_row=source_row,
+                            )
+                        )
+                    else:
+                        lead = candidates[0]
+                        lead_payload = _build_lead_payload(row, batch)
+                        lead_payload["cpf"] = normalized_cpf
+                        metrics.matched_rows += 1
+                        if _merge_enrichment_payload_with_change_flag(lead, lead_payload):
+                            db.add(lead)
+                            metrics.updated_rows += 1
+                    processed_rows += 1
+                    pending_since_commit += 1
+
+                now: float | None = None
+                if (
+                    on_progress is not None
+                    and heartbeat_interval > 0
+                    and 0 < pending_since_commit < commit_batch_size
+                ):
+                    now = time_module.perf_counter()
+                    if (now - last_progress_emit_at) >= heartbeat_interval:
+                        event = _build_insert_leads_progress_event(
+                            processed_rows=processed_rows,
+                            total_rows=total_rows,
+                            committed_rows=last_committed_rows,
+                            content_hash=content_hash,
+                            arquivo_sha256=batch_file_hash,
+                        )
+                        on_progress(event)
+                        last_progress_emit_at = now
+                        _log_pipeline_event(
+                            logging.INFO,
+                            "insert.heartbeat",
+                            batch_id=batch.id,
+                            processed_rows=processed_rows,
+                            total_rows=total_rows,
+                            pct=event.pct,
+                            pending_since_commit=pending_since_commit,
+                            heartbeat_interval_seconds=heartbeat_interval,
+                            elapsed_ms=round((now - started_at) * 1000),
+                            mode="enrichment_only",
+                        )
+
+                commit_check_at = now if now is not None else time_module.perf_counter()
+                commit_due_to_time_budget = (
+                    max_transaction_seconds > 0
+                    and pending_since_commit > 0
+                    and (commit_check_at - chunk_started_at) >= max_transaction_seconds
+                )
+                if pending_since_commit >= commit_batch_size or commit_due_to_time_budget:
+                    db.commit()
+                    pending_since_commit = 0
+                    last_committed_rows = processed_rows
+                    event = _build_insert_leads_progress_event(
+                        processed_rows=processed_rows,
+                        total_rows=total_rows,
+                        committed_rows=last_committed_rows,
+                        content_hash=content_hash,
+                        arquivo_sha256=batch_file_hash,
+                    )
+                    if on_progress is not None:
+                        on_progress(event)
+                    last_progress_emit_at = commit_check_at
+                    chunk_started_at = commit_check_at
+                    _log_pipeline_event(
+                        logging.INFO,
+                        "insert.chunk_committed",
+                        batch_id=batch.id,
+                        processed_rows=processed_rows,
+                        total_rows=total_rows,
+                        pct=event.pct,
+                        commit_batch_size=commit_batch_size,
+                        commit_reason="transaction_seconds" if commit_due_to_time_budget else "batch_size",
+                        max_transaction_seconds=max_transaction_seconds or None,
+                        elapsed_ms=round((commit_check_at - started_at) * 1000),
+                        mode="enrichment_only",
+                    )
+
+        if pending_since_commit > 0:
+            db.commit()
+            commit_at = time_module.perf_counter()
+            last_committed_rows = processed_rows
+            event = _build_insert_leads_progress_event(
+                processed_rows=processed_rows,
+                total_rows=total_rows,
+                committed_rows=last_committed_rows,
+                content_hash=content_hash,
+                arquivo_sha256=batch_file_hash,
+            )
+            if on_progress is not None:
+                on_progress(event)
+            last_progress_emit_at = commit_at
+            _log_pipeline_event(
+                logging.INFO,
+                "insert.chunk_committed",
+                batch_id=batch.id,
+                processed_rows=processed_rows,
+                total_rows=total_rows,
+                pct=event.pct,
+                commit_batch_size=commit_batch_size,
+                elapsed_ms=round((commit_at - started_at) * 1000),
+                mode="enrichment_only",
+            )
+
+    enrichment_report = _build_enrichment_pipeline_report(
+        batch_id=int(batch.id),
+        total_rows=total_rows,
+        metrics=metrics,
+        invalid_records=invalid_records,
+    )
+    if report_data is not None:
+        report_data.clear()
+        report_data.update(enrichment_report)
+
+    _log_pipeline_event(
+        logging.INFO,
+        "insert.metrics",
+        batch_id=batch.id,
+        metrics=asdict(metrics),
+        mode="enrichment_only",
+    )
+    _log_pipeline_event(
+        logging.INFO,
+        "insert.completed",
+        batch_id=batch.id,
+        created_rows=0,
+        updated_rows=metrics.updated_rows,
+        processed_rows=processed_rows,
+        total_rows=total_rows,
+        elapsed_ms=round((time_module.perf_counter() - started_at) * 1000),
+        mode="enrichment_only",
+    )
+    return 0
+
+
 def _inserir_leads_gold(
     batch: LeadBatch,
     consolidated_path: Path,
@@ -1486,8 +2171,17 @@ def _inserir_leads_gold(
     *,
     on_progress: Callable[[PipelineProgressEvent], None] | None = None,
     resume_context: dict[str, Any] | None = None,
+    report_data: dict[str, Any] | None = None,
 ) -> int:
     """Le o CSV validado e insere leads na tabela `lead`."""
+    if batch.enrichment_only:
+        return _inserir_leads_gold_enrichment_only(
+            batch,
+            consolidated_path,
+            db,
+            on_progress=on_progress,
+            report_data=report_data,
+        )
     if not consolidated_path.exists():
         raise FileNotFoundError(
             f"CSV consolidado da pipeline Gold nao encontrado: {consolidated_path}"
@@ -1606,6 +2300,11 @@ def _inserir_leads_gold(
     existing_ativacao_links_by_lead_id: dict[int, AtivacaoLead] = {}
     existing_lead_events_by_lead_id: dict[int, LeadEvento] = {}
     first_ativacao_bulk = True
+    use_set_based_merge = _lead_gold_supports_set_based_merge(
+        db,
+        is_ativacao_batch=is_ativacao_batch,
+        batch=batch,
+    )
 
     with consolidated_path.open(encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -1628,6 +2327,75 @@ def _inserir_leads_gold(
             payload_build_started_at = time_module.perf_counter()
             lead_payloads = [_build_lead_payload(row, batch) for row in window]
             metrics.time_in_payload_build_ms += _duration_ms(payload_build_started_at)
+            row_numbers = [resume_from_rows + (processed_rows - resume_from_rows) + i + 1 for i in range(len(window))]
+
+            if use_set_based_merge:
+                set_based_started_at = time_module.perf_counter()
+                try:
+                    created_rows, updated_rows, linked_rows = _execute_set_based_gold_chunk(
+                        db,
+                        batch=batch,
+                        lead_payloads=lead_payloads,
+                        row_numbers=row_numbers,
+                        tipo_lead_proponente=tipo_lead_proponente,
+                    )
+                except Exception as exc:
+                    db.rollback()
+                    use_set_based_merge = False
+                    _log_pipeline_event(
+                        logging.WARNING,
+                        "insert.set_based_fallback",
+                        batch_id=batch.id,
+                        reason=repr(exc),
+                    )
+                else:
+                    metrics.time_in_lookup_context_ms += _duration_ms(set_based_started_at)
+                    metrics.created_rows += created_rows
+                    metrics.updated_rows += updated_rows
+                    metrics.lead_event_calls += linked_rows
+                    processed_rows += len(window)
+                    pending_since_commit += len(window)
+                    count += created_rows
+                    updated_count += updated_rows
+
+                    commit_check_at = time_module.perf_counter()
+                    commit_due_to_time_budget = (
+                        max_transaction_seconds > 0
+                        and pending_since_commit > 0
+                        and (commit_check_at - chunk_started_at) >= max_transaction_seconds
+                    )
+                    if pending_since_commit >= commit_batch_size or commit_due_to_time_budget:
+                        commit_started_at = time_module.perf_counter()
+                        db.commit()
+                        metrics.time_in_commit_ms += _duration_ms(commit_started_at)
+                        metrics.chunks_committed += 1
+                        pending_since_commit = 0
+                        last_committed_rows = processed_rows
+                        event = _build_insert_leads_progress_event(
+                            processed_rows=processed_rows,
+                            total_rows=total_rows,
+                            committed_rows=last_committed_rows,
+                            content_hash=content_hash,
+                            arquivo_sha256=batch_file_hash,
+                        )
+                        if on_progress is not None:
+                            on_progress(event)
+                        last_progress_emit_at = commit_check_at
+                        chunk_started_at = commit_check_at
+                        _log_pipeline_event(
+                            logging.INFO,
+                            "insert.chunk_committed",
+                            batch_id=batch.id,
+                            processed_rows=processed_rows,
+                            total_rows=total_rows,
+                            pct=event.pct,
+                            commit_batch_size=commit_batch_size,
+                            commit_reason="transaction_seconds" if commit_due_to_time_budget else "batch_size",
+                            max_transaction_seconds=max_transaction_seconds or None,
+                            strategy="postgres_set_based_merge",
+                            elapsed_ms=round((commit_check_at - started_at) * 1000),
+                        )
+                    continue
 
             lookup_context_started_at = time_module.perf_counter()
             pending_offset = processed_rows - resume_from_rows
@@ -1936,6 +2704,8 @@ async def executar_pipeline_gold(batch_id: int) -> None:
     tmp_dir = TMP_ROOT / str(batch_id)
     report_data: dict[str, Any] | None = None
     failure_step = "queued"
+    completed_status: str | None = None
+    completed_decision: str | None = None
 
     last_pipeline_event: dict[str, PipelineProgressEvent | None] = {"ev": None}
 
@@ -2066,6 +2836,75 @@ async def executar_pipeline_gold(batch_id: int) -> None:
                     csv_path=str(csv_path),
                 )
 
+                if batch.enrichment_only:
+                    with Session(worker_engine, expire_on_commit=False) as db:
+                        set_internal_service_db_context(db)
+                        batch = load_batch_without_bronze(db, batch_id)
+                        if not batch:
+                            logger.error("Batch %s nao encontrado para finalizar pipeline.", batch_id)
+                            return
+
+                        failure_step = "insert_leads"
+                        set_pipeline_progress(batch, step="insert_leads", resume_context=resume_context)
+                        db.add(batch)
+                        db.commit()
+                        _log_pipeline_event(
+                            logging.INFO,
+                            "insert.dispatch",
+                            batch_id=batch_id,
+                            consolidated_path=str(csv_path),
+                            mode="enrichment_only",
+                        )
+
+                        report_data = {}
+                        _inserir_leads_gold(
+                            batch,
+                            csv_path,
+                            db,
+                            on_progress=on_progress,
+                            report_data=report_data,
+                        )
+                        batch.stage = BatchStage.GOLD
+
+                        failure_step = "persist_result"
+                        batch.pipeline_report = report_data
+                        completed_status = str((report_data.get("gate") or {}).get("status") or "FAIL")
+                        completed_decision = str((report_data.get("gate") or {}).get("decision") or "hold")
+                        batch.pipeline_status = _pipeline_status_from_str(completed_status)
+                        disc, issues, inv_n = _gold_dq_snapshot_from_report(report_data)
+                        batch.gold_dq_discarded_rows = disc
+                        batch.gold_dq_issue_counts = issues
+                        batch.gold_dq_invalid_records_total = inv_n
+                        _clear_pipeline_progress(batch)
+
+                        db.add(batch)
+                        db.commit()
+                        _log_pipeline_event(
+                            logging.INFO,
+                            "persist_result.completed",
+                            batch_id=batch_id,
+                            stage=batch.stage,
+                            pipeline_status=batch.pipeline_status,
+                            discarded_rows=disc,
+                            invalid_records_total=inv_n,
+                            mode="enrichment_only",
+                        )
+
+                    _log_pipeline_event(
+                        logging.INFO,
+                        "execution.metrics",
+                        batch_id=batch_id,
+                        total_elapsed_ms=_duration_ms(execution_started_at),
+                        sql_summary=sql_observability.summary(),
+                    )
+                    logger.info(
+                        "Pipeline batch %s concluido: status=%s decision=%s",
+                        batch_id,
+                        completed_status,
+                        completed_decision,
+                    )
+                    return
+
             output_root = tmp_dir / "output"
             config = PipelineConfig(
                 lote_id=str(batch_id),
@@ -2102,6 +2941,8 @@ async def executar_pipeline_gold(batch_id: int) -> None:
                 report_data = json.loads(result.report_path.read_text(encoding="utf-8"))
 
             pipeline_status = _pipeline_status_from_str(result.status)
+            completed_status = result.status
+            completed_decision = result.decision
 
             with Session(worker_engine, expire_on_commit=False) as db:
                 set_internal_service_db_context(db)
@@ -2164,8 +3005,8 @@ async def executar_pipeline_gold(batch_id: int) -> None:
         logger.info(
             "Pipeline batch %s concluido: status=%s decision=%s",
             batch_id,
-            result.status,
-            result.decision,
+            completed_status,
+            completed_decision,
         )
 
     except Exception as exc:

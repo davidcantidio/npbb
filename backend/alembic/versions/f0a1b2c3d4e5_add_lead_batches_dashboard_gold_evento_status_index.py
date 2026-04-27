@@ -36,10 +36,31 @@ def _table_exists(table_name: str) -> bool:
     return table_name in inspector.get_table_names(schema="public")
 
 
+def _named_index_is_valid(index_name: str) -> bool | None:
+    bind = op.get_bind()
+    query = sa.text(
+        """
+        select idx.indisvalid
+        from pg_class cls
+        join pg_namespace ns on ns.oid = cls.relnamespace
+        join pg_index idx on idx.indexrelid = cls.oid
+        where ns.nspname = 'public'
+          and cls.relname = :index_name
+        limit 1
+        """
+    )
+    result = bind.execute(query, {"index_name": index_name}).scalar()
+    if result is None:
+        return None
+    return bool(result)
+
+
 def upgrade() -> None:
     if not _is_postgresql() or not _table_exists("lead_batches"):
         return
     with op.get_context().autocommit_block():
+        if _named_index_is_valid(_INDEX_NAME) is False:
+            op.execute(sa.text(f"DROP INDEX CONCURRENTLY IF EXISTS public.{_INDEX_NAME}"))
         op.execute(sa.text(_INDEX_SQL))
 
 

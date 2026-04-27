@@ -18,12 +18,12 @@ Post-check query (must return zero rows):
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import os
 import threading
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import text
 from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -136,3 +136,89 @@ def test_parallel_persist_lead_batch_one_lead(postgres_engine: "Engine") -> None
             )
         ).scalar_one()
         assert int(dup_groups) == 0
+
+
+def test_gold_set_based_insert_reimport_anchored_by_evento_id_reuses_existing_lead(
+    postgres_engine: "Engine",
+    tmp_path,
+) -> None:
+    from app.models.lead_batch import BatchStage, LeadBatch
+    from app.models.models import Lead, LeadEvento, Usuario
+    from app.services.lead_pipeline_service import _inserir_leads_gold
+    from app.utils.security import hash_password
+
+    with Session(postgres_engine) as session:
+        evento = _seed_minimal_evento(session)
+        user = Usuario(
+            email="gold-postgres@test.npbb",
+            password_hash=hash_password("senha123"),
+            tipo_usuario="npbb",
+            ativo=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        batch1 = LeadBatch(
+            enviado_por=int(user.id),
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="gold-1.csv",
+            stage=BatchStage.SILVER,
+            evento_id=int(evento.id),
+            origem_lote="proponente",
+        )
+        session.add(batch1)
+        session.commit()
+        session.refresh(batch1)
+
+        csv1 = tmp_path / "gold-1.csv"
+        csv1.write_text(
+            "nome,cpf,email,telefone,evento,sessao\n"
+            "Alice,52998224725,alice@ex.com,11999990000,Evento Dedupe Postgres,Sao Paulo-SP\n",
+            encoding="utf-8",
+        )
+        created = _inserir_leads_gold(batch1, csv1, session)
+        session.commit()
+        assert created == 1
+
+        lead = session.exec(select(Lead).where(Lead.email == "alice@ex.com")).one()
+        first_lead_id = int(lead.id)
+
+        evento.nome = "Evento Dedupe Postgres Renomeado"
+        session.add(evento)
+        session.commit()
+
+        batch2 = LeadBatch(
+            enviado_por=int(user.id),
+            plataforma_origem="email",
+            data_envio=datetime.now(timezone.utc),
+            nome_arquivo_original="gold-2.csv",
+            stage=BatchStage.SILVER,
+            evento_id=int(evento.id),
+            origem_lote="proponente",
+        )
+        session.add(batch2)
+        session.commit()
+        session.refresh(batch2)
+
+        csv2 = tmp_path / "gold-2.csv"
+        csv2.write_text(
+            "nome,cpf,email,telefone,evento,sessao\n"
+            "Alice Corrigida,52998224725,alice@ex.com,11999990000,Evento Dedupe Postgres Renomeado,Sao Paulo-SP\n",
+            encoding="utf-8",
+        )
+        created_again = _inserir_leads_gold(batch2, csv2, session)
+        session.commit()
+        assert created_again == 0
+
+        leads = session.exec(select(Lead).where(Lead.email == "alice@ex.com")).all()
+        assert len(leads) == 1
+        assert int(leads[0].id) == first_lead_id
+
+        lead_eventos = session.exec(
+            select(LeadEvento)
+            .where(LeadEvento.lead_id == first_lead_id)
+            .where(LeadEvento.evento_id == int(evento.id))
+        ).all()
+        assert len(lead_eventos) == 1

@@ -40,7 +40,8 @@ class LeadBatchRead(BaseModel):
     arquivo_sha256: Optional[str] = None
     stage: BatchStage
     evento_id: Optional[int] = None
-    origem_lote: str = "proponente"
+    origem_lote: str | None = None
+    enrichment_only: bool = False
     tipo_lead_proponente: Optional[str] = None
     ativacao_id: Optional[int] = None
     pipeline_status: PipelineStatus
@@ -71,7 +72,8 @@ class LeadBatchImportHintRead(BaseModel):
     source_batch_id: int
     plataforma_origem: str
     data_envio: datetime
-    origem_lote: str = "proponente"
+    origem_lote: str | None = None
+    enrichment_only: bool = False
     tipo_lead_proponente: str | None = None
     evento_id: int | None = None
     ativacao_id: int | None = None
@@ -84,7 +86,8 @@ class LeadBatchIntakeItemWrite(BaseModel):
     plataforma_origem: str
     data_envio: str
     evento_id: int | None = None
-    origem_lote: Literal["proponente", "ativacao"] = "proponente"
+    origem_lote: Literal["proponente", "ativacao"] | None = None
+    enrichment_only: bool = False
     tipo_lead_proponente: Literal["bilheteria", "entrada_evento"] | None = None
     ativacao_id: int | None = None
     file_name: str | None = None
@@ -134,7 +137,7 @@ class ColunasResponse(BaseModel):
 
 
 class MapearBatchRequest(BaseModel):
-    evento_id: int
+    evento_id: int | None = None
     mapeamento: dict[str, str]
 
 

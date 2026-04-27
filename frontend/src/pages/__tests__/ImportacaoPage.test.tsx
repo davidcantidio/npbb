@@ -25,12 +25,14 @@ import ImportacaoPage from "../leads/ImportacaoPage";
 vi.mock("../leads/MapeamentoPage", () => ({
   default: ({
     batchId,
+    enrichmentOnly,
     fixedEventoId,
     onCancel,
     onMapped,
     cancelLabel,
   }: {
     batchId?: number;
+    enrichmentOnly?: boolean;
     fixedEventoId?: number | null;
     onCancel?: () => void;
     onMapped?: (result: { batch_id: number; silver_count: number; stage: string }) => void;
@@ -38,6 +40,7 @@ vi.mock("../leads/MapeamentoPage", () => ({
   }) => (
     <div>
       <div>{`Mapeamento shell ${batchId ?? 0}`}</div>
+      <div>{enrichmentOnly ? "Enriquecimento sem evento shell" : "Fluxo com evento shell"}</div>
       <div>{fixedEventoId != null ? `Evento fixo shell ${fixedEventoId}` : "Evento editavel shell"}</div>
       <button type="button" onClick={() => onCancel?.()}>
         {cancelLabel ?? "Cancelar shell mapeamento"}
@@ -261,6 +264,7 @@ function createDeferred<T>() {
 function bronzeBatchBase() {
   return {
     origem_lote: "proponente" as const,
+    enrichment_only: false,
     tipo_lead_proponente: "entrada_evento",
     ativacao_id: null as number | null,
     pipeline_progress: null as null,
@@ -322,6 +326,24 @@ async function selectBatchRowOrigem(row: HTMLElement, user: ReturnType<typeof us
   await user.click(await screen.findByRole("option", { name: optionName }));
 }
 
+async function selectBatchRowImportMode(
+  row: HTMLElement,
+  user: ReturnType<typeof userEvent.setup>,
+  optionName: RegExp | string,
+) {
+  await user.click(within(row).getByRole("combobox", { name: /modo do fluxo/i }));
+  await user.click(await screen.findByRole("option", { name: optionName }));
+}
+
+async function selectBatchRowClassification(
+  row: HTMLElement,
+  user: ReturnType<typeof userEvent.setup>,
+  optionName: RegExp | string,
+) {
+  await user.click(within(row).getByRole("combobox", { name: /classificação do lead/i }));
+  await user.click(await screen.findByRole("option", { name: optionName }));
+}
+
 describe("ImportacaoPage", { timeout: 30000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -350,6 +372,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
           origem_lote: item.origem_lote,
           tipo_lead_proponente: item.tipo_lead_proponente,
           ativacao_id: item.ativacao_id,
+          ...(item.enrichment_only ? { enrichment_only: true } : {}),
           quem_enviou: "demo@npbb.com.br",
         });
         const preview = await mockedGetLeadBatchPreview(token, batch.id);
@@ -404,6 +427,69 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Selecione um arquivo CSV ou XLSX.")).toBeInTheDocument();
     expect(mockedCreateLeadBatch).not.toHaveBeenCalled();
+  });
+
+  it("supports single Bronze enrichment with nao informar omitting origem and classificacao", async () => {
+    mockedCreateLeadBatch.mockResolvedValue({
+      id: 16,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-09T00:00:00",
+      data_upload: "2026-03-09T12:00:00",
+      nome_arquivo_original: "leads.csv",
+      stage: "bronze",
+      evento_id: null,
+      origem_lote: null,
+      enrichment_only: true,
+      tipo_lead_proponente: null,
+      ativacao_id: null,
+      pipeline_status: "pending",
+      pipeline_report: null,
+      created_at: "2026-03-09T12:00:00",
+      pipeline_progress: null,
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Alice", "alice@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+    const csvFile = createCsvFile();
+
+    await user.click(screen.getByRole("combobox", { name: /plataforma de origem/i }));
+    await user.click(await screen.findByRole("option", { name: "email" }));
+    await user.click(screen.getByRole("radio", { name: /enviar para enriquecimento sem evento/i }));
+
+    expect(screen.queryByRole("combobox", { name: /evento de referencia/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Use este modo para enriquecer dados de leads sem vinculá-los a um evento/i),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: /classificação do lead/i }));
+    await user.click(await screen.findByRole("option", { name: /não informar/i }));
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await user.click(screen.getByRole("button", { name: "Enviar para enriquecimento" }));
+
+    await waitFor(() => expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(1));
+    const payload = mockedCreateLeadBatchIntake.mock.calls[0]?.[1];
+    expect(payload.items[0]).toMatchObject({
+      client_row_id: "single-upload",
+      plataforma_origem: "email",
+      enrichment_only: true,
+      file: csvFile,
+    });
+    expect(payload.items[0]).not.toHaveProperty("evento_id");
+    expect(payload.items[0]).not.toHaveProperty("ativacao_id");
+    expect(payload.items[0]).not.toHaveProperty("origem_lote");
+    expect(payload.items[0]).not.toHaveProperty("tipo_lead_proponente");
+
+    expect(await screen.findByText("Preview do lote #16")).toBeInTheDocument();
+    expect(screen.getByText("Sem evento")).toBeInTheDocument();
+    expect(screen.getByText("Nao informado")).toBeInTheDocument();
   });
 
   it("does not hash or call the legacy import-hint preflight in the main Bronze flow", async () => {
@@ -524,6 +610,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       plataforma_origem: "manual",
       data_envio: "2026-03-15T14:00:00",
       origem_lote: "ativacao" as const,
+      enrichment_only: false,
       tipo_lead_proponente: null,
       evento_id: 42,
       ativacao_id: 5,
@@ -544,6 +631,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
             stage: "bronze",
             evento_id: 42,
             origem_lote: "ativacao",
+            enrichment_only: false,
             tipo_lead_proponente: null,
             ativacao_id: 5,
             pipeline_status: "pending",
@@ -616,6 +704,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
             plataforma_origem: "email",
             data_envio: "2026-03-20T14:00:00",
             origem_lote: "proponente",
+            enrichment_only: false,
             tipo_lead_proponente: "entrada_evento",
             evento_id: 42,
             ativacao_id: null,
@@ -690,6 +779,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       stage: "bronze",
       evento_id: 42,
       origem_lote: "ativacao",
+      enrichment_only: false,
       tipo_lead_proponente: null,
       ativacao_id: 5,
       pipeline_status: "pending",
@@ -901,6 +991,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       stage: "bronze",
       evento_id: 42,
       origem_lote: "ativacao",
+      enrichment_only: false,
       tipo_lead_proponente: null,
       ativacao_id: 9,
       pipeline_status: "pending",
@@ -981,6 +1072,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       stage: "bronze",
       evento_id: 42,
       origem_lote: "ativacao",
+      enrichment_only: false,
       tipo_lead_proponente: null,
       ativacao_id: 19,
       pipeline_status: "pending",
@@ -1081,6 +1173,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       stage: "bronze",
       evento_id: 77,
       origem_lote: "proponente",
+      enrichment_only: false,
       tipo_lead_proponente: "entrada_evento",
       ativacao_id: null,
       pipeline_status: "pending",
@@ -1155,6 +1248,65 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     expect(screen.getByText("2 arquivo(s)")).toBeInTheDocument();
   });
 
+  it("sends enrichment-only batch rows with nao informar omitting origem and classificacao", async () => {
+    mockedCreateLeadBatch.mockResolvedValueOnce({
+      id: 64,
+      enviado_por: 1,
+      plataforma_origem: "email",
+      data_envio: "2026-03-25T00:00:00",
+      data_upload: "2026-03-25T12:00:00",
+      nome_arquivo_original: "batch-enrichment.csv",
+      stage: "bronze",
+      evento_id: null,
+      origem_lote: null,
+      enrichment_only: true,
+      tipo_lead_proponente: null,
+      ativacao_id: null,
+      pipeline_status: "pending",
+      pipeline_progress: null,
+      pipeline_report: null,
+      created_at: "2026-03-25T12:00:00",
+    });
+    mockedGetLeadBatchPreview.mockResolvedValue({
+      headers: ["nome", "email"],
+      rows: [["Alice", "alice@npbb.com.br"]],
+      total_rows: 1,
+    });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await switchToBatchMode(user);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const csvFile = new File(["enrichment"], "batch-enrichment.csv", { type: "text/csv" });
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    const row = findBatchRow("batch-enrichment.csv");
+    await selectBatchRowPlatform(row, user);
+    await selectBatchRowImportMode(row, user, /enviar para enriquecimento sem evento/i);
+    await selectBatchRowClassification(row, user, /não informar/i);
+
+    expect(within(row).queryByRole("combobox", { name: /evento de referencia/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
+
+    await waitFor(() => expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(1));
+    const payload = mockedCreateLeadBatchIntake.mock.calls[0]?.[1];
+    expect(payload.items[0]).toMatchObject({
+      plataforma_origem: "email",
+      enrichment_only: true,
+      file: csvFile,
+    });
+    expect(payload.items[0]).not.toHaveProperty("evento_id");
+    expect(payload.items[0]).not.toHaveProperty("ativacao_id");
+    expect(payload.items[0]).not.toHaveProperty("origem_lote");
+    expect(payload.items[0]).not.toHaveProperty("tipo_lead_proponente");
+
+    expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
+    expect(screen.getByText("1 enriquecimento sem evento")).toBeInTheDocument();
+  });
+
   it("applies a server-side intake hint only to the matching valid batch row", async () => {
     mockedCreateLeadBatchIntake.mockImplementationOnce(async (_token, payload) => ({
       items: [
@@ -1186,6 +1338,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
             plataforma_origem: "manual",
             data_envio: "2026-03-25T10:00:00",
             origem_lote: "proponente",
+            enrichment_only: false,
             tipo_lead_proponente: "bilheteria",
             evento_id: 42,
             ativacao_id: null,
@@ -1378,6 +1531,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       stage: "bronze",
       evento_id: 42,
       origem_lote: "ativacao",
+      enrichment_only: false,
       tipo_lead_proponente: null,
       ativacao_id: 9,
       pipeline_status: "pending",
@@ -1463,6 +1617,7 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
       stage: "bronze",
       evento_id: 42,
       origem_lote: "ativacao",
+      enrichment_only: false,
       tipo_lead_proponente: null,
       ativacao_id: 29,
       pipeline_status: "pending",
@@ -1608,46 +1763,45 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
     expect(within(row).queryByRole("button", { name: /criar ativacao/i })).not.toBeInTheDocument();
   });
 
-  it("preserves partial successes in batch mode and retries only the failed row", async () => {
+  it("marks batch rows as error after intake failure and retries only the selected row", async () => {
     const apiError = new ApiError({
       message: "Falha ao enviar a linha.",
       status: 400,
       detail: { message: "Falha ao enviar a linha." },
       code: "BATCH_UPLOAD_FAILED",
       method: "POST",
-      url: "/leads/batches",
+      url: "/leads/batches/intake",
     });
 
-    mockedCreateLeadBatch
-      .mockResolvedValueOnce({
-        id: 60,
-        enviado_por: 1,
-        plataforma_origem: "email",
-        data_envio: "2026-03-09T00:00:00",
-        data_upload: "2026-03-09T12:00:00",
-        nome_arquivo_original: "batch-ok.csv",
-        stage: "bronze",
-        evento_id: 42,
-        pipeline_status: "pending",
-        pipeline_report: null,
-        created_at: "2026-03-09T12:00:00",
-        ...bronzeBatchBase(),
-      })
+    mockedCreateLeadBatchIntake
       .mockRejectedValueOnce(apiError)
-      .mockResolvedValueOnce({
-        id: 61,
-        enviado_por: 1,
-        plataforma_origem: "email",
-        data_envio: "2026-03-09T00:00:00",
-        data_upload: "2026-03-09T12:00:00",
-        nome_arquivo_original: "batch-erro.csv",
-        stage: "bronze",
-        evento_id: 42,
-        pipeline_status: "pending",
-        pipeline_report: null,
-        created_at: "2026-03-09T12:00:00",
-        ...bronzeBatchBase(),
-      });
+      .mockImplementationOnce(async (_token, payload) => ({
+        items: [
+          {
+            client_row_id: payload.items[0].client_row_id,
+            batch: {
+              id: 61,
+              enviado_por: 1,
+              plataforma_origem: "email",
+              data_envio: "2026-03-09T00:00:00",
+              data_upload: "2026-03-09T12:00:00",
+              nome_arquivo_original: "batch-erro.csv",
+              stage: "bronze",
+              evento_id: 42,
+              pipeline_status: "pending",
+              pipeline_report: null,
+              created_at: "2026-03-09T12:00:00",
+              ...bronzeBatchBase(),
+            },
+            preview: {
+              headers: ["nome", "email"],
+              rows: [["Alice", "alice@npbb.com.br"]],
+              total_rows: 1,
+            },
+            hint_applied: null,
+          },
+        ],
+      }));
 
     const { container } = renderImportacaoPage();
     const user = userEvent.setup();
@@ -1671,23 +1825,29 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
 
-    await waitFor(() => expect(mockedCreateLeadBatch).toHaveBeenCalledTimes(2));
-    expect(await within(rowOk).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
-    expect(await within(rowErro).findByRole("button", { name: /reenviar linha/i })).toBeInTheDocument();
-    expect(within(rowErro).getByText(/Falha ao enviar a linha\./)).toBeInTheDocument();
+    await waitFor(() => expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(1));
+    expect(await within(findBatchRow("batch-ok.csv")).findByRole("button", { name: /reenviar linha/i })).toBeInTheDocument();
+    expect(await within(findBatchRow("batch-erro.csv")).findByRole("button", { name: /reenviar linha/i })).toBeInTheDocument();
+    expect(within(findBatchRow("batch-ok.csv")).getByText(/Falha ao enviar a linha\./)).toBeInTheDocument();
+    expect(within(findBatchRow("batch-erro.csv")).getByText(/Falha ao enviar a linha\./)).toBeInTheDocument();
 
-    await user.click(within(rowErro).getByRole("button", { name: /reenviar linha/i }));
+    await user.click(within(findBatchRow("batch-erro.csv")).getByRole("button", { name: /reenviar linha/i }));
 
-    await waitFor(() => expect(mockedCreateLeadBatch).toHaveBeenCalledTimes(3));
-    expect(await within(rowErro).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
-    expect(mockedCreateLeadBatch).toHaveBeenLastCalledWith(
+    await waitFor(() => expect(mockedCreateLeadBatchIntake).toHaveBeenCalledTimes(2));
+    expect(mockedCreateLeadBatchIntake).toHaveBeenLastCalledWith(
       "token-123",
       expect.objectContaining({
-        file: fileErro,
-        evento_id: 42,
-        origem_lote: "proponente",
+        items: [
+          expect.objectContaining({
+            file: fileErro,
+            evento_id: 42,
+            origem_lote: "proponente",
+          }),
+        ],
       }),
     );
+    expect(await within(findBatchRow("batch-erro.csv")).findByRole("button", { name: /abrir mapeamento do batch/i })).toBeInTheDocument();
+    expect(within(findBatchRow("batch-ok.csv")).getByRole("button", { name: /reenviar linha/i })).toBeInTheDocument();
   });
 
   it("shows the batch workspace summary and returns from mapping to the grid with context=batch", async () => {
@@ -1973,6 +2133,112 @@ describe("ImportacaoPage", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/leads/importar?step=upload");
+  });
+
+  it("keeps mixed batch workspaces split between unified mapping and enrichment-only single mapping", async () => {
+    mockedCreateLeadBatch
+      .mockResolvedValueOnce({
+        id: 90,
+        enviado_por: 1,
+        plataforma_origem: "email",
+        data_envio: "2026-03-09T00:00:00",
+        data_upload: "2026-03-09T12:00:00",
+        nome_arquivo_original: "batch-mixed-event.csv",
+        stage: "bronze",
+        evento_id: 42,
+        pipeline_status: "pending",
+        pipeline_report: null,
+        created_at: "2026-03-09T12:00:00",
+        ...bronzeBatchBase(),
+      })
+      .mockResolvedValueOnce({
+        id: 91,
+        enviado_por: 1,
+        plataforma_origem: "email",
+        data_envio: "2026-03-09T00:00:00",
+        data_upload: "2026-03-09T12:00:00",
+        nome_arquivo_original: "batch-mixed-enrichment.csv",
+        stage: "bronze",
+        evento_id: null,
+        origem_lote: "proponente",
+        enrichment_only: true,
+        tipo_lead_proponente: "entrada_evento",
+        ativacao_id: null,
+        pipeline_status: "pending",
+        pipeline_progress: null,
+        pipeline_report: null,
+        created_at: "2026-03-09T12:00:00",
+      });
+    mockedGetLeadBatch
+      .mockResolvedValueOnce({
+        id: 90,
+        enviado_por: 1,
+        plataforma_origem: "email",
+        data_envio: "2026-03-09T00:00:00",
+        data_upload: "2026-03-09T12:00:00",
+        nome_arquivo_original: "batch-mixed-event.csv",
+        stage: "bronze",
+        evento_id: 42,
+        pipeline_status: "pending",
+        pipeline_report: null,
+        created_at: "2026-03-09T12:00:00",
+        ...bronzeBatchBase(),
+      })
+      .mockResolvedValueOnce({
+        id: 91,
+        enviado_por: 1,
+        plataforma_origem: "email",
+        data_envio: "2026-03-09T00:00:00",
+        data_upload: "2026-03-09T12:00:00",
+        nome_arquivo_original: "batch-mixed-enrichment.csv",
+        stage: "bronze",
+        evento_id: null,
+        origem_lote: "proponente",
+        enrichment_only: true,
+        tipo_lead_proponente: "entrada_evento",
+        ativacao_id: null,
+        pipeline_status: "pending",
+        pipeline_progress: null,
+        pipeline_report: null,
+        created_at: "2026-03-09T12:00:00",
+      });
+
+    const { container } = renderImportacaoPage();
+    const user = userEvent.setup();
+
+    await switchToBatchMode(user);
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [
+          new File(["event"], "batch-mixed-event.csv", { type: "text/csv" }),
+          new File(["enrichment"], "batch-mixed-enrichment.csv", { type: "text/csv" }),
+        ],
+      },
+    });
+
+    const eventRow = findBatchRow("batch-mixed-event.csv");
+    const enrichmentRow = findBatchRow("batch-mixed-enrichment.csv");
+    await selectBatchRowPlatform(eventRow, user);
+    await selectBatchRowEvent(eventRow, user, /Evento ETL/i);
+    await selectBatchRowPlatform(enrichmentRow, user);
+    await selectBatchRowImportMode(enrichmentRow, user, /enviar para enriquecimento sem evento/i);
+
+    await user.click(screen.getByRole("button", { name: /enviar linhas validas para bronze/i }));
+
+    expect(await screen.findByText("Workspace do batch Bronze")).toBeInTheDocument();
+    expect(screen.getByText("1 aguardando mapeamento batch")).toBeInTheDocument();
+    expect(screen.getByText("1 enriquecimento sem evento")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /abrir mapeamento unificado/i }));
+    expect(await screen.findByText("Mapeamento batch shell 90")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Voltar ao batch" }));
+    await user.click(within(findBatchRow("batch-mixed-enrichment.csv")).getByRole("button", { name: /abrir mapeamento do batch/i }));
+
+    expect(await screen.findByText("Mapeamento shell 91")).toBeInTheDocument();
+    expect(screen.getByText("Enriquecimento sem evento shell")).toBeInTheDocument();
   });
 
   it("reconciles the batch workspace row after returning from pipeline", async () => {

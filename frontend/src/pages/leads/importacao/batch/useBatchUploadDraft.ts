@@ -14,6 +14,15 @@ import {
 import { EventoRead, updateEvento } from "../../../../services/eventos/core";
 import { createEventoAtivacao, listEventoAtivacoes } from "../../../../services/eventos/workflow";
 import { LEADS_IMPORT_ALLOWED_EXTENSIONS } from "../constants";
+import {
+  BronzeImportMode,
+  BronzeTipoLeadProponenteSelection,
+  bronzeImportModeFromFlag,
+  buildBronzeMetadataPayload,
+  normalizeBronzeTipoLeadProponenteSelection,
+  parsePositiveInt,
+  validateBronzeMetadataFormValues,
+} from "../bronzeImportMode";
 
 export type BronzeMode = "single" | "batch";
 
@@ -25,6 +34,7 @@ export type BatchUploadAtivacaoOption = {
 };
 
 export type BatchUploadHintEditableField =
+  | "import_mode"
   | "plataforma_origem"
   | "data_envio"
   | "evento_id"
@@ -37,11 +47,12 @@ export type BatchUploadRowDraft = {
   file: File;
   file_name: string;
   quem_enviou: string;
+  import_mode: BronzeImportMode;
   plataforma_origem: string;
   data_envio: string;
   evento_id: string;
-  origem_lote: OrigemLoteLeadBatch;
-  tipo_lead_proponente: "bilheteria" | "entrada_evento";
+  origem_lote: OrigemLoteLeadBatch | null;
+  tipo_lead_proponente: BronzeTipoLeadProponenteSelection;
   ativacao_id: string;
   status_ui: BatchUploadRowStatus;
   created_batch_id: number | null;
@@ -62,11 +73,6 @@ type UseBatchUploadDraftParams = {
   eventos: ReferenciaEvento[];
   setEventos: Dispatch<SetStateAction<ReferenciaEvento[]>>;
 };
-
-function parseOptionalId(value: string) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
 
 function hasAllowedExtension(file: File) {
   const normalizedName = file.name.toLowerCase();
@@ -142,6 +148,7 @@ function createDraftRow(params: {
     file: params.file,
     file_name: params.file.name,
     quem_enviou: params.defaultQuemEnviou,
+    import_mode: "event_linked",
     plataforma_origem: "",
     data_envio: params.defaultDataEnvio,
     evento_id: "",
@@ -162,6 +169,7 @@ function createDraftRow(params: {
 }
 
 const BATCH_HINT_EDITABLE_FIELDS: BatchUploadHintEditableField[] = [
+  "import_mode",
   "plataforma_origem",
   "data_envio",
   "evento_id",
@@ -189,7 +197,7 @@ export function getBatchRowSelectedEvento(
   eventos: ReferenciaEvento[],
   eventoId: string,
 ) {
-  const parsedId = parseOptionalId(eventoId);
+  const parsedId = parsePositiveInt(eventoId);
   if (parsedId == null) return null;
   return eventos.find((evento) => evento.id === parsedId) ?? null;
 }
@@ -215,32 +223,27 @@ export function getBatchRowValidationErrors(params: {
   if (!row.data_envio) {
     errors.push("Preencha a data de envio.");
   }
-  if (!parseOptionalId(row.evento_id)) {
-    errors.push("Selecione o evento de referencia.");
-  }
-
-  if (row.origem_lote === "ativacao") {
-    const blockReason =
-      getActivationImportBlockReason(selectedEvento) ??
-      (selectedEvento && !supportsActivationImport(selectedEvento)
-        ? DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON
-        : null);
-
-    if (blockReason) {
-      errors.push(blockReason);
-    } else if (ativacoesLoadError) {
-      errors.push(ativacoesLoadError);
-    } else if (!parseOptionalId(row.ativacao_id)) {
-      errors.push("Selecione a ativacao desta importacao.");
-    } else if (ativacoes && ativacoes.length > 0) {
-      const ativacaoId = parseOptionalId(row.ativacao_id);
-      if (!ativacoes.some((ativacao) => ativacao.id === ativacaoId)) {
-        errors.push("Selecione uma ativacao valida para o evento.");
-      }
-    }
-  } else if (!["entrada_evento", "bilheteria"].includes(row.tipo_lead_proponente)) {
-    errors.push("Selecione um tipo de lead do proponente.");
-  }
+  errors.push(
+    ...validateBronzeMetadataFormValues(
+      {
+        importMode: row.import_mode,
+        eventoId: row.evento_id,
+        origemLote: row.origem_lote,
+        tipoLeadProponente: row.tipo_lead_proponente,
+        ativacaoId: row.ativacao_id,
+      },
+      {
+        activationImportSupported: supportsActivationImport(selectedEvento),
+        activationImportBlockReason:
+          getActivationImportBlockReason(selectedEvento) ??
+          (selectedEvento && !supportsActivationImport(selectedEvento)
+            ? DEFAULT_ACTIVATION_IMPORT_BLOCK_REASON
+            : null),
+        ativacoesLoadError,
+        validAtivacaoIds: ativacoes?.map((ativacao) => ativacao.id) ?? [],
+      },
+    ),
+  );
 
   return [...new Set(errors)];
 }
@@ -273,6 +276,7 @@ export function useBatchUploadDraft({
     if (loadingAgencias || agencias.length > 0) return;
 
     const needsAgencyEditor = rows.some((row) => {
+      if (row.import_mode === "enrichment_only") return false;
       if (row.origem_lote !== "ativacao") return false;
       const selectedEvento = getBatchRowSelectedEvento(eventos, row.evento_id);
       return Boolean(selectedEvento && !supportsActivationImport(selectedEvento));
@@ -307,8 +311,9 @@ export function useBatchUploadDraft({
     const eventIdsToLoad = new Set<number>();
 
     rows.forEach((row) => {
+      if (row.import_mode === "enrichment_only") return;
       if (row.origem_lote !== "ativacao") return;
-      const eventId = parseOptionalId(row.evento_id);
+      const eventId = parsePositiveInt(row.evento_id);
       if (eventId == null) return;
       const selectedEvento = getBatchRowSelectedEvento(eventos, row.evento_id);
       if (!selectedEvento || !supportsActivationImport(selectedEvento)) return;
@@ -351,7 +356,7 @@ export function useBatchUploadDraft({
           return row;
         }
 
-        const eventId = parseOptionalId(row.evento_id);
+        const eventId = parsePositiveInt(row.evento_id);
         if (eventId == null || row.dirty_fields.ativacao_id) {
           changed = true;
           return {
@@ -411,6 +416,26 @@ export function useBatchUploadDraft({
           dirty_fields: options?.markDirty ? markDirtyFields(row, patch) : row.dirty_fields,
         };
 
+        if (patch.import_mode === "enrichment_only") {
+          nextRow.import_mode = "enrichment_only";
+          nextRow.evento_id = "";
+          nextRow.ativacao_id = "";
+          if (patch.tipo_lead_proponente === undefined) {
+            nextRow.tipo_lead_proponente = "";
+          }
+          if (patch.pending_hint_ativacao_id === undefined) {
+            nextRow.pending_hint_ativacao_id = null;
+          }
+        }
+
+        if (
+          patch.import_mode === "event_linked" &&
+          nextRow.origem_lote === "proponente" &&
+          !nextRow.tipo_lead_proponente
+        ) {
+          nextRow.tipo_lead_proponente = "entrada_evento";
+        }
+
         if (patch.evento_id !== undefined && patch.evento_id !== row.evento_id) {
           nextRow.ativacao_id = "";
           if (patch.pending_hint_ativacao_id === undefined) {
@@ -419,6 +444,9 @@ export function useBatchUploadDraft({
         }
         if (patch.origem_lote === "proponente") {
           nextRow.ativacao_id = "";
+          if (!nextRow.tipo_lead_proponente) {
+            nextRow.tipo_lead_proponente = "entrada_evento";
+          }
           if (patch.pending_hint_ativacao_id === undefined) {
             nextRow.pending_hint_ativacao_id = null;
           }
@@ -535,7 +563,7 @@ export function useBatchUploadDraft({
       }
 
       const row = rows.find((item) => item.local_id === localId);
-      const eventId = parseOptionalId(row?.evento_id ?? "");
+      const eventId = parsePositiveInt(row?.evento_id ?? "");
       if (!row || eventId == null) {
         throw new Error("Selecione o evento da linha antes de criar a ativacao.");
       }
@@ -583,7 +611,7 @@ export function useBatchUploadDraft({
       }
 
       const row = rows.find((item) => item.local_id === localId);
-      const eventId = parseOptionalId(row?.evento_id ?? "");
+      const eventId = parsePositiveInt(row?.evento_id ?? "");
       if (!row || eventId == null) {
         throw new Error("Selecione o evento da linha antes de atualizar a agencia.");
       }
@@ -627,7 +655,7 @@ export function useBatchUploadDraft({
     const validationMap = new Map(
       targetRows.map((row) => {
         const selectedEvento = getBatchRowSelectedEvento(eventos, row.evento_id);
-        const eventId = parseOptionalId(row.evento_id);
+        const eventId = parsePositiveInt(row.evento_id);
         const ativacoes = eventId != null ? ativacoesByEventoId[eventId] : undefined;
         const ativacoesLoadError = eventId != null ? ativacoesLoadErrorByEventoId[eventId] : null;
         const errors = getBatchRowValidationErrors({ row, selectedEvento, ativacoes, ativacoesLoadError });
@@ -676,13 +704,14 @@ export function useBatchUploadDraft({
           client_row_id: row.local_id,
           plataforma_origem: row.plataforma_origem,
           data_envio: row.data_envio,
-          evento_id: Number(row.evento_id),
           file: row.file,
-          origem_lote: row.origem_lote,
-          tipo_lead_proponente:
-            row.origem_lote === "proponente" ? row.tipo_lead_proponente : undefined,
-          ativacao_id:
-            row.origem_lote === "ativacao" ? Number(row.ativacao_id) : undefined,
+          ...buildBronzeMetadataPayload({
+            importMode: row.import_mode,
+            eventoId: row.evento_id,
+            origemLote: row.origem_lote,
+            tipoLeadProponente: row.tipo_lead_proponente,
+            ativacaoId: row.ativacao_id,
+          }),
         })),
       });
       const itemsByRowId = new Map(result.items.map((item) => [item.client_row_id, item] as const));
@@ -694,9 +723,21 @@ export function useBatchUploadDraft({
           if (!created) return row;
           return {
             ...row,
+            import_mode: bronzeImportModeFromFlag(created.batch.enrichment_only),
             status_ui: "created",
             created_batch_id: created.batch.id,
             error_message: null,
+            evento_id: created.batch.evento_id != null ? String(created.batch.evento_id) : "",
+            origem_lote: created.batch.origem_lote,
+            tipo_lead_proponente: normalizeBronzeTipoLeadProponenteSelection(
+              created.batch.tipo_lead_proponente,
+              created.batch.enrichment_only || created.batch.origem_lote == null
+                ? ""
+                : created.batch.origem_lote === "ativacao"
+                  ? ""
+                  : "entrada_evento",
+            ),
+            ativacao_id: created.batch.ativacao_id != null ? String(created.batch.ativacao_id) : "",
             downstream_stage: created.batch.stage,
             downstream_pipeline_status: created.batch.pipeline_status,
             last_synced_at: syncedAt,

@@ -51,6 +51,7 @@ function buildResponse(): AgeAnalysisResponse {
       nao_clientes_bb_volume: 55,
       nao_clientes_bb_pct: 55,
       bb_indefinido_volume: 5,
+      bb_indefinido_pct: 5,
       cobertura_bb_pct: 90,
       faixas,
       top_eventos: [

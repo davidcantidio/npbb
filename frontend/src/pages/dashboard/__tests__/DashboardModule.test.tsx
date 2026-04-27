@@ -77,6 +77,7 @@ const ageAnalysisFixture = buildAgeAnalysisFixture({
     nao_clientes_bb_volume: 2,
     nao_clientes_bb_pct: 50,
     bb_indefinido_volume: 0,
+    bb_indefinido_pct: 0,
     cobertura_bb_pct: 100,
     faixas: {
       faixa_18_25: { volume: 2, pct: 50 },

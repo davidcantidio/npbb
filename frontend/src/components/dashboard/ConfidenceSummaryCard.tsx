@@ -46,6 +46,7 @@ function MetricChip({ label, tooltip }: MetricChipProps) {
 export function ConfidenceSummaryCard({ data, viewModel, sx }: ConfidenceSummaryCardProps) {
   const quality = data.qualidade_consolidado;
   const confidence = data.confianca_consolidado;
+  const consolidado = data.consolidado;
 
   const overline = "Sobre vinculos consolidados.";
 
@@ -101,6 +102,18 @@ export function ConfidenceSummaryCard({ data, viewModel, sx }: ConfidenceSummary
           <MetricChip
             label={`Total na base: ${formatInteger(confidence.base_vinculos)}`}
             tooltip={`Gerado em ${viewModel.generatedAtLabel}`}
+          />
+          <MetricChip
+            label={`Sem conexao com evento: ${formatInteger(confidence.leads_sem_conexao_evento_volume)} (${formatPercent(
+              confidence.leads_sem_conexao_evento_pct,
+            )})`}
+            tooltip="Leads distintos sem vinculo canonico a um evento; o consolidado por evento conta vinculos (um lead pode repetir em varios eventos)."
+          />
+          <MetricChip
+            label={`Sem definicao de cliente BB: ${formatInteger(consolidado.bb_indefinido_volume)} (${formatPercent(
+              consolidado.bb_indefinido_pct,
+            )})`}
+            tooltip="Vinculos lead-evento em que o status de cliente BB ainda nao foi definido; percentual sobre a base de vinculos consolidada."
           />
           <MetricChip
             label={`Sem data de nascimento: ${formatInteger(quality.sem_data_nascimento_volume)} (${formatPercent(

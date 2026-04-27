@@ -116,6 +116,7 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
           nao_clientes_bb_volume: null,
           nao_clientes_bb_pct: null,
           bb_indefinido_volume: 0,
+          bb_indefinido_pct: 0,
           faixas: {
             faixa_18_25: { volume: 0, pct: 0 },
             faixa_26_40: { volume: 0, pct: 0 },
@@ -134,6 +135,8 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
           base_vinculos: 0,
           base_com_idade_volume: 0,
           base_bb_coberta_volume: 0,
+          leads_sem_conexao_evento_volume: 0,
+          leads_sem_conexao_evento_pct: 0,
         },
         qualidade_consolidado: {
           base_vinculos: 0,
@@ -263,15 +266,9 @@ describe("LeadsAgeAnalysisPage states", { timeout: 30000 }, () => {
     renderPage();
 
     expect(await screen.findByTestId("coverage-banner-danger-default")).toBeInTheDocument();
-    expect(await screen.findByTestId("coverage-banner-danger-compact")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Dados de vinculo BB indisponiveis neste recorte - realize o cruzamento com a base de dados do Banco.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Dados de vinculo BB indisponiveis para este evento - realize o cruzamento com a base de dados do Banco.",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("(dados parciais)").length).toBeGreaterThan(0);

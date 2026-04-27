@@ -11,6 +11,7 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
+  FormHelperText,
   FormLabel,
   MenuItem,
   Paper,
@@ -46,6 +47,13 @@ import {
   BatchUploadRowDraft,
   BronzeMode,
 } from "./batch/useBatchUploadDraft";
+import {
+  BronzeImportMode,
+  BronzeTipoLeadProponenteSelection,
+  getBronzeImportModeHelpText,
+  getBronzeImportModeLabel,
+  getBronzeImportModeSummary,
+} from "./bronzeImportMode";
 import { LEADS_IMPORT_PLATFORMS, QUICK_CREATE_EVENTO_ID } from "./constants";
 
 type ImportFlow = "bronze" | "etl";
@@ -67,12 +75,13 @@ type Props = {
   bronzeAtivacaoId: string;
   bronzeActivationImportBlockReason: string | null;
   bronzeEventoId: string;
+  bronzeImportMode: BronzeImportMode;
   bronzeEventoSupportsActivationImport: boolean;
   bronzeMetadataHintMessage: string | null;
   bronzeMetadataHintSourceBatchId: number | null;
   bronzeMode: BronzeMode;
   bronzeOrigemLote: "proponente" | "ativacao";
-  bronzeTipoLeadProponente: "bilheteria" | "entrada_evento";
+  bronzeTipoLeadProponente: BronzeTipoLeadProponenteSelection;
   canSubmit: boolean;
   committingEtl: boolean;
   dataEnvio: string;
@@ -108,9 +117,10 @@ type Props = {
   onBatchSubmit: () => Promise<void>;
   onBronzeAtivacaoIdChange: (value: string) => void;
   onBronzeEventoIdChange: (value: string) => void;
+  onBronzeImportModeChange: (value: BronzeImportMode) => void;
   onBronzeModeChange: (value: BronzeMode) => void;
   onBronzeOrigemLoteChange: (value: "proponente" | "ativacao") => void;
-  onBronzeTipoLeadProponenteChange: (value: "bilheteria" | "entrada_evento") => void;
+  onBronzeTipoLeadProponenteChange: (value: BronzeTipoLeadProponenteSelection) => void;
   onCommitEtl: (forceWarnings: boolean) => void;
   onCpfColumnChange: (value: string) => void;
   onCpfColumnSubmit: () => void;
@@ -144,6 +154,7 @@ function UploadStep({
   bronzeAtivacaoId,
   bronzeActivationImportBlockReason,
   bronzeEventoId,
+  bronzeImportMode,
   bronzeEventoSupportsActivationImport,
   bronzeMetadataHintMessage,
   bronzeMetadataHintSourceBatchId,
@@ -175,6 +186,7 @@ function UploadStep({
   onBatchSubmit,
   onBronzeAtivacaoIdChange,
   onBronzeEventoIdChange,
+  onBronzeImportModeChange,
   onBronzeModeChange,
   onBronzeOrigemLoteChange,
   onBronzeTipoLeadProponenteChange,
@@ -203,6 +215,7 @@ function UploadStep({
   | "bronzeAtivacaoId"
   | "bronzeActivationImportBlockReason"
   | "bronzeEventoId"
+  | "bronzeImportMode"
   | "bronzeEventoSupportsActivationImport"
   | "bronzeMetadataHintMessage"
   | "bronzeMetadataHintSourceBatchId"
@@ -234,6 +247,7 @@ function UploadStep({
   | "onBatchSubmit"
   | "onBronzeAtivacaoIdChange"
   | "onBronzeEventoIdChange"
+  | "onBronzeImportModeChange"
   | "onBronzeModeChange"
   | "onBronzeOrigemLoteChange"
   | "onBronzeTipoLeadProponenteChange"
@@ -253,7 +267,9 @@ function UploadStep({
   const [ativDialogNome, setAtivDialogNome] = useState("");
   const [ativSaving, setAtivSaving] = useState(false);
 
-  const activationImportBlocked = Boolean(bronzeEventoId) && !bronzeEventoSupportsActivationImport;
+  const isBronzeEnrichmentOnly = bronzeImportMode === "enrichment_only";
+  const activationImportBlocked =
+    !isBronzeEnrichmentOnly && Boolean(bronzeEventoId) && !bronzeEventoSupportsActivationImport;
   const activationSelectionMissing =
     bronzeOrigemLote === "ativacao" &&
     Boolean(bronzeEventoId) &&
@@ -423,88 +439,129 @@ function UploadStep({
                     fullWidth
                   />
 
-                  <Autocomplete<ReferenciaEvento, false, false, false>
-                    options={eventos}
-                    value={selectedBronzeEvento}
-                    disabled={loadingEventos}
-                    getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
-                    filterOptions={(options, state) => filterEventoOptions(options, state.inputValue)}
-                    onChange={(_, selected) => {
-                      if (!selected) {
-                        onBronzeEventoIdChange("");
-                        return;
-                      }
-                      if (selected.id === QUICK_CREATE_EVENTO_ID) {
-                        onOpenQuickCreateEvento();
-                        return;
-                      }
-                      onBronzeEventoIdChange(String(selected.id));
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Evento de referencia"
-                        required
-                        fullWidth
-                        helperText="Evento associado a esta importacao Bronze."
-                      />
-                    )}
-                    renderOption={(props, option) => (
-                      <Box
-                        component="li"
-                        {...props}
-                        key={option.id}
-                        sx={option.id === QUICK_CREATE_EVENTO_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
-                      >
-                        {formatReferenciaEventoOptionLabel(option)}
-                      </Box>
-                    )}
-                  />
-
                   <FormControl component="fieldset" variant="standard" sx={{ width: "100%" }}>
-                    <FormLabel component="legend">Origem dos leads</FormLabel>
+                    <FormLabel component="legend">Modo do envio Bronze</FormLabel>
                     <RadioGroup
-                      row
-                      value={bronzeOrigemLote}
-                      onChange={(event) =>
-                        onBronzeOrigemLoteChange(event.target.value as "proponente" | "ativacao")
-                      }
+                      value={bronzeImportMode}
+                      onChange={(event) => onBronzeImportModeChange(event.target.value as BronzeImportMode)}
                     >
-                      <FormControlLabel value="proponente" control={<Radio />} label="Proponente" />
                       <FormControlLabel
-                        value="ativacao"
+                        value="event_linked"
                         control={<Radio />}
-                        label="Ativacao (importacao)"
-                        disabled={activationImportBlocked}
+                        label={getBronzeImportModeLabel("event_linked")}
+                      />
+                      <FormControlLabel
+                        value="enrichment_only"
+                        control={<Radio />}
+                        label={getBronzeImportModeLabel("enrichment_only")}
                       />
                     </RadioGroup>
+                    <FormHelperText>{getBronzeImportModeHelpText(bronzeImportMode)}</FormHelperText>
                   </FormControl>
 
-                  {activationImportBlocked && bronzeOrigemLote !== "ativacao" ? (
+                  {isBronzeEnrichmentOnly ? (
+                    <Alert severity="info">
+                      Este modo envia o lote para enriquecimento sem evento. Se a classificação do lead não for
+                      relevante neste caso, escolha “Não informar”.
+                    </Alert>
+                  ) : (
+                    <Autocomplete<ReferenciaEvento, false, false, false>
+                      options={eventos}
+                      value={selectedBronzeEvento}
+                      disabled={loadingEventos}
+                      getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
+                      filterOptions={(options, state) => filterEventoOptions(options, state.inputValue)}
+                      onChange={(_, selected) => {
+                        if (!selected) {
+                          onBronzeEventoIdChange("");
+                          return;
+                        }
+                        if (selected.id === QUICK_CREATE_EVENTO_ID) {
+                          onOpenQuickCreateEvento();
+                          return;
+                        }
+                        onBronzeEventoIdChange(String(selected.id));
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Evento de referencia"
+                          required
+                          fullWidth
+                          helperText="Evento associado a esta importacao Bronze."
+                        />
+                      )}
+                      renderOption={(props, option) => (
+                        <Box
+                          component="li"
+                          {...props}
+                          key={option.id}
+                          sx={option.id === QUICK_CREATE_EVENTO_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
+                        >
+                          {formatReferenciaEventoOptionLabel(option)}
+                        </Box>
+                      )}
+                    />
+                  )}
+
+                  {!isBronzeEnrichmentOnly ? (
+                    <FormControl component="fieldset" variant="standard" sx={{ width: "100%" }}>
+                      <FormLabel component="legend">Origem dos leads</FormLabel>
+                      <RadioGroup
+                        row
+                        value={bronzeOrigemLote}
+                        onChange={(event) =>
+                          onBronzeOrigemLoteChange(event.target.value as "proponente" | "ativacao")
+                        }
+                      >
+                        <FormControlLabel value="proponente" control={<Radio />} label="Proponente" />
+                        <FormControlLabel
+                          value="ativacao"
+                          control={<Radio />}
+                          label="Ativacao (importacao)"
+                          disabled={activationImportBlocked}
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                  ) : null}
+
+                  {!isBronzeEnrichmentOnly && activationImportBlocked && bronzeOrigemLote !== "ativacao" ? (
                     <Alert severity="warning">
                       {bronzeActivationImportBlockReason ??
                         "Vincule uma agencia ao evento antes de importar leads de ativacao."}
                     </Alert>
                   ) : null}
 
-                  {bronzeOrigemLote === "proponente" ? (
+                  {(isBronzeEnrichmentOnly || bronzeOrigemLote === "proponente") ? (
                     <TextField
                       select
-                      label="Tipo (proponente)"
+                      label={
+                        isBronzeEnrichmentOnly
+                          ? "Classificação do lead (opcional)"
+                          : "Classificação do lead"
+                      }
                       value={bronzeTipoLeadProponente}
                       onChange={(event) =>
                         onBronzeTipoLeadProponenteChange(
-                          event.target.value as "bilheteria" | "entrada_evento",
+                          event.target.value as BronzeTipoLeadProponenteSelection,
                         )
                       }
                       fullWidth
+                      helperText={
+                        isBronzeEnrichmentOnly
+                          ? "Opcional: use apenas se essa classificação ajudar o enriquecimento."
+                          : undefined
+                      }
                     >
+                      <MenuItem value="">
+                        <em>Não informar</em>
+                      </MenuItem>
                       <MenuItem value="entrada_evento">Entrada no evento</MenuItem>
                       <MenuItem value="bilheteria">Bilheteria</MenuItem>
                     </TextField>
                   ) : null}
 
-                  {bronzeOrigemLote === "ativacao" ? (
+                  {!isBronzeEnrichmentOnly && bronzeOrigemLote === "ativacao" ? (
                     <Stack spacing={1}>
                       {activationImportBlocked ? (
                         <Alert severity="warning">
@@ -628,6 +685,8 @@ function UploadStep({
                     <CircularProgress size={18} color="inherit" />
                   ) : importFlow === "etl" ? (
                     "Gerar preview ETL"
+                  ) : isBronzeEnrichmentOnly ? (
+                    "Enviar para enriquecimento"
                   ) : (
                     "Enviar para Bronze"
                   )}
@@ -942,6 +1001,12 @@ function BronzePreviewStep({
   return (
     <Stack spacing={2}>
       {batch ? <BatchSummaryCard batch={batch} /> : null}
+      {batch?.enrichment_only ? (
+        <Alert severity="info">
+          Este lote foi enviado em modo {getBronzeImportModeSummary("enrichment_only").toLowerCase()}. O próximo passo
+          permite mapear as colunas sem escolher evento de referência.
+        </Alert>
+      ) : null}
       <Typography variant="subtitle1" fontWeight={700}>
         Preview do lote #{batch?.id}
       </Typography>
@@ -985,7 +1050,7 @@ function BronzePreviewStep({
           Cancelar
         </Button>
         <Button variant="contained" disabled={!batch} onClick={onGoToMapping}>
-          Ir para Mapeamento
+          {batch?.enrichment_only ? "Ir para mapeamento do enriquecimento" : "Ir para Mapeamento"}
         </Button>
       </Stack>
     </Stack>

@@ -49,7 +49,7 @@ function getRowCells(eventId: number) {
 }
 
 describe("EventsAgeTable", () => {
-  it("renders all required fields from PRD section 3.2 and keeps extra columns", () => {
+  it("renders colunas: evento, base, proponente, ativacao, clientes, nao clientes, 18-40, fora da faixa, sem idade", () => {
     render(<EventsAgeTable events={[buildEvent({})]} />);
     const table = screen.getByRole("table", { name: /analise etaria/i });
     const [
@@ -59,13 +59,9 @@ describe("EventsAgeTable", () => {
       ativCell,
       clientesBbCell,
       naoClientesCell,
-      ,
       faixa1840Cell,
-      faixa18a25Cell,
-      faixa26a40Cell,
-      fora1840Cell,
-      ,
-      faixaDominanteCell,
+      foraFaixaCell,
+      semIdadeCell,
     ] = getRowCells(1);
 
     expect(within(table).getByRole("button", { name: "Evento" })).toBeInTheDocument();
@@ -75,12 +71,8 @@ describe("EventsAgeTable", () => {
     expect(within(table).getByRole("button", { name: "Clientes BB" })).toBeInTheDocument();
     expect(within(table).getByRole("button", { name: "Nao clientes" })).toBeInTheDocument();
     expect(within(table).getByRole("button", { name: "18-40" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "18-25" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "26-40" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "Fora 18-40" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "Faixa dominante" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "Cobertura BB" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "Sem info" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Fora da faixa" })).toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: "Sem idade" })).toBeInTheDocument();
 
     expect(eventCell).toHaveTextContent("Evento Alpha");
     expect(eventCell).toHaveTextContent("Sao Paulo - SP");
@@ -90,13 +82,57 @@ describe("EventsAgeTable", () => {
     expect(clientesBbCell).toHaveTextContent(/4\s*\/\s*40,0%/);
     expect(naoClientesCell).toHaveTextContent(/5\s*\/\s*50,0%/);
     expect(faixa1840Cell).toHaveTextContent(/8\s*\/\s*80,0%/);
-    expect(faixa18a25Cell).toHaveTextContent(/5\s*\/\s*50,0%/);
-    expect(faixa26a40Cell).toHaveTextContent(/3\s*\/\s*30,0%/);
-    expect(fora1840Cell).toHaveTextContent(/2\s*\/\s*20,0%/);
-    expect(faixaDominanteCell).toHaveTextContent("18–25");
+    expect(foraFaixaCell).toHaveTextContent(/2\s*\/\s*20,0%/);
+    expect(semIdadeCell).toHaveTextContent(/0\s*\/\s*0,0%/);
+    expect(faixa1840Cell.querySelector("[data-share-18-40]")).toHaveAttribute("data-share-18-40", "major");
+    expect(foraFaixaCell.querySelector("[data-share-fora-faixa]")).toHaveAttribute("data-share-fora-faixa", "minor");
   }, 20_000);
 
-  it("renders compact warning banner text when coverage is partial", () => {
+  it("marca fora da faixa como maioria quando o percentual e superior a 50%", () => {
+    render(
+      <EventsAgeTable
+        events={[
+          buildEvent({
+            faixas: {
+              faixa_18_25: { volume: 0, pct: 0 },
+              faixa_26_40: { volume: 0, pct: 0 },
+              faixa_18_40: { volume: 1, pct: 10 },
+              fora_18_40: { volume: 9, pct: 90 },
+              sem_info_volume: 0,
+              sem_info_pct_da_base: 0,
+            },
+          }),
+        ]}
+      />,
+    );
+    const [, , , , , , , foraFaixaCell] = getRowCells(1);
+    expect(foraFaixaCell).toHaveTextContent(/9\s*\/\s*90,0%/);
+    expect(foraFaixaCell.querySelector("[data-share-fora-faixa]")).toHaveAttribute("data-share-fora-faixa", "major");
+  });
+
+  it("marca 18-40 como minoria quando a fatia nao e maioria de 50%", () => {
+    render(
+      <EventsAgeTable
+        events={[
+          buildEvent({
+            faixas: {
+              faixa_18_25: { volume: 0, pct: 0 },
+              faixa_26_40: { volume: 0, pct: 0 },
+              faixa_18_40: { volume: 2, pct: 25 },
+              fora_18_40: { volume: 6, pct: 75 },
+              sem_info_volume: 0,
+              sem_info_pct_da_base: 0,
+            },
+          }),
+        ]}
+      />,
+    );
+    const [, , , , , , faixa1840Cell] = getRowCells(1);
+    expect(faixa1840Cell).toHaveTextContent(/2\s*\/\s*25,0%/);
+    expect(faixa1840Cell.querySelector("[data-share-18-40]")).toHaveAttribute("data-share-18-40", "minor");
+  });
+
+  it("renders partial-hint in Clientes BB when coverage is below threshold (sem coluna de cobertura na tabela)", () => {
     render(
       <EventsAgeTable
         events={[
@@ -110,14 +146,11 @@ describe("EventsAgeTable", () => {
         ]}
       />,
     );
-
-    expect(screen.getByTestId("coverage-banner-warning-compact")).toBeInTheDocument();
-    expect(
-      screen.getByText("Dados parcialmente disponiveis. Realize o cruzamento completo com a base do Banco."),
-    ).toBeInTheDocument();
+    const [, , , , clientesBbCell] = getRowCells(4);
+    expect(clientesBbCell).toHaveTextContent("dados parciais");
   });
 
-  it('renders "—" for BB cells and the danger banner when backend returns null coverage values', () => {
+  it('renders "—" for BB cells when backend returns null client metrics', () => {
     render(
       <EventsAgeTable
         events={[
@@ -137,12 +170,6 @@ describe("EventsAgeTable", () => {
 
     expect(clientesBbCell).toHaveTextContent(/—\s*\/\s*—/);
     expect(naoClientesCell).toHaveTextContent(/—\s*\/\s*—/);
-    expect(screen.getByTestId("coverage-banner-danger-compact")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Dados de vinculo BB indisponiveis para este evento - realize o cruzamento com a base de dados do Banco.",
-      ),
-    ).toBeInTheDocument();
   });
 
   it("sorts by numeric columns through header click and updates visual direction", async () => {

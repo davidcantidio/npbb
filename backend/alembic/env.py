@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
@@ -149,6 +149,11 @@ def run_migrations_online() -> None:
                 )
 
                 with context.begin_transaction():
+                    if connection.dialect.name == "postgresql":
+                        # Disable the session statement timeout only after Alembic
+                        # owns the transaction, so autocommit_block() migrations
+                        # still see a managed transaction context.
+                        connection.execute(text("SET statement_timeout = 0"))
                     context.run_migrations()
             return
         finally:

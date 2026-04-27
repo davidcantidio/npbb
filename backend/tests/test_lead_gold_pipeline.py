@@ -203,6 +203,7 @@ def _upload_batch(
     plataforma: str = "email",
     *,
     evento_id: int | None = None,
+    enrichment_only: bool | None = None,
     origem_lote: str | None = None,
     ativacao_id: int | None = None,
     tipo_lead_proponente: str | None = None,
@@ -214,6 +215,8 @@ def _upload_batch(
     }
     if evento_id is not None:
         data["evento_id"] = str(evento_id)
+    if enrichment_only is not None:
+        data["enrichment_only"] = "true" if enrichment_only else "false"
     if origem_lote is not None:
         data["origem_lote"] = origem_lote
     if ativacao_id is not None:
@@ -235,7 +238,7 @@ def _upload_batch(
 def _promote_to_silver(
     engine,
     batch_id: int,
-    evento_id: int,
+    evento_id: int | None,
     *,
     dados_brutos_extra: dict[str, str] | None = None,
 ) -> None:
@@ -1976,6 +1979,34 @@ class TestLeadEventoInGoldPipeline:
             assert lead.is_cliente_bb is True
             assert lead.is_cliente_estilo is False
 
+    def test_promote_to_gold_parses_cliente_alias_into_is_cliente_bb(self, client, engine, monkeypatch):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth)
+        _promote_to_silver(
+            engine,
+            batch_id,
+            evento.id,
+            dados_brutos_extra={
+                "cliente": "false",
+                "is_cliente_bb": "",
+            },
+        )
+
+        import app.db.database as database_module
+
+        monkeypatch.setattr(database_module, "engine", engine)
+        from app.services.lead_pipeline_service import executar_pipeline_gold
+
+        asyncio.run(executar_pipeline_gold(batch_id))
+
+        with Session(engine) as s:
+            lead = s.exec(select(Lead).where(Lead.batch_id == batch_id)).first()
+            assert lead is not None
+            assert lead.is_cliente_bb is False
+
     def test_invalid_event_date_in_sheet_is_ignored_when_batch_is_anchored_on_evento_id(
         self, client, engine, monkeypatch
     ):
@@ -2871,3 +2902,201 @@ class TestLeadEventoInGoldPipeline:
             matched = _find_existing_lead(s, payload, anchored_evento_id=outro_evento.id)
             assert matched is not None
             assert matched.id == lead.id
+
+
+def test_executar_pipeline_gold_enrichment_only_updates_existing_leads_by_cpf(
+    client, engine, monkeypatch
+):
+    with Session(engine) as s:
+        auth = _auth_header(client, s)
+
+    batch_id = _upload_batch(client, auth, enrichment_only=True)
+
+    with Session(engine) as s:
+        batch = s.get(LeadBatch, batch_id)
+        assert batch is not None
+        batch.stage = BatchStage.SILVER
+        batch.evento_id = None
+        s.add(batch)
+
+        matched_lead = Lead(
+            cpf="52998224725",
+            email="existing-match@example.com",
+            nome=None,
+            telefone=None,
+            data_nascimento=date_type(1991, 1, 1),
+            is_cliente_bb=False,
+        )
+        ambiguous_lead_a = Lead(
+            cpf="39053344705",
+            email="ambiguous-a@example.com",
+            nome="Ambiguous A",
+        )
+        ambiguous_lead_b = Lead(
+            cpf="39053344705",
+            email="ambiguous-b@example.com",
+            nome="Ambiguous B",
+        )
+        s.add(matched_lead)
+        s.add(ambiguous_lead_a)
+        s.add(ambiguous_lead_b)
+        s.commit()
+
+        rows = [
+            {
+                "row_index": 0,
+                "dados_brutos": {
+                    "cpf": "529.982.247-25",
+                    "nome": "Alice Enrichment",
+                    "email": "incoming@example.com",
+                    "telefone": "11999990000",
+                    "data_nascimento": "1980-02-03 00:00:00",
+                    "is_cliente_bb": "true",
+                },
+            },
+            {
+                "row_index": 1,
+                "dados_brutos": {
+                    "cpf": "",
+                    "nome": "Sem CPF",
+                },
+            },
+            {
+                "row_index": 2,
+                "dados_brutos": {
+                    "cpf": "12345678909",
+                    "nome": "CPF Invalido",
+                },
+            },
+            {
+                "row_index": 3,
+                "dados_brutos": {
+                    "cpf": "11144477735",
+                    "nome": "Nao Encontrado",
+                },
+            },
+            {
+                "row_index": 4,
+                "dados_brutos": {
+                    "cpf": "39053344705",
+                    "nome": "Ambiguo",
+                },
+            },
+        ]
+        for row in rows:
+            s.add(
+                LeadSilver(
+                    batch_id=batch_id,
+                    row_index=row["row_index"],
+                    evento_id=None,
+                    dados_brutos=row["dados_brutos"],
+                )
+            )
+        s.commit()
+
+    import app.db.database as database_module
+    import app.services.lead_pipeline_service as lead_pipeline_service
+
+    monkeypatch.setattr(database_module, "engine", engine)
+
+    def _unexpected_run_pipeline(*_args, **_kwargs):
+        raise AssertionError("run_pipeline nao deve ser chamado em enrichment_only")
+
+    monkeypatch.setattr(lead_pipeline_service, "run_pipeline", _unexpected_run_pipeline)
+
+    asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+    with Session(engine) as s:
+        batch = s.get(LeadBatch, batch_id)
+        assert batch is not None
+        assert batch.stage == BatchStage.GOLD
+        assert batch.pipeline_status == PipelineStatus.PASS_WITH_WARNINGS
+        assert batch.gold_dq_discarded_rows == 4
+        assert batch.gold_dq_invalid_records_total == 4
+        assert batch.gold_dq_issue_counts is not None
+        assert batch.gold_dq_issue_counts.get("cpf_missing_rows") == 1
+        assert batch.gold_dq_issue_counts.get("cpf_invalid_rows") == 1
+        assert batch.gold_dq_issue_counts.get("lead_not_found_rows") == 1
+        assert batch.gold_dq_issue_counts.get("ambiguous_match_rows") == 1
+        assert batch.pipeline_report is not None
+        assert batch.pipeline_report["gate"]["status"] == "PASS_WITH_WARNINGS"
+        assert batch.pipeline_report["gate"]["decision"] == "promote"
+        assert batch.pipeline_report["enrichment"] == {
+            "mode": "enrichment_only",
+            "lookup_key": "cpf",
+            "merge_policy": "fill_missing_with_truth_source_overrides",
+            "truth_source_fields": ["data_nascimento", "is_cliente_bb", "is_cliente_estilo"],
+            "matched_rows": 1,
+            "updated_rows": 1,
+            "not_found_rows": 1,
+            "ambiguous_rows": 1,
+            "cpf_missing_rows": 1,
+            "cpf_invalid_rows": 1,
+            "rejection_samples": batch.pipeline_report["enrichment"]["rejection_samples"],
+        }
+        assert {item["reason"] for item in batch.pipeline_report["invalid_records"]} == {
+            "cpf_missing",
+            "cpf_invalid",
+            "lead_not_found",
+            "ambiguous_match",
+        }
+
+        leads = s.exec(select(Lead).order_by(Lead.id)).all()
+        assert len(leads) == 3
+
+        matched = s.exec(select(Lead).where(Lead.cpf == "52998224725")).one()
+        assert matched.nome == "Alice Enrichment"
+        assert matched.telefone == "11999990000"
+        assert matched.email == "existing-match@example.com"
+        assert matched.data_nascimento == date_type(1980, 2, 3)
+        assert matched.is_cliente_bb is True
+
+        assert s.exec(select(LeadEvento)).all() == []
+
+
+def test_executar_pipeline_gold_enrichment_only_accepts_cliente_boolean_alias(
+    client, engine, monkeypatch
+):
+    with Session(engine) as s:
+        auth = _auth_header(client, s)
+
+    batch_id = _upload_batch(client, auth, enrichment_only=True)
+
+    with Session(engine) as s:
+        batch = s.get(LeadBatch, batch_id)
+        assert batch is not None
+        batch.stage = BatchStage.SILVER
+        batch.evento_id = None
+        s.add(batch)
+
+        matched_lead = Lead(
+            cpf="52998224725",
+            email="existing-cliente@example.com",
+            nome="Lead Cliente",
+            is_cliente_bb=None,
+        )
+        s.add(matched_lead)
+        s.commit()
+
+        s.add(
+            LeadSilver(
+                batch_id=batch_id,
+                row_index=0,
+                evento_id=None,
+                dados_brutos={
+                    "cpf": "529.982.247-25",
+                    "cliente": "true",
+                },
+            )
+        )
+        s.commit()
+
+    import app.db.database as database_module
+    import app.services.lead_pipeline_service as lead_pipeline_service
+
+    monkeypatch.setattr(database_module, "engine", engine)
+    asyncio.run(lead_pipeline_service.executar_pipeline_gold(batch_id))
+
+    with Session(engine) as s:
+        matched = s.exec(select(Lead).where(Lead.cpf == "52998224725")).one()
+        assert matched.is_cliente_bb is True

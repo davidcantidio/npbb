@@ -99,7 +99,8 @@ def criar_batch(
     plataforma_origem: str = Form(...),
     data_envio: str = Form(...),
     evento_id: int | None = Form(default=None),
-    origem_lote: str = Form(default="proponente"),
+    origem_lote: str | None = Form(default=None),
+    enrichment_only: bool = Form(default=False),
     tipo_lead_proponente: str | None = Form(default=None),
     ativacao_id: int | None = Form(default=None),
     session: Session = Depends(get_session),
@@ -121,6 +122,7 @@ def criar_batch(
                         "data_envio": data_envio,
                         "evento_id": evento_id,
                         "origem_lote": origem_lote,
+                        "enrichment_only": enrichment_only,
                         "tipo_lead_proponente": tipo_lead_proponente,
                         "ativacao_id": ativacao_id,
                         "file_name": file.filename,
@@ -177,6 +179,7 @@ def obter_hint_importacao_batch(
                 LeadBatch.plataforma_origem,
                 LeadBatch.data_envio,
                 LeadBatch.origem_lote,
+                LeadBatch.enrichment_only,
                 LeadBatch.tipo_lead_proponente,
                 LeadBatch.evento_id,
                 LeadBatch.ativacao_id,
@@ -204,6 +207,7 @@ def obter_hint_importacao_batch(
         plataforma_origem=source_batch.plataforma_origem,
         data_envio=source_batch.data_envio,
         origem_lote=source_batch.origem_lote,
+        enrichment_only=bool(source_batch.enrichment_only),
         tipo_lead_proponente=source_batch.tipo_lead_proponente,
         evento_id=source_batch.evento_id,
         ativacao_id=source_batch.ativacao_id,
@@ -290,6 +294,13 @@ def sugerir_mapeamento_colunas_batch(
 
     try:
         preview = suggest_batch_column_mapping(payload.batch_ids, db=session, owner_user_id=user_id)
+    except BatchMappingBlockedError as exc:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="BATCH_MAPPING_BLOCKED",
+            message="O mapeamento unificado deste batch foi bloqueado.",
+            extra={"blockers": exc.blockers},
+        )
     except ValueError as exc:
         message = str(exc)
         raise_http_error(
@@ -453,6 +464,13 @@ def confirmar_mapeamento(
             mapeamento=payload.mapeamento,
             user_id=user_id,
             db=session,
+        )
+    except BatchMappingBlockedError as exc:
+        raise_http_error(
+            status.HTTP_400_BAD_REQUEST,
+            code="BATCH_MAPPING_BLOCKED",
+            message="O mapeamento deste lote foi bloqueado.",
+            extra={"blockers": exc.blockers},
         )
     except ValueError as exc:
         raise_http_error(

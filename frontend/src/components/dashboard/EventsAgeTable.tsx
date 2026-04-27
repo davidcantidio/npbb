@@ -22,11 +22,9 @@ import {
   formatInteger,
   formatPercent,
   getAgeBreakdownPercent,
-  getDominantAgeRangeLabel,
   getNonBbMetrics,
 } from "../../utils/ageAnalysis";
 import { hasPartialBbData } from "../../utils/coverage";
-import { CoverageBanner } from "./CoverageBanner";
 import { InfoTooltip } from "./InfoTooltip";
 
 type SortDirection = "asc" | "desc";
@@ -40,18 +38,12 @@ type SortKey =
   | "clientes_bb_pct"
   | "nao_clientes_volume"
   | "nao_clientes_pct"
-  | "cobertura_bb_pct"
   | "faixa_18_40_volume"
   | "faixa_18_40_pct"
-  | "faixa_18_25_volume"
-  | "faixa_18_25_pct"
-  | "faixa_26_40_volume"
-  | "faixa_26_40_pct"
   | "fora_18_40_volume"
   | "fora_18_40_pct"
   | "sem_info_volume"
-  | "sem_info_pct"
-  | "faixa_dominante";
+  | "sem_info_pct";
 
 type EventsAgeTableProps = {
   events: EventoAgeAnalysis[];
@@ -147,63 +139,52 @@ const columns: ColumnDefinition[] = [
     },
   },
   {
-    key: "cobertura_bb_pct",
-    label: "Cobertura BB",
-    align: "right",
-    accessor: (event) => event.cobertura_bb_pct,
-    render: (event) => (
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <CoverageBanner coverage={event.cobertura_bb_pct} variant="compact" scope="event" />
-      </Box>
-    ),
-  },
-  {
     key: "faixa_18_40_volume",
     label: "18-40",
     align: "right",
     accessor: (event) => event.faixas.faixa_18_40.volume,
-    render: (event) =>
-      `${formatInteger(event.faixas.faixa_18_40.volume)} / ${formatPercent(
-        getAgeBreakdownPercent(event.faixas, "faixa_18_40"),
-      )}`,
-  },
-  {
-    key: "faixa_18_25_volume",
-    label: "18-25",
-    align: "right",
-    accessor: (event) => event.faixas.faixa_18_25.volume,
-    render: (event) =>
-      `${formatInteger(event.faixas.faixa_18_25.volume)} / ${formatPercent(event.faixas.faixa_18_25.pct)}`,
-  },
-  {
-    key: "faixa_26_40_volume",
-    label: "26-40",
-    align: "right",
-    accessor: (event) => event.faixas.faixa_26_40.volume,
-    render: (event) =>
-      `${formatInteger(event.faixas.faixa_26_40.volume)} / ${formatPercent(event.faixas.faixa_26_40.pct)}`,
+    render: (event) => {
+      const pct = getAgeBreakdownPercent(event.faixas, "faixa_18_40");
+      const isMajority = pct > 50;
+      return (
+        <Typography
+          component="span"
+          variant="body2"
+          data-share-18-40={isMajority ? "major" : "minor"}
+          sx={{ color: (t) => (isMajority ? t.palette.info.main : t.palette.warning.main), fontWeight: 600 }}
+        >
+          {formatInteger(event.faixas.faixa_18_40.volume)} / {formatPercent(pct)}
+        </Typography>
+      );
+    },
   },
   {
     key: "fora_18_40_volume",
-    label: "Fora 18-40",
+    label: "Fora da faixa",
     align: "right",
     accessor: (event) => event.faixas.fora_18_40.volume,
-    render: (event) =>
-      `${formatInteger(event.faixas.fora_18_40.volume)} / ${formatPercent(event.faixas.fora_18_40.pct)}`,
+    render: (event) => {
+      const pct = getAgeBreakdownPercent(event.faixas, "fora_18_40");
+      const isMajority = pct > 50;
+      return (
+        <Typography
+          component="span"
+          variant="body2"
+          data-share-fora-faixa={isMajority ? "major" : "minor"}
+          sx={{ color: (t) => (isMajority ? t.palette.info.main : t.palette.warning.main), fontWeight: 600 }}
+        >
+          {formatInteger(event.faixas.fora_18_40.volume)} / {formatPercent(pct)}
+        </Typography>
+      );
+    },
   },
   {
     key: "sem_info_volume",
-    label: "Sem info",
+    label: "Sem idade",
     align: "right",
     accessor: (event) => event.faixas.sem_info_volume,
     render: (event) =>
       `${formatInteger(event.faixas.sem_info_volume)} / ${formatPercent(event.faixas.sem_info_pct_da_base)}`,
-  },
-  {
-    key: "faixa_dominante",
-    label: "Faixa dominante",
-    accessor: (event) => getDominantAgeRangeLabel(event.faixa_dominante),
-    render: (event) => getDominantAgeRangeLabel(event.faixa_dominante),
   },
 ];
 
@@ -242,7 +223,7 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
       return;
     }
     setSortBy(key);
-    setSortDirection(key === "evento_nome" || key === "faixa_dominante" ? "asc" : "desc");
+    setSortDirection(key === "evento_nome" ? "asc" : "desc");
   };
 
   const handleRowKeyDown = (eventoId: number, key: string) => {
@@ -268,7 +249,7 @@ export function EventsAgeTable({ events, onSelectEvento }: EventsAgeTableProps) 
               data-testid="events-age-table-grid"
               aria-label="Tabela de eventos da analise etaria"
               size="small"
-              sx={{ minWidth: 1480 }}
+              sx={{ minWidth: 1080 }}
             >
               <TableHead>
                 <TableRow>

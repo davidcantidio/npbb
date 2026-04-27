@@ -54,6 +54,7 @@ export function buildAgeAnalysisFixture(overrides: Partial<AgeAnalysisResponse> 
       nao_clientes_bb_volume: 5,
       nao_clientes_bb_pct: 50,
       bb_indefinido_volume: 1,
+      bb_indefinido_pct: 10,
       cobertura_bb_pct: 90,
       faixas: defaultFaixas,
       top_eventos: [
@@ -114,6 +115,8 @@ export function buildAgeAnalysisFixture(overrides: Partial<AgeAnalysisResponse> 
       event_name_missing_volume: 0,
       event_name_missing_pct: 0,
       evento_nome_backfill_habilitado: true,
+      leads_sem_conexao_evento_volume: 0,
+      leads_sem_conexao_evento_pct: 0,
       lineage_mix: [
         {
           source_kind: "ativacao",

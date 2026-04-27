@@ -120,6 +120,7 @@ export type MapeamentoPageProps = {
   batchId?: number;
   initialEventoId?: number | null;
   fixedEventoId?: number | null;
+  enrichmentOnly?: boolean;
   onCancel?: () => void;
   onMapped?: (result: MapearBatchResult) => void;
   cancelLabel?: string;
@@ -137,6 +138,7 @@ export default function MapeamentoPage({
   batchId: batchIdProp,
   initialEventoId = null,
   fixedEventoId = null,
+  enrichmentOnly = false,
   onCancel,
   onMapped,
   cancelLabel,
@@ -148,6 +150,7 @@ export default function MapeamentoPage({
 
   const fixedEvento = fixedEventoId != null && Number.isFinite(fixedEventoId) ? Number(fixedEventoId) : null;
   const usesFixedEvento = fixedEvento != null;
+  const usesEnrichmentOnly = Boolean(enrichmentOnly);
 
   const [colunas, setColunas] = useState<ColumnSuggestion[]>([]);
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
@@ -173,19 +176,26 @@ export default function MapeamentoPage({
       setEventoInputValue("");
       return;
     }
+    if (usesEnrichmentOnly) {
+      setEventoId("");
+      setEventoInputValue("");
+      return;
+    }
     setEventoId("");
     setEventoInputValue("");
-  }, [batchId, fixedEvento, usesFixedEvento]);
+  }, [batchId, fixedEvento, usesEnrichmentOnly, usesFixedEvento]);
 
   useEffect(() => {
-    if (usesFixedEvento || !batchId || initialEventoId == null || !Number.isFinite(initialEventoId)) return;
+    if (usesFixedEvento || usesEnrichmentOnly || !batchId || initialEventoId == null || !Number.isFinite(initialEventoId)) {
+      return;
+    }
     if (eventoPrefillAppliedForBatchRef.current === batchId) return;
     const evento = eventos.find((item) => item.id === initialEventoId);
     if (!evento) return;
     setEventoId(initialEventoId);
     setEventoInputValue(formatReferenciaEventoOptionLabel(evento));
     eventoPrefillAppliedForBatchRef.current = batchId;
-  }, [batchId, eventos, initialEventoId, usesFixedEvento]);
+  }, [batchId, eventos, initialEventoId, usesEnrichmentOnly, usesFixedEvento]);
 
   useEffect(() => {
     if (!token || !batchId) return;
@@ -203,7 +213,7 @@ export default function MapeamentoPage({
       .catch((err) => setError(toApiErrorMessage(err, "Falha ao carregar colunas do lote.")))
       .finally(() => setLoadingColunas(false));
 
-    if (usesFixedEvento) {
+    if (usesFixedEvento || usesEnrichmentOnly) {
       setEventos([]);
       setEventosError(null);
       setLoadingEventos(false);
@@ -222,7 +232,7 @@ export default function MapeamentoPage({
         setEventosError(EVENTOS_LOAD_ERROR);
       })
       .finally(() => setLoadingEventos(false));
-  }, [batchId, token, usesFixedEvento]);
+  }, [batchId, token, usesEnrichmentOnly, usesFixedEvento]);
 
   const handleEventoCreated = useCallback(
     (created: { id: number; nome: string; data_inicio_prevista?: string | null }) => {
@@ -240,7 +250,13 @@ export default function MapeamentoPage({
     [],
   );
 
-  const resolvedEventoId = usesFixedEvento ? fixedEvento : typeof eventoId === "number" ? eventoId : null;
+  const resolvedEventoId = usesEnrichmentOnly
+    ? null
+    : usesFixedEvento
+      ? fixedEvento
+      : typeof eventoId === "number"
+        ? eventoId
+        : null;
   const availableCanonicalFields = useMemo(
     () => CANONICAL_FIELDS.filter((field) => !(usesFixedEvento && isDerivedEventField(field))),
     [usesFixedEvento],
@@ -252,9 +268,9 @@ export default function MapeamentoPage({
   const isRecovering = recoveryState === "recovering";
 
   const canConfirm = useMemo(() => {
-    if (!resolvedEventoId || submitting || isRecovering) return false;
+    if ((!usesEnrichmentOnly && !resolvedEventoId) || submitting || isRecovering) return false;
     return Object.values(sanitizedMapeamento).some((value) => value !== "");
-  }, [isRecovering, resolvedEventoId, sanitizedMapeamento, submitting]);
+  }, [isRecovering, resolvedEventoId, sanitizedMapeamento, submitting, usesEnrichmentOnly]);
 
   const completeRecoveredMapping = (batch: LeadBatch) => {
     const recoveredResult = buildRecoveredSingleMappingResult(batch);
@@ -295,14 +311,14 @@ export default function MapeamentoPage({
   };
 
   const handleConfirm = async () => {
-    if (!token || !resolvedEventoId) return;
+    if (!token || (!usesEnrichmentOnly && !resolvedEventoId)) return;
     setSubmitting(true);
     setError(null);
     setRecoveryState("idle");
     setRecoveryMessage(null);
     try {
       const res = await mapearLeadBatch(token, batchId, {
-        evento_id: resolvedEventoId,
+        evento_id: usesEnrichmentOnly ? null : resolvedEventoId,
         mapeamento: sanitizedMapeamento,
       });
       if (!Number.isFinite(res.batch_id) || res.batch_id <= 0) {
@@ -384,7 +400,14 @@ export default function MapeamentoPage({
       ) : (
         <Paper elevation={1} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
           <Stack spacing={3}>
-            {!usesFixedEvento ? (
+            {usesEnrichmentOnly ? (
+              <Alert severity="info">
+                Este lote foi enviado para enriquecimento sem evento. O mapeamento segue sem vincular as colunas a um
+                evento de referencia.
+              </Alert>
+            ) : null}
+
+            {!usesFixedEvento && !usesEnrichmentOnly ? (
               <Box>
                 <Typography variant="subtitle1" fontWeight={700} gutterBottom>
                   Evento de referencia
@@ -453,6 +476,11 @@ export default function MapeamentoPage({
                 <Alert severity="info" sx={{ mb: 2 }}>
                   Com evento fixo, evento, tipo_evento, local e data_evento serao derivados automaticamente do
                   cadastro do evento selecionado. Nao e necessario mapea-los no arquivo.
+                </Alert>
+              ) : usesEnrichmentOnly ? (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Como este lote segue sem evento, mapeie apenas os campos presentes no arquivo. O vínculo com evento
+                  permanece ausente também após a confirmação.
                 </Alert>
               ) : null}
               {loadingColunas ? (
@@ -552,7 +580,7 @@ export default function MapeamentoPage({
         </Paper>
       )}
 
-      {!usesFixedEvento ? (
+      {!usesFixedEvento && !usesEnrichmentOnly ? (
         <QuickCreateEventoModal
           open={isQuickCreateOpen}
           onClose={() => setIsQuickCreateOpen(false)}

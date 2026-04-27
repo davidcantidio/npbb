@@ -77,26 +77,10 @@ function Get-LeadsWorkerProcess {
 
 $skipDbPreflight = $env:SKIP_DB_PREFLIGHT -and $env:SKIP_DB_PREFLIGHT.ToLower() -in @("1", "true", "yes")
 if (-not $skipDbPreflight) {
-    Write-Host "Verificando conectividade com o banco..."
-    @'
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
-from app.db.database import engine, get_database_endpoint_info
-
-try:
-    with engine.connect() as connection:
-        connection.execute(text('select 1'))
-except OperationalError as exc:
-    endpoint = get_database_endpoint_info()
-    detail = str(getattr(exc, "orig", exc)).strip()
-    print(f"ERRO: banco indisponivel para o backend dev. endpoint={endpoint}")
-    print(detail)
-    raise SystemExit(2)
-else:
-    print(f"Banco acessivel. endpoint={get_database_endpoint_info()}")
-'@ | & $VenvPython -
+    Write-Host "Verificando banco e schema..."
+    & $VenvPython "backend\scripts\check_runtime_schema.py"
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Falha no preflight do banco. Corrija DATABASE_URL/DIRECT_URL ou a conectividade de rede antes de subir a API. Se quiser ignorar esse check, defina SKIP_DB_PREFLIGHT=true."
+        Write-Error "Falha no preflight do banco/schema. Corrija DATABASE_URL/DIRECT_URL, aplique as migrations pendentes e tente novamente. Se quiser ignorar esse check, defina SKIP_DB_PREFLIGHT=true."
         exit $LASTEXITCODE
     }
 }

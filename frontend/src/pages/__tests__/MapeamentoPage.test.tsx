@@ -50,6 +50,7 @@ function createBatchStatus(batchId: number, stage: LeadBatch["stage"]): LeadBatc
     stage,
     evento_id: 42,
     origem_lote: "proponente",
+    enrichment_only: false,
     tipo_lead_proponente: "entrada_evento",
     ativacao_id: null,
     pipeline_status: "pending",
@@ -303,6 +304,32 @@ describe("MapeamentoPage", { timeout: 30000 }, () => {
     await waitFor(() => {
       expect(mockedMapearLeadBatch).toHaveBeenCalledWith("token-123", 10, {
         evento_id: 42,
+        mapeamento: { Nome: "nome" },
+      });
+    });
+  });
+
+  it("confirms enrichment-only mapping without loading reference events", async () => {
+    mockedMapearLeadBatch.mockResolvedValue({
+      batch_id: 10,
+      silver_count: 1,
+      stage: "silver",
+    });
+
+    renderMapeamentoPage(<MapeamentoPage batchId={10} enrichmentOnly />);
+
+    expect(await screen.findByText("Nome")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Selecione ou pesquise o evento...")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Este lote foi enviado para enriquecimento sem evento/i),
+    ).toBeInTheDocument();
+    expect(mockedListReferenciaEventos).not.toHaveBeenCalled();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Confirmar Mapeamento" }));
+
+    await waitFor(() => {
+      expect(mockedMapearLeadBatch).toHaveBeenCalledWith("token-123", 10, {
+        evento_id: null,
         mapeamento: { Nome: "nome" },
       });
     });

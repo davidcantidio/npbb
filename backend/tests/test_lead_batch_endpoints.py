@@ -198,7 +198,8 @@ def _seed_lead_batch(
     created_at: datetime | None = None,
     nome_arquivo_original: str = "leads.csv",
     evento_id: int | None = None,
-    origem_lote: str = "proponente",
+    origem_lote: str | None = "proponente",
+    enrichment_only: bool = False,
     tipo_lead_proponente: str | None = "entrada_evento",
     ativacao_id: int | None = None,
 ) -> LeadBatch:
@@ -212,6 +213,7 @@ def _seed_lead_batch(
         stage=BatchStage.BRONZE,
         evento_id=evento_id,
         origem_lote=origem_lote,
+        enrichment_only=enrichment_only,
         tipo_lead_proponente=tipo_lead_proponente,
         ativacao_id=ativacao_id,
         pipeline_status=PipelineStatus.PENDING,
@@ -308,6 +310,75 @@ class TestPostLeadsBatches:
         assert all(item["batch"]["id"] is not None for item in body["items"])
         assert all(item["preview"]["headers"] == ["nome", "email", "cpf"] for item in body["items"])
 
+    def test_batch_intake_accepts_enrichment_only_manifest(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches/intake",
+            headers=headers,
+            data={
+                "manifest_json": json.dumps(
+                    {
+                        "items": [
+                            {
+                                "client_row_id": "row-enrichment",
+                                "plataforma_origem": "email",
+                                "data_envio": "2026-03-01T10:00:00",
+                                "file_name": "leads.csv",
+                                "enrichment_only": True,
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                )
+            },
+            files=[
+                ("files", ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")),
+            ],
+        )
+
+        assert resp.status_code == 201, resp.text
+        item = resp.json()["items"][0]
+        assert item["client_row_id"] == "row-enrichment"
+        assert item["batch"]["enrichment_only"] is True
+        assert item["batch"]["evento_id"] is None
+        assert item["batch"]["origem_lote"] is None
+
+    def test_batch_intake_accepts_enrichment_only_tipo_without_origem(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches/intake",
+            headers=headers,
+            data={
+                "manifest_json": json.dumps(
+                    {
+                        "items": [
+                            {
+                                "client_row_id": "row-enrichment",
+                                "plataforma_origem": "email",
+                                "data_envio": "2026-03-01T10:00:00",
+                                "file_name": "leads.csv",
+                                "enrichment_only": True,
+                                "tipo_lead_proponente": "bilheteria",
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                )
+            },
+            files=[
+                ("files", ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")),
+            ],
+        )
+
+        assert resp.status_code == 201, resp.text
+        item = resp.json()["items"][0]
+        assert item["batch"]["origem_lote"] is None
+        assert item["batch"]["tipo_lead_proponente"] == "bilheteria"
+
     def test_upload_csv_creates_batch(self, client, engine):
         with Session(engine) as s:
             headers = _auth_header(client, s)
@@ -328,6 +399,7 @@ class TestPostLeadsBatches:
         assert body["plataforma_origem"] == "email"
         assert body["id"] is not None
         assert body.get("origem_lote") == "proponente"
+        assert body.get("enrichment_only") is False
         assert body.get("ativacao_id") is None
 
         with Session(engine) as s:
@@ -344,6 +416,108 @@ class TestPostLeadsBatches:
                 / batch.bronze_storage_key
             )
             assert stored_path.read_bytes() == CSV_CONTENT
+
+    def test_upload_enrichment_only_without_evento_is_accepted(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={
+                "plataforma_origem": "email",
+                "data_envio": "2026-03-01T10:00:00",
+                "enrichment_only": "true",
+            },
+        )
+
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["evento_id"] is None
+        assert body["enrichment_only"] is True
+        assert body["origem_lote"] is None
+
+    def test_upload_enrichment_only_keeps_explicit_legacy_proponente(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={
+                "plataforma_origem": "email",
+                "data_envio": "2026-03-01T10:00:00",
+                "origem_lote": "proponente",
+                "enrichment_only": "true",
+                "tipo_lead_proponente": "entrada_evento",
+            },
+        )
+
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["enrichment_only"] is True
+        assert body["origem_lote"] == "proponente"
+        assert body["tipo_lead_proponente"] == "entrada_evento"
+
+    def test_upload_enrichment_only_rejects_evento_id(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={
+                "plataforma_origem": "email",
+                "data_envio": "2026-03-01T10:00:00",
+                "evento_id": str(evento.id),
+                "enrichment_only": "true",
+            },
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "ENRICHMENT_ONLY_EVENTO_NOT_ALLOWED"
+
+    def test_upload_enrichment_only_rejects_origem_ativacao(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={
+                "plataforma_origem": "email",
+                "data_envio": "2026-03-01T10:00:00",
+                "origem_lote": "ativacao",
+                "enrichment_only": "true",
+            },
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "ENRICHMENT_ONLY_ORIGEM_INVALIDA"
+
+    def test_upload_enrichment_only_rejects_ativacao_id(self, client, engine):
+        with Session(engine) as s:
+            headers = _auth_header(client, s)
+
+        resp = client.post(
+            "/leads/batches",
+            headers=headers,
+            files={"file": ("leads.csv", io.BytesIO(CSV_CONTENT), "text/csv")},
+            data={
+                "plataforma_origem": "email",
+                "data_envio": "2026-03-01T10:00:00",
+                "enrichment_only": "true",
+                "ativacao_id": "1",
+            },
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "ENRICHMENT_ONLY_ATIVACAO_NOT_ALLOWED"
 
     def test_upload_origem_ativacao_requires_ativacao_id(self, client, engine):
         with Session(engine) as s:
@@ -669,12 +843,47 @@ class TestGetLeadBatchImportHint:
         assert body["source_batch_id"] == latest_batch.id
         assert body["plataforma_origem"] == "facebook"
         assert body["origem_lote"] == "ativacao"
+        assert body["enrichment_only"] is False
         assert body["tipo_lead_proponente"] is None
         assert body["evento_id"] == evento_id
         assert body["ativacao_id"] == ativacao_id
         assert body["confidence"] == "exact_hash_match"
         assert body["data_envio"].startswith("2026-03-02T15:45:00")
         assert body["source_created_at"].startswith("2026-03-02T09:30:00")
+
+    def test_import_hint_preserves_null_origem_for_enrichment_only(self, client, engine):
+        arquivo_sha256 = hashlib.sha256(CSV_CONTENT).hexdigest()
+        created_at = datetime(2026, 3, 3, 9, 30, 0, tzinfo=timezone.utc)
+
+        with Session(engine) as s:
+            user = _seed_user(s)
+            headers = _auth_header_for_user(client, email=user.email, password="senha123")
+            batch = _seed_lead_batch(
+                s,
+                user_id=user.id,
+                arquivo_sha256=arquivo_sha256,
+                plataforma_origem="email",
+                data_envio=datetime(2026, 3, 3, 15, 45, 0),
+                created_at=created_at,
+                evento_id=None,
+                origem_lote=None,
+                enrichment_only=True,
+                tipo_lead_proponente="bilheteria",
+            )
+
+        resp = client.get(
+            f"/leads/batches/import-hint?arquivo_sha256={arquivo_sha256}",
+            headers=headers,
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["source_batch_id"] == batch.id
+        assert body["enrichment_only"] is True
+        assert body["origem_lote"] is None
+        assert body["tipo_lead_proponente"] == "bilheteria"
+        assert body["evento_id"] is None
+        assert body["ativacao_id"] is None
 
     def test_returns_204_when_no_match_exists(self, client, engine):
         arquivo_sha256 = hashlib.sha256(CSV_CONTENT).hexdigest()

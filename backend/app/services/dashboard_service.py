@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time as dt_time, timedelta, timezone
 from statistics import median
 
-from sqlalchemy import func as sa_func
+from sqlalchemy import and_, exists, func as sa_func, or_, select as sa_select
 from sqlmodel import Session, select
 
 from app.models.lead_batch import BatchStage, LeadBatch, PipelineStatus
@@ -206,6 +206,60 @@ def _build_lead_filters(params: AgeAnalysisQuery) -> list:
     return filters
 
 
+_GOLD_PIPELINE_STATUSES = {PipelineStatus.PASS, PipelineStatus.PASS_WITH_WARNINGS}
+
+
+def _agency_lead_scope_predicate(event_filters: list):
+    """Leads candidatos ao recorte agencia: LeadEvento, batch GOLD ou campo evento_nome preenchido."""
+    le_exists = exists(
+        sa_select(1)
+        .select_from(LeadEvento)
+        .join(Evento, Evento.id == LeadEvento.evento_id)
+        .where(LeadEvento.lead_id == Lead.id, *event_filters)
+    )
+    batch_exists = exists(
+        sa_select(1)
+        .select_from(LeadBatch)
+        .join(Evento, Evento.id == LeadBatch.evento_id)
+        .where(
+            Lead.batch_id == LeadBatch.id,
+            LeadBatch.evento_id.is_not(None),
+            LeadBatch.stage == BatchStage.GOLD,
+            LeadBatch.pipeline_status.in_(_GOLD_PIPELINE_STATUSES),
+            *event_filters,
+        )
+    )
+    nome_candidate = and_(
+        Lead.evento_nome.is_not(None),
+        sa_func.trim(Lead.evento_nome) != "",
+    )
+    return or_(le_exists, batch_exists, nome_candidate)
+
+
+def _count_leads_sem_conexao_evento(
+    session: Session,
+    *,
+    params: AgeAnalysisQuery,
+    current_user: Usuario,
+    connected_lead_ids: set[int],
+) -> tuple[int, float]:
+    lead_filters = _build_lead_filters(params)
+    event_filters = _build_event_filters(params, current_user)
+    conditions: list = [*lead_filters]
+    if current_user.tipo_usuario == UsuarioTipo.AGENCIA:
+        conditions.append(_agency_lead_scope_predicate(event_filters))
+    if connected_lead_ids:
+        conditions.append(Lead.id.not_in(connected_lead_ids))
+
+    orphans = session.exec(
+        select(sa_func.count(sa_func.distinct(Lead.id))).where(*conditions)
+    ).one()
+    orphans_i = int(orphans or 0)
+    distinct_connected = len(connected_lead_ids)
+    denom = orphans_i + distinct_connected
+    return orphans_i, _safe_pct(orphans_i, denom)
+
+
 def _build_filters(params: AgeAnalysisQuery, current_user: Usuario) -> list:
     return [
         *_build_event_filters(params, current_user),
@@ -225,9 +279,6 @@ def _from_clause_batch():
         Lead.__table__.join(LeadBatch, Lead.batch_id == LeadBatch.id)
         .join(Evento, Evento.id == LeadBatch.evento_id)
     )
-
-
-_GOLD_PIPELINE_STATUSES = {PipelineStatus.PASS, PipelineStatus.PASS_WITH_WARNINGS}
 
 
 def _row_to_fact(
@@ -770,6 +821,10 @@ def _build_consolidated_analysis(
         nao_clientes_bb_volume=nao_vol,
         nao_clientes_bb_pct=nao_pct,
         bb_indefinido_volume=consolidated_accumulator.bb_indefinido_volume,
+        bb_indefinido_pct=_safe_pct(
+            consolidated_accumulator.bb_indefinido_volume,
+            consolidated_accumulator.base_leads,
+        ),
         cobertura_bb_pct=cobertura_bb_pct,
         faixas=_build_breakdown(consolidated_accumulator),
         top_eventos=top_eventos,
@@ -868,6 +923,9 @@ def _build_confianca_consolidado(
     facts: list[LeadEventFact],
     consolidado: ConsolidadoAgeAnalysis,
     merge_stats: _MergeStats,
+    *,
+    leads_sem_conexao_evento_volume: int,
+    leads_sem_conexao_evento_pct: float,
 ) -> ConfiancaConsolidado:
     return ConfiancaConsolidado(
         base_vinculos=len(facts),
@@ -892,6 +950,8 @@ def _build_confianca_consolidado(
         ),
         evento_nome_backfill_habilitado=merge_stats.event_name_backfill_enabled,
         lineage_mix=_build_lineage_mix(facts),
+        leads_sem_conexao_evento_volume=leads_sem_conexao_evento_volume,
+        leads_sem_conexao_evento_pct=leads_sem_conexao_evento_pct,
     )
 
 
@@ -1025,11 +1085,11 @@ def _build_insights(
     return AgeAnalysisInsights(resumo=resumo, alertas=alertas, flags=flags)
 
 
-def build_age_analysis(
+def _resolve_age_analysis_link_facts(
     session: Session,
     params: AgeAnalysisQuery,
     current_user: Usuario,
-) -> AgeAnalysisResponse:
+) -> tuple[list[LeadEventFact], _MergeStats]:
     event_filters = _build_event_filters(params, current_user)
     lead_filters = _build_lead_filters(params)
     filters = [*event_filters, *lead_filters]
@@ -1042,12 +1102,30 @@ def build_age_analysis(
         enabled=_read_event_name_backfill_enabled(),
         filtered_evento_id=params.evento_id,
     )
-    link_facts, merge_stats = _merge_and_dedupe_facts(
+    return _merge_and_dedupe_facts(
         facts_le,
         facts_batch,
         facts_nome,
         evento_nome_stats,
     )
+
+
+def load_age_analysis_link_facts(
+    session: Session,
+    params: AgeAnalysisQuery,
+    current_user: Usuario,
+) -> list[LeadEventFact]:
+    """Fatos lead-evento consolidados (mesma base do card 'Sem conexao com evento' no dashboard)."""
+    facts, _stats = _resolve_age_analysis_link_facts(session, params, current_user)
+    return facts
+
+
+def build_age_analysis(
+    session: Session,
+    params: AgeAnalysisQuery,
+    current_user: Usuario,
+) -> AgeAnalysisResponse:
+    link_facts, merge_stats = _resolve_age_analysis_link_facts(session, params, current_user)
 
     reference_date = date.today()
     bb_coverage_threshold_pct = _read_bb_coverage_threshold_pct()
@@ -1089,10 +1167,19 @@ def build_age_analysis(
 
     qualidade_por_origem = _build_qualidade_por_origem(link_facts)
     qualidade_consolidado = _build_qualidade_consolidado(link_facts)
+    connected_lead_ids = {f.lead_id for f in link_facts}
+    sem_conexao_vol, sem_conexao_pct = _count_leads_sem_conexao_evento(
+        session,
+        params=params,
+        current_user=current_user,
+        connected_lead_ids=connected_lead_ids,
+    )
     confianca_consolidado = _build_confianca_consolidado(
         link_facts,
         consolidado,
         merge_stats,
+        leads_sem_conexao_evento_volume=sem_conexao_vol,
+        leads_sem_conexao_evento_pct=sem_conexao_pct,
     )
     insights = _build_insights(
         consolidado,

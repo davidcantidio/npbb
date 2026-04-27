@@ -95,6 +95,7 @@ def test_age_analysis_response_serialization():
             nao_clientes_bb_volume=3,
             nao_clientes_bb_pct=30.0,
             bb_indefinido_volume=1,
+            bb_indefinido_pct=10.0,
             cobertura_bb_pct=90.0,
             faixas=_sample_breakdown(),
             top_eventos=[
@@ -163,6 +164,8 @@ def test_age_analysis_response_serialization():
                     pct=100.0,
                 )
             ],
+            leads_sem_conexao_evento_volume=0,
+            leads_sem_conexao_evento_pct=0.0,
         ),
         insights=AgeAnalysisInsights(resumo=["Resumo de teste."], alertas=[], flags=["bb_coverage_low"]),
     )

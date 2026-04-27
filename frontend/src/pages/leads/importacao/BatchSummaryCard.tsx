@@ -1,6 +1,7 @@
 import { Chip, Paper, Stack, Typography } from "@mui/material";
 
 import { LeadBatch } from "../../../services/leads_import";
+import { bronzeImportModeFromFlag, getBronzeImportModeSummary } from "./bronzeImportMode";
 
 function pipelineStatusChipColor(
   status: LeadBatch["pipeline_status"],
@@ -63,21 +64,44 @@ export default function BatchSummaryCard({ batch }: { batch: LeadBatch }) {
               </Typography>
               <Typography variant="body2">{batch.evento_id}</Typography>
             </Stack>
+          ) : batch.enrichment_only ? (
+            <Stack spacing={0.5}>
+              <Typography variant="caption" color="text.secondary">
+                Evento
+              </Typography>
+              <Typography variant="body2">Sem evento</Typography>
+            </Stack>
           ) : null}
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="text.secondary">
+              Modo do fluxo
+            </Typography>
+            <Typography variant="body2">
+              {getBronzeImportModeSummary(bronzeImportModeFromFlag(batch.enrichment_only))}
+            </Typography>
+          </Stack>
           <Stack spacing={0.5}>
             <Typography variant="caption" color="text.secondary">
               Origem do lote
             </Typography>
             <Typography variant="body2">
-              {(batch.origem_lote ?? "proponente") === "ativacao" ? "Ativacao" : "Proponente"}
-              {(batch.origem_lote ?? "proponente") === "ativacao" && batch.ativacao_id != null
-                ? ` (ativacao #${batch.ativacao_id})`
-                : null}
-              {(batch.origem_lote ?? "proponente") === "proponente" && batch.tipo_lead_proponente
-                ? ` — ${batch.tipo_lead_proponente}`
-                : null}
+              {batch.origem_lote === "ativacao"
+                ? batch.ativacao_id != null
+                  ? `Ativacao (ativacao #${batch.ativacao_id})`
+                  : "Ativacao"
+                : batch.origem_lote === "proponente"
+                  ? "Proponente"
+                  : "Nao informado"}
             </Typography>
           </Stack>
+          {batch.tipo_lead_proponente ? (
+            <Stack spacing={0.5}>
+              <Typography variant="caption" color="text.secondary">
+                Classificação do lead
+              </Typography>
+              <Typography variant="body2">{batch.tipo_lead_proponente}</Typography>
+            </Stack>
+          ) : null}
           <Stack spacing={0.5}>
             <Typography variant="caption" color="text.secondary">
               Stage

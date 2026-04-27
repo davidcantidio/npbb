@@ -40,6 +40,15 @@ cd "${REPO_ROOT}"
 
 echo "Backend Python: ${PYTHON_BIN}"
 
+SKIP_DB_PREFLIGHT_VALUE="$(printf '%s' "${SKIP_DB_PREFLIGHT:-0}" | tr '[:upper:]' '[:lower:]')"
+if [[ ! "${SKIP_DB_PREFLIGHT_VALUE}" =~ ^(1|true|yes)$ ]]; then
+  echo "Verificando banco e schema..."
+  if ! "${PYTHON_BIN}" backend/scripts/check_runtime_schema.py; then
+    echo "Erro: falha no preflight do banco/schema. Corrija DATABASE_URL/DIRECT_URL, aplique as migrations pendentes e tente novamente." >&2
+    exit 1
+  fi
+fi
+
 WORKER_PID=""
 RUNTIME_DIR="${REPO_ROOT}/backend/.runtime"
 WORKER_STDOUT="${RUNTIME_DIR}/leads_worker.stdout.log"

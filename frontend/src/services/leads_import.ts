@@ -189,7 +189,8 @@ export type LeadImportMetadataHint = {
   source_batch_id: number;
   plataforma_origem: string;
   data_envio: string;
-  origem_lote: OrigemLoteLeadBatch;
+  origem_lote: OrigemLoteLeadBatch | null;
+  enrichment_only: boolean;
   tipo_lead_proponente: "bilheteria" | "entrada_evento" | null;
   evento_id: number | null;
   ativacao_id: number | null;
@@ -203,6 +204,7 @@ export type LeadBatchIntakeItemPayload = {
   data_envio: string;
   evento_id?: number;
   origem_lote?: OrigemLoteLeadBatch;
+  enrichment_only?: boolean;
   tipo_lead_proponente?: "bilheteria" | "entrada_evento";
   ativacao_id?: number;
   file: File;
@@ -218,9 +220,11 @@ export type CreateLeadBatchPayload = {
   quem_enviou?: string;
   /** Evento associado ao lote (opcional na API; obrigatório no fluxo Bronze do shell de importação). */
   evento_id?: number;
-  /** Origem declarada no upload Bronze (default proponente). */
-  origem_lote?: OrigemLoteLeadBatch;
-  /** Quando origem_lote=proponente: bilheteria ou entrada_evento. */
+  /** Origem declarada no upload Bronze; pode ser omitida em enrichment_only. */
+  origem_lote?: OrigemLoteLeadBatch | null;
+  /** Quando true: envia para o fluxo de enriquecimento sem evento. */
+  enrichment_only?: boolean;
+  /** Contexto opcional da classificação do lead; obrigatório apenas no fluxo com evento + proponente. */
   tipo_lead_proponente?: "bilheteria" | "entrada_evento";
   /** Obrigatório quando origem_lote=ativacao; deve pertencer ao evento_id. */
   ativacao_id?: number;
@@ -236,7 +240,8 @@ export type LeadBatch = {
   nome_arquivo_original: string;
   stage: "bronze" | "silver" | "gold";
   evento_id: number | null;
-  origem_lote: OrigemLoteLeadBatch;
+  origem_lote: OrigemLoteLeadBatch | null;
+  enrichment_only: boolean;
   tipo_lead_proponente: string | null;
   ativacao_id: number | null;
   pipeline_status: "pending" | "pass" | "pass_with_warnings" | "fail" | "stalled";
@@ -501,8 +506,11 @@ export async function createLeadBatch(
   if (payload.evento_id != null && Number.isFinite(payload.evento_id)) {
     form.append("evento_id", String(payload.evento_id));
   }
-  if (payload.origem_lote) {
+  if (payload.origem_lote != null) {
     form.append("origem_lote", payload.origem_lote);
+  }
+  if (payload.enrichment_only != null) {
+    form.append("enrichment_only", String(Boolean(payload.enrichment_only)));
   }
   if (payload.tipo_lead_proponente) {
     form.append("tipo_lead_proponente", payload.tipo_lead_proponente);
@@ -535,10 +543,11 @@ export async function createLeadBatchIntake(
       client_row_id: item.client_row_id,
       plataforma_origem: item.plataforma_origem,
       data_envio: item.data_envio,
-      evento_id: item.evento_id,
-      origem_lote: item.origem_lote ?? "proponente",
-      tipo_lead_proponente: item.tipo_lead_proponente,
-      ativacao_id: item.ativacao_id,
+      ...(item.evento_id != null ? { evento_id: item.evento_id } : {}),
+      ...(item.origem_lote != null ? { origem_lote: item.origem_lote } : {}),
+      enrichment_only: Boolean(item.enrichment_only),
+      ...(item.tipo_lead_proponente ? { tipo_lead_proponente: item.tipo_lead_proponente } : {}),
+      ...(item.ativacao_id != null ? { ativacao_id: item.ativacao_id } : {}),
       file_name: item.file.name,
     })),
   };
@@ -840,7 +849,7 @@ export type ColunasBatchResponse = {
 };
 
 export type MapearBatchPayload = {
-  evento_id: number;
+  evento_id: number | null;
   mapeamento: Record<string, string>;
 };
 

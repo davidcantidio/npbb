@@ -35,6 +35,7 @@ function createBatchStatus(batchId: number, stage: LeadBatch["stage"]): LeadBatc
     stage,
     evento_id: 42,
     origem_lote: "proponente",
+    enrichment_only: false,
     tipo_lead_proponente: "entrada_evento",
     ativacao_id: null,
     pipeline_status: "pending",

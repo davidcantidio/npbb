@@ -25,10 +25,15 @@ function needsPipelineAction(row: BatchUploadRowDraft) {
 
 export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props) {
   const createdRows = rows.filter((row) => row.created_batch_id != null);
-  const mappingPendingRows = createdRows.filter((row) => row.downstream_stage === "bronze");
+  const mappingPendingRows = createdRows.filter(
+    (row) => row.downstream_stage === "bronze" && row.import_mode === "event_linked",
+  );
+  const enrichmentMappingRows = createdRows.filter(
+    (row) => row.downstream_stage === "bronze" && row.import_mode === "enrichment_only",
+  );
   const pipelinePendingRows = createdRows.filter(needsPipelineAction);
   const terminalRows = createdRows.filter(isTerminalRow);
-  const primaryRow = mappingPendingRows[0] ?? pipelinePendingRows[0] ?? null;
+  const primaryRow = mappingPendingRows[0] ?? enrichmentMappingRows[0] ?? pipelinePendingRows[0] ?? null;
 
   if (createdRows.length === 0) {
     return null;
@@ -48,14 +53,16 @@ export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props
               Workspace do batch Bronze
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Continue o fluxo dos lotes criados sem sair da grade. O mapeamento agora e unificado para todos os
-              lotes pendentes do batch.
+              Continue o fluxo dos lotes criados sem sair da grade. O mapeamento unificado vale apenas para lotes
+              vinculados a evento; linhas de enriquecimento sem evento seguem por arquivo.
             </Typography>
           </Stack>
           {primaryRow ? (
             <Button variant="contained" onClick={() => onOpenRowFlow(primaryRow)}>
-              {primaryRow.downstream_stage === "bronze"
+              {primaryRow.downstream_stage === "bronze" && primaryRow.import_mode === "event_linked"
                 ? "Abrir mapeamento unificado"
+                : primaryRow.downstream_stage === "bronze"
+                  ? "Abrir proximo mapeamento individual"
                 : "Abrir proximo pipeline pendente"}
             </Button>
           ) : null}
@@ -64,6 +71,7 @@ export default function BatchWorkspaceSummaryCard({ rows, onOpenRowFlow }: Props
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <Chip label={`${createdRows.length} lote(s) criados`} color="success" size="small" />
           <Chip label={`${mappingPendingRows.length} aguardando mapeamento batch`} size="small" />
+          <Chip label={`${enrichmentMappingRows.length} enriquecimento sem evento`} variant="outlined" size="small" />
           <Chip label={`${pipelinePendingRows.length} pronto(s) para pipeline/retomada`} color="info" size="small" />
           <Chip label={`${terminalRows.length} terminal(is)`} color="default" size="small" />
         </Stack>

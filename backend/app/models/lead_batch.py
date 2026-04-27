@@ -64,8 +64,10 @@ class LeadBatch(SQLModel, table=True):
 
     stage: BatchStage = Field(default=BatchStage.BRONZE)
     evento_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
-    # proponente | ativacao — importacao Bronze; ativacao exige ativacao_id coerente com evento_id.
-    origem_lote: str = Field(default="proponente", max_length=20, index=True)
+    # proponente | ativacao — importacao Bronze. None representa omissao explicita
+    # de origem no fluxo enrichment_only; ativacao exige ativacao_id coerente.
+    origem_lote: Optional[str] = Field(default=None, max_length=20, index=True)
+    enrichment_only: bool = Field(default=False, index=True)
     # bilheteria | entrada_evento quando origem_lote=proponente; None trata como entrada_evento no pipeline.
     tipo_lead_proponente: Optional[str] = Field(default=None, max_length=32)
     ativacao_id: Optional[int] = Field(default=None, foreign_key="ativacao.id", index=True)
@@ -120,7 +122,7 @@ class LeadSilver(SQLModel, table=True):
     batch_id: int = Field(foreign_key="lead_batches.id", index=True)
     row_index: int = Field(index=True)
     dados_brutos: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
-    evento_id: int = Field(foreign_key="evento.id", index=True)
+    evento_id: Optional[int] = Field(default=None, foreign_key="evento.id", index=True)
 
     created_at: datetime = Field(default_factory=now_utc)
 

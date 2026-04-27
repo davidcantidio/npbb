@@ -85,6 +85,7 @@ export type ConsolidadoAgeAnalysis = {
   nao_clientes_bb_volume: number | null;
   nao_clientes_bb_pct: number | null;
   bb_indefinido_volume: number;
+  bb_indefinido_pct: number;
   cobertura_bb_pct: number;
   faixas: AgeBreakdown;
   top_eventos: TopEventoAgeAnalysis[];
@@ -141,6 +142,8 @@ export type ConfiancaConsolidado = {
   event_name_missing_pct: number;
   evento_nome_backfill_habilitado: boolean;
   lineage_mix: LineageMixRow[];
+  leads_sem_conexao_evento_volume: number;
+  leads_sem_conexao_evento_pct: number;
 };
 
 export type AgeAnalysisInsights = {

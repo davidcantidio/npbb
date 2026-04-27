@@ -91,6 +91,7 @@ def _build_import_hint_read(batch: LeadBatch) -> LeadBatchImportHintRead:
         plataforma_origem=batch.plataforma_origem,
         data_envio=batch.data_envio,
         origem_lote=batch.origem_lote,
+        enrichment_only=bool(batch.enrichment_only),
         tipo_lead_proponente=batch.tipo_lead_proponente,
         evento_id=batch.evento_id,
         ativacao_id=batch.ativacao_id,
@@ -109,6 +110,7 @@ def _find_import_hint(session: Session, *, user_id: int, arquivo_sha256: str) ->
                 LeadBatch.plataforma_origem,
                 LeadBatch.data_envio,
                 LeadBatch.origem_lote,
+                LeadBatch.enrichment_only,
                 LeadBatch.tipo_lead_proponente,
                 LeadBatch.evento_id,
                 LeadBatch.ativacao_id,
@@ -213,8 +215,14 @@ def _resolve_evento(session: Session, evento_id: int | None) -> Evento | None:
     return evento
 
 
-def _normalize_origem_lote(value: str) -> str:
-    origem_clean = (value or "proponente").strip().lower()
+def _normalize_origem_lote(
+    value: str | None,
+    *,
+    fallback_to_proponente: bool,
+) -> str | None:
+    origem_clean = (value or "").strip().lower()
+    if not origem_clean:
+        return "proponente" if fallback_to_proponente else None
     if origem_clean not in ("proponente", "ativacao"):
         raise_http_error(
             status.HTTP_400_BAD_REQUEST,
@@ -229,16 +237,44 @@ def _resolve_batch_metadata(
     *,
     session: Session,
     evento_id: int | None,
-    origem_lote: str,
+    origem_lote: str | None,
+    enrichment_only: bool,
     tipo_lead_proponente: str | None,
     ativacao_id: int | None,
-) -> tuple[int | None, str, str | None, int | None]:
+) -> tuple[int | None, str | None, bool, str | None, int | None]:
     resolved_evento = _resolve_evento(session, evento_id)
     resolved_evento_id = int(resolved_evento.id) if resolved_evento is not None else None
-    origem_clean = _normalize_origem_lote(origem_lote)
+    resolved_enrichment_only = bool(enrichment_only)
+    origem_clean = _normalize_origem_lote(
+        origem_lote,
+        fallback_to_proponente=not resolved_enrichment_only,
+    )
 
     resolved_tipo_lead_prop: str | None = None
     resolved_ativacao_id: int | None = None
+
+    if resolved_enrichment_only:
+        if origem_clean == "ativacao":
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ENRICHMENT_ONLY_ORIGEM_INVALIDA",
+                message="enrichment_only nao permite origem_lote=ativacao",
+                field="origem_lote",
+            )
+        if resolved_evento is not None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ENRICHMENT_ONLY_EVENTO_NOT_ALLOWED",
+                message="enrichment_only nao permite evento_id",
+                field="evento_id",
+            )
+        if ativacao_id is not None:
+            raise_http_error(
+                status.HTTP_400_BAD_REQUEST,
+                code="ENRICHMENT_ONLY_ATIVACAO_NOT_ALLOWED",
+                message="enrichment_only nao permite ativacao_id",
+                field="ativacao_id",
+            )
 
     if origem_clean == "ativacao":
         if resolved_evento is None:
@@ -298,7 +334,13 @@ def _resolve_batch_metadata(
                 )
             resolved_tipo_lead_prop = normalized_tipo
 
-    return resolved_evento_id, origem_clean, resolved_tipo_lead_prop, resolved_ativacao_id
+    return (
+        resolved_evento_id,
+        origem_clean,
+        resolved_enrichment_only,
+        resolved_tipo_lead_prop,
+        resolved_ativacao_id,
+    )
 
 
 def execute_lead_batch_intake(
@@ -333,10 +375,17 @@ def execute_lead_batch_intake(
             hint = _find_import_hint(session, user_id=user_id, arquivo_sha256=arquivo_sha256)
             plataforma_origem = _resolve_platform(item.plataforma_origem, hint)
             parsed_data_envio = _resolve_data_envio(item.data_envio, hint)
-            resolved_evento_id, origem_clean, tipo_lead_prop, resolved_ativacao_id = _resolve_batch_metadata(
+            (
+                resolved_evento_id,
+                origem_clean,
+                resolved_enrichment_only,
+                tipo_lead_prop,
+                resolved_ativacao_id,
+            ) = _resolve_batch_metadata(
                 session=session,
                 evento_id=item.evento_id,
                 origem_lote=item.origem_lote,
+                enrichment_only=item.enrichment_only,
                 tipo_lead_proponente=item.tipo_lead_proponente,
                 ativacao_id=item.ativacao_id,
             )
@@ -350,6 +399,7 @@ def execute_lead_batch_intake(
                 stage=BatchStage.BRONZE,
                 evento_id=resolved_evento_id,
                 origem_lote=origem_clean,
+                enrichment_only=resolved_enrichment_only,
                 tipo_lead_proponente=tipo_lead_prop,
                 ativacao_id=resolved_ativacao_id,
                 pipeline_status=PipelineStatus.PENDING,

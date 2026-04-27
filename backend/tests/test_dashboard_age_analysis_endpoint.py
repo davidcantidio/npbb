@@ -278,6 +278,9 @@ def test_dashboard_age_analysis_ok(client, engine):
     assert consolidado["clientes_bb_pct"] == 50.0
     assert consolidado["cobertura_bb_pct"] == 90.0
     assert consolidado["bb_indefinido_volume"] == 1
+    assert consolidado["bb_indefinido_pct"] == 10.0
+    assert data["confianca_consolidado"]["leads_sem_conexao_evento_volume"] == 0
+    assert data["confianca_consolidado"]["leads_sem_conexao_evento_pct"] == 0.0
     assert consolidado["faixas"]["faixa_18_25"]["volume"] == 4
     assert consolidado["faixas"]["faixa_26_40"]["volume"] == 2
     assert consolidado["faixas"]["faixa_18_40"]["volume"] == 6

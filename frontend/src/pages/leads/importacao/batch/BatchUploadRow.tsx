@@ -27,6 +27,12 @@ import {
 } from "../../../../services/leads_import";
 import { formatReferenciaEventoOptionLabel } from "../../../../utils/formatters";
 import { LEADS_IMPORT_PLATFORMS, QUICK_CREATE_EVENTO_ID } from "../constants";
+import {
+  BronzeImportMode,
+  getBronzeImportModeHelpText,
+  getBronzeImportModeLabel,
+  getBronzeImportModeSummary,
+} from "../bronzeImportMode";
 import InlineEventoAgencyEditor from "./InlineEventoAgencyEditor";
 import { BatchUploadAtivacaoOption, BatchUploadRowDraft } from "./useBatchUploadDraft";
 
@@ -116,7 +122,9 @@ export default function BatchUploadRow({
   const [ativacaoDialogError, setAtivacaoDialogError] = useState<string | null>(null);
 
   const isReadonly = row.status_ui === "created" || row.status_ui === "submitting";
+  const isEnrichmentOnly = row.import_mode === "enrichment_only";
   const activationImportBlocked =
+    !isEnrichmentOnly &&
     row.origem_lote === "ativacao" &&
     selectedEvento != null &&
     !supportsActivationImport(selectedEvento);
@@ -192,97 +200,143 @@ export default function BatchUploadRow({
         </TableCell>
 
         <TableCell sx={{ minWidth: 260 }}>
-          <Autocomplete<ReferenciaEvento, false, false, false>
-            options={eventos}
-            value={selectedEvento}
-            disabled={isReadonly}
-            getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
-            filterOptions={(options, state) => {
-              const filtered = options.filter((evento) =>
-                formatReferenciaEventoOptionLabel(evento).toLowerCase().includes(state.inputValue.toLowerCase()),
-              );
-              if (!filtered.some((evento) => evento.id === QUICK_CREATE_EVENTO_ID)) {
-                filtered.push({
-                  id: QUICK_CREATE_EVENTO_ID,
-                  nome: "+ Criar evento rapidamente",
-                  data_inicio_prevista: null,
+          {isEnrichmentOnly ? (
+            <Stack spacing={0.5}>
+              <Typography variant="body2" fontWeight={600}>
+                Sem evento
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Este envio segue apenas para enriquecimento.
+              </Typography>
+            </Stack>
+          ) : (
+            <Autocomplete<ReferenciaEvento, false, false, false>
+              options={eventos}
+              value={selectedEvento}
+              disabled={isReadonly}
+              getOptionLabel={(evento) => formatReferenciaEventoOptionLabel(evento)}
+              filterOptions={(options, state) => {
+                const filtered = options.filter((evento) =>
+                  formatReferenciaEventoOptionLabel(evento).toLowerCase().includes(state.inputValue.toLowerCase()),
+                );
+                if (!filtered.some((evento) => evento.id === QUICK_CREATE_EVENTO_ID)) {
+                  filtered.push({
+                    id: QUICK_CREATE_EVENTO_ID,
+                    nome: "+ Criar evento rapidamente",
+                    data_inicio_prevista: null,
+                  });
+                }
+                return filtered;
+              }}
+              onChange={(_, nextValue) => {
+                if (!nextValue) {
+                  onFieldChange(row.local_id, { evento_id: "", ativacao_id: "" });
+                  return;
+                }
+                if (nextValue.id === QUICK_CREATE_EVENTO_ID) {
+                  onOpenQuickCreateEvento(row.local_id);
+                  return;
+                }
+                onFieldChange(row.local_id, {
+                  import_mode: "event_linked",
+                  evento_id: String(nextValue.id),
+                  ativacao_id: "",
                 });
-              }
-              return filtered;
-            }}
-            onChange={(_, nextValue) => {
-              if (!nextValue) {
-                onFieldChange(row.local_id, { evento_id: "", ativacao_id: "" });
-                return;
-              }
-              if (nextValue.id === QUICK_CREATE_EVENTO_ID) {
-                onOpenQuickCreateEvento(row.local_id);
-                return;
-              }
-              onFieldChange(row.local_id, {
-                evento_id: String(nextValue.id),
-                ativacao_id: "",
-              });
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Evento de referencia"
-                size="small"
-                fullWidth
-              />
-            )}
-            renderOption={(props, option) => (
-              <Box
-                component="li"
-                {...props}
-                key={option.id}
-                sx={option.id === QUICK_CREATE_EVENTO_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
-              >
-                {formatReferenciaEventoOptionLabel(option)}
-              </Box>
-            )}
-          />
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Evento de referencia"
+                  size="small"
+                  fullWidth
+                />
+              )}
+              renderOption={(props, option) => (
+                <Box
+                  component="li"
+                  {...props}
+                  key={option.id}
+                  sx={option.id === QUICK_CREATE_EVENTO_ID ? { color: "primary.main", fontStyle: "italic" } : undefined}
+                >
+                  {formatReferenciaEventoOptionLabel(option)}
+                </Box>
+              )}
+            />
+          )}
         </TableCell>
 
-        <TableCell sx={{ minWidth: 160 }}>
-          <TextField
-            select
-            label="Origem"
-            size="small"
-            value={row.origem_lote}
-            onChange={(event) =>
-              onFieldChange(row.local_id, {
-                origem_lote: event.target.value as BatchUploadRowDraft["origem_lote"],
-                ativacao_id: event.target.value === "proponente" ? "" : row.ativacao_id,
-              })
-            }
-            disabled={isReadonly}
-            fullWidth
-          >
-            <MenuItem value="proponente">Proponente</MenuItem>
-            <MenuItem value="ativacao">Ativacao</MenuItem>
-          </TextField>
-        </TableCell>
-
-        <TableCell sx={{ minWidth: 240 }}>
-          {row.origem_lote === "proponente" ? (
+        <TableCell sx={{ minWidth: 220 }}>
+          <Stack spacing={1}>
             <TextField
               select
-              label="Tipo do proponente"
+              label="Modo do fluxo"
               size="small"
-              value={row.tipo_lead_proponente}
+              value={row.import_mode}
               onChange={(event) =>
                 onFieldChange(row.local_id, {
-                  tipo_lead_proponente: event.target.value as BatchUploadRowDraft["tipo_lead_proponente"],
+                  import_mode: event.target.value as BronzeImportMode,
                 })
               }
               disabled={isReadonly}
               fullWidth
             >
-              <MenuItem value="entrada_evento">Entrada no evento</MenuItem>
-              <MenuItem value="bilheteria">Bilheteria</MenuItem>
+              <MenuItem value="event_linked">{getBronzeImportModeLabel("event_linked")}</MenuItem>
+              <MenuItem value="enrichment_only">{getBronzeImportModeLabel("enrichment_only")}</MenuItem>
             </TextField>
+            {isEnrichmentOnly ? (
+              <Typography variant="caption" color="text.secondary">
+                Classificação opcional: escolha “Não informar” quando esse contexto não for relevante.
+              </Typography>
+            ) : (
+              <TextField
+                select
+                label="Origem"
+                size="small"
+                value={row.origem_lote}
+                onChange={(event) =>
+                  onFieldChange(row.local_id, {
+                    origem_lote: event.target.value as BatchUploadRowDraft["origem_lote"],
+                    ativacao_id: event.target.value === "proponente" ? "" : row.ativacao_id,
+                  })
+                }
+                disabled={isReadonly}
+                fullWidth
+              >
+                <MenuItem value="proponente">Proponente</MenuItem>
+                <MenuItem value="ativacao">Ativacao</MenuItem>
+              </TextField>
+            )}
+          </Stack>
+        </TableCell>
+
+        <TableCell sx={{ minWidth: 240 }}>
+          {(isEnrichmentOnly || row.origem_lote === "proponente") ? (
+            <Stack spacing={1}>
+              <TextField
+                select
+                label={isEnrichmentOnly ? "Classificação do lead (opcional)" : "Classificação do lead"}
+                size="small"
+                value={row.tipo_lead_proponente}
+                onChange={(event) =>
+                  onFieldChange(row.local_id, {
+                    tipo_lead_proponente: event.target.value as BatchUploadRowDraft["tipo_lead_proponente"],
+                  })
+                }
+                disabled={isReadonly}
+                fullWidth
+              >
+                <MenuItem value="">
+                  <em>Não informar</em>
+                </MenuItem>
+                <MenuItem value="entrada_evento">Entrada no evento</MenuItem>
+                <MenuItem value="bilheteria">Bilheteria</MenuItem>
+              </TextField>
+              {isEnrichmentOnly ? (
+                <Typography variant="caption" color="text.secondary">
+                  {getBronzeImportModeHelpText("enrichment_only")}
+                </Typography>
+              ) : null}
+            </Stack>
           ) : !row.evento_id ? (
             <Typography variant="caption" color="text.secondary">
               Selecione o evento para listar as ativacoes.
@@ -363,7 +417,9 @@ export default function BatchUploadRow({
                   </Typography>
                 ) : null}
                 <Typography variant="caption" color="success.main">
-                  Linha pronta para envio.
+                  {isEnrichmentOnly
+                    ? "Linha pronta para envio ao enriquecimento sem evento."
+                    : "Linha pronta para envio."}
                 </Typography>
               </Stack>
             )}
@@ -393,6 +449,12 @@ export default function BatchUploadRow({
                 sx={{ width: "fit-content" }}
               />
             ) : null}
+            <Chip
+              label={getBronzeImportModeSummary(row.import_mode)}
+              size="small"
+              variant="outlined"
+              sx={{ width: "fit-content" }}
+            />
             {row.created_batch_id != null ? (
               <Typography variant="caption" color="text.secondary">
                 batch_id: {row.created_batch_id}

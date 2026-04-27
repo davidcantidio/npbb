@@ -1,6 +1,6 @@
 ---
 name: Plano incremental de organizacao de leads/importacao
-overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para rotas e testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads; wrappers legados nao-import em pages/* e hooks/* foram removidos em FEATURE-8; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5, implementado em FEATURE-6 e limpo em FEATURE-7, tornando app.modules.lead_imports o unico caminho backend real; importacao/ETL seguem congelados."
+overview: "Estado atualizado em 2026-04-23: o slice frontend nao-import foi consolidado como fonte preferencial para rotas e testes internos. Lista, analise etaria e hook compartilhado moram em frontend/src/features/leads; wrappers legados nao-import em pages/* e hooks/* foram removidos em FEATURE-8; DashboardLeads.tsx e services/dashboard_leads.ts foram removidos em FEATURE-4; o rename backend foi planejado em FEATURE-5, implementado em FEATURE-6 e limpo em FEATURE-7, tornando app.modules.lead_imports o unico caminho backend real; FEATURE-9 registrou decisao documental de manter o shell /leads/importar em frontend/src/pages/leads por enquanto; importacao/ETL seguem congelados."
 todos:
   - id: doc-align
     content: Alinhar docs com as rotas reais de leads e dashboard.
@@ -43,6 +43,9 @@ todos:
     status: done
   - id: remove-fe-leads-wrappers
     content: Remover wrappers legados frontend nao-import e lazy-loadar rotas pelo slice features/leads.
+    status: done
+  - id: decide-import-shell
+    content: Abrir FEATURE-9 documental para decidir a fronteira do shell /leads/importar sem migracao funcional.
     status: done
 isProject: false
 ---
@@ -99,6 +102,19 @@ Esta parte do plano ja foi implementada:
     por serem superficie frontend orfa sem rota publica.
   - O endpoint backend `/dashboard/leads/relatorio` permanece vivo como
     API/script sem tela roteada.
+  - Em `FEATURE-9`, a decisao documental do shell de importacao registrou que
+    `/leads/importar` permanece em
+    [frontend/src/pages/leads/ImportacaoPage.tsx](frontend/src/pages/leads/ImportacaoPage.tsx)
+    nesta rodada.
+  - O inventario da `FEATURE-9` confirmou que
+    `frontend/src/pages/leads/importacao/**`,
+    [frontend/src/pages/leads/MapeamentoPage.tsx](frontend/src/pages/leads/MapeamentoPage.tsx),
+    [frontend/src/pages/leads/BatchMapeamentoPage.tsx](frontend/src/pages/leads/BatchMapeamentoPage.tsx)
+    e [frontend/src/pages/leads/PipelineStatusPage.tsx](frontend/src/pages/leads/PipelineStatusPage.tsx)
+    continuam acoplados ao shell e nao devem ser movidos sem feature posterior.
+  - O futuro preferencial registrado e avaliar migracao parcial para
+    `frontend/src/features/leads/importacao` em uma feature propria, sem
+    alterar ETL funcional nesta rodada.
   - Os testes focados de lista e dashboard agora importam a implementacao real
     pelo slice `frontend/src/features/leads`, mantendo os wrappers legados
     apenas como borda de compatibilidade para rotas/imports externos.
@@ -168,6 +184,19 @@ Esta parte do plano ja foi implementada:
       permanecem como rotas publicas
     - importacao/ETL, backend, contratos HTTP, schemas e rotas publicas nao
       foram alterados por esta rodada
+  - A decisao do shell frontend de importacao foi aberta em:
+    - [PROJETOS/NPBB/INTAKE-DECISAO-SHELL-IMPORTACAO-LEADS.md](PROJETOS/NPBB/INTAKE-DECISAO-SHELL-IMPORTACAO-LEADS.md)
+    - [PROJETOS/NPBB/PRD-DECISAO-SHELL-IMPORTACAO-LEADS.md](PROJETOS/NPBB/PRD-DECISAO-SHELL-IMPORTACAO-LEADS.md)
+    - [PROJETOS/NPBB/features/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS.md](PROJETOS/NPBB/features/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS.md)
+  - A decisao registrada foi:
+    - `ImportacaoPage.tsx` permanece como shell canonico de `/leads/importar`
+      em `frontend/src/pages/leads`
+    - a migracao parcial para `features/leads/importacao` e follow-up
+      preferencial, mas somente em feature posterior
+    - `ImportacaoPage.test.tsx` permanece fora do gate principal enquanto o
+      freeze de importacao/ETL estiver ativo
+    - nenhum arquivo funcional de frontend, backend, ETL ou pipeline foi
+      alterado por esta rodada documental
 
 ## 2. Validacao executada
 
@@ -267,6 +296,23 @@ Esta parte do plano ja foi implementada:
   - Suite focada de lista/dashboard: `25 passed`.
   - Suite focada de manifesto em `src/config/__tests__/dashboardManifest.test.ts`:
     `2 passed`.
+- Rodada de decisao do shell frontend de importacao em 2026-04-23:
+  - `git status --short`: confirmou mudancas locais preexistentes em
+    `frontend/src/components/dashboard/EventsAgeTable.tsx` e
+    `frontend/src/components/dashboard/__tests__/EventsAgeTable.test.tsx`,
+    preservadas fora desta rodada.
+  - `git log -1 --oneline`: `cb218ea docs: add lead import organization handoff 7`.
+  - `rg -n "ImportacaoPage|pages/leads/importacao|PipelineStatusPage|MapeamentoPage|BatchMapeamentoPage" frontend/src`
+    confirmou que `AppRoutes.tsx` ainda lazy-loada
+    `../pages/leads/ImportacaoPage`, que `ImportacaoPage.tsx` importa
+    `BatchMapeamentoPage`, `MapeamentoPage` e `PipelineStatusPage`, e que os
+    testes relacionados ainda apontam para `frontend/src/pages/leads`.
+  - `rg -n "app\\.modules\\.leads_publicidade|leads_publicidade" backend/app backend/scripts backend/tests`:
+    sem consumidores ativos.
+  - Como a rodada foi documental, nenhuma suite funcional foi exigida.
+  - Nenhum arquivo funcional de frontend, backend, dashboard, ETL,
+    `lead_pipeline/`, `core/leads_etl/`, contrato HTTP, schema ou rota publica
+    foi alterado por esta rodada.
 
 ### Residual conhecido
 
@@ -301,6 +347,8 @@ pipeline ficam **congelados** por enquanto.
 - Fazer mudancas pequenas e reversiveis.
 - Preferir ajustar imports internos antes de remover wrappers temporarios.
 - Nao mover o shell de importacao para `features/leads` nesta etapa.
+- Apos `FEATURE-9`, qualquer migracao para `features/leads/importacao` deve ser
+  aberta em feature posterior e com gate proprio.
 - Nao tocar em `ImportacaoPage.test.tsx` enquanto o freeze de importacao/ETL estiver ativo.
 - Nao recriar `DashboardLeads.tsx` ou `services/dashboard_leads.ts` sem nova
   decisao de produto e feature propria.
@@ -316,11 +364,14 @@ pipeline ficam **congelados** por enquanto.
 
 Depois de estabilizar este slice inicial, ai sim considerar:
 
-1. mover o shell de importacao de leads para `features/leads`, somente em
-   feature propria e depois de destravar o escopo de importacao/ETL
-2. se produto reabrir `/dashboard/leads/conversao`, criar nova tela em feature
+1. avaliar migracao parcial de componentes puros do shell de importacao para
+   `features/leads/importacao`, somente em feature propria e sem alterar ETL
+   funcional
+2. mover o shell completo de importacao de leads em fases, somente depois de
+   uma decisao propria sobre mapeamento, pipeline e gate de importacao/ETL
+3. se produto reabrir `/dashboard/leads/conversao`, criar nova tela em feature
    propria sem recuperar automaticamente o legado removido
-3. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
+4. reabrir importacao/ETL em uma sessao separada, com escopo proprio e gate proprio
 
 ## 6. Leitura minima para o proximo agente
 
@@ -339,6 +390,8 @@ Antes de mexer em qualquer coisa, ler:
 - [PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md](PROJETOS/NPBB/features/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE/FEATURE-7-REMOCAO-ALIAS-LEADS-PUBLICIDADE.md)
 - [PROJETOS/NPBB/PRD-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/PRD-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
 - [PROJETOS/NPBB/features/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS.md](PROJETOS/NPBB/features/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS/FEATURE-8-REMOCAO-WRAPPERS-FRONTEND-LEADS.md)
+- [PROJETOS/NPBB/PRD-DECISAO-SHELL-IMPORTACAO-LEADS.md](PROJETOS/NPBB/PRD-DECISAO-SHELL-IMPORTACAO-LEADS.md)
+- [PROJETOS/NPBB/features/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS.md](PROJETOS/NPBB/features/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS/FEATURE-9-DECISAO-SHELL-IMPORTACAO-LEADS.md)
 - [frontend/src/features/leads/list/LeadsListPage.tsx](frontend/src/features/leads/list/LeadsListPage.tsx)
 - [frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx](frontend/src/features/leads/dashboard/LeadsAgeAnalysisPage.tsx)
 - [frontend/src/features/leads/shared/useReferenciaEventos.ts](frontend/src/features/leads/shared/useReferenciaEventos.ts)
@@ -354,6 +407,8 @@ mantendo o endpoint de relatorio como API/script sem tela roteada. O passo
 seguinte planejou e executou o rename de `app.modules.leads_publicidade` para
 `app.modules.lead_imports`; depois, a `FEATURE-7` removeu o alias legado apos
 busca sem consumidores ativos. A `FEATURE-8` removeu os wrappers frontend
-nao-import depois de migrar as lazy routes para `features/leads`. Se a ordem
-for seguir com muito cuidado, **nao e** reabrir importacao/ETL sem feature
-propria, escopo proprio e gate proprio.
+nao-import depois de migrar as lazy routes para `features/leads`. A
+`FEATURE-9` registrou a decisao documental de manter o shell `/leads/importar`
+em `frontend/src/pages/leads` por enquanto e deixar uma migracao parcial para
+feature posterior. Se a ordem for seguir com muito cuidado, **nao e** reabrir
+importacao/ETL sem feature propria, escopo proprio e gate proprio.

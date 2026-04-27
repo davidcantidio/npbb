@@ -496,6 +496,15 @@ def suggest_batch_column_mapping(
         raise ValueError("Informe ao menos um lote valido para o mapeamento batch.")
 
     contexts, _ = _load_batch_mapping_contexts(unique_batch_ids, db, owner_user_id=owner_user_id)
+    enrichment_batch_ids = [int(context.batch.id) for context in contexts if context.batch.enrichment_only]
+    if enrichment_batch_ids:
+        raise BatchMappingBlockedError(
+            [
+                "Mapeamento batch unificado nao suporta lotes enrichment_only. "
+                f"Use o fluxo individual do lote #{batch_id}."
+                for batch_id in enrichment_batch_ids
+            ]
+        )
     return _build_batch_column_preview(unique_batch_ids, contexts)
 
 
@@ -543,7 +552,7 @@ def _upsert_column_aliases(
 def _build_silver_row_payloads(
     context: _LoadedBatchMappingContext,
     *,
-    evento_id: int,
+    evento_id: int | None,
     mapeamento: dict[str, str],
 ) -> list[dict[str, Any]]:
     mapped_columns = [
@@ -600,7 +609,7 @@ def _insert_silver_rows(
 def _apply_mapping_context(
     context: _LoadedBatchMappingContext,
     *,
-    evento_id: int,
+    evento_id: int | None,
     mapeamento: dict[str, str],
     user_id: int,
     db: Session,
@@ -642,7 +651,7 @@ def _apply_mapping_context(
 
 def mapear_batch(
     batch_id: int,
-    evento_id: int,
+    evento_id: int | None,
     mapeamento: dict[str, str],
     user_id: int,
     db: Session,
@@ -660,6 +669,15 @@ def mapear_batch(
         db,
         aliases_lookup_by_platform=aliases_lookup_by_platform,
     )
+    if batch.enrichment_only:
+        if evento_id is not None:
+            raise BatchMappingBlockedError(
+                ["Lote enrichment_only nao aceita evento_id no mapeamento individual."]
+            )
+    elif evento_id is None:
+        raise BatchMappingBlockedError(
+            [f"Lote #{batch.id} exige evento_id no mapeamento individual."]
+        )
     total_rows = len(context.data_rows)
     try:
         result = _apply_mapping_context(
@@ -717,6 +735,15 @@ def mapear_batches(
         db,
         owner_user_id=user_id,
     )
+    enrichment_batch_ids = [int(context.batch.id) for context in contexts if context.batch.enrichment_only]
+    if enrichment_batch_ids:
+        raise BatchMappingBlockedError(
+            [
+                "Mapeamento batch unificado nao suporta lotes enrichment_only. "
+                f"Use o fluxo individual do lote #{batch_id}."
+                for batch_id in enrichment_batch_ids
+            ]
+        )
     preview = _build_batch_column_preview(unique_batch_ids, contexts)
     if preview.blockers:
         raise BatchMappingBlockedError(preview.blockers)

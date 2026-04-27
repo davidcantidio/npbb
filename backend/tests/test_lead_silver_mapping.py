@@ -134,12 +134,25 @@ CSV_WITH_PREAMBLE = (
 )
 
 
-def _upload_batch(client: TestClient, auth: dict, csv_content: bytes, plataforma: str = "email") -> int:
+def _upload_batch(
+    client: TestClient,
+    auth: dict,
+    csv_content: bytes,
+    plataforma: str = "email",
+    *,
+    enrichment_only: bool = False,
+) -> int:
+    data = {
+        "plataforma_origem": plataforma,
+        "data_envio": "2026-03-01T10:00:00",
+    }
+    if enrichment_only:
+        data["enrichment_only"] = "true"
     resp = client.post(
         "/leads/batches",
         headers=auth,
         files={"file": ("leads.csv", io.BytesIO(csv_content), "text/csv")},
-        data={"plataforma_origem": plataforma, "data_envio": "2026-03-01T10:00:00"},
+        data=data,
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
@@ -264,6 +277,17 @@ class TestGetColunas:
         assert colunas["sexo"]["confianca"] == "synonym_match"
         assert colunas["rg"]["campo_sugerido"] == "rg"
         assert colunas["rg"]["confianca"] == "exact_match"
+
+    def test_synonym_match_for_cliente_boolean_field(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, b"cliente,cpf\ntrue,12345678901\n")
+        resp = client.get(f"/leads/batches/{batch_id}/colunas", headers=auth)
+        assert resp.status_code == 200
+        colunas = {c["coluna_original"]: c for c in resp.json()["colunas"]}
+        assert colunas["cliente"]["campo_sugerido"] == "is_cliente_bb"
+        assert colunas["cliente"]["confianca"] == "synonym_match"
 
     def test_cidade_is_suggested_as_exact_canonical_field(self, client, engine):
         with Session(engine) as s:
@@ -658,6 +682,52 @@ class TestPostMapear:
             assert silver_row.dados_brutos["genero"] == "Feminino"
             assert silver_row.dados_brutos["rg"] == "1234567"
 
+    def test_enrichment_only_mapping_accepts_null_evento_id(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, CSV_CANONICAL, enrichment_only=True)
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "mapeamento": {
+                    "nome": "nome",
+                    "cpf": "cpf",
+                    "email": "email",
+                },
+            },
+        )
+
+        assert resp.status_code == 200, resp.text
+        with Session(engine) as s:
+            batch = s.get(LeadBatch, batch_id)
+            assert batch is not None
+            assert batch.stage == BatchStage.SILVER
+            assert batch.enrichment_only is True
+            assert batch.evento_id is None
+            silver_row = s.exec(select(LeadSilver).where(LeadSilver.batch_id == batch_id)).first()
+            assert silver_row is not None
+            assert silver_row.evento_id is None
+
+    def test_enrichment_only_mapping_rejects_evento_id(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+            evento = _seed_evento(s)
+
+        batch_id = _upload_batch(client, auth, CSV_CANONICAL, enrichment_only=True)
+        resp = client.post(
+            f"/leads/batches/{batch_id}/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "evento_id": evento.id,
+                "mapeamento": {"cpf": "cpf"},
+            },
+        )
+
+        assert resp.status_code == 400, resp.text
+        assert resp.json()["detail"]["code"] == "BATCH_MAPPING_BLOCKED"
+
 
 class TestBatchMappingEndpoints:
     def test_batch_colunas_groups_repeated_headers_with_coverage(self, client, engine):
@@ -685,6 +755,18 @@ class TestBatchMappingEndpoints:
         assert cpf_group["campo_sugerido"] == "cpf"
         assert cpf_group["confianca"] == "exact_match"
         assert [item["batch_id"] for item in cpf_group["ocorrencias"]] == [batch_a, batch_b]
+
+    def test_batch_colunas_rejects_enrichment_only_batches(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, b"cpf\n12345678901\n", enrichment_only=True)
+        resp = client.post("/leads/batches/colunas", headers=auth, json={"batch_ids": [batch_id]})
+
+        assert resp.status_code == 400, resp.text
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BATCH_MAPPING_BLOCKED"
+        assert any("enrichment_only" in blocker for blocker in detail["blockers"])
 
     def test_batch_colunas_hides_batches_from_other_user(self, client, engine):
         with Session(engine) as s:
@@ -896,6 +978,25 @@ class TestBatchMappingEndpoints:
             },
         )
         assert resp.status_code == 404
+
+    def test_batch_mapear_rejects_enrichment_only_batches(self, client, engine):
+        with Session(engine) as s:
+            auth = _auth_header(client, s)
+
+        batch_id = _upload_batch(client, auth, b"cpf\n12345678901\n", enrichment_only=True)
+        resp = client.post(
+            "/leads/batches/mapear",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "batch_ids": [batch_id],
+                "mapeamento": {"cpf": "cpf"},
+            },
+        )
+
+        assert resp.status_code == 400, resp.text
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BATCH_MAPPING_BLOCKED"
+        assert any("enrichment_only" in blocker for blocker in detail["blockers"])
 
 
 # ---------------------------------------------------------------------------

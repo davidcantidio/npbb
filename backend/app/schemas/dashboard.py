@@ -57,6 +57,7 @@ AGE_ANALYSIS_RESPONSE_EXAMPLE = {
         "nao_clientes_bb_volume": 30,
         "nao_clientes_bb_pct": 25.0,
         "bb_indefinido_volume": 12,
+        "bb_indefinido_pct": 10.0,
         "cobertura_bb_pct": 95.0,
         "faixas": {
             "faixa_18_25": {"volume": 30, "pct": 27.27},
@@ -134,6 +135,8 @@ AGE_ANALYSIS_RESPONSE_EXAMPLE = {
                 "pct": 8.33,
             },
         ],
+        "leads_sem_conexao_evento_volume": 0,
+        "leads_sem_conexao_evento_pct": 0.0,
     },
     "insights": {
         "resumo": [
@@ -277,6 +280,9 @@ class ConsolidadoAgeAnalysis(BaseModel):
         description="Percentual consolidado de nao clientes BB. Nulo quando cobertura BB abaixo do limiar.",
     )
     bb_indefinido_volume: int
+    bb_indefinido_pct: float = Field(
+        description="Percentual de vinculos com is_cliente_bb nulo sobre a base total consolidada."
+    )
     cobertura_bb_pct: float = Field(
         description="Percentual consolidado de leads com is_cliente_bb preenchido."
     )
@@ -347,6 +353,12 @@ class ConfiancaConsolidado(BaseModel):
     event_name_missing_pct: float
     evento_nome_backfill_habilitado: bool
     lineage_mix: list[LineageMixRow]
+    leads_sem_conexao_evento_volume: int = Field(
+        description="Leads distintos no escopo do filtro sem nenhum vinculo consolidado lead-evento."
+    )
+    leads_sem_conexao_evento_pct: float = Field(
+        description="Percentual sobre leads distintos escopados (orfaos + leads presentes no consolidado)."
+    )
 
 
 class AgeAnalysisInsights(BaseModel):

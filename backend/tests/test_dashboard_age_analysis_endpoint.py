@@ -252,9 +252,11 @@ def test_dashboard_age_analysis_ok(client, engine):
     alpha = data["por_evento"][0]
     assert alpha["evento_id"] == ids["evento_alpha_id"]
     assert alpha["base_leads"] == 4
-    assert alpha["clientes_bb_volume"] is None
-    assert alpha["clientes_bb_pct"] is None
-    assert alpha["cobertura_bb_pct"] == 75.0
+    assert alpha["clientes_bb_volume"] == 2
+    assert alpha["clientes_bb_pct"] == 66.67
+    assert alpha["nao_clientes_bb_volume"] == 1
+    assert alpha["nao_clientes_bb_pct"] == 33.33
+    assert alpha["cobertura_bb_pct"] == 100.0
     assert alpha["faixa_dominante"] == "faixa_18_25"
     assert alpha["faixas"]["faixa_18_25"]["volume"] == 2
     assert alpha["faixas"]["faixa_18_25"]["pct"] == 66.67
@@ -275,8 +277,10 @@ def test_dashboard_age_analysis_ok(client, engine):
     assert consolidado["leads_ativacao"] == 10
     assert consolidado["leads_proponente"] == 0
     assert consolidado["clientes_bb_volume"] == 5
-    assert consolidado["clientes_bb_pct"] == 50.0
-    assert consolidado["cobertura_bb_pct"] == 90.0
+    assert consolidado["clientes_bb_pct"] == 55.56
+    assert consolidado["nao_clientes_bb_volume"] == 4
+    assert consolidado["nao_clientes_bb_pct"] == 44.44
+    assert consolidado["cobertura_bb_pct"] == 100.0
     assert consolidado["bb_indefinido_volume"] == 1
     assert consolidado["bb_indefinido_pct"] == 10.0
     assert data["confianca_consolidado"]["leads_sem_conexao_evento_volume"] == 0
@@ -348,9 +352,9 @@ def test_dashboard_age_analysis_threshold_fallback_para_default(monkeypatch, cli
     data = response.json()
     alpha = data["por_evento"][0]
     assert alpha["evento_nome"] == "Evento Alpha"
-    assert alpha["cobertura_bb_pct"] == 75.0
-    assert alpha["clientes_bb_volume"] is None
-    assert alpha["clientes_bb_pct"] is None
+    assert alpha["cobertura_bb_pct"] == 100.0
+    assert alpha["clientes_bb_volume"] == 2
+    assert alpha["clientes_bb_pct"] == 66.67
 
 
 def test_dashboard_age_analysis_threshold_clamp_min_zero(monkeypatch, client, engine):
@@ -367,7 +371,7 @@ def test_dashboard_age_analysis_threshold_clamp_min_zero(monkeypatch, client, en
     alpha = data["por_evento"][0]
     assert alpha["evento_nome"] == "Evento Alpha"
     assert alpha["clientes_bb_volume"] == 2
-    assert alpha["clientes_bb_pct"] == 50.0
+    assert alpha["clientes_bb_pct"] == 66.67
 
 
 def test_dashboard_age_analysis_threshold_clamp_max_cem(monkeypatch, client, engine):
@@ -385,8 +389,9 @@ def test_dashboard_age_analysis_threshold_clamp_max_cem(monkeypatch, client, eng
     beta = data["por_evento"][1]
 
     assert alpha["evento_nome"] == "Evento Alpha"
-    assert alpha["clientes_bb_volume"] is None
-    assert alpha["clientes_bb_pct"] is None
+    assert alpha["cobertura_bb_pct"] == 100.0
+    assert alpha["clientes_bb_volume"] == 2
+    assert alpha["clientes_bb_pct"] == 66.67
 
     assert beta["evento_nome"] == "Evento Beta"
     assert beta["cobertura_bb_pct"] == 100.0

@@ -1,0 +1,50 @@
+[
+  {
+    "docx": "Criação de Tabelas do Estudo.docx",
+    "ipynb": "Criação de Tabelas do Estudo.ipynb",
+    "original_paragraphs": 56,
+    "original_nonempty_paragraphs": 50,
+    "notebook_cells": 29,
+    "markdown_cells": 1,
+    "code_cells": 28,
+    "missing_nonempty_paragraphs_in_notebook_source": [],
+    "missing_count": 0,
+    "source_docx_sha256": "bae955d8c7fddd5894343625ba127e807f125a7fd8b2af19a742875f7bfb0e2a"
+  },
+  {
+    "docx": "Estudo NPBB - Segmentação.docx",
+    "ipynb": "Estudo NPBB - Segmentação.ipynb",
+    "original_paragraphs": 1795,
+    "original_nonempty_paragraphs": 1532,
+    "notebook_cells": 181,
+    "markdown_cells": 3,
+    "code_cells": 178,
+    "missing_nonempty_paragraphs_in_notebook_source": [],
+    "missing_count": 0,
+    "source_docx_sha256": "56948b390cea2f4e982b6363a9a8c8afd26be7d0e34dd2a535a8f56742bf60ec"
+  },
+  {
+    "docx": "Spend Windows & Cohorts.docx",
+    "ipynb": "Spend Windows & Cohorts.ipynb",
+    "original_paragraphs": 95,
+    "original_nonempty_paragraphs": 80,
+    "notebook_cells": 7,
+    "markdown_cells": 0,
+    "code_cells": 7,
+    "missing_nonempty_paragraphs_in_notebook_source": [],
+    "missing_count": 0,
+    "source_docx_sha256": "eeb8f4bd43d14df8d3543af600ebd2201a65b3465402c90b9a5eb565e8950dd8"
+  },
+  {
+    "docx": "Survival (Ativação e emissão).docx",
+    "ipynb": "Survival (Ativação e emissão).ipynb",
+    "original_paragraphs": 228,
+    "original_nonempty_paragraphs": 206,
+    "notebook_cells": 1,
+    "markdown_cells": 0,
+    "code_cells": 1,
+    "missing_nonempty_paragraphs_in_notebook_source": [],
+    "missing_count": 0,
+    "source_docx_sha256": "f7fd46992386ac842b664564afe79913ba8f427f905d2e6e98fb34df200eaea0"
+  }
+]
